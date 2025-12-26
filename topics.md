@@ -1,0 +1,45 @@
+- Foundations
+  - What is an Agent / Agentic System
+- Core Agentic Patterns
+  - REACT
+  - Tree of Thought
+  - Tool Use
+  - Self-Reflection
+- Orchestration & Control Flow
+  - Workflows
+  - Graphs
+  - Planning (To-do lists)
+- Context Management
+  - Context window engineering (files/attachments/knowledge)
+  - Conversation history
+  - Memory and state management
+  - RAG (Retrieval-Augmented Generation)
+- Execution Modes
+  - Single-shot vs Planning vs Reasoning
+  - CodeAct & REPL
+  - Human-in-the-loop
+- Tool Management
+  - Tool discovery
+  - Tool selection (large toolsets, pre-selection strategies)
+  - Tool doctor
+- Modularity & Composition
+  - Skills and progressive disclosure
+  - MCP (Model Context Protocol)
+  - Subagents
+  - Agent-to-Agent (A2A) communication
+- Specialized Applications
+  - NL2SQL (including data source selection)
+  - CodeIndex
+- Data & Knowledge
+  - Knowledge bases
+  - Knowledge base consistency
+  - Document consistency (iterative check-and-fix)
+- Security & Privacy
+  - Private data handling
+  - Sandboxes
+  - Blocking outgoing connections
+- Robustness & Error Handling
+  - Error propagation (Tool → MCP → A2A → Agent)
+- Advanced Patterns
+  - Personas and simulation
+  - Governance boards (multi-persona review systems)
