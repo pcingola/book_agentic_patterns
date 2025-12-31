@@ -1,5 +1,13 @@
 # Tools
 
+[Tool Use (from Core Patterns)](./core_pattern.md)
+[Structured output](./structured_output.md)
+[Tool discovery and selection](./tool_discovery_selection.md)
+[Tool doctor / tool repair](./tool_doctor_repair.md)
+[Tool permissions (read vs write)](./tool_permissions.md)
+[MCP: Introduction](./mcp.md)
+[MCP: Introduction](./mcp.md)
+
 
 ## MCP
 
