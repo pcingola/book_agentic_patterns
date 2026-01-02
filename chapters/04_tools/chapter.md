@@ -4,8 +4,9 @@
 [Structured output](./structured_output.md)
 [Tool discovery and selection](./tool_discovery_selection.md)
 [Tool contracts and schemas](./tool_contracts_schemas.md)
-[Tool doctor / tool repair](./tool_doctor_repair.md)
-[Tool permissions (read vs write)](./tool_permissions.md)
+[Tool permissions](./tool_permissions.md)
+[The workspace](./the_workspace.md)
+[Advanced topics](./advanced_topics.md)
 [MCP: Introduction](./mcp.md)
 
 

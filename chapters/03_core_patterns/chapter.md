@@ -15,3 +15,6 @@
 [Planning and decomposition](./planning_decomposition.md)
 
 [Verification / critique](./verification_critique.md)
+
+[Human in the loop](./human_in_the_loop.md)
+
