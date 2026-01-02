@@ -56,16 +56,18 @@ These are foundational reasoning patterns
 - [x] ReAct
 - [x] Planning and decomposition
 - [x] Verification / critique
+- [x] Human in the loop
 
 ### Chapter 4: Tool Use
 "Tool Use" is the fundamental pattern
 
-- [ ] Tool Use (from Core Patterns)
-- [ ] Tool discovery and selection
-- [ ] Tool contracts and schemas
-- [ ] BEST PRACTICES: Tool doctor / tool repair
-- [ ] Tool permissions (read vs write)
-- [ ] MCP: Introduction
+- [x] Tool Use (from Core Patterns)
+- [x] Tool discovery and selection
+- [x] Tool contracts and schemas
+- [x] "The workspace"
+- [x] Advanced topics
+- [x] Tool permissions (read vs write)
+- [x] MCP: Introduction
 
 ### Chapter 5: Orchestration & Control Flow
 Structuring agent execution at a higher level.
