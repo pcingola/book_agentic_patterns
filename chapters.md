@@ -25,6 +25,7 @@ Here are the propoed chapters (divided in to sections for clarity):
 
 - [ ] What is an Agent / Agentic System
 - [ ] Concepts
+- [ ] Code and chapters
 - [ ] Reference architectures (perception, planning, acting, feedback)
 - [ ] Single-agent vs multi-agent systems
 - [ ] Online vs offline agents
@@ -39,6 +40,10 @@ Here are the propoed chapters (divided in to sections for clarity):
 - [ ] Contracts and schemas (inputs, outputs, tools)
 - [ ] Capability boundaries and versioning
 - [ ] Determinism vs stochasticity
+- [ ] BEST PRACTICES: Define agent params in '.env' (use standard variable names across projects): `get_agent()`
+- [ ] BEST PRACTICES: Do not hard-code prompts (load prompts from files)
+- [ ] BEST PRACTICES: Read the prompt! Assume you are a junior person, on their first day at a new job: If you cannot do the task with ONLY the information in the prompt, the agent won't be able to do it either.
+- [ ] BEST PRACTICES: Prompt Doctor
 
 ### Chapter 3: Core Agentic Patterns
 These are foundational reasoning patterns
@@ -58,7 +63,7 @@ These are foundational reasoning patterns
 - [ ] Tool Use (from Core Patterns)
 - [ ] Tool discovery and selection
 - [ ] Tool contracts and schemas
-- [ ] Tool doctor / tool repair
+- [ ] BEST PRACTICES: Tool doctor / tool repair
 - [ ] Tool permissions (read vs write)
 - [ ] MCP: Introduction
 

@@ -3,6 +3,7 @@
 [Tool Use](./core_pattern.md)
 [Structured output](./structured_output.md)
 [Tool discovery and selection](./tool_discovery_selection.md)
+[Tool contracts and schemas](./tool_contracts_schemas.md)
 [Tool doctor / tool repair](./tool_doctor_repair.md)
 [Tool permissions (read vs write)](./tool_permissions.md)
 [MCP: Introduction](./mcp.md)
