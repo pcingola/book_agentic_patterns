@@ -13,8 +13,8 @@ def resolve_includes(file_path: Path, visited: set[Path]) -> str:
         sys.exit(1)
 
     if not file_path.exists():
-        print(f"Error: File not found: {file_path}", file=sys.stderr)
-        sys.exit(1)
+        print(f"Warning: File not found: {file_path}", file=sys.stderr)
+        return ""
 
     visited.add(file_path)
     content = file_path.read_text()

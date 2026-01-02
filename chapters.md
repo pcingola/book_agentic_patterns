@@ -14,6 +14,13 @@ Here are the propoed chapters (divided in to sections for clarity):
 ---
 ### Section 1: Basics
 
+### To add
+
+- [ ] Prompts: System, prompt, instructions
+- [ ] Tips: Read the prompt
+- [ ] Prompt doctor
+
+
 ### Chapter 1: Foundations
 
 - [ ] What is an Agent / Agentic System
@@ -77,7 +84,11 @@ These are distinct operational modes that affect system design.
 ### Chapter 7: Context & Memory
 Merge Context Management + Data & Knowledge. These are all about how agents manage information over time.
 
-- [ ] Context window engineering
+- [ ] Prompts: System, prompt, instructions
+- [ ] Prompt engineering
+- [ ] Context engineering / Context window engineering
+  - [ ] "The dumb zone"
+  - [ ] Context compression
 - [ ] Token budgeting
 - [ ] Conversation history
 - [ ] Short-term vs long-term memory

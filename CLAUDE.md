@@ -20,12 +20,12 @@ book_agentic_patterns/
 │   └── 03_pattern_name/
 │       ├── chapter.md
 │       └── img/
-├── src/
+├── agentic_patterns/
 │   ├── 01_foundations/       # Code examples for chapter 1
 │   │   ├── example_01.py
 │   │   └── example_02.py
 │   ├── 02_pattern_name/       # Code examples for chapter 2
-│   └── shared/                # Shared utilities across chapters
+│   └── core/                  # Core utilities across chapters
 ├── scripts/                   # Build, validation, lint scripts
 └── tests/                     # Tests for code examples
     ├── test_01.py
@@ -37,7 +37,7 @@ book_agentic_patterns/
 
 **Chapter directories**: All chapters under `chapters/` directory. Name them `XX_descriptive_name` where XX is zero-padded (01, 02, etc.). Each contains only `chapter.md` with the chapter text in markdown format.
 
-**Code organization**: All code in `src/`. Mirror chapter structure with `src/XX_descriptive_name/` directories using chapter numbers. Shared utilities go in `src/shared/`. Follow global Python conventions (type hints, pathlib, etc.).
+**Code organization**: All code in `agentic_patterns/`. Mirror chapter structure with `agentic_patterns/XX_descriptive_name/` directories using chapter numbers. Core utilities go in `agentic_patterns/core/`. Follow global Python conventions (type hints, pathlib, etc.).
 
 **Images**: Stored within each chapter directory in an `img/` subdirectory. Reference from markdown using relative paths: `![Description](img/diagram.png)`. This keeps images co-located with their corresponding chapter content.
 
@@ -45,7 +45,7 @@ book_agentic_patterns/
 
 **Dependencies**: Single `pyproject.toml` or `requirements.txt` at root for all code examples. All chapters share the same dependency environment.
 
-**Code imports**: When code in `src/XX/` imports from `src/shared/`, ensure PYTHONPATH is set correctly or use relative imports. Consider adding `src/` to PYTHONPATH in scripts.
+**Code imports**: When code in `agentic_patterns/XX/` imports from `agentic_patterns/core/`, ensure PYTHONPATH is set correctly or use relative imports. Consider adding `agentic_patterns/` to PYTHONPATH in scripts.
 
 **Chapter numbering**: Using sequential numbers (01, 02, 03) makes reordering hard. If you plan to insert chapters later, consider leaving gaps (01, 05, 10, etc.) or non-sequential numbering.
 
