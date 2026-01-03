@@ -14,12 +14,19 @@ Here are the propoed chapters (divided in to sections for clarity):
 ---
 ### Section 1: Basics
 
+
+TIPS: This is a lable for tips, it should be shown in a highlighted box
+BEST PRACTICE: This is a label for best practices, it should be shown in a highlighted box
+
 ### To add
 
 - [ ] Prompts: System, prompt, instructions
-- [ ] Tips: Read the prompt
 - [ ] Prompt doctor
 
+- [ ] BEST PRACTICE: Define agent params in '.env' (use standard variable names across projects): `get_agent()`
+- [ ] BEST PRACTICE: Do not hard-code prompts (load prompts from files)
+- [ ] BEST PRACTICE: Read the prompt! Assume you are a junior person, on their first day at a new job: If you cannot do the task with ONLY the information in the prompt, the agent won't be able to do it either.
+- [ ] BEST PRACTICE: Prompt Doctor
 
 ### Chapter 1: Foundations
 
@@ -40,10 +47,6 @@ Here are the propoed chapters (divided in to sections for clarity):
 - [ ] Contracts and schemas (inputs, outputs, tools)
 - [ ] Capability boundaries and versioning
 - [ ] Determinism vs stochasticity
-- [ ] BEST PRACTICES: Define agent params in '.env' (use standard variable names across projects): `get_agent()`
-- [ ] BEST PRACTICES: Do not hard-code prompts (load prompts from files)
-- [ ] BEST PRACTICES: Read the prompt! Assume you are a junior person, on their first day at a new job: If you cannot do the task with ONLY the information in the prompt, the agent won't be able to do it either.
-- [ ] BEST PRACTICES: Prompt Doctor
 
 ### Chapter 3: Core Agentic Patterns
 These are foundational reasoning patterns
@@ -88,6 +91,15 @@ These are distinct operational modes that affect system design.
 - [ ] Human-in-the-loop
 - [ ] Approval, rollback, and reversibility
 
+### Chapter 7: RAG
+- [ ] RAG: Introduction
+- [ ] Data retrieval, databases, web search, graphs
+- [ ] Embeddings and vector DBs
+- [ ] Chunking strategies
+- [ ] Query strategies
+- [ ] Re-ranking and citation
+- [ ] References, Provenance and truth maintenance
+
 ### Chapter 7: Context & Memory
 Merge Context Management + Data & Knowledge. These are all about how agents manage information over time.
 
@@ -100,16 +112,11 @@ Merge Context Management + Data & Knowledge. These are all about how agents mana
 - [ ] Conversation history
 - [ ] Short-term vs long-term memory
 - [ ] Memory and state management
+  - [ ] Storing conversations into database
 - [ ] Write-back patterns
-- [ ] RAG: Introduction
-  - [ ] Data retrieval, databases, web search, graphs
-  - [ ] Embeddings and vector DBs
-  - [ ] Chunking strategies
-  - [ ] Query strategies
-  - [ ] Re-ranking and citation
-- [ ] Knowledge bases and consistency
-- [ ] Provenance and truth maintenance
+- [ ] Knowledge bases and consistency (Batch conversion of memory to knowledge)
 
+```
 ### Chapter 8: Model Strategy & Runtime Economics
 
 - [ ] Model selection and routing
@@ -120,6 +127,7 @@ Merge Context Management + Data & Knowledge. These are all about how agents mana
 - [ ] Latency vs cost tradeoffs
 - [ ] Caching, memoization, batching
 - [ ] Streaming and early stopping
+```
 
 ### Chapter 9: Testing, Debugging, and Evals
 
@@ -131,25 +139,41 @@ Merge Context Management + Data & Knowledge. These are all about how agents mana
 - [ ] Online evals and A/B testing
 - [ ] Regression testing across model and prompt versions
 
+### Chapter 9: UI
+
+- [ ] Chainlit
+- [ ] AGUI
+- [ ] ...(google's new protocol)
+- [ ] Session ID -> MCP / A2A tracking
+- [ ] File uploads
+- [ ] Error propagation
+
 ---
 
 ### Section 2: Modularization & Composition
 All about building larger systems from smaller pieces.
 
-### Chapter 10: Interoperability Standards
+### Chapter 10: MCP
 
 - [ ] MCP in depth
+
+### Chapter 10: A2A
+
 - [ ] A2A in depth
-- [ ] AGENTS.md and coding-agent conventions
 
 ### Chapter 11: Modularity & Composition
 
+- [ ] AGENTS.md and coding-agent conventions
 - [ ] Skills and progressive disclosure
 - [ ] Subagents
 - [ ] Agent hierarchies
 - [ ] Agent swarms
 - [ ] MCP-based composition
 - [ ] A2A communication patterns
+
+---
+
+### Section 3: Advanced topics
 
 ### Chapter 12: Distributed Systems Concerns for Agentic Systems
 - [ ] Distributed Systems Concerns for Agentic Systems
@@ -158,10 +182,6 @@ All about building larger systems from smaller pieces.
 - [ ] Consistency models for shared state and memory
 - [ ] Fault tolerance, partitions, and degraded operation
 - [ ] Idempotency and exactly-once semantics across agents
-
----
-
-### Section 3: Advanced topics
 
 ### Chapter 13: Advanced Patterns
 
@@ -206,11 +226,19 @@ Corporate security
 - [ ] Updating skills, tools, and policies safely
 - [ ] Guardrails for self-modifying agents
 
+### Chapter 19: Scientific Agents and tooling
+- [ ] Biomni
+- [ ] ....
+- [ ] ....
+- [ ] 
+
 ---
 
 ### Chapter 18: Operations & Production
 
-- [ ] Robustness and error propagation: Tool, MCP, A2A, Agent, UI
+- [ ] Error propagation: Tool, MCP, A2A, Agent, UI
+  - [ ] MCP error handling and retry different than tool error handling
+- [ ] Robustness (Tool, MCP, A2A, Agent, UI)
 - [ ] Failure recovery strategies
 - [ ] Observability
 - [ ] Monitoring
