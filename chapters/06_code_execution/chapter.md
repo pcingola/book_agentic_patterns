@@ -6,6 +6,7 @@
 
 [REPL](./repl.md)
 
+[NL2SQL](./nl2sql.md)
+
 [Autonomous vs supervised execution](./autonomous_vs_supervised.md)
 
-[Approval, rollback, and reversibility](./approval_rollback_reversibility.md)

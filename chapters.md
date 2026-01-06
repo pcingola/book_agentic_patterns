@@ -81,34 +81,33 @@ Structuring agent execution at a higher level.
 - [x] Long-running tasks and async execution
 - [x] Event-driven agents
 
-### [Chapter 6: Code Execution Modes](./chapters/06_execution/chapter.md)
+### [Chapter 6: Code Execution Modes](./chapters/06_code_execution/chapter.md)
 These are agents that execute code in different ways
 
-- [ ] CodeAct
-- [ ] MCP-Sandbox
-  - [ ] BEST PRACTICE: Sandboxed using containers
-  - [ ] BEST PRACTICE: Limit execution time (timeout)
-  - [ ] BEST PRACTICE: Limit resource usage (CPU, memory)
-  - [ ] BEST PRACTICE: Container only has access to data in workspace
-  - [ ] BEST PRACTICE: Validate code before execution (linting, static analysis)
-  - [ ] BEST PRACTICE: Log code execution (code, stdout, stderr, exit code)
-  - [ ] BEST PRACTICE: Use non-root user in container
-  - [ ] BEST PRACTICE: Limit result size (back to agent), save STDOUT, STDERR to files in workspace
-- [ ] REPL
-- [ ] NL2SQL
-  - [ ] BEST PRACTICE: Create table definitions (off-line)
-  - [ ] BEST PRACTICE: Use commments to explain fields
-  - [ ] BEST PRACTICE: Add 'Enums' in table definitions comments
-  - [ ] BEST PRACTICE: Add "sample data" 
-  - [ ] BEST PRACTICE: Add example queries for complex queries
-  - [ ] BEST PRACTICE: Validate SQL queries before execution
-  - [ ] BEST PRACTICE: Query timeout
-  - [ ] BEST PRACTICE: Limit result size
-  - [ ] BEST PRACTICE: Write results to file (csv), show back sample + file path (in workspace)
-  - [ ] BEST PRACTICE: Read only access
-  - [ ] BEST PRACTICE: Access "on behalf" of users (use secrets manager to handle credentials)
-- [ ] Autonomous vs supervised execution (Human-in-the-loop)
-- [ ] Approval, rollback, and reversibility
+- [x] CodeAct
+- [x] MCP-Sandbox
+  - [x] BEST PRACTICE: Sandboxed using containers
+  - [x] BEST PRACTICE: Limit execution time (timeout)
+  - [x] BEST PRACTICE: Limit resource usage (CPU, memory)
+  - [x] BEST PRACTICE: Container only has access to data in workspace
+  - [x] BEST PRACTICE: Validate code before execution (linting, static analysis)
+  - [x] BEST PRACTICE: Log code execution (code, stdout, stderr, exit code)
+  - [x] BEST PRACTICE: Use non-root user in container
+  - [x] BEST PRACTICE: Limit result size (back to agent), save STDOUT, STDERR to files in workspace
+- [x] REPL
+- [x] NL2SQL
+  - [x] BEST PRACTICE: Create table definitions (off-line)
+  - [x] BEST PRACTICE: Use commments to explain fields
+  - [x] BEST PRACTICE: Add 'Enums' in table definitions comments
+  - [x] BEST PRACTICE: Add "sample data" (as CSV) in table definitions comments
+  - [x] BEST PRACTICE: Add example queries for complex queries
+  - [x] BEST PRACTICE: Validate SQL queries before execution
+  - [x] BEST PRACTICE: Query timeout
+  - [x] BEST PRACTICE: Limit result size
+  - [x] BEST PRACTICE: Write results to file (csv), show back sample + file path (in workspace)
+  - [x] BEST PRACTICE: Read only access
+  - [x] BEST PRACTICE: Access "on behalf" of users (use secrets manager to handle credentials)
+- [x] Autonomous vs supervised execution (Human-in-the-loop), Approval, rollback, and reversibility
 
 ### Chapter 7: RAG
 - [ ] RAG: Introduction
