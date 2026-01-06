@@ -111,12 +111,22 @@ These are agents that execute code in different ways
 
 ### Chapter 7: RAG
 - [ ] RAG: Introduction
+  - [ ] How a simple RAG works
 - [ ] Data retrieval, databases, web search, graphs
-- [ ] Embeddings and vector DBs
-- [ ] Chunking strategies
-- [ ] Query strategies
-- [ ] Re-ranking and citation
-- [ ] References, Provenance and truth maintenance
+  - [ ] Embeddings
+  - [ ] Vector DBs
+- [ ] Document ingestion (steps and what they do)
+  - [ ] Document Chunking strategies
+- [ ] Document retrieval (steps and what they do)
+  - [ ] Query strategies
+  - [ ] Scoring strategies
+  - [ ] Re-ranking strategies
+  - [ ] Filtering
+  - [ ] Combined strategies (using metat-data + embeddings)
+- [ ] Evaluating RAG systems
+  - [ ] Metric for vector search / vector DBs
+  - [ ] End-to-end RAG metrics
+- [ ] References, Citation, attribution, provenance and truth maintenance
 
 ### Chapter 8: Context & Memory
 Merge Context Management + Data & Knowledge. These are all about how agents manage information over time.
