@@ -81,11 +81,32 @@ Structuring agent execution at a higher level.
 - [x] Long-running tasks and async execution
 - [x] Event-driven agents
 
-### Chapter 6: Execution Modes
-These are distinct operational modes that affect system design.
+### [Chapter 6: Code Execution Modes](./chapters/06_execution/chapter.md)
+These are agents that execute code in different ways
 
 - [ ] CodeAct
+- [ ] MCP-Sandbox
+  - [ ] BEST PRACTICE: Sandboxed using containers
+  - [ ] BEST PRACTICE: Limit execution time (timeout)
+  - [ ] BEST PRACTICE: Limit resource usage (CPU, memory)
+  - [ ] BEST PRACTICE: Container only has access to data in workspace
+  - [ ] BEST PRACTICE: Validate code before execution (linting, static analysis)
+  - [ ] BEST PRACTICE: Log code execution (code, stdout, stderr, exit code)
+  - [ ] BEST PRACTICE: Use non-root user in container
+  - [ ] BEST PRACTICE: Limit result size (back to agent), save STDOUT, STDERR to files in workspace
 - [ ] REPL
+- [ ] NL2SQL
+  - [ ] BEST PRACTICE: Create table definitions (off-line)
+  - [ ] BEST PRACTICE: Use commments to explain fields
+  - [ ] BEST PRACTICE: Add 'Enums' in table definitions comments
+  - [ ] BEST PRACTICE: Add "sample data" 
+  - [ ] BEST PRACTICE: Add example queries for complex queries
+  - [ ] BEST PRACTICE: Validate SQL queries before execution
+  - [ ] BEST PRACTICE: Query timeout
+  - [ ] BEST PRACTICE: Limit result size
+  - [ ] BEST PRACTICE: Write results to file (csv), show back sample + file path (in workspace)
+  - [ ] BEST PRACTICE: Read only access
+  - [ ] BEST PRACTICE: Access "on behalf" of users (use secrets manager to handle credentials)
 - [ ] Autonomous vs supervised execution (Human-in-the-loop)
 - [ ] Approval, rollback, and reversibility
 
@@ -190,7 +211,6 @@ All about building larger systems from smaller pieces.
 
 ### Chapter 17: Data
 
-- [ ] NL2SQL
 - [ ] Data source selection
 - [ ] CodeIndex
 - [ ] Document consistency
