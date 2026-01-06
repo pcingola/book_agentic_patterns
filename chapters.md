@@ -112,7 +112,7 @@ These are agents that execute code in different ways
 ### Chapter 7: RAG
 - [ ] RAG: Introduction
   - [ ] How a simple RAG works
-- [ ] Data retrieval, databases, web search, graphs
+- [ ] Data retrieval
   - [ ] Embeddings
   - [ ] Vector DBs
 - [ ] Document ingestion (steps and what they do)
