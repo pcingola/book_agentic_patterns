@@ -48,7 +48,7 @@ BEST PRACTICE: This is a label for best practices, it should be shown in a highl
 - [ ] Capability boundaries and versioning
 - [ ] Determinism vs stochasticity
 
-### Chapter 3: Core Agentic Patterns
+### [Chapter 3: Core Patterns](./chapters/03_core_patterns/chapter.md)
 These are foundational reasoning patterns
 
 - [x] Introduction
@@ -61,7 +61,7 @@ These are foundational reasoning patterns
 - [x] Verification / critique
 - [x] Human in the loop
 
-### Chapter 4: Tool Use
+### [Chapter 4: Tools](./chapters/04_tools/chapter.md)
 "Tool Use" is the fundamental pattern
 
 - [x] Tool Use (from Core Patterns)
@@ -72,23 +72,21 @@ These are foundational reasoning patterns
 - [x] Tool permissions (read vs write)
 - [x] MCP: Introduction
 
-### Chapter 5: Orchestration & Control Flow
+### [Chapter 5: Orchestration & Control Flow](./chapters/05_orchestration/chapter.md)
 Structuring agent execution at a higher level.
 
-- [ ] Workflows
-- [ ] Graphs
-- [ ] Planning and replanning
-- [ ] Long-running tasks and async execution
-- [ ] Event-driven agents
-- [ ] A2A: Introduction
+- [x] Workflows
+- [x] Graphs
+- [x] A2A: Introduction
+- [x] Long-running tasks and async execution
+- [x] Event-driven agents
 
 ### Chapter 6: Execution Modes
 These are distinct operational modes that affect system design.
 
-- [ ] Single-shot vs Planning vs Reasoning
-- [ ] CodeAct & REPL
-- [ ] Autonomous vs supervised execution
-- [ ] Human-in-the-loop
+- [ ] CodeAct
+- [ ] REPL
+- [ ] Autonomous vs supervised execution (Human-in-the-loop)
 - [ ] Approval, rollback, and reversibility
 
 ### Chapter 7: RAG
@@ -100,7 +98,7 @@ These are distinct operational modes that affect system design.
 - [ ] Re-ranking and citation
 - [ ] References, Provenance and truth maintenance
 
-### Chapter 7: Context & Memory
+### Chapter 8: Context & Memory
 Merge Context Management + Data & Knowledge. These are all about how agents manage information over time.
 
 - [ ] Prompts: System, prompt, instructions
@@ -116,8 +114,8 @@ Merge Context Management + Data & Knowledge. These are all about how agents mana
 - [ ] Write-back patterns
 - [ ] Knowledge bases and consistency (Batch conversion of memory to knowledge)
 
-```
-### Chapter 8: Model Strategy & Runtime Economics
+
+### Chapter 9: Model Strategy & Runtime Economics
 
 - [ ] Model selection and routing
 - [ ] Small vs large models
@@ -127,9 +125,9 @@ Merge Context Management + Data & Knowledge. These are all about how agents mana
 - [ ] Latency vs cost tradeoffs
 - [ ] Caching, memoization, batching
 - [ ] Streaming and early stopping
-```
 
-### Chapter 9: Testing, Debugging, and Evals
+
+### Chapter 10: Testing, Debugging, and Evals
 
 - [ ] Prompt and tool unit tests
 - [ ] Contract tests for tools
@@ -139,7 +137,7 @@ Merge Context Management + Data & Knowledge. These are all about how agents mana
 - [ ] Online evals and A/B testing
 - [ ] Regression testing across model and prompt versions
 
-### Chapter 9: UI
+### Chapter 11: UI
 
 - [ ] Chainlit
 - [ ] AGUI
@@ -153,15 +151,15 @@ Merge Context Management + Data & Knowledge. These are all about how agents mana
 ### Section 2: Modularization & Composition
 All about building larger systems from smaller pieces.
 
-### Chapter 10: MCP
+### Chapter 12: MCP
 
 - [ ] MCP in depth
 
-### Chapter 10: A2A
+### Chapter 13: A2A
 
 - [ ] A2A in depth
 
-### Chapter 11: Modularity & Composition
+### Chapter 14: Modularity & Composition
 
 - [ ] AGENTS.md and coding-agent conventions
 - [ ] Skills and progressive disclosure
@@ -175,7 +173,7 @@ All about building larger systems from smaller pieces.
 
 ### Section 3: Advanced topics
 
-### Chapter 12: Distributed Systems Concerns for Agentic Systems
+### Chapter 15: Distributed Systems Concerns for Agentic Systems
 - [ ] Distributed Systems Concerns for Agentic Systems
 - [ ] Partial observability and belief maintenance
 - [ ] Coordination and consensus in multi-agent settings
@@ -183,14 +181,14 @@ All about building larger systems from smaller pieces.
 - [ ] Fault tolerance, partitions, and degraded operation
 - [ ] Idempotency and exactly-once semantics across agents
 
-### Chapter 13: Advanced Patterns
+### Chapter 16: Advanced Patterns
 
 - [ ] Personas and simulation
 - [ ] Role-playing and multi-perspective reasoning
 - [ ] Governance boards
 - [ ] Debate and arbitration agents
 
-### Chapter 14: Data
+### Chapter 17: Data
 
 - [ ] NL2SQL
 - [ ] Data source selection
@@ -198,7 +196,7 @@ All about building larger systems from smaller pieces.
 - [ ] Document consistency
 - [ ] Knowledge updating and reconciliation
 
-### Chapter 15: Privacy & Governance
+### Chapter 18: Privacy & Governance
 Corporate security
 
 - [ ] Security vs privacy boundaries
@@ -207,7 +205,7 @@ Corporate security
 - [ ] Kill switches and containment
 - [ ] Compliance and auditability
 
-### Chapter 16: Security & Compliance for Agentic Systems
+### Chapter 19: Security & Compliance for Agentic Systems
 
 - [ ] Threat model for tool-using agents
 - [ ] Prompt injection and retrieval attacks
@@ -218,7 +216,7 @@ Corporate security
 - [ ] Policy enforcement (pre- [ ] and post-execution)
 - [ ] Human approval gates for high-impact actions
 
-### Chapter 17: Learning, Adaptation, and Self-Improvement
+### Chapter 20: Learning, Adaptation, and Self-Improvement
 - [ ] Online learning vs offline retraining
 - [ ] Preference learning and user modeling
 - [ ] Behavioral drift and stability control
@@ -226,15 +224,15 @@ Corporate security
 - [ ] Updating skills, tools, and policies safely
 - [ ] Guardrails for self-modifying agents
 
-### Chapter 19: Scientific Agents and tooling
+### Chapter 21: Scientific Agents and tooling
 - [ ] Biomni
 - [ ] ....
 - [ ] ....
-- [ ] 
+- [ ]
 
 ---
 
-### Chapter 18: Operations & Production
+### Chapter 22: Operations & Production
 
 - [ ] Error propagation: Tool, MCP, A2A, Agent, UI
   - [ ] MCP error handling and retry different than tool error handling
@@ -246,7 +244,7 @@ Corporate security
 - [ ] Incident response
 - [ ] Model, prompt, and tool version management
 
-### Chapter 19: Human Factors & Product Design
+### Chapter 23: Human Factors & Product Design
 
 - [ ] Intent clarification
 - [ ] When agents should ask questions
