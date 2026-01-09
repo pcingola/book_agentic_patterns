@@ -5,3 +5,4 @@ This is a repository for the book "Agentic Patterns", which explores design patt
 - [Chapters](./chapters.md)
 - [Topics](./topics.md)
 - [References](./references.md)
+

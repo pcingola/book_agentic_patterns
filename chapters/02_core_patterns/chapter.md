@@ -1,4 +1,4 @@
-# Core Agentic patterns
+# Chapter 1: Core Agentic Patterns
 
 [Introduction](./intro.md)
 
