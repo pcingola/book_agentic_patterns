@@ -26,9 +26,9 @@ Each session's data resides in a host directory mounted into the container at a 
 **Directory Hierarchy**:
 ```
 {base_data_dir}/
-  └── {user_id}/
-      └── {session_id}/
-          └── [session data]
+  `-- {user_id}/
+      `-- {session_id}/
+          `-- [session data]
 ```
 
 **Benefits**:

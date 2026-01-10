@@ -52,8 +52,8 @@ The output of this stage is intentionally noisy. Precision is improved later.
 Each candidate document is assigned a relevance score with respect to the query. In simple systems, this score may be the similarity returned by the vector database or the BM25 score. In more advanced systems, multiple signals are combined, such as dense similarity, sparse similarity, document freshness, or domain-specific heuristics.
 
 Formally, scoring can be expressed as a function
-( s(d, q) \rightarrow \mathbb{R} ),
-where ( d ) is a document and ( q ) is the rewritten query. At this stage, the goal is to produce a reasonably ordered list, not a final ranking.
+$s(d, q) \rightarrow \mathbb{R}$,
+where $d$ is a document and $q$ is the rewritten query. At this stage, the goal is to produce a reasonably ordered list, not a final ranking.
 
 ### Re-ranking with cross-encoders or task-aware models
 
@@ -91,8 +91,8 @@ filtered = [
 Modern retrieval pipelines frequently combine symbolic and vector-based approaches. A common pattern is to use structured queries (e.g., SQL or metadata filters) to narrow the candidate set, followed by dense similarity search within that subset. This hybrid approach exploits the strengths of both paradigms: exactness and interpretability from structured filters, and semantic generalization from embeddings.
 
 Conceptually, this corresponds to retrieving from a conditional distribution
-( p(d \mid q, m) ),
-where ( m ) represents structured metadata constraints.
+$p(d \mid q, m)$,
+where $m$ represents structured metadata constraints.
 
 This combination is especially powerful in domains with rich schemas, such as scientific literature, enterprise knowledge bases, or regulatory documents.
 

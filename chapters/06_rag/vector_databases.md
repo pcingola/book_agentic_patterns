@@ -54,37 +54,37 @@ Vector databases are fundamentally concerned with solving the *nearest neighbor 
 ### Formal problem definition
 
 Let
-[
-\mathcal{X} = {x_1, x_2, \dots, x_n}, \quad x_i \in \mathbb{R}^d
-]
-be a collection of vectors embedded in a ( d )-dimensional space, and let
-[
+$$
+\mathcal{X} = \{x_1, x_2, \dots, x_n\}, \quad x_i \in \mathbb{R}^d
+$$
+be a collection of vectors embedded in a $d$-dimensional space, and let
+$$
 q \in \mathbb{R}^d
-]
-be a query vector. Given a distance function ( \delta(\cdot, \cdot) ), the *exact nearest neighbor* problem is defined as
-[
+$$
+be a query vector. Given a distance function $\delta(\cdot, \cdot)$, the *exact nearest neighbor* problem is defined as
+$$
 \operatorname{NN}(q) = \arg\min_{x_i \in \mathcal{X}} \delta(q, x_i)
-]
+$$
 
 For cosine similarity, this becomes
-[
+$$
 \operatorname{NN}(q) = \arg\max_{x_i \in \mathcal{X}} \frac{q \cdot x_i}{|q| |x_i|}
-]
+$$
 
-A brute-force solution requires ( O(nd) ) operations per query, which is computationally infeasible for large ( n ). The central challenge addressed by vector database algorithms is to reduce this complexity while preserving ranking quality.
+A brute-force solution requires $O(nd)$ operations per query, which is computationally infeasible for large $n$. The central challenge addressed by vector database algorithms is to reduce this complexity while preserving ranking quality.
 
 ### High-dimensional effects and approximation
 
 As dimensionality increases, distances between points concentrate. For many distributions, the ratio
-[
+$$
 \frac{\min_i \delta(q, x_i)}{\max_i \delta(q, x_i)} \rightarrow 1 \quad \text{as } d \rightarrow \infty
-]
+$$
 
 This phenomenon undermines exact pruning strategies and motivates *Approximate Nearest Neighbor (ANN)* search. ANN replaces the exact objective with a relaxed one:
-[
+$$
 \delta(q, \hat{x}) \le (1 + \varepsilon) \cdot \delta(q, x^*)
-]
-where ( x^* ) is the true nearest neighbor.
+$$
+where $x^*$ is the true nearest neighbor.
 
 All modern vector database algorithms can be understood as structured approximations to this relaxed objective.
 
@@ -93,24 +93,24 @@ All modern vector database algorithms can be understood as structured approximat
 ## Partition-based search: Inverted File Index (IVF)
 
 The inverted file index reduces search complexity by introducing a *coarse quantization* of the vector space. Let
-[
-C = {c_1, \dots, c_k}
-]
+$$
+C = \{c_1, \dots, c_k\}
+$$
 be a set of centroids obtained via k-means clustering:
-[
+$$
 C = \arg\min_{C} \sum_{i=1}^{n} \min_{c_j \in C} |x_i - c_j|^2
-]
+$$
 
 Each vector is assigned to its closest centroid:
-[
+$$
 \text{bucket}(x_i) = \arg\min_{c_j \in C} |x_i - c_j|
-]
+$$
 
 At query time, the search proceeds in two stages. First, the query is compared against all centroids:
-[
+$$
 d_j = |q - c_j|
-]
-Then, only the vectors stored in the ( n_{\text{probe}} ) closest buckets are searched exhaustively.
+$$
+Then, only the vectors stored in the $n_{\text{probe}}$ closest buckets are searched exhaustively.
 
 #### IVF query algorithm (pseudo-code)
 
@@ -123,34 +123,34 @@ function IVF_SEARCH(query q, centroids C, buckets B, n_probe):
 ```
 
 This reduces query complexity to approximately
-[
+$$
 O(kd + \frac{n}{k} \cdot n_{\text{probe}} \cdot d)
-]
-which is sublinear in ( n ) for reasonable values of ( k ) and ( n_{\text{probe}} ).
+$$
+which is sublinear in $n$ for reasonable values of $k$ and $n_{\text{probe}}$.
 
 ---
 
 ## Vector compression: Product Quantization (PQ)
 
-Product Quantization further reduces computational and memory costs by compressing vectors. The original space ( \mathbb{R}^d ) is decomposed into ( m ) disjoint subspaces:
-[
+Product Quantization further reduces computational and memory costs by compressing vectors. The original space $\mathbb{R}^d$ is decomposed into $m$ disjoint subspaces:
+$$
 x = (x^{(1)}, x^{(2)}, \dots, x^{(m)})
-]
+$$
 
 Each subspace is quantized independently using a codebook:
-[
-Q_j : \mathbb{R}^{d/m} \rightarrow {1, \dots, k}
-]
+$$
+Q_j : \mathbb{R}^{d/m} \rightarrow \{1, \dots, k\}
+$$
 
 A vector is encoded as a sequence of discrete codes:
-[
+$$
 \text{PQ}(x) = (Q_1(x^{(1)}), \dots, Q_m(x^{(m)}))
-]
+$$
 
 Distance computation uses *asymmetric distance estimation*:
-[
+$$
 \delta(q, x) \approx \sum_{j=1}^{m} | q^{(j)} - c_{Q_j(x)}^{(j)} |^2
-]
+$$
 
 #### PQ distance computation (pseudo-code)
 
@@ -168,22 +168,22 @@ Theoretical justification comes from rate–distortion theory: PQ minimizes expe
 
 ## Hash-based search: Locality-Sensitive Hashing (LSH)
 
-Locality-Sensitive Hashing constructs hash functions ( h \in \mathcal{H} ) such that
-[
+Locality-Sensitive Hashing constructs hash functions $h \in \mathcal{H}$ such that
+$$
 \Pr[h(x) = h(y)] = f(\delta(x, y))
-]
-where ( f ) decreases monotonically with distance.
+$$
+where $f$ decreases monotonically with distance.
 
 For Euclidean distance, a common family is
-[
+$$
 h_{a,b}(x) = \left\lfloor \frac{a \cdot x + b}{w} \right\rfloor
-]
-with random ( a \sim \mathcal{N}(0, I) ) and ( b \sim U(0, w) ).
+$$
+with random $a \sim \mathcal{N}(0, I)$ and $b \sim U(0, w)$.
 
 By concatenating hashes and using multiple tables, LSH achieves expected query complexity
-[
+$$
 O(n^\rho), \quad \rho < 1
-]
+$$
 
 Despite strong theoretical guarantees, LSH often underperforms graph-based methods in dense embedding spaces typical of neural models.
 
@@ -191,15 +191,15 @@ Despite strong theoretical guarantees, LSH often underperforms graph-based metho
 
 ## Graph-based search: Navigable small-world graphs and HNSW
 
-Graph-based methods model the dataset as a proximity graph ( G = (V, E) ), where each node corresponds to a vector. Search proceeds via greedy graph traversal:
-[
+Graph-based methods model the dataset as a proximity graph $G = (V, E)$, where each node corresponds to a vector. Search proceeds via greedy graph traversal:
+$$
 x_{t+1} = \arg\min_{y \in \mathcal{N}(x_t)} \delta(q, y)
-]
+$$
 
 Hierarchical Navigable Small World (HNSW) graphs extend this idea by constructing multiple graph layers. Each vector is assigned a maximum level:
-[
+$$
 \ell \sim \text{Geometric}(p)
-]
+$$
 
 Upper layers are sparse and provide long-range connections, while lower layers are dense and preserve local neighborhoods.
 
@@ -213,7 +213,7 @@ function HNSW_SEARCH(query q, entry e, graph G):
     return best_neighbors(q, current, G[0])
 ```
 
-Theoretical intuition comes from small-world graph theory: the presence of long-range links reduces graph diameter, while local edges enable precise refinement. Expected search complexity is close to ( O(\log n) ), with high recall even in large, high-dimensional datasets.
+Theoretical intuition comes from small-world graph theory: the presence of long-range links reduces graph diameter, while local edges enable precise refinement. Expected search complexity is close to $O(\log n)$, with high recall even in large, high-dimensional datasets.
 
 ---
 

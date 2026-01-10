@@ -47,6 +47,32 @@ def resolve_includes(file_path: Path, visited: set[Path]) -> str:
         return resolve_includes(target_path, visited.copy())
 
     result = re.sub(pattern, replace_include, content)
+
+    # Resolve image paths to absolute paths
+    img_pattern = r'!\[([^\]]*)\]\(([^)]+)\)'
+
+    def replace_image(match: re.Match) -> str:
+        alt_text = match.group(1)
+        img_path = match.group(2)
+
+        # Skip URLs
+        if img_path.startswith(('http://', 'https://')):
+            return match.group(0)
+
+        # Skip absolute paths
+        if img_path.startswith('/'):
+            return match.group(0)
+
+        # Convert relative image path to absolute
+        abs_img_path = (file_path.parent / img_path).resolve()
+        if abs_img_path.exists():
+            return f'![{alt_text}]({abs_img_path})'
+        else:
+            print(f"Warning: Image not found: {abs_img_path}", file=sys.stderr)
+            return match.group(0)
+
+    result = re.sub(img_pattern, replace_image, result)
+
     visited.remove(file_path)
 
     return result

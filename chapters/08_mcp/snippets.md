@@ -76,11 +76,11 @@ Each user/session has isolated workspace preventing cross-user data access:
 
 ```
 /data/workspaces/
-├── user_id_1/
-│   ├── session_id_a/
-│   └── session_id_b/
-└── user_id_2/
-    └── session_id_c/
+|-- user_id_1/
+|   |-- session_id_a/
+|   `-- session_id_b/
+`-- user_id_2/
+    `-- session_id_c/
 ```
 
 **User/Session Retrieval:**
@@ -573,11 +573,11 @@ No server setup required.
 
 ```
 tests/
-├── __init__.py
-├── test_simple_tools.py
-├── test_large_data.py
-└── data/
-    └── test_data.csv
+|-- __init__.py
+|-- test_simple_tools.py
+|-- test_large_data.py
+`-- data/
+    `-- test_data.csv
 ```
 
 **Test execution:**
@@ -598,13 +598,13 @@ tests/
 **Pattern:**
 ```
 mcp-my-service/
-├── mcp_my_service/
-│   ├── server.py
-│   ├── main.py
-│   └── tools/
-├── scripts/
-├── tests/
-└── docker-compose.yml
+|-- mcp_my_service/
+|   |-- server.py
+|   |-- main.py
+|   `-- tools/
+|-- scripts/
+|-- tests/
+`-- docker-compose.yml
 ```
 
 ## 15. Key Principles

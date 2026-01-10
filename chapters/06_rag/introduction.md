@@ -14,11 +14,11 @@ At a high level, a RAG system treats external data as a first-class component of
 
 This separation introduces a clear information workflow with two main phases: **document ingestion** and **document retrieval**, followed by **generation**.
 
-![Image](https://www.solulab.com/wp-content/uploads/2024/07/Retrieval-Augmented-Generation-2-1024x569.jpg)
+![Image](img/rag_overview.jpg)
 
-![Image](https://media.licdn.com/dms/image/v2/D4D12AQGfhRsQs5s4lA/article-inline_image-shrink_1000_1488/article-inline_image-shrink_1000_1488/0/1728125633128?e=2147483647\&t=Bj2Ev3UUFRmn5Jio99rQn2L95xJCQ8n6lWoz6HeGXto\&v=beta)
+![Image](img/rag_workflow.png)
 
-![Image](https://media.geeksforgeeks.org/wp-content/uploads/20250620114121537025/Semantic-Search-using-VectorDB.webp)
+![Image](img/semantic_search.png)
 
 ### Information workflow in RAG systems
 

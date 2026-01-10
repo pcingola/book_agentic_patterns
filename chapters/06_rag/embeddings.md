@@ -24,9 +24,9 @@ This representation is easy to construct and works reasonably well for keyword m
 
 Modern embeddings keep the core idea—mapping language to vectors—but replace sparse counts with dense, learned representations where proximity reflects semantics rather than surface form.
 
-![Image](https://www.researchgate.net/publication/343595281/figure/fig4/AS%3A963538206089244%401606736818940/Visualization-of-the-word-embedding-space.png)
+![Image](img/word_embedding_space.png)
 
-![Image](https://www.researchgate.net/publication/350132172/figure/fig1/AS%3A1002549867970561%401616037923375/Semantic-relevance-in-the-embedding-space-a-Global-semantic-similarity-vs-local.ppm)
+![Image](img/semantic_relevance.png)
 
 ### Dense semantic embeddings
 

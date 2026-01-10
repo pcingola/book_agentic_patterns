@@ -962,7 +962,7 @@ The Model Context Protocol (MCP) defines a standardized, long-lived interface th
 
 The emergence of MCP is closely tied to the practical challenges encountered in early desktop and IDE-style agent deployments around 2023–2024. Systems such as Claude Desktop exposed local capabilities—files, shells, search indices, and custom utilities—to language models. Initially, these integrations relied on embedding tool descriptions directly into prompts and parsing structured outputs. While workable for short-lived interactions, this approach quickly showed its limits as sessions became longer, tools more numerous, and state more complex.
 
-The architectural inspiration for MCP comes largely from the Language Server Protocol (LSP), introduced in 2016. LSP demonstrated that a clean separation between a client (the editor) and a capability provider (the language server) could be achieved using a small set of protocol primitives: JSON-RPC messaging, capability discovery, and long-running server processes. MCP generalizes this idea from *editor ↔ language tooling* to *model ↔ external environment*.
+The architectural inspiration for MCP comes largely from the Language Server Protocol (LSP), introduced in 2016. LSP demonstrated that a clean separation between a client (the editor) and a capability provider (the language server) could be achieved using a small set of protocol primitives: JSON-RPC messaging, capability discovery, and long-running server processes. MCP generalizes this idea from *editor <-> language tooling* to *model <-> external environment*.
 
 From a research perspective, MCP builds on earlier work in tool-augmented language models, program synthesis with external oracles, and agent architectures that distinguish reasoning from acting. As agents evolved from single-turn planners into systems expected to operate continuously—maintaining memory, monitoring processes, and reacting to external events—the lack of a stable interaction protocol became a bottleneck. MCP arises not as a new reasoning paradigm, but as the infrastructural layer required to make agentic behavior robust over time.
 
@@ -1638,9 +1638,9 @@ Each session's data resides in a host directory mounted into the container at a 
 **Directory Hierarchy**:
 ```
 {base_data_dir}/
-  └── {user_id}/
-      └── {session_id}/
-          └── [session data]
+  `-- {user_id}/
+      `-- {session_id}/
+          `-- [session data]
 ```
 
 **Benefits**:
@@ -2500,11 +2500,11 @@ At a high level, a RAG system treats external data as a first-class component of
 
 This separation introduces a clear information workflow with two main phases: **document ingestion** and **document retrieval**, followed by **generation**.
 
-![Image](https://www.solulab.com/wp-content/uploads/2024/07/Retrieval-Augmented-Generation-2-1024x569.jpg)
+![Image](/Users/kqrw311/workspace/aixplore/book_agentic_patterns/chapters/06_rag/img/rag_overview.jpg)
 
-![Image](https://media.licdn.com/dms/image/v2/D4D12AQGfhRsQs5s4lA/article-inline_image-shrink_1000_1488/article-inline_image-shrink_1000_1488/0/1728125633128?e=2147483647\&t=Bj2Ev3UUFRmn5Jio99rQn2L95xJCQ8n6lWoz6HeGXto\&v=beta)
+![Image](/Users/kqrw311/workspace/aixplore/book_agentic_patterns/chapters/06_rag/img/rag_workflow.png)
 
-![Image](https://media.geeksforgeeks.org/wp-content/uploads/20250620114121537025/Semantic-Search-using-VectorDB.webp)
+![Image](/Users/kqrw311/workspace/aixplore/book_agentic_patterns/chapters/06_rag/img/semantic_search.png)
 
 ### Information workflow in RAG systems
 
@@ -2583,9 +2583,9 @@ This representation is easy to construct and works reasonably well for keyword m
 
 Modern embeddings keep the core idea—mapping language to vectors—but replace sparse counts with dense, learned representations where proximity reflects semantics rather than surface form.
 
-![Image](https://www.researchgate.net/publication/343595281/figure/fig4/AS%3A963538206089244%401606736818940/Visualization-of-the-word-embedding-space.png)
+![Image](/Users/kqrw311/workspace/aixplore/book_agentic_patterns/chapters/06_rag/img/word_embedding_space.png)
 
-![Image](https://www.researchgate.net/publication/350132172/figure/fig1/AS%3A1002549867970561%401616037923375/Semantic-relevance-in-the-embedding-space-a-Global-semantic-similarity-vs-local.ppm)
+![Image](/Users/kqrw311/workspace/aixplore/book_agentic_patterns/chapters/06_rag/img/semantic_relevance.png)
 
 ### Dense semantic embeddings
 
@@ -2687,37 +2687,37 @@ Vector databases are fundamentally concerned with solving the *nearest neighbor 
 ### Formal problem definition
 
 Let
-[
-\mathcal{X} = {x_1, x_2, \dots, x_n}, \quad x_i \in \mathbb{R}^d
-]
-be a collection of vectors embedded in a ( d )-dimensional space, and let
-[
+$$
+\mathcal{X} = \{x_1, x_2, \dots, x_n\}, \quad x_i \in \mathbb{R}^d
+$$
+be a collection of vectors embedded in a $d$-dimensional space, and let
+$$
 q \in \mathbb{R}^d
-]
-be a query vector. Given a distance function ( \delta(\cdot, \cdot) ), the *exact nearest neighbor* problem is defined as
-[
+$$
+be a query vector. Given a distance function $\delta(\cdot, \cdot)$, the *exact nearest neighbor* problem is defined as
+$$
 \operatorname{NN}(q) = \arg\min_{x_i \in \mathcal{X}} \delta(q, x_i)
-]
+$$
 
 For cosine similarity, this becomes
-[
+$$
 \operatorname{NN}(q) = \arg\max_{x_i \in \mathcal{X}} \frac{q \cdot x_i}{|q| |x_i|}
-]
+$$
 
-A brute-force solution requires ( O(nd) ) operations per query, which is computationally infeasible for large ( n ). The central challenge addressed by vector database algorithms is to reduce this complexity while preserving ranking quality.
+A brute-force solution requires $O(nd)$ operations per query, which is computationally infeasible for large $n$. The central challenge addressed by vector database algorithms is to reduce this complexity while preserving ranking quality.
 
 ### High-dimensional effects and approximation
 
 As dimensionality increases, distances between points concentrate. For many distributions, the ratio
-[
+$$
 \frac{\min_i \delta(q, x_i)}{\max_i \delta(q, x_i)} \rightarrow 1 \quad \text{as } d \rightarrow \infty
-]
+$$
 
 This phenomenon undermines exact pruning strategies and motivates *Approximate Nearest Neighbor (ANN)* search. ANN replaces the exact objective with a relaxed one:
-[
+$$
 \delta(q, \hat{x}) \le (1 + \varepsilon) \cdot \delta(q, x^*)
-]
-where ( x^* ) is the true nearest neighbor.
+$$
+where $x^*$ is the true nearest neighbor.
 
 All modern vector database algorithms can be understood as structured approximations to this relaxed objective.
 
@@ -2726,24 +2726,24 @@ All modern vector database algorithms can be understood as structured approximat
 ## Partition-based search: Inverted File Index (IVF)
 
 The inverted file index reduces search complexity by introducing a *coarse quantization* of the vector space. Let
-[
-C = {c_1, \dots, c_k}
-]
+$$
+C = \{c_1, \dots, c_k\}
+$$
 be a set of centroids obtained via k-means clustering:
-[
+$$
 C = \arg\min_{C} \sum_{i=1}^{n} \min_{c_j \in C} |x_i - c_j|^2
-]
+$$
 
 Each vector is assigned to its closest centroid:
-[
+$$
 \text{bucket}(x_i) = \arg\min_{c_j \in C} |x_i - c_j|
-]
+$$
 
 At query time, the search proceeds in two stages. First, the query is compared against all centroids:
-[
+$$
 d_j = |q - c_j|
-]
-Then, only the vectors stored in the ( n_{\text{probe}} ) closest buckets are searched exhaustively.
+$$
+Then, only the vectors stored in the $n_{\text{probe}}$ closest buckets are searched exhaustively.
 
 #### IVF query algorithm (pseudo-code)
 
@@ -2756,34 +2756,34 @@ function IVF_SEARCH(query q, centroids C, buckets B, n_probe):
 ```
 
 This reduces query complexity to approximately
-[
+$$
 O(kd + \frac{n}{k} \cdot n_{\text{probe}} \cdot d)
-]
-which is sublinear in ( n ) for reasonable values of ( k ) and ( n_{\text{probe}} ).
+$$
+which is sublinear in $n$ for reasonable values of $k$ and $n_{\text{probe}}$.
 
 ---
 
 ## Vector compression: Product Quantization (PQ)
 
-Product Quantization further reduces computational and memory costs by compressing vectors. The original space ( \mathbb{R}^d ) is decomposed into ( m ) disjoint subspaces:
-[
+Product Quantization further reduces computational and memory costs by compressing vectors. The original space $\mathbb{R}^d$ is decomposed into $m$ disjoint subspaces:
+$$
 x = (x^{(1)}, x^{(2)}, \dots, x^{(m)})
-]
+$$
 
 Each subspace is quantized independently using a codebook:
-[
-Q_j : \mathbb{R}^{d/m} \rightarrow {1, \dots, k}
-]
+$$
+Q_j : \mathbb{R}^{d/m} \rightarrow \{1, \dots, k\}
+$$
 
 A vector is encoded as a sequence of discrete codes:
-[
+$$
 \text{PQ}(x) = (Q_1(x^{(1)}), \dots, Q_m(x^{(m)}))
-]
+$$
 
 Distance computation uses *asymmetric distance estimation*:
-[
+$$
 \delta(q, x) \approx \sum_{j=1}^{m} | q^{(j)} - c_{Q_j(x)}^{(j)} |^2
-]
+$$
 
 #### PQ distance computation (pseudo-code)
 
@@ -2801,22 +2801,22 @@ Theoretical justification comes from rate–distortion theory: PQ minimizes expe
 
 ## Hash-based search: Locality-Sensitive Hashing (LSH)
 
-Locality-Sensitive Hashing constructs hash functions ( h \in \mathcal{H} ) such that
-[
+Locality-Sensitive Hashing constructs hash functions $h \in \mathcal{H}$ such that
+$$
 \Pr[h(x) = h(y)] = f(\delta(x, y))
-]
-where ( f ) decreases monotonically with distance.
+$$
+where $f$ decreases monotonically with distance.
 
 For Euclidean distance, a common family is
-[
+$$
 h_{a,b}(x) = \left\lfloor \frac{a \cdot x + b}{w} \right\rfloor
-]
-with random ( a \sim \mathcal{N}(0, I) ) and ( b \sim U(0, w) ).
+$$
+with random $a \sim \mathcal{N}(0, I)$ and $b \sim U(0, w)$.
 
 By concatenating hashes and using multiple tables, LSH achieves expected query complexity
-[
+$$
 O(n^\rho), \quad \rho < 1
-]
+$$
 
 Despite strong theoretical guarantees, LSH often underperforms graph-based methods in dense embedding spaces typical of neural models.
 
@@ -2824,15 +2824,15 @@ Despite strong theoretical guarantees, LSH often underperforms graph-based metho
 
 ## Graph-based search: Navigable small-world graphs and HNSW
 
-Graph-based methods model the dataset as a proximity graph ( G = (V, E) ), where each node corresponds to a vector. Search proceeds via greedy graph traversal:
-[
+Graph-based methods model the dataset as a proximity graph $G = (V, E)$, where each node corresponds to a vector. Search proceeds via greedy graph traversal:
+$$
 x_{t+1} = \arg\min_{y \in \mathcal{N}(x_t)} \delta(q, y)
-]
+$$
 
 Hierarchical Navigable Small World (HNSW) graphs extend this idea by constructing multiple graph layers. Each vector is assigned a maximum level:
-[
+$$
 \ell \sim \text{Geometric}(p)
-]
+$$
 
 Upper layers are sparse and provide long-range connections, while lower layers are dense and preserve local neighborhoods.
 
@@ -2846,7 +2846,7 @@ function HNSW_SEARCH(query q, entry e, graph G):
     return best_neighbors(q, current, G[0])
 ```
 
-Theoretical intuition comes from small-world graph theory: the presence of long-range links reduces graph diameter, while local edges enable precise refinement. Expected search complexity is close to ( O(\log n) ), with high recall even in large, high-dimensional datasets.
+Theoretical intuition comes from small-world graph theory: the presence of long-range links reduces graph diameter, while local edges enable precise refinement. Expected search complexity is close to $O(\log n)$, with high recall even in large, high-dimensional datasets.
 
 ---
 
@@ -3115,8 +3115,8 @@ The output of this stage is intentionally noisy. Precision is improved later.
 Each candidate document is assigned a relevance score with respect to the query. In simple systems, this score may be the similarity returned by the vector database or the BM25 score. In more advanced systems, multiple signals are combined, such as dense similarity, sparse similarity, document freshness, or domain-specific heuristics.
 
 Formally, scoring can be expressed as a function
-( s(d, q) \rightarrow \mathbb{R} ),
-where ( d ) is a document and ( q ) is the rewritten query. At this stage, the goal is to produce a reasonably ordered list, not a final ranking.
+$s(d, q) \rightarrow \mathbb{R}$,
+where $d$ is a document and $q$ is the rewritten query. At this stage, the goal is to produce a reasonably ordered list, not a final ranking.
 
 ### Re-ranking with cross-encoders or task-aware models
 
@@ -3154,8 +3154,8 @@ filtered = [
 Modern retrieval pipelines frequently combine symbolic and vector-based approaches. A common pattern is to use structured queries (e.g., SQL or metadata filters) to narrow the candidate set, followed by dense similarity search within that subset. This hybrid approach exploits the strengths of both paradigms: exactness and interpretability from structured filters, and semantic generalization from embeddings.
 
 Conceptually, this corresponds to retrieving from a conditional distribution
-( p(d \mid q, m) ),
-where ( m ) represents structured metadata constraints.
+$p(d \mid q, m)$,
+where $m$ represents structured metadata constraints.
 
 This combination is especially powerful in domains with rich schemas, such as scientific literature, enterprise knowledge bases, or regulatory documents.
 
@@ -3351,6 +3351,1848 @@ Attribution, provenance, and truth maintenance are often treated as optional add
 3. Lewis, P., et al. *Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks*. NeurIPS, 2020.
 4. Rashkin, H., et al. *Increasing Faithfulness in Knowledge-Grounded Dialogue with Attributed Responses*. ACL, 2021.
 5. Thorne, J., Vlachos, A. *Automated Fact Checking: Task Formulations, Methods and Future Directions*. COLING, 2018.
+
+
+
+# MCP: Model Context Protocol
+
+# Chapter: Model Context Protocol (MCP)
+
+## Introduction
+
+**Model Context Protocol (MCP)** is an open protocol that standardizes how AI models discover, describe, and interact with external tools, resources, and structured context across long-running sessions.
+
+### Historical perspective
+
+The emergence of MCP is best understood as the convergence of several research and engineering threads that matured between roughly 2018 and 2024. Early neural language models were largely *stateless* and *closed*: prompts were short, tools were hard-coded, and any notion of “context” was manually injected. As models became more capable, this led to brittle integrations where each application defined its own ad-hoc conventions for tool calling, prompt templates, file access, and memory.
+
+In parallel, earlier software ecosystems had already faced a similar problem. Language Server Protocol (LSP), introduced in the mid-2010s, demonstrated that a clean, transport-agnostic protocol could decouple editors from language tooling. Around the same time, work on agent architectures, tool-augmented language models, and function-calling APIs highlighted the need for a more principled interface between models and their environment. Research on tool use, planning, and long-horizon interaction made it clear that context could no longer be treated as a flat text prompt, but instead as a structured, evolving state.
+
+MCP emerged from this backdrop as a unifying abstraction: rather than embedding tool logic and context management inside each application or model runtime, MCP defines a shared protocol that externalizes these concerns. The result is a system where models can operate over rich, inspectable context without being tightly coupled to any specific framework, transport, or vendor.
+
+### Conceptual overview
+
+At its core, MCP defines a **contract** between a *client* (typically an AI runtime or agent host) and one or more *servers* that expose capabilities. These capabilities are not limited to executable tools; they also include prompts, static or dynamic resources, and interaction patterns that guide how models request information or actions.
+
+The key idea is that **context is first-class**. Instead of treating context as opaque text, MCP models it as a set of structured entities with explicit lifecycles. A client can discover what a server offers, reason about how to use it, and invoke those capabilities in a uniform way. This enables composition: multiple servers can be combined, swapped, or upgraded without changing the model’s internal logic.
+
+Unlike earlier tool-calling APIs, MCP is deliberately **transport-agnostic** and **model-agnostic**. Whether the underlying connection is local, remote, synchronous, or streaming is orthogonal to the semantics of the interaction. Similarly, MCP does not assume a particular model architecture; it only specifies how context and actions are represented and exchanged.
+
+### MCP in practice
+
+An MCP server advertises its capabilities declaratively. A client connects, inspects those capabilities, and then decides—often with model assistance—how to use them. The protocol distinguishes between different kinds of interaction:
+
+Tools represent callable operations with structured inputs and outputs. Prompts define reusable, parameterized instructions. Resources expose read-only or versioned data that can be incorporated into model reasoning. On the client side, additional mechanisms allow the model to request clarification, sampling decisions, or user input when uncertainty arises.
+
+The following simplified snippet illustrates the conceptual shape of a tool definition exposed by an MCP server:
+
+```json
+{
+  "name": "search_documents",
+  "description": "Search indexed documents using semantic and metadata filters",
+  "input_schema": {
+    "query": "string",
+    "filters": {
+      "type": "object",
+      "optional": true
+    }
+  }
+}
+```
+
+From the client’s perspective, this definition is not just documentation. It is machine-readable context that the model can reason over: when to call the tool, how to construct valid inputs, and how to interpret outputs. The client mediates execution, ensuring that permissions, transport, and lifecycle constraints are respected.
+
+Crucially, MCP encourages **long-lived sessions**. Context accumulates over time, resources can be updated or invalidated, and tools can be dynamically enabled or disabled. This aligns naturally with agentic systems that plan, revise, and reflect rather than producing a single response.
+
+### FastMCP as the reference implementation
+
+As MCP moved from a conceptual specification into real-world use, **FastMCP** emerged as the de-facto reference implementation of the protocol. Its significance was not driven by formal standardization, but by rapid adoption: FastMCP provided an early, complete, and idiomatic implementation of MCP server semantics that closely tracked the evolving specification while remaining practical for production use. By offering clear abstractions for tools, prompts, and resources—along with sensible defaults for lifecycle management, transport handling, and schema validation—it dramatically lowered the barrier to building MCP-compliant servers. As a result, many early MCP clients and examples were developed and tested against FastMCP, creating a positive feedback loop where compatibility with FastMCP effectively meant compatibility with MCP itself. Over time, this positioned FastMCP not merely as one implementation among many, but as the *behavioral reference* against which other implementations were implicitly validated, similar to how early language servers shaped expectations around LSP despite the protocol being formally independent of any single codebase.
+
+### Why MCP matters
+
+MCP addresses a structural problem that becomes unavoidable as systems scale: without a protocol, every agent framework reinvents its own notion of tools, memory, and context boundaries. This fragmentation makes systems harder to audit, secure, and evolve. By providing a shared vocabulary and lifecycle model, MCP enables interoperability across tools, agents, and runtimes.
+
+Equally important, MCP shifts responsibility to the right layer. Models focus on reasoning and decision-making; servers focus on exposing well-defined capabilities; clients enforce policy, security, and orchestration. This separation mirrors successful patterns in distributed systems and is a prerequisite for building robust, enterprise-grade agent platforms.
+
+### References
+
+1. OpenAI et al. *Language Server Protocol*. Microsoft, 2016. [https://microsoft.github.io/language-server-protocol/](https://microsoft.github.io/language-server-protocol/)
+2. Schick et al. *Toolformer: Language Models Can Teach Themselves to Use Tools*. NeurIPS, 2023.
+3. Yao et al. *ReAct: Synergizing Reasoning and Acting in Language Models*. ICLR, 2023.
+4. Model Context Protocol. *Getting Started: Introduction*. Model Context Protocol Documentation, 2024. [https://modelcontextprotocol.io/docs/getting-started/intro](https://modelcontextprotocol.io/docs/getting-started/intro)
+
+
+# Chapter: MCP
+
+## Tools
+
+**Tools are the execution boundary of MCP: they are where model intent is turned into validated, observable, and recoverable actions.**
+
+In practical MCP systems, tools are not an auxiliary feature; they are the core mechanism through which an agent interacts with the world. Everything else in MCP—prompts, resources, sampling, elicitation—exists to support better decisions about *which tools to invoke and how*. A tool is therefore best understood not as a function exposed to a model, but as a carefully constrained execution contract enforced by the server.
+
+This section focuses on how tools work *in practice*, with concrete examples drawn from common MCP server implementations such as FastMCP, and how errors and failures propagate back into an agent loop typically implemented with frameworks like Pydantic-AI.
+
+---
+
+## From functions to tools: contracts, not code
+
+Although tools are often implemented as ordinary functions, MCP deliberately erases that fact at the protocol boundary. What the model sees is never the function itself, only a declarative description derived from it.
+
+Consider a tool that writes a file into a sandboxed workspace:
+
+```python
+def write_file(path: str, content: str, overwrite: bool = False) -> None:
+    """
+    Write text content to a file in the agent workspace.
+
+    Args:
+        path: Relative path inside the workspace.
+        content: File contents.
+        overwrite: Whether to overwrite an existing file.
+    """
+    ...
+```
+
+When exposed via an MCP server, this function is translated into a tool definition consisting of a name, an input schema, and a description. The schema encodes type information, required fields, and defaults. The description is written *for the model*, not for the developer.
+
+At this point, the function body becomes irrelevant to the protocol. The model reasons entirely over the contract. This separation allows the server to validate inputs, enforce permissions, and reject invalid requests before execution.
+
+---
+
+## Tool invocation as structured output
+
+From the model’s perspective, invoking a tool is an act of structured generation. The model emits a message that must conform exactly to the tool’s schema. Conceptually, the output looks like this:
+
+```json
+{
+  "tool": "write_file",
+  "arguments": {
+    "path": "notes/summary.txt",
+    "content": "Draft conclusions…",
+    "overwrite": false
+  }
+}
+```
+
+The MCP server validates this payload against the schema derived from the function signature. If validation fails—because a field is missing, a type is incorrect, or an unexpected argument appears—the call is rejected without executing any code.
+
+This is the first and most important safety boundary in MCP. Tool calls are not “best effort”. They are either valid or they do not run.
+
+---
+
+## Validation failures and early rejection
+
+Validation errors are common, especially in early agent iterations. MCP makes these failures explicit and structured, rather than burying them in logs or free-form text.
+
+For example, if the model omits a required field, the server might return:
+
+```json
+{
+  "error": {
+    "code": "INVALID_ARGUMENTS",
+    "message": "Missing required field: path",
+    "details": {
+      "field": "path"
+    }
+  }
+}
+```
+
+This error is returned to the client and injected back into the agent’s context. The agent can now reason over the failure deterministically, rather than guessing what went wrong from an unstructured error string.
+
+---
+
+## Domain errors inside tool execution
+
+Even when inputs are valid, execution may still fail. These failures belong to the *domain* of the tool, not to schema validation.
+
+Returning to the file-writing example, suppose the file already exists and `overwrite` is false. The implementation may raise a domain-specific error, which the MCP server translates into a structured response:
+
+```json
+{
+  "error": {
+    "code": "FILE_EXISTS",
+    "message": "File already exists and overwrite=false",
+    "details": {
+      "path": "notes/summary.txt"
+    }
+  }
+}
+```
+
+This distinction matters. The model provided valid inputs, but the requested action is not permissible under current conditions. A well-designed agent can respond by retrying with `overwrite=true`, choosing a different path, or asking the user for confirmation.
+
+---
+
+## How tool errors propagate into the agent loop
+
+In agentic systems, tool execution is embedded in a reasoning–action loop. A simplified control flow looks like this:
+
+```python
+result = call_tool(tool_call)
+
+if result.is_error:
+    agent.observe_tool_error(
+        code=result.error.code,
+        message=result.error.message,
+        details=result.error.details,
+    )
+else:
+    agent.observe_tool_result(result.data)
+```
+
+The critical point is that tool failures are *observations*, not exceptions that crash the system. The agent receives structured data describing what happened and incorporates it into the next reasoning step.
+
+This is where MCP’s design aligns naturally with typed agent frameworks. Errors are values. They can be inspected, classified, and acted upon using ordinary control logic.
+
+---
+
+## Retry and recovery as explicit policy
+
+MCP does not define retry semantics, and this is by design. Retries depend on context that only the agent or orchestrator can see: task intent, execution history, side effects already performed, and external constraints.
+
+Because errors are structured, retry logic can be written explicitly and safely:
+
+```python
+if error.code == "RATE_LIMITED":
+    sleep(backoff(attempt))
+    retry_same_call()
+elif error.code == "FILE_EXISTS":
+    retry_with_arguments(overwrite=True)
+else:
+    escalate_or_abort()
+```
+
+The tool implementation does not decide whether to retry. It merely reports what went wrong. The agent decides what to do next.
+
+This separation prevents hidden retries, duplicated side effects, and uncontrolled loops—failure modes that are common in naïve tool-calling systems.
+
+---
+
+## Transient vs terminal failures
+
+A crucial practical concern is distinguishing transient failures from terminal ones. Network timeouts, temporary unavailability, or rate limits may warrant retries. Permission errors, unsupported operations, or invariant violations usually do not.
+
+By standardizing error codes and propagating them explicitly, MCP enables agents to make this distinction reliably. Over time, this allows agent behavior to evolve from brittle heuristics into deliberate recovery strategies.
+
+---
+
+## Why this level of rigor matters
+
+In long-running or autonomous agents, tools may be invoked hundreds or thousands of times. Without strict contracts, structured validation, and explicit error propagation, failures accumulate silently and reasoning degrades. Debugging becomes guesswork, and safety boundaries erode.
+
+MCP’s tool model addresses this by treating tool invocation as a first-class, schema-governed interaction with clear failure semantics. When combined with typed agent frameworks and explicit retry policies, tools become a reliable execution substrate rather than a fragile extension of prompting.
+
+In practice, this is what allows MCP-based systems to move beyond demos and into production-grade agentic platforms.
+
+---
+
+## References
+
+1. Anthropic. *Model Context Protocol: Server Tools Specification*. MCP Documentation, 2025. [https://modelcontextprotocol.io/specification/2025-06-18/server/tools](https://modelcontextprotocol.io/specification/2025-06-18/server/tools)
+2. FastMCP Contributors. *FastMCP Tool Servers*. FastMCP Documentation, 2025. [https://gofastmcp.com/servers/tools](https://gofastmcp.com/servers/tools)
+3. OpenAI. *Structured Outputs and Function Calling*. OpenAI Technical Documentation, 2023.
+
+
+## Other Server and Client Features
+
+MCP features beyond tools define how instructions, data, generation control, and human input are modeled explicitly, making agent behavior inspectable, reproducible, and scalable.
+
+This section omits tools and focuses on the remaining server- and client-side features that structure *context* and *control flow* around model execution.
+
+---
+
+## Prompts (server feature)
+
+Prompts are server-defined, named instruction templates that clients can invoke with parameters.
+
+### What prompts are in practice
+
+A prompt is a reusable instruction artifact owned by the server. It encapsulates task framing, tone, constraints, and best practices, while exposing only a small set of parameters to the client. The client selects *which* prompt to use and supplies arguments; the server controls the actual instruction text.
+
+### Server-side definition
+
+```python
+@mcp.prompt()
+def analyze_log_file(severity: str, audience: str) -> str:
+    return f"""
+    Analyze the provided log file.
+    Focus on issues with severity >= {severity}.
+    Explain findings for a {audience} audience.
+    Provide concrete remediation steps.
+    """
+```
+
+Multiple prompts can coexist on the same server, each representing a distinct behavioral contract.
+
+### Client-side usage
+
+```python
+response = client.run(
+    prompt="analyze_log_file",
+    arguments={
+        "severity": "ERROR",
+        "audience": "site reliability engineers"
+    }
+)
+```
+
+The client never embeds the instruction text itself. This makes prompt changes transparent to clients and easier to review and test centrally.
+
+---
+
+## Resources (server feature)
+
+Resources expose data artifacts as addressable protocol objects rather than inline text.
+
+### What resources are in practice
+
+A resource is any piece of data an agent may need to consult: documents, configuration files, intermediate results, reports, or generated artifacts. Resources are identified by stable paths or URIs and fetched explicitly.
+
+### Server-side definition
+
+```python
+@mcp.resource("reports/{report_id}")
+def load_report(report_id: str) -> str:
+    path = f"/data/reports/{report_id}.md"
+    with open(path) as f:
+        return f.read()
+```
+
+Resources can also be dynamically generated:
+
+```python
+@mcp.resource("runs/{run_id}/summary")
+def run_summary(run_id: str) -> str:
+    return summarize_run_state(run_id)
+```
+
+### Client-side usage
+
+```python
+report_text = client.read_resource("reports/incident-2025-01")
+
+analysis = client.run(
+    prompt="analyze_log_file",
+    arguments={
+        "severity": "WARN",
+        "audience": "management"
+    },
+    context={
+        "report": report_text
+    }
+)
+```
+
+This pattern avoids copying large documents into every prompt and supports workspace-style workflows where artifacts are produced, stored, and revisited across turns.
+
+---
+
+## Sampling (client feature)
+
+Sampling gives the client explicit control over generation behavior on a per-request basis.
+
+### What sampling controls
+
+Sampling parameters govern randomness, verbosity, and termination. By elevating these to the protocol level, MCP allows clients to adapt generation behavior to the current phase of an agent workflow.
+
+### Client-side examples
+
+Exploratory reasoning phase:
+
+```python
+draft = client.run(
+    prompt="brainstorm_hypotheses",
+    arguments={"topic": "database latency spikes"},
+    sampling={
+        "temperature": 0.8,
+        "max_tokens": 500
+    }
+)
+```
+
+Deterministic execution phase:
+
+```python
+final_report = client.run(
+    prompt="produce_incident_report",
+    arguments={"incident_id": "2025-01"},
+    sampling={
+        "temperature": 0.1,
+        "max_tokens": 800
+    }
+)
+```
+
+Sampling becomes an explicit part of orchestration logic rather than a hidden global setting.
+
+---
+
+## Elicitation (client feature)
+
+Elicitation represents explicit requests for human input during agent execution.
+
+### What elicitation is in practice
+
+When an agent cannot proceed safely or correctly without additional information, it emits an elicitation request instead of continuing autonomously. This creates a well-defined pause point that external systems can handle reliably.
+
+### Client-side elicitation request
+
+```python
+client.elicit(
+    question="Which environment should this fix be deployed to?",
+    options=["staging", "production"]
+)
+```
+
+The agent’s execution is suspended until a response is provided.
+
+### Resuming after elicitation
+
+```python
+answer = client.wait_for_elicitation()
+
+deployment = client.run(
+    prompt="deploy_fix",
+    arguments={"environment": answer}
+)
+```
+
+This makes human-in-the-loop interaction explicit, auditable, and composable with automated steps.
+
+---
+
+## How these features work together
+
+A typical flow combining these features might look as follows:
+
+1. The client retrieves a resource representing an existing artifact.
+2. The client invokes a server-defined prompt to analyze or transform that artifact.
+3. Sampling parameters are tuned to the task’s requirements.
+4. If ambiguity arises, the agent issues an elicitation request.
+5. Execution resumes once human input is provided, producing new resources or outputs.
+
+None of these steps require embedding large instructions or data blobs directly into prompts. The protocol enforces structure while remaining agnostic to storage, UI, or orchestration frameworks.
+
+---
+
+## References
+
+1. Model Context Protocol. *Server Prompts Specification*. MCP, 2025. [https://modelcontextprotocol.io/specification/2025-06-18/server/prompts](https://modelcontextprotocol.io/specification/2025-06-18/server/prompts)
+2. Model Context Protocol. *Server Resources Specification*. MCP, 2025. [https://modelcontextprotocol.io/specification/2025-06-18/server/resources](https://modelcontextprotocol.io/specification/2025-06-18/server/resources)
+3. Model Context Protocol. *Client Sampling Specification*. MCP, 2025. [https://modelcontextprotocol.io/specification/2025-06-18/client/sampling](https://modelcontextprotocol.io/specification/2025-06-18/client/sampling)
+4. Model Context Protocol. *Client Elicitation Specification*. MCP, 2025. [https://modelcontextprotocol.io/specification/2025-06-18/client/elicitation](https://modelcontextprotocol.io/specification/2025-06-18/client/elicitation)
+5. GoFastMCP. *Examples and Server Patterns*. GoFastMCP, 2024. [https://gofastmcp.com](https://gofastmcp.com)
+
+
+## Architecture
+
+This section describes the architectural structure of the Model Context Protocol (MCP): how clients and servers coordinate over a well-defined lifecycle, how responsibilities are split across components, and how transport, authorization, and security concerns are handled in a principled way. The abstract architecture defined in the specification is concretely realized in implementations such as **FastMCP** and in the MCP integration patterns described by **Pydantic-AI**, which together provide practical guidance on how these concepts are applied in real systems.
+
+### Lifecycle
+
+The MCP lifecycle defines the ordered phases through which a client–server session progresses. Rather than treating connections as ad-hoc request/response exchanges, MCP makes lifecycle transitions explicit, enabling both sides to reason about capabilities, permissions, and state.
+
+The lifecycle begins with initialization. The client establishes a connection and negotiates protocol compatibility and supported features. FastMCP exposes this phase explicitly, ensuring that capability discovery and validation occur once per session. In Pydantic-AI’s MCP integration, this boundary cleanly separates agent reasoning from external interaction: no domain actions occur until initialization succeeds.
+
+Once initialized, the session enters the active phase. During this phase, the client may invoke prompts, access resources, request sampling, or engage in elicitation flows, strictly within the capabilities that were negotiated. Implementations emphasize that this phase is stateful. FastMCP maintains session-scoped context across multiple interactions, while Pydantic-AI reinjects MCP responses into the model context over successive turns, enabling iterative and reflective agent behavior.
+
+The lifecycle ends with shutdown. Either side may terminate the session, at which point in-flight operations are resolved, resources are released, and all session context is discarded. Both FastMCP and Pydantic-AI documentation stress that explicit teardown is essential for long-running or autonomous agents, where leaked state or lingering permissions would otherwise accumulate.
+
+### Server
+
+An MCP server is the authoritative boundary between models and external systems. Architecturally, it exposes structured capabilities while enforcing protocol rules, authorization, and isolation.
+
+FastMCP provides a reference server architecture that closely mirrors the MCP specification. The server is typically organized in layers: a transport layer for message delivery, a protocol layer that validates messages and enforces lifecycle constraints, and an application layer that implements domain-specific logic. This separation ensures that business logic is never directly exposed to unvalidated client input.
+
+A defining characteristic of MCP servers is declarative capability exposure. Instead of executing arbitrary instructions from a client, the server advertises what it can do, under which constraints, and with which inputs and outputs. Pydantic-AI adopts the same principle in its MCP guidance, framing the server as a controlled execution boundary rather than a general command interface.
+
+Conceptually, server request handling follows a pattern such as:
+
+```python
+def handle_message(message, session):
+    enforce_lifecycle(session)
+    validate_message_schema(message)
+    authorize(message, session)
+    dispatch(message, session)
+```
+
+The value of this structure lies in the invariant it enforces: all access to external systems is mediated by protocol rules and session state.
+
+### Client
+
+The MCP client orchestrates interactions on behalf of a model or agent. While the server defines what is possible, the client decides what to request, when to request it, and how to integrate the results back into the agent’s reasoning loop.
+
+Clients maintain session state, tracking negotiated capabilities, permissions, and accumulated context. In both FastMCP examples and Pydantic-AI integrations, the client acts as a policy and coordination layer, translating model intents into MCP requests and injecting structured responses back into the model context.
+
+This design keeps protocol mechanics out of the model itself. Pydantic-AI explicitly promotes this separation, treating MCP as the execution boundary where agent decisions are realized in the external world.
+
+A typical client flow is:
+
+```python
+session = connect_to_server()
+capabilities = session.initialize()
+
+if capabilities.supports_resources:
+    data = session.request_resource("example")
+    model_context.add(data)
+```
+
+The explicit capability check, emphasized in both FastMCP and Pydantic-AI documentation, is central to MCP’s robustness across heterogeneous servers.
+
+### Transport
+
+MCP deliberately decouples protocol semantics from transport mechanisms. The specification defines message structure and behavior independently of how messages are transmitted.
+
+FastMCP demonstrates this abstraction by supporting multiple transports, including standard input/output for local tool servers and HTTP-based transports for remote services. Pydantic-AI’s MCP documentation similarly treats transport as an implementation detail, allowing the same agent logic to operate unchanged across local development environments and production deployments.
+
+Architecturally, this means transport can evolve without affecting higher-level agent logic, as long as MCP message semantics are preserved.
+
+### Authorization
+
+Authorization in MCP is embedded directly into the protocol flow rather than being handled entirely out of band. Both the specification and FastMCP documentation emphasize fine-grained, capability-level authorization.
+
+During initialization, clients authenticate and establish identity. During the active phase, every request is checked against the permissions associated with the session. FastMCP enforces these checks as part of request dispatch, while Pydantic-AI highlights authorization as a first-class concern when integrating MCP into agent runtimes.
+
+This approach enables dynamic authorization. Permissions may depend on session context, negotiated features, or prior actions, supporting patterns such as staged access, scoped credentials, or human-approved escalation.
+
+### Security
+
+Security in MCP is an architectural property that emerges from explicit lifecycle management, declarative capabilities, and strict validation.
+
+A core principle is least privilege. Clients can only invoke capabilities that the server has explicitly advertised, and only within the bounds of the current session. FastMCP documentation frames MCP servers as containment boundaries, while Pydantic-AI recommends exposing narrowly scoped operations rather than general execution primitives.
+
+Isolation is equally important. Sessions are isolated from one another, and context is never shared across lifecycles. FastMCP treats session state as ephemeral, and Pydantic-AI guidance reinforces that MCP contexts should be discarded at the end of an interaction.
+
+Finally, defensive validation is pervasive. Messages are schema-validated, lifecycle transitions are enforced, and unexpected inputs are rejected early. These practices are critical when MCP clients may be driven by partially autonomous agents.
+
+### References
+
+1. Model Context Protocol Working Group. *MCP Lifecycle Specification*. 2025. [https://modelcontextprotocol.io/specification/2025-06-18/basic/lifecycle](https://modelcontextprotocol.io/specification/2025-06-18/basic/lifecycle)
+2. Model Context Protocol Working Group. *Server Concepts*. 2025. [https://modelcontextprotocol.io/docs/learn/server-concepts](https://modelcontextprotocol.io/docs/learn/server-concepts)
+3. Model Context Protocol Working Group. *Client Concepts*. 2025. [https://modelcontextprotocol.io/docs/learn/client-concepts](https://modelcontextprotocol.io/docs/learn/client-concepts)
+4. Model Context Protocol Working Group. *Transports*. 2025. [https://modelcontextprotocol.io/specification/2025-06-18/basic/transports](https://modelcontextprotocol.io/specification/2025-06-18/basic/transports)
+5. Model Context Protocol Working Group. *Authorization*. 2025. [https://modelcontextprotocol.io/specification/2025-06-18/basic/authorization](https://modelcontextprotocol.io/specification/2025-06-18/basic/authorization)
+6. Model Context Protocol Working Group. *Security Best Practices*. 2025. [https://modelcontextprotocol.io/specification/2025-06-18/basic/security_best_practices](https://modelcontextprotocol.io/specification/2025-06-18/basic/security_best_practices)
+7. FastMCP Contributors. *FastMCP Documentation*. 2024–2025. [https://gofastmcp.com](https://gofastmcp.com)
+8. Pydantic-AI Contributors. *MCP Overview and Integration Patterns*. 2024–2025. [https://ai.pydantic.dev/mcp/overview/](https://ai.pydantic.dev/mcp/overview/)
+
+
+# MCP Template Design Document
+
+This template provides a foundation for building FastMCP servers with secure data handling, workspace isolation, and enterprise authentication. The architecture prioritizes separation of concerns, proper error handling, and compliance with private data requirements.
+
+## 2. Core Architecture
+
+### 2.1 Component Layers
+
+**Server Layer:**
+- `server.py` - MCP server initialization with middleware stack
+- Authentication, logging, error handling, timing, token limiting
+
+**Entry Point Layer:**
+- `main.py` - Imports server and registers tools via wildcard imports
+- Tools only register when their modules are imported
+
+**Tool Layer:**
+- `tools/` - Modular tool implementations
+- Each module contains related tool functions
+- Tools use decorator pattern for registration
+
+**Conceptual Structure:**
+```
+create_mcp_server(name, middleware) -> mcp
+mcp.tool decorator -> register tool functions
+main.py imports -> tool registration
+```
+
+### 2.2 Tool Registration Pattern
+
+Tools register by importing after server creation:
+
+```python
+# server.py
+mcp = create_mcp_server(name=__doc__)
+
+# main.py
+from server import mcp
+from tools.tools_simple import *    # Tools register themselves
+from tools.tools_context import *
+```
+
+If a tool module is not imported, its tools will not be available.
+
+## 3. Data Isolation Architecture
+
+### 3.1 Two-Path System
+
+**Sandbox Paths (Agent View):**
+- Virtual paths starting with `/workspace/`
+- Example: `/workspace/results.csv`
+- Agents NEVER see real filesystem paths
+
+**Host Paths (Server Reality):**
+- Real filesystem locations
+- Example: `/data/workspaces/user123/session456/results.csv`
+- Pattern: `$DATA_DIR/workspaces/$user_id/$session_id/`
+
+**Path Conversion Pattern:**
+```python
+# Agent provides sandbox path
+agent_path = "/workspace/result.csv"
+
+# Convert to host path for file operations
+host_path = container_to_host_path(PurePosixPath(agent_path), ctx)
+# Returns: PosixPath('/data/workspaces/user123/session456/result.csv')
+
+# Convert back for returning to agent
+sandbox_path = host_to_container_path(host_path)
+# Returns: '/workspace/result.csv'
+```
+
+### 3.2 Session Isolation
+
+Each user/session has isolated workspace preventing cross-user data access:
+
+```
+/data/workspaces/
+|-- user_id_1/
+|   |-- session_id_a/
+|   `-- session_id_b/
+`-- user_id_2/
+    `-- session_id_c/
+```
+
+**User/Session Retrieval:**
+```python
+user_id = get_user_id_from_request()
+session_id = get_session_id_from_request()
+```
+
+Default values (`default_user`, `default_session`) for testing only, not production.
+
+## 4. Tool Implementation Patterns
+
+### 4.1 Simple Tools
+
+Direct input/output for small results:
+
+```python
+@mcp.tool
+async def add(a: int, b: int) -> int:
+    """Adds two integers."""
+    return a + b
+```
+
+**Characteristics:**
+- Type hints on all parameters
+- Clear docstrings
+- Return values directly
+- No context needed
+
+### 4.2 Large Data Tools
+
+Save results to files, return paths:
+
+```python
+@mcp.tool
+async def query_database(sql: str, output_file: str, ctx: Context) -> str:
+    """Execute query and save results."""
+    # Generate large result
+    df = execute_query(sql)
+
+    # Convert sandbox path to host path
+    host_path = container_to_host_path(PurePosixPath(output_file), ctx)
+
+    # Save to file
+    df.to_csv(host_path, index=False)
+
+    # Return sandbox path + preview
+    preview = df.head().to_csv(index=False)
+    return f"Result in '{output_file}'\nPreview:\n{preview}"
+```
+
+**Key Requirements:**
+- MUST save to file using `output_file` parameter
+- MUST convert paths using `container_to_host_path()`
+- MUST return sandbox path, NOT host path
+- SHOULD include preview/summary
+
+### 4.3 Context-Aware Tools
+
+Use context for state, progress, messages:
+
+```python
+@mcp.tool
+async def process_data(input: str, ctx: Context) -> str:
+    """Process with state tracking."""
+    # Get/set state
+    data = ctx.get_state("my_data")
+    ctx.set_state("my_data", updated_data)
+
+    # Send messages
+    await ctx.info("Starting process...")
+
+    # Report progress
+    for i in range(total):
+        await ctx.report_progress(progress=i+1, total=total)
+
+    return result
+```
+
+**Context parameter:**
+- DO NOT document `ctx: Context` in docstring (framework injects it)
+- Use for state: `get_state()`, `set_state()`
+- Use for messages: `await info()`
+- Use for progress: `await report_progress()`
+
+### 4.4 Private Data Tools
+
+Flag sensitive data for compliance:
+
+```python
+@mcp.tool
+async def query_patient_data(sql: str, output_file: str, ctx: Context) -> str:
+    """Query patient database."""
+    # Query and save
+    df = query_database(sql)
+    host_path = container_to_host_path(PurePosixPath(output_file), ctx)
+    df.to_csv(host_path, index=False)
+
+    # Flag as private
+    PrivateData(ctx).add_private_dataset(output_file)
+
+    return f"Result in '{output_file}'"
+```
+
+**Requirements:**
+- Follow all large data guidelines
+- MUST flag with `PrivateData(ctx).add_private_dataset()`
+- Workspace isolation provides data protection
+
+### 4.5 Sandboxed Tools
+
+Execute untrusted code with bubblewrap isolation:
+
+```python
+def execute_sandboxed(workspace_path: str, command: str) -> dict:
+    """Execute command in sandbox."""
+    bwrap_cmd = [
+        "bwrap",
+        "--unshare-all",              # Isolate all namespaces
+        "--cap-drop", "ALL",           # Drop capabilities
+        "--uid", "1000",               # Non-root
+        "--gid", "1000",
+        "--tmpfs", "/",                # Fake root (discarded)
+        "--ro-bind", "/bin", "/bin",   # Read-only system
+        "--ro-bind", "/lib", "/lib",
+        "--ro-bind", "/usr", "/usr",
+        "--bind", workspace_path, "/data",  # Read-write workspace
+        "--chdir", "/data",
+        "/bin/sh", "-c", command
+    ]
+
+    result = subprocess.run(bwrap_cmd, capture_output=True, timeout=30)
+    return {"stdout": result.stdout, "exit_code": result.returncode}
+```
+
+**Requirements:**
+- Docker compose needs security options:
+```yaml
+security_opt:
+  - seccomp:unconfined
+  - apparmor:unconfined
+```
+
+## 5. Error Handling Strategy
+
+### 5.1 Two-Tier Exception Model
+
+**Retryable Errors (AixToolError):**
+- Input validation failures
+- User-correctable errors
+- LLM can fix and retry
+
+**Code Errors (Standard Exceptions):**
+- Bugs requiring developer attention
+- Should propagate naturally
+- Never caught and converted
+
+### 5.2 Error Pattern
+
+```python
+@mcp.tool
+async def process(name: str) -> str:
+    """Process with validation."""
+    # Retryable - LLM can fix
+    if not name:
+        raise AixToolError("Name cannot be empty")
+
+    # Code errors - let propagate
+    df = pd.read_csv(file_path)      # FileNotFoundError
+    result = data['key']              # KeyError
+
+    return result
+```
+
+### 5.3 Logging Behavior
+
+**Middleware automatically logs:**
+- `AixToolError` - WARNING level, short message
+- Other exceptions - ERROR level, full stack trace
+- Each line prefixed with `session_id`
+
+### 5.4 Anti-Pattern
+
+NEVER wrap entire tool in try/except:
+
+```python
+# WRONG - hides bugs
+try:
+    # entire tool code
+except Exception as e:
+    raise AixToolError(str(e))
+```
+
+## 6. Middleware Stack
+
+### 6.1 Default Middleware
+
+Automatically applied via `create_mcp_server()`:
+
+1. **Authentication** - OAuth2 JWT validation
+2. **Error Handling** - Two-tier exception logging
+3. **Timing** - Request duration tracking
+4. **Token Limiting** - Response truncation
+
+### 6.2 Token Limit Middleware
+
+**Automatic truncation:**
+- Triggers when response exceeds 10,000 tokens
+- Saves full response to `/workspace/full_tool_responses/`
+- Returns truncated preview (first 2000 + last 2000 chars)
+- Async writes avoid blocking
+
+**Opt-out pattern:**
+```python
+from aixtools.mcp import TokenLimitMiddleware, get_default_middleware
+
+mcp = create_mcp_server(
+    name="My Server",
+    middleware=[m for m in get_default_middleware()
+                if not isinstance(m, TokenLimitMiddleware)]
+)
+```
+
+**When to opt-out:**
+- File read/edit tools needing complete contents
+- Structured data requiring full parsing
+- Code generation needing completeness
+
+## 7. Authentication and Authorization
+
+### 7.1 OAuth2 JWT Flow
+
+**Azure EntraID integration:**
+```
+Client -> JWT token in Authorization header
+   |
+   v
+Middleware validates token against EntraID
+   |
+   v
+Check tenant ID, audience, scope, group membership
+   |
+   v
+Extract user_id and session_id
+```
+
+**Environment Configuration:**
+- `APP_TENANT_ID` - Azure AD tenant
+- `APP_API_ID` - Application ID URI
+- `APP_DEFAULT_SCOPE` - JWT scope
+- `APP_AUTHORIZED_GROUPS` - Allowed group GUIDs
+
+**Development bypass:**
+```bash
+SKIP_MCP_AUTHORIZATION=true
+```
+
+Never use in production.
+
+## 8. Docker Architecture
+
+### 8.1 Service Hierarchy
+
+```
+mcp-base-data          # Defines /data volume
+    |
+    v
+mcp-base               # Standard service with auth
+    |
+    +-> mcp-base-aws       # Adds AWS credentials
+    |       |
+    |       v
+    |   mcp-base-vault     # Adds Vault integration
+```
+
+### 8.2 Base Service Configuration
+
+```yaml
+mcp-base:
+  extends: mcp-base-data
+  environment:
+    - APP_TENANT_ID
+    - APP_AUTHORIZED_GROUPS
+    - SKIP_MCP_AUTHORIZATION
+  labels:
+    # Path routing
+    - traefik.http.routers.service.rule=PathPrefix(/service/)
+    - traefik.http.middlewares.service-strip.stripprefix.prefixes=/service
+    # OAuth well-known routing
+    - traefik.http.routers.service-opr.rule=PathPrefix(/.well-known/oauth-protected-resource/service/)
+```
+
+### 8.3 Development Mode
+
+**File watching:**
+```yaml
+develop:
+  watch:
+    - action: sync+restart
+      path: ./mcp_module/
+      target: /app/mcp_module/
+    - action: sync+restart
+      path: ./.env
+      target: /app/.env
+```
+
+**Usage:**
+```bash
+docker compose up --watch
+```
+
+Auto-syncs changes and restarts service.
+
+### 8.4 Build Optimization
+
+**Layer caching:**
+```dockerfile
+RUN --mount=type=cache,target=/home/mcp_user/.cache/uv \
+    uv sync
+```
+
+**Strategy:**
+- Install dependencies before copying code
+- Leverage BuildKit cache mounts
+- Use `UV_LINK_MODE=copy` for consistency
+
+## 9. Docker Base Images
+
+### 9.1 Image Hierarchy
+
+**mcp-base:**
+- Ubuntu with uv, git, curl
+- Zscaler certificate configuration
+- Non-root user setup (mcp_user)
+
+**mcp-base-datascience:**
+- Extends mcp-base
+- pandas, numpy, matplotlib, scikit-learn
+- lightgbm, xgboost, shap
+
+### 9.2 Certificate Handling
+
+Custom certificates (Zscaler):
+```bash
+cat certs/custom_cert.crt >> .venv/lib/python*/site-packages/certifi/cacert.pem
+```
+
+Enables corporate proxy communication.
+
+## 10. Script Architecture
+
+### 10.1 Configuration Pattern
+
+**config.sh - Single source of truth:**
+```bash
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export PROJECT_DIR="$SCRIPT_DIR/.."
+export DATA_DIR="$PROJECT_DIR/data"
+export SOURCE_DIR="$(cd $PROJECT_DIR/mcp_* ; pwd)"
+
+# Activate venv
+source "$PROJECT_DIR/.venv/bin/activate"
+
+# Load and export .env
+set -a
+source "$PROJECT_DIR/.env"
+set +a
+```
+
+**All scripts source config.sh:**
+```bash
+#!/bin/bash -eu
+set -o pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/config.sh"
+
+# Script logic here
+```
+
+### 10.2 Standard Scripts
+
+**install.sh:**
+- Create virtual environment with uv
+- Install dependencies
+- Install custom certificates
+- Create .env from template
+- Run db_download.sh and db_ingest.sh if present
+
+**run.sh:**
+- Default: Run FastMCP server
+- `dev`: Run with MCP Inspector
+- `watch`: Run with auto-reload
+
+**test.sh:**
+- Run all tests with coverage
+- Support specific test files/functions
+- Uses pytest
+
+**lint.sh:**
+- Check formatting and style
+- `--fix`: Auto-fix issues
+- Uses ruff
+
+## 11. Tool Return Value Strategy
+
+### 11.1 Two-Channel Output
+
+**Prompt Values:**
+- Small results (text, numbers, short JSON)
+- Summaries and previews
+- File paths (sandbox format)
+- Auto-truncated if exceeds token limit
+
+**Files:**
+- Large datasets (CSV, JSON, Parquet)
+- Images, plots, visualizations
+- Full command outputs
+- Path returned in prompt value
+
+### 11.2 Large Data Pattern
+
+```python
+# Generate data
+df = query_large_dataset(sql)
+
+# Convert and save
+result_file = container_to_host_path(PurePosixPath(output_file), ctx)
+df.to_csv(result_file, index=False)
+
+# Return path + preview
+preview = df.head(10).to_string()
+return f"Saved {len(df)} rows to '{output_file}'\n\nPreview:\n{preview}"
+```
+
+## 12. Database Guidelines
+
+### 12.1 Local Database Pattern
+
+For MCP servers with local databases (ClinicalTrials, OpenFDA):
+
+**db_download.sh:**
+- Downloads raw data from public sources
+- Supports `--fast` flag for preprocessed data
+
+**db_ingest.sh:**
+- Ingests data into local database
+- Supports `--fast` flag for quick setup
+
+**install.sh integration:**
+```bash
+if [ -f "$SCRIPT_DIR/db_download.sh" ]; then
+    bash "$SCRIPT_DIR/db_download.sh"
+fi
+
+if [ -f "$SCRIPT_DIR/db_ingest.sh" ]; then
+    bash "$SCRIPT_DIR/db_ingest.sh"
+fi
+```
+
+### 12.2 Fast Mode
+
+Development mode for quick iteration:
+```bash
+./scripts/db_download.sh --fast
+./scripts/db_ingest.sh --fast
+```
+
+Uses preprocessed data instead of full download/processing.
+
+## 13. Testing and Debugging
+
+### 13.1 In-Memory Client
+
+For unit tests and notebooks:
+```python
+from fastmcp import Client
+from mcp_template.server import mcp
+
+# Create in-memory client
+client = Client(mcp)
+
+# Direct tool invocation
+result = await client.call_tool("add", {"a": 5, "b": 3})
+```
+
+No server setup required.
+
+### 13.2 Test Structure
+
+```
+tests/
+|-- __init__.py
+|-- test_simple_tools.py
+|-- test_large_data.py
+`-- data/
+    `-- test_data.csv
+```
+
+**Test execution:**
+```bash
+./scripts/test.sh                           # All tests
+./scripts/test.sh tests/test_simple.py      # Specific file
+./scripts/test.sh tests/test_simple.py::test_add  # Specific test
+```
+
+## 14. Naming Conventions
+
+**Projects:**
+- Use dashes: `mcp-sandbox`, `mcp-repl`, `mcp-playwright`
+
+**Source directories:**
+- Use underscores matching project: `mcp-sandbox/mcp_sandbox/`
+
+**Pattern:**
+```
+mcp-my-service/
+|-- mcp_my_service/
+|   |-- server.py
+|   |-- main.py
+|   `-- tools/
+|-- scripts/
+|-- tests/
+`-- docker-compose.yml
+```
+
+## 15. Key Principles
+
+### 15.1 Separation of Concerns
+
+MCP servers should focus on single functionality:
+- Database query tool - not mixed with file processing
+- Sandbox execution - not mixed with API calls
+- Follow Unix philosophy: do one thing well
+
+### 15.2 Security First
+
+- Workspace isolation prevents cross-user access
+- OAuth2 JWT for authentication
+- Bubblewrap sandboxing for untrusted code
+- Private data flagging for compliance
+- Never expose real filesystem paths to agents
+
+### 15.3 Error Transparency
+
+- Distinguish retryable vs code errors
+- Detailed logging with session IDs
+- Clear error messages for LLM recovery
+- Full stack traces for developers
+
+### 15.4 Agent Experience
+
+- Agents work with simple `/workspace/` paths
+- Large results automatically handled
+- Progress reporting for long operations
+- Token limiting prevents context overflow
+
+## 16. Common Patterns Summary
+
+### 16.1 Path Handling
+```python
+# Agent path -> Host path
+host_path = container_to_host_path(PurePosixPath(agent_path), ctx)
+
+# Host path -> Agent path
+agent_path = host_to_container_path(host_path)
+```
+
+### 16.2 State Management
+```python
+data = ctx.get_state("key")
+ctx.set_state("key", updated_data)
+```
+
+### 16.3 Progress Reporting
+```python
+await ctx.info("Starting task...")
+await ctx.report_progress(progress=current, total=total)
+```
+
+### 16.4 Error Handling
+```python
+# Retryable
+if invalid_input:
+    raise AixToolError("Clear message for LLM")
+
+# Code errors - let propagate
+df = pd.read_csv(path)  # FileNotFoundError
+```
+
+### 16.5 Large Data
+```python
+host_path = container_to_host_path(PurePosixPath(output_file), ctx)
+df.to_csv(host_path)
+preview = df.head().to_string()
+return f"Saved to '{output_file}'\n{preview}"
+```
+
+### 16.6 Private Data
+```python
+host_path = container_to_host_path(PurePosixPath(output_file), ctx)
+df.to_csv(host_path)
+PrivateData(ctx).add_private_dataset(output_file)
+return f"Saved to '{output_file}'"
+```
+
+### 16.7 Middleware Customization
+```python
+mcp = create_mcp_server(
+    name="My Server",
+    middleware=[m for m in get_default_middleware()
+                if not isinstance(m, TokenLimitMiddleware)]
+)
+```
+
+This design document captures the essential patterns and architecture for building production-grade MCP servers with proper isolation, security, and error handling.
+
+# A2A: Model
+
+## Introduction
+
+A2A (Agent2Agent) is an application-layer protocol that standardizes how autonomous agents discover each other, exchange messages, and coordinate work as tasks over HTTP(S), enabling cross-framework and cross-organization interoperability.
+
+### Historical perspective
+
+The idea of agents communicating through standardized messages predates LLM-based systems by decades. In the early 1990s, distributed AI research emphasized interoperability among heterogeneous agents via explicit communication “performatives” rather than bespoke point-to-point integrations. KQML is a canonical artifact of this period: a message language/protocol intended to let independent systems query, inform, and coordinate knowledge exchange. In the late 1990s, efforts such as FIPA ACL pushed further toward standardizing agent communication semantics and interaction patterns, aiming to make “agent societies” feasible across implementations.
+
+Many of these early standards were conceptually influential but operationally heavy: they assumed relatively structured symbolic agents, and they predated today’s ubiquitous web stack. The 2020s reintroduced the need for inter-agent interoperability under different constraints: LLM agents are often deployed as services, they must cooperate across vendor boundaries, and they increasingly manage long-running tasks and artifacts. Modern web primitives (HTTP(S), JSON serialization) and lightweight RPC framing (JSON-RPC 2.0) make it practical to standardize inter-agent communication without requiring a shared runtime.
+
+A2A is best read as a pragmatic continuation of this line of work: instead of attempting to standardize internal reasoning or cognitive semantics, it standardizes the *external contract* for discovery, task-oriented interaction, and delivery of results.
+
+### What is A2A
+
+A2A defines how one agent (a “client agent”) communicates with another agent (a “remote agent”) over HTTP(S), using JSON-RPC 2.0 envelopes. The remote agent is intentionally treated as opaque: A2A does not prescribe how the remote agent plans, calls tools, or maintains internal state. What it *does* prescribe is how the client creates and advances work, and how the remote agent reports progress and returns outputs in a predictable, interoperable format.
+
+This choice makes A2A suitable for delegation patterns that show up in real systems. A coordinator agent can discover specialized agents (for billing, travel planning, literature review, data cleaning), select one based on declared capabilities, and then initiate and track a task. The client doesn’t need a shared framework with the remote agent; it needs only the protocol contract.
+
+The protocol’s use of JSON-RPC is deliberately conservative. JSON-RPC provides the framing for request/response correlation (IDs), method invocation, and standardized error handling, while A2A defines the domain concepts on top: agent metadata, tasks, message structures, and artifacts.
+
+### Key concepts
+
+A2A’s main abstractions are designed to match how multi-agent work actually unfolds over time.
+
+An **Agent Card** is the discovery and capability surface: a machine-readable document published by a remote agent that describes who it is, where its endpoint is, which authentication schemes it supports, and what capabilities and skills it claims. This supports “metadata-first” routing and policy checks before any work begins.
+
+A **Task** is a stateful unit of work with its own identity and lifecycle. Tasks exist to support multi-turn collaboration and long-running operations, so an interaction does not have to fit into one synchronous request/response. Instead, the client can start a task, send additional messages, and retrieve updates or results later.
+
+**Messages** are how conversational turns are exchanged, and they are structured as **parts** so that text, structured data, and file references can be represented consistently. **Artifacts** are the concrete outputs attached to a task—documents, structured results, or other deliverables that can be stored, forwarded, audited, or fed into downstream workflows.
+
+A useful mental model is: **Agent Card** answers “who are you and what can you do?”, **Task** answers “what unit of work are we coordinating?”, **Messages** carry the interaction, and **Artifacts** are the outputs worth persisting.
+
+### Agent discovery
+
+A2A discovery is built around retrieving the Agent Card. A common mechanism is a well-known URL under the agent’s domain (aligned with established “well-known URI” conventions), allowing clients to probe domains deterministically. Discovery is intentionally explicit: clients can validate capabilities, authentication requirements, and declared skills before initiating a task, and systems can log discovery metadata for audit and governance.
+
+Conceptual snippet:
+
+```python
+import requests
+
+def discover_agent_card(domain: str) -> dict:
+    url = f"https://{domain}/.well-known/agent-card.json"
+    r = requests.get(url, timeout=5)
+    r.raise_for_status()
+    return r.json()
+
+card = discover_agent_card("billing.example.com")
+# Use: card["skills"], card["authentication"], card["capabilities"], card["url"]
+```
+
+This “metadata-first” approach matters operationally: it enables capability matching, policy gating (e.g., only delegate to agents with certain auth), and safer orchestration decisions *before* sending sensitive task content.
+
+### A2A and MCP
+
+A2A and MCP are complementary layers rather than competing protocols. MCP standardizes how agents interact with tools and resources (structured inputs/outputs, tool schemas, permission boundaries). A2A standardizes how agents interact with *other agents* as autonomous peers (discovery, task lifecycle, messaging, artifact delivery).
+
+A common composition is **A2A for delegation, MCP for tool-use**. A coordinator uses A2A to delegate a task to a specialist agent. The specialist agent, while executing the task, may rely on MCP internally to access databases, file systems, execution sandboxes, or enterprise services. When the specialist completes work (or makes partial progress), it returns results back to the coordinator as A2A messages and artifacts. This separation keeps each protocol focused: A2A doesn’t need to understand tool schemas, and MCP doesn’t need to standardize multi-agent collaboration.
+
+### Touchpoints from Pydantic-ai and FastMCP ecosystems
+
+The Pydantic ecosystem documents A2A as a practical interoperability layer and provides Python tooling to expose agents as A2A servers and to build clients that can discover agents, initiate tasks, and consume artifacts—without requiring the agent’s internal design to be rewritten around protocol internals. The emphasis is on preserving your existing agent architecture while making the boundary interoperable.
+
+FastMCP, meanwhile, is often used as a pragmatic deployment unit for MCP tool servers. In practice, this leads to a common layered architecture: A2A connects agents across boundaries; MCP connects agents to tools/resources; and FastMCP-style servers host the tool endpoints that agents call. Bridging components can translate between A2A and MCP where needed (for example, to let an A2A-facing agent expose or consume MCP-backed capabilities behind the scenes).
+
+A minimal task invocation at the wire level (illustrative, independent of any specific framework) looks like this:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "req_123",
+  "method": "tasks/send",
+  "params": {
+    "message": {
+      "role": "user",
+      "parts": [
+        { "kind": "text", "text": "Reconcile invoice #4812 and explain discrepancies." }
+      ]
+    }
+  }
+}
+```
+
+The important point is not the method name per se, but the design: JSON-RPC provides the envelope; A2A defines the task/message/artifact semantics; and implementations can remain diverse behind the boundary.
+
+---
+
+## References
+
+1. Tim Finin, Rich Fritzson, Don McKay, Robin McEntire. *KQML – A Language and Protocol for Knowledge and Information Exchange*. AAAI Workshop, 1994. [https://www.aaai.org/Papers/Workshops/1994/WS-94-03/WS94-03-003.pdf](https://www.aaai.org/Papers/Workshops/1994/WS-94-03/WS94-03-003.pdf)
+2. KQML Advisory Group. *An Overview of KQML: A Knowledge Query and Manipulation Language*. Technical report, 1992. (Commonly circulated via early KQML/UMBC technical report archives.)
+3. FIPA. *FIPA ACL Message Structure Specification*. FIPA, 2002. [https://www.fipa.org/specs/fipa00061/SC00061G.html](https://www.fipa.org/specs/fipa00061/SC00061G.html)
+4. JSON-RPC Working Group. *JSON-RPC 2.0 Specification*. jsonrpc.org, 2010. [https://www.jsonrpc.org/specification](https://www.jsonrpc.org/specification)
+5. Pydantic. *A2A (Agent2Agent)*. ai.pydantic.dev, (latest). [https://ai.pydantic.dev/a2a/](https://ai.pydantic.dev/a2a/)
+6. A2A Protocol. *What is A2A?* a2a-protocol.org, (latest). [https://a2a-protocol.org/latest/topics/what-is-a2a/](https://a2a-protocol.org/latest/topics/what-is-a2a/)
+7. A2A Protocol. *Key Concepts*. a2a-protocol.org, (latest). [https://a2a-protocol.org/latest/topics/key-concepts/](https://a2a-protocol.org/latest/topics/key-concepts/)
+8. A2A Protocol. *Agent Discovery*. a2a-protocol.org, (latest). [https://a2a-protocol.org/latest/topics/agent-discovery/](https://a2a-protocol.org/latest/topics/agent-discovery/)
+9. A2A Protocol. *A2A and MCP*. a2a-protocol.org, (latest). [https://a2a-protocol.org/latest/topics/a2a-and-mcp/](https://a2a-protocol.org/latest/topics/a2a-and-mcp/)
+
+
+
+## Task Lifecycle in Agent-to-Agent (A2A) Systems
+
+In A2A systems, a task is a durable, observable unit of work whose lifecycle is decoupled from synchronous execution through streaming, polling, notifications, and explicit coordination components.
+
+---
+
+### Asynchronous Execution as a First-Class Concept
+
+A2A tasks are explicitly designed to be asynchronous. Once a task is created, the initiating agent does not assume immediate completion. Instead, progress and results are exposed incrementally through well-defined observation mechanisms. This makes tasks suitable for long-running reasoning, external tool calls, delegation chains, and human approval steps.
+
+Asynchrony in A2A is not an implementation detail but a protocol-level guarantee: every task can be observed, resumed, or completed independently of the original request–response channel.
+
+---
+
+### Streaming Task Updates
+
+Streaming provides a push-based mechanism for observing task progress as it happens. Rather than waiting for a task to complete, an agent may subscribe to a stream of events emitted by the executing agent. These events can include state transitions, partial outputs, logs, or structured intermediate results.
+
+Conceptually, streaming turns a task into an event source. Each emitted event is associated with the task identifier, preserving causal ordering and traceability across agents.
+
+```python
+# Conceptual structure of a streamed task update
+event = {
+    "task_id": "a2a-task-42",
+    "event_type": "progress",
+    "payload": {"stage": "analysis", "percent": 60},
+    "timestamp": now(),
+}
+```
+
+This model aligns with modern server-sent events and async streaming patterns. In practice, agent runtimes inspired by Pydantic AI expose streaming as an optional observation channel, allowing clients to switch seamlessly between synchronous completion and live progress reporting.
+
+---
+
+### Polling as a Baseline Observation Mechanism
+
+Polling remains a core part of the A2A task model. Any agent can query the current state of a task at arbitrary times using its task identifier. Polling is intentionally simple and robust, making it suitable for environments where streaming connections are not feasible or reliable.
+
+Polling provides a consistent fallback mechanism that guarantees eventual visibility of task outcomes, even in the presence of network interruptions or restarts.
+
+```python
+# Conceptual polling response
+status = {
+    "task_id": "a2a-task-42",
+    "state": "running",
+    "last_update": "2026-01-10T10:15:00Z",
+}
+```
+
+From a design perspective, streaming and polling are complementary rather than competing approaches. Streaming optimizes for latency and responsiveness, while polling guarantees durability and simplicity.
+
+---
+
+### Push Notifications and External Callbacks
+
+Push notifications extend the task model beyond agent-to-agent communication. Instead of requiring an agent to actively poll or maintain a stream, a task can be configured to notify external systems when specific conditions are met, such as completion or failure.
+
+These notifications are typically delivered via HTTP callbacks or messaging systems and are defined declaratively as part of task configuration.
+
+```python
+# Conceptual push notification configuration
+notification = {
+    "on": ["completed", "failed"],
+    "target": "https://example.com/task-callback",
+}
+```
+
+This pattern is especially relevant in enterprise environments, where tasks may need to trigger downstream workflows, update dashboards, or notify humans without tight coupling to the agent runtime.
+
+---
+
+### Task Storage and Persistence
+
+Durability is a defining property of A2A tasks. Tasks are expected to outlive individual processes, network connections, and even agent restarts. To support this, task state is persisted in a storage layer that records inputs, state transitions, artifacts, and outputs.
+
+Persistent storage enables several critical behaviors: recovery after failure, replay of task history for auditing, and coordination across multiple workers. It also enforces the principle that a task identifier is the single source of truth for the unit of work.
+
+Agent runtimes built around A2A concepts treat storage as an explicit abstraction rather than an internal cache, ensuring that task state can be shared, inspected, or migrated if needed.
+
+---
+
+### Workers as Task Executors
+
+A worker is the execution component responsible for advancing tasks through their lifecycle. Workers pick up tasks from storage or a coordination layer, perform the required reasoning or tool invocation, and emit updates as execution progresses.
+
+Importantly, workers are stateless with respect to task identity. All durable state is stored externally, which allows workers to scale horizontally, restart safely, and cooperate on large task volumes.
+
+```python
+# Conceptual worker loop
+while True:
+    task = next_runnable_task()
+    execute_step(task)
+    persist_update(task)
+```
+
+This separation mirrors established distributed systems patterns and is directly reflected in FastMCP-style agent servers, where execution logic is isolated from task persistence and coordination.
+
+---
+
+### The Task Broker and Coordination
+
+The task broker acts as the coordination hub between task producers and workers. Its responsibilities include routing tasks to available workers, enforcing concurrency limits, and ensuring fair scheduling across agents or tenants.
+
+In multi-agent systems, the broker becomes essential for preventing overload and for managing large numbers of concurrent tasks. It also provides a natural integration point for policies such as prioritization, rate limiting, or isolation between independent workflows.
+
+Conceptually, the broker decouples *who wants work done* from *who is currently able to do it*, enabling flexible deployment and scaling strategies.
+
+---
+
+### Putting It All Together
+
+Streaming, polling, push notifications, storage, workers, and brokers form a coherent execution model around the A2A task abstraction. Tasks are created once, stored durably, executed by interchangeable workers, coordinated by a broker, and observed through multiple complementary channels. This design allows A2A systems to support deep agent collaboration, long-running workflows, and enterprise-grade reliability without sacrificing transparency or control.
+
+---
+
+## References
+
+1. A2A Protocol Authors. *Streaming and Async Execution*. A2A Protocol Documentation, 2024. [https://a2a-protocol.org/latest/topics/streaming-and-async/](https://a2a-protocol.org/latest/topics/streaming-and-async/)
+2. A2A Protocol Authors. *Life of a Task*. A2A Protocol Documentation, 2024. [https://a2a-protocol.org/latest/topics/life-of-a-task/](https://a2a-protocol.org/latest/topics/life-of-a-task/)
+3. Pydantic AI Team. *A2A Concepts and APIs*. Pydantic-AI Documentation, 2024. [https://ai.pydantic.dev/a2a/](https://ai.pydantic.dev/a2a/)
+4. Pydantic AI Team. *Push Notifications, Storage, Workers, and Brokers*. Pydantic-AI API Reference, 2024. [https://ai.pydantic.dev/api/fasta2a/](https://ai.pydantic.dev/api/fasta2a/)
+5. FastMCP Contributors. *Asynchronous Agents and Long-Running Tasks*. FastMCP Documentation, 2024. [https://gofastmcp.com/](https://gofastmcp.com/)
+
+
+## A2A in Detail
+
+A2A is a protocol-level contract for agent interoperability: a small set of operations plus a strict data model that lets independently-built agents exchange messages, manage long-running tasks, and deliver incremental updates over multiple delivery mechanisms. ([A2A Protocol][1])
+
+### What “the spec” really is: operations + data model + bindings
+
+At the lowest level, A2A is defined by (1) a core set of operations (send, stream, get/list/cancel tasks, subscribe, push-config management, extended agent card) and (2) a constrained object model (Task, Message, Part, Artifact, plus streaming event envelopes). ([A2A Protocol][2])
+
+The specification then defines how those operations and objects map onto concrete transports (“protocol bindings”), notably JSON-RPC over HTTP(S), gRPC, and an HTTP+JSON/REST-style mapping. ([A2A Protocol][1])
+
+A key design point is that the same *logical* operations are intended to be functionally equivalent across bindings; the binding decides *how* parameters and service-wide headers/metadata are carried, but not what they mean. ([A2A Protocol][1])
+
+---
+
+### Operation surface and execution semantics
+
+The “A2AService” operation set is designed around a task-centric model. Even if you initiate interaction by sending a message, the server may respond by creating/continuing a task, and all subsequent status and artifacts hang off that task identity. The specification’s “SendMessageRequest” carries the client message plus an optional configuration block and optional metadata. ([A2A Protocol][1])
+
+#### `SendMessage` and the `SendMessageConfiguration` contract
+
+`SendMessageConfiguration` is where most of the “knobs” live:
+
+* `acceptedOutputModes`: a list of media types the client is willing to receive in response *parts* (for both messages and artifacts). Servers **should** tailor outputs to these modes. ([A2A Protocol][1])
+* `historyLength`: an optional upper bound on how many recent messages of task history should be returned. The semantics are shared across operations: unset means server default; `0` means omit history; `>0` means cap to N most recent. ([A2A Protocol][1])
+* `blocking`: when `true`, the server must wait until the task is terminal and return the final task state; when `false`, return immediately after task creation with an in-progress state, and the caller must obtain progress via polling/subscription/push. ([A2A Protocol][1])
+* `pushNotificationConfig`: requests server-initiated updates via webhook delivery (covered below). ([A2A Protocol][1])
+
+This configuration block is what makes A2A “async-first” without making simple request/response impossible: a client can force synchronous completion with `blocking: true`, but the spec treats streaming and async delivery as first-class rather than bolt-ons. ([A2A Protocol][1])
+
+#### Blocking vs non-blocking as a protocol-level contract (not an implementation detail)
+
+The `blocking` flag is normative and affects correctness expectations:
+
+* In blocking mode, the server **MUST** wait for terminal states (`completed`, `failed`, `cancelled`, `rejected`) and include the final task state with artifacts/status. ([A2A Protocol][1])
+* In non-blocking mode, the server **MUST** return right after task creation and expects the client to continue via `GetTask`, subscription, or push. ([A2A Protocol][1])
+
+This matters because it pushes queueing/execution details out of band: even if the server’s internal worker system is distributed, the *observable* behavior must match these semantics.
+
+---
+
+### The protocol data model: the “shape” constraints that make interoperability work
+
+A2A’s objects include both “business” fields (task IDs, status) and structural invariants (“exactly one of these fields must be present”) that keep message parsing unambiguous across languages.
+
+#### Message identity and correlation
+
+A `Message` is a unit of communication between client and server. The spec requires `messageId` and makes it creator-generated. This is not cosmetic: the spec explicitly allows Send Message operations to be idempotent and calls out using `messageId` to detect duplicates. ([A2A Protocol][1])
+
+A message may include `contextId` and/or `taskId`:
+
+* For server messages: `contextId` must be present; `taskId` is present only if a task was created.
+* For client messages: both are optional, but if both are present they must match the task’s context; if only `taskId` is provided, the server infers `contextId`. ([A2A Protocol][1])
+
+This rule is critical for multi-turn clients: it allows clients to “anchor” continuation on a known task without re-sending full conversational context.
+
+#### Parts: a strict “oneof” content container
+
+A `Part` is the atom of content in both messages and artifacts, and it must contain exactly one of `text`, `file`, or `data`. ([A2A Protocol][1])
+
+That constraint enables predictable parsing and transformation pipelines:
+
+* text → display or feed into downstream LLM steps
+* file → fetch via URI or decode bytes, respecting `mediaType` and optional `name`
+* data → structured JSON object for machine-to-machine exchange
+
+File parts have their own “oneof”: exactly one of `fileWithUri` or `fileWithBytes`. The spec also frames the intended usage: prefer bytes for small payloads; prefer URI for large payloads. ([A2A Protocol][1])
+
+#### Artifacts: outputs as first-class objects
+
+Artifacts represent task outputs and include an `artifactId` that must be unique at least within a task, plus a list of parts (must contain at least one). ([A2A Protocol][1])
+
+Treating outputs as artifacts rather than “just text” is what allows A2A to cover large files, structured results, and incremental generation in a uniform way.
+
+#### Task states and task status updates
+
+Tasks have states; the spec enumerates states including working, input-required, cancelled (terminal), rejected (terminal), and auth-required (special: not terminal and not “interrupted” in the same way as input-required). ([A2A Protocol][1])
+
+A task’s status container includes the current state, optional associated message, and timestamp. ([A2A Protocol][1])
+
+---
+
+### Streaming updates: the `StreamResponse` envelope and event types
+
+A2A streaming is not “stream arbitrary tokens” by default; it streams *typed updates* wrapped in a `StreamResponse` envelope. The spec is explicit: a `StreamResponse` must contain exactly one of `task`, `message`, `statusUpdate`, or `artifactUpdate`. ([A2A Protocol][1])
+
+That invariant matters because it defines how clients must implement event loops: you do not parse “some JSON”; you dispatch on which field is present, and you get strongly-typed behavior.
+
+#### `TaskStatusUpdateEvent`
+
+A status update event includes `taskId`, `contextId`, `status`, and a required boolean `final` that indicates whether this is the final event in the stream for the interaction. ([A2A Protocol][1])
+
+A practical implication is that clients should treat `final=true` as a state machine edge, not merely “stream ended”. The spec describes this as the signal for end-of-updates in the cycle and often subsequent stream close. ([A2A Protocol][3])
+
+#### `TaskArtifactUpdateEvent` and chunked artifact reconstruction
+
+Artifact updates are deltas. Each update carries the artifact plus two key booleans:
+
+* `append`: if true, append content to a previously sent artifact with the same ID
+* `lastChunk`: if true, this is the final chunk of the artifact ([A2A Protocol][1])
+
+This is the protocol’s answer to “how do I stream a large file/structured output?”: the artifact is the stable identity, and the parts are chunked. A client must reconstruct by `(taskId, artifactId)` and apply append semantics to parts.
+
+---
+
+### Push notifications: webhook delivery that reuses the same envelope
+
+Push notifications are not a separate event schema: the spec states that webhook payloads use the same `StreamResponse` format as streaming operations, delivering exactly one of the same event types. ([A2A Protocol][1])
+
+The push payload section is unusually explicit about responsibilities:
+
+* Clients must ACK with 2xx, process idempotently (duplicates may occur), validate task ID, and verify source. ([A2A Protocol][1])
+* Agents must attempt delivery at least once per configured webhook and may retry with exponential backoff; recommended timeouts are 10–30 seconds. ([A2A Protocol][1])
+
+This means production-grade push is *not* “fire and forget”: both sides are expected to implement retry/idempotency logic.
+
+---
+
+### Service parameters, versioning, and extensions: the “horizontal” control plane
+
+A2A separates per-request metadata (arbitrary JSON) from “service parameters” (case-insensitive string keys + string values) whose transmission depends on binding (HTTP headers for HTTP-based bindings, gRPC metadata for gRPC). ([A2A Protocol][1])
+
+Two standard service parameters are called out:
+
+* `A2A-Version`: client’s protocol version; server returns a version-not-supported error if unsupported. ([A2A Protocol][1])
+* `A2A-Extensions`: comma-separated extension URIs the client wants to use. ([A2A Protocol][1])
+
+This is the practical mechanism for incremental evolution: extensions let you strongly-type metadata for specific use cases, while the core stays stable. ([A2A Protocol][1])
+
+---
+
+### Protocol bindings and interface negotiation
+
+Agents advertise one or more supported interfaces. Each `AgentInterface` couples a URL with a `protocolBinding` string; the spec calls out core bindings `JSONRPC`, `GRPC`, and `HTTP+JSON`, while keeping the field open for future bindings. ([A2A Protocol][1])
+
+The ordering of interfaces is meaningful: clients should prefer earlier entries when multiple options are supported. ([A2A Protocol][1])
+
+This makes interoperability practical in heterogeneous environments: a client can pick JSON-RPC for browser-like integrations, gRPC for intra-datacenter low-latency, or HTTP+JSON for simple REST stacks—while preserving the same logical semantics.
+
+---
+
+### Implementation patterns extracted from real server stacks: broker, worker, storage
+
+A typical A2A server splits responsibilities into:
+
+* an HTTP/gRPC ingress layer that validates requests, checks capabilities, and emits protocol-shaped responses;
+* a scheduling component (“broker”) that decides where/how tasks run;
+* one or more workers that execute tasks and emit task operations/updates;
+* a storage layer that persists task state and artifacts for `GetTask`, resubscription, and recovery.
+
+This architecture is explicitly reflected in common A2A server implementations where the HTTP server schedules work via a broker abstraction intended to support both in-process and remote worker setups, and where workers receive task operations from that broker. ([Pydantic AI][4])
+
+The key protocol-driven reason to build it this way is that A2A requires coherent behavior across:
+
+* non-blocking calls (immediate return + later updates),
+* streaming (typed update stream),
+* push (webhook updates), and
+* polling (`GetTask` / `ListTasks`).
+
+You only get correct semantics if task state and artifact state are stored durably enough to be re-served and re-streamed.
+
+---
+
+## Concrete pseudocode: “correct-by-construction” client and server logic
+
+The goal here is not a full implementation, but pseudocode that directly encodes the spec’s invariants (`oneof` objects, `blocking` semantics, chunked artifacts, idempotency, and service parameters).
+
+### Client: send non-blocking, then stream, reconstruct artifacts
+
+```pseudo
+function send_and_stream(agent_url, user_text):
+    msg = {
+      messageId: uuid4(),              // required, creator-generated
+      role: "ROLE_USER",
+      parts: [{ text: user_text }]
+    }
+
+    req = {
+      message: msg,
+      configuration: {
+        acceptedOutputModes: ["text/plain", "application/json"],
+        blocking: false,
+        historyLength: 0
+      }
+    }
+
+    headers = {
+      "A2A-Version": "0.3",            // service parameter (HTTP header in HTTP bindings)
+      "A2A-Extensions": "https://example.com/extensions/citations/v1"
+    }
+
+    // Non-blocking: response may contain a task in working/input_required, etc.
+    resp = POST(agent_url + "/message:send", json=req, headers=headers)
+
+    task_id = resp.task.id   // naming varies by binding, but concept is: you now have a task handle
+
+    // Prefer streaming for realtime updates when available.
+    stream = POST_SSE(agent_url + "/message:stream", json=req, headers=headers)
+
+    artifacts = map<artifactId, ArtifactAccumulator>()
+    terminal_seen = false
+
+    for event in stream:
+        // Each SSE "data" is a StreamResponse with exactly one field set.
+        sr = parse_json(event.data)
+
+        switch which_oneof(sr):         // exactly one of: task|message|statusUpdate|artifactUpdate
+            case "message":
+                render_message(sr.message)
+
+            case "task":
+                // snapshot update; may contain artifacts/history depending on historyLength semantics
+                update_task_cache(sr.task)
+
+            case "statusUpdate":
+                update_task_status(sr.statusUpdate.status)
+                if sr.statusUpdate.final == true:
+                    terminal_seen = is_terminal(sr.statusUpdate.status.state)
+
+            case "artifactUpdate":
+                a = sr.artifactUpdate.artifact
+                acc = artifacts.get_or_create(a.artifactId)
+
+                if sr.artifactUpdate.append == true:
+                    acc.append_parts(a.parts)
+                else:
+                    acc.replace_parts(a.parts)
+
+                if sr.artifactUpdate.lastChunk == true:
+                    finalized = acc.finalize()
+                    persist_artifact(task_id, finalized)
+
+        if terminal_seen:
+            break
+
+    return (task_id, artifacts)
+```
+
+Why this matches the spec:
+
+* It treats `messageId` as required and client-generated. ([A2A Protocol][1])
+* It uses `acceptedOutputModes`, `blocking`, and `historyLength` exactly as defined, including the shared semantics of history length. ([A2A Protocol][1])
+* It dispatches on the `StreamResponse` “exactly one of” invariant and handles status and artifact events accordingly. ([A2A Protocol][1])
+* It reconstructs artifacts using `append` and `lastChunk`. ([A2A Protocol][1])
+
+### Client: idempotent retries using `messageId`
+
+Network retries are inevitable; the spec explicitly allows using `messageId` to detect duplicates for idempotency. ([A2A Protocol][1])
+
+```pseudo
+function send_with_retry(agent_url, msg, cfg):
+    // msg.messageId is stable across retries
+    req = { message: msg, configuration: cfg }
+
+    for attempt in 1..MAX_RETRIES:
+        resp = try POST(agent_url + "/message:send", json=req)
+        if resp.success:
+            return resp
+
+        if resp.error.is_transient:
+            sleep(backoff(attempt))
+            continue
+
+        raise resp.error
+
+// Server side must treat same messageId as duplicate and avoid double-executing.
+```
+
+### Server: request validation that enforces the “oneof” invariants
+
+A2A’s “Part must contain exactly one of text/file/data” is a protocol requirement, so servers should validate it up-front (before dispatching to workers) and return a validation error if violated. ([A2A Protocol][1])
+
+```pseudo
+function validate_message(message):
+    assert message.messageId is not empty
+
+    for part in message.parts:
+        count = (part.text != null) + (part.file != null) + (part.data != null)
+        if count != 1:
+            raise InvalidParams("Part must have exactly one of text|file|data")
+
+        if part.file != null:
+            f = part.file
+            count2 = (f.fileWithUri != null) + (f.fileWithBytes != null)
+            if count2 != 1:
+                raise InvalidParams("FilePart must have exactly one of uri|bytes")
+```
+
+### Server: `blocking` semantics implemented on top of a broker/worker pipeline
+
+In practice, servers implement A2A semantics by scheduling work and then either returning immediately (non-blocking) or awaiting terminal state (blocking). The scheduling abstraction (“broker”) exists precisely to decouple protocol ingress from task execution and allow multi-worker setups. ([Pydantic AI][4])
+
+```pseudo
+function handle_send_message(request, service_params):
+    validate_version(service_params["A2A-Version"])  // VersionNotSupported if invalid
+    validate_message(request.message)
+
+    // Optional: enforce extension negotiation based on A2A-Extensions header
+    extensions = parse_csv(service_params.get("A2A-Extensions", ""))
+
+    // Deduplicate by messageId to achieve idempotency (recommended).
+    if storage.has_seen_message_id(request.message.messageId):
+        return storage.get_previous_response(request.message.messageId)
+
+    task = task_manager.create_or_resume_task(request.message)
+
+    broker.enqueue(task.id, request.message, request.metadata)  // schedules work
+
+    if request.configuration.blocking == true:
+        task = wait_until_terminal(task.id)      // completed/failed/cancelled/rejected
+        resp = { task: task }
+    else:
+        resp = { task: task }                    // in-progress snapshot
+
+    storage.record_message_id_response(request.message.messageId, resp)
+    return resp
+```
+
+This aligns with the normative behavior: non-blocking returns after task creation; blocking waits for terminal state. ([A2A Protocol][1])
+
+### Server: emitting streaming updates with `StreamResponse`
+
+Streaming endpoints emit a stream of `StreamResponse` objects where exactly one field is set. ([A2A Protocol][1])
+
+```pseudo
+function stream_task_updates(task_id):
+    // Subscribe to task events from worker/task manager
+    for update in task_event_bus.subscribe(task_id):
+        if update.type == "status":
+            yield { statusUpdate: {
+                      taskId: task_id,
+                      contextId: update.context_id,
+                      status: update.status,
+                      final: update.final
+                   } }
+        else if update.type == "artifact_chunk":
+            yield { artifactUpdate: {
+                      taskId: task_id,
+                      contextId: update.context_id,
+                      artifact: update.artifact_delta,
+                      append: update.append,
+                      lastChunk: update.last_chunk
+                   } }
+        else if update.type == "message":
+            yield { message: update.message }
+        else if update.type == "task_snapshot":
+            yield { task: update.task }
+```
+
+### Push notification receiver: reusing the same dispatch loop as streaming
+
+Because push payloads reuse `StreamResponse`, your webhook handler can share logic with your SSE consumer. ([A2A Protocol][1])
+
+```pseudo
+function webhook_handler(http_request):
+    sr = parse_json(http_request.body)     // StreamResponse: exactly one field set
+
+    assert verify_source(http_request)     // signature / token / mTLS / etc.
+
+    if which_oneof(sr) == "statusUpdate":
+        apply_status(sr.statusUpdate)
+        return 204
+    if which_oneof(sr) == "artifactUpdate":
+        apply_artifact_delta(sr.artifactUpdate)
+        return 204
+    if which_oneof(sr) == "task":
+        cache_task(sr.task)
+        return 204
+    if which_oneof(sr) == "message":
+        route_message(sr.message)
+        return 204
+```
+
+This matches the spec’s client responsibilities (ACK with 2xx; process idempotently; validate task IDs). ([A2A Protocol][1])
+
+---
+
+## References
+
+1. A2A Project. *Agent2Agent (A2A) Protocol Specification (DRAFT v1.0)*. a2a-protocol.org, 2025–2026. ([A2A Protocol][1])
+2. A2A Project. *Protocol Definition (A2A schema; normative source of truth)*. a2a-protocol.org, 2025–2026. ([A2A Protocol][2])
+3. A2A Project. *Streaming & Asynchronous Operations*. a2a-protocol.org, 2025–2026. ([A2A Protocol][3])
+4. Pydantic AI Docs. *fasta2a: broker/worker scheduling abstractions for A2A servers*. ai.pydantic.dev, 2025–2026. ([Pydantic AI][4])
+
+[1]: https://a2a-protocol.org/latest/specification/ "Overview - A2A Protocol"
+[2]: https://a2a-protocol.org/latest/definitions/ "Protocol Definition - A2A Protocol"
+[3]: https://a2a-protocol.org/latest/topics/streaming-and-async/ "Streaming & Asynchronous Operations - A2A Protocol"
+[4]: https://ai.pydantic.dev/api/fasta2a/ "fasta2a - Pydantic AI"
+
 
 
 
