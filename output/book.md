@@ -1,4 +1,4 @@
-# Core Agentic patterns
+# Chapter 1: Core Agentic Patterns
 
 # Chapter 3: Core Agentic Patterns
 
@@ -370,6 +370,7 @@ Finally, tool use generalizes beyond simple function calls. It applies equally t
 4. Schick, T. et al. *Toolformer: Language Models Can Teach Themselves to Use Tools*. arXiv, 2023.
 5. Yao, S. et al. *ReAct: Synergizing Reasoning and Acting in Language Models*. ICLR, 2023.
 
+
 ## Structured Output
 
 Structured output is the pattern of treating a model’s response not as free-form text, but as a value that must conform to an explicitly defined, machine-readable shape.
@@ -405,6 +406,7 @@ In this sense, structured output is not an optional refinement but a foundationa
 3. Yin, P., Neubig, G. *A Syntactic Neural Model for General-Purpose Code Generation*. ACL, 2017.
 4. OpenAI. *Function Calling and Structured Outputs*. Technical documentation, 2023.
 5. PydanticAI. *Structured Output Concepts*. Documentation, 2024–2025. [https://ai.pydantic.dev/output/](https://ai.pydantic.dev/output/)
+
 
 # Chapter 4: Tool Use — the Fundamental Pattern
 
@@ -443,6 +445,7 @@ As agents evolve into long-running systems operating over large and dynamic tool
 3. Schick, T. et al. *Toolformer: Language Models Can Teach Themselves to Use Tools*. NeurIPS, 2023.
 4. OpenAI. *Function Calling and Tool-Augmented Language Models*. OpenAI documentation, 2023.
 5. Pydantic. *Structured Outputs and Tool Integration Concepts*. Pydantic AI documentation, 2024.
+
 
 ## Tool Contracts and Schemas
 
@@ -562,6 +565,7 @@ More importantly, they define clear capability boundaries. The model can act onl
 3. OpenAI. *Function Calling and Structured Outputs in Large Language Models*. Technical blog, 2023.
 4. Yao, S., et al. *ReAct: Synergizing Reasoning and Acting in Language Models*. ICLR, 2023.
 
+
 ## Tool Permissions
 
 Tool permissions define the explicit authority boundaries that govern what an agent is allowed to observe, query, or mutate when interacting with external systems.
@@ -668,6 +672,7 @@ Tool permissions therefore act as the practical bridge between abstract agent au
 4. Lewis, P. et al. *Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks*. NeurIPS, 2020.
 5. OWASP Foundation. *Top 10 for Large Language Model Applications*. 2023. URL (optional)
 
+
 ## The Workspace
 
 The workspace pattern introduces a shared, persistent file system that agents and tools use to externalize intermediate artifacts, manage context, and coordinate work beyond the limits of the model’s prompt.
@@ -771,6 +776,7 @@ In practice, the workspace often doubles as a debugging and audit surface. Espec
 3. Laird, J. *The Soar Cognitive Architecture*. MIT Press, 2012.
 4. Lewis, P. et al. *Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks*. NeurIPS, 2020.
 5. Pydantic-AI Documentation. *Tools and Output Concepts*. [https://ai.pydantic.dev/](https://ai.pydantic.dev/)
+
 
 ## Advanced topics
 
@@ -945,6 +951,7 @@ This combination preserves autonomy where it is safe and cheap, while providing 
 [8]: https://arxiv.org/abs/2210.03629?utm_source=chatgpt.com "ReAct: Synergizing Reasoning and Acting in Language Models"
 [9]: https://arxiv.org/abs/2411.12924?utm_source=chatgpt.com "Human-In-the-Loop Software Development Agents"
 
+
 ## MCP — Model Context Protocol
 
 The Model Context Protocol (MCP) defines a standardized, long-lived interface through which models interact with external capabilities—tools, resources, and stateful services—using structured messages over well-defined transports.
@@ -1058,51 +1065,2292 @@ For modern agentic systems—especially those operating over long horizons, with
 5. Yao et al. *ReAct: Synergizing Reasoning and Acting in Language Models*. ICLR, 2023.
 
 
+### Orchestration & Control Flow
 
-## MCP
+# Chapter 5: Orchestration & Control Flow
 
-* MCP motivation and scope: Why a standardized protocol is needed to connect agents with tools, data, and context.
+## Workflows
 
-  * [https://www.anthropic.com/news/model-context-protocol](https://www.anthropic.com/news/model-context-protocol)
-  * [https://modelcontextprotocol.io/docs/learn/introduction](https://modelcontextprotocol.io/docs/learn/introduction)
+**One-line introduction.**
+Workflows define a structured, repeatable control flow that coordinates multiple agent steps—often across roles, tools, and time—into a coherent execution pipeline.
 
-* MCP architectural model: Host, client, and server roles and how they map onto an agent execution loop.
+### Historical perspective
 
-  * [https://modelcontextprotocol.io/docs/learn/architecture](https://modelcontextprotocol.io/docs/learn/architecture)
+The idea of workflows predates modern AI by decades. Early inspirations come from **workflow management systems** and **business process modeling** in the 1990s, where explicit graphs and state transitions were used to coordinate long-running, multi-step processes. In parallel, **multi-agent systems (MAS)** research explored coordination mechanisms such as task allocation, delegation, and contract nets, formalized in the late 1980s and 1990s.
 
-* Protocol layers: Separation between the JSON-RPC data model and transport mechanisms.
+In AI planning, classical planners introduced the notion of decomposing goals into ordered or partially ordered actions. Later, **Hierarchical Task Networks (HTNs)** provided a way to encode reusable procedural knowledge. As large language models emerged, early agent designs reused these ideas implicitly: chains of prompts, hand-written controllers, and role-based agents passing messages.
 
-  * [https://modelcontextprotocol.io/specification/2025-06-18/basic](https://modelcontextprotocol.io/specification/2025-06-18/basic)
-  * [https://www.jsonrpc.org/specification](https://www.jsonrpc.org/specification)
+From around 2023 onward, workflows re-emerged as a first-class abstraction in agent frameworks. This shift was driven by practical constraints: increasing system complexity, the need for observability and recovery, and the realization that purely autonomous agents benefit from explicit control structures. Modern workflow-based agents combine LLM-driven reasoning with deterministic orchestration layers, reconnecting contemporary agent systems with earlier ideas from workflow engines and MAS coordination.
 
-* Lifecycle and capability negotiation: Initialization, versioning, and feature discovery for interoperable agents.
+### The workflow pattern
 
-  * [https://modelcontextprotocol.io/specification/2025-06-18/basic/lifecycle](https://modelcontextprotocol.io/specification/2025-06-18/basic/lifecycle)
+A workflow is an explicit control structure that governs *when*, *how*, and *by whom* work is performed. Rather than a single agent reasoning end-to-end, the system is decomposed into stages with well-defined responsibilities.
 
-* Tools primitive: How agents invoke side-effectful actions via typed, schema-defined tools.
+At its core, a workflow defines:
 
-  * [https://modelcontextprotocol.io/specification/2025-06-18/server/tools](https://modelcontextprotocol.io/specification/2025-06-18/server/tools)
+* **Stages or nodes**, each representing a task, agent invocation, or decision point.
+* **Transitions**, which specify how execution moves from one stage to the next.
+* **State**, which carries intermediate artifacts (plans, partial results, decisions) across stages.
 
-* Resources primitive: Supplying structured, addressable context (files, data, memory) to agents.
+Unlike simple chains, workflows allow branching, looping, retries, and conditional execution. This makes them suitable for complex tasks such as document processing pipelines, research assistants, or operational agents that must pause, resume, or escalate.
 
-  * [https://modelcontextprotocol.io/specification/2025-06-18/server/resources](https://modelcontextprotocol.io/specification/2025-06-18/server/resources)
+#### Delegation and hand-offs
 
-* Prompts primitive: Reusable prompt templates as shared cognitive scaffolding.
+A common workflow structure relies on *delegation*. A coordinating component assigns a subtask to a specialized agent, then waits for its result before continuing. Delegation is typically asymmetric: one agent owns the global objective, while others operate within narrower scopes.
 
-  * [https://modelcontextprotocol.io/specification/2025-06-18/server/prompts](https://modelcontextprotocol.io/specification/2025-06-18/server/prompts)
+Closely related are *hand-offs*, where responsibility is explicitly transferred. Instead of returning a result and terminating, an agent may pass control—along with context and state—to another agent. This is useful when tasks progress through distinct phases, such as analysis → execution → verification.
 
-* Transport choices: stdio vs HTTP/Streamable HTTP and their implications for deployment and scaling.
+Conceptually, delegation returns control to the caller, while a hand-off moves the workflow forward by changing the active agent.
 
-  * [https://modelcontextprotocol.io/specification/2025-06-18/basic/transports](https://modelcontextprotocol.io/specification/2025-06-18/basic/transports)
+#### Single-agent vs multi-agent workflows
 
-* Security and authorization: Threat boundaries, safe server design, and OAuth 2.1 for remote access.
+Workflows can be implemented with a single agent invoked multiple times, or with multiple agents collaborating. In a single-agent workflow, the orchestration layer constrains the agent’s reasoning by dividing execution into steps. In multi-agent workflows, each node is backed by a different agent with its own tools, permissions, or prompt specialization.
 
-  * [https://modelcontextprotocol.io/specification/2025-06-18/basic/security_best_practices](https://modelcontextprotocol.io/specification/2025-06-18/basic/security_best_practices)
-  * [https://modelcontextprotocol.io/specification/2025-06-18/basic/authorization](https://modelcontextprotocol.io/specification/2025-06-18/basic/authorization)
+Multi-agent workflows are particularly effective when:
 
-* Practical agent integration: How planners and executors use MCP clients in real agent systems.
+* Tasks require heterogeneous expertise.
+* Tool access must be isolated.
+* Parallel progress is possible on independent subtasks.
 
-  * [https://modelcontextprotocol.io/docs/learn/client-concepts](https://modelcontextprotocol.io/docs/learn/client-concepts)
+Frameworks such as LangGraph (from the LangChain ecosystem) popularized graph-based workflows where nodes represent agents and edges encode control flow. The key idea, however, is independent of any framework: workflows externalize control logic instead of embedding it entirely in prompts.
+
+### Illustrative snippets
+
+The following snippets illustrate concepts rather than full implementations.
+
+**Delegation within a workflow**
+
+```python
+# Coordinator assigns a focused task to a specialist agent
+result = specialist_agent.run(
+    task="Summarize recent papers on topic X",
+    context=shared_state
+)
+
+shared_state["summary"] = result
+```
+
+**Programmatic hand-off**
+
+```python
+# Agent decides the next responsible agent
+next_agent = choose_agent(shared_state)
+
+return {
+    "handoff_to": next_agent,
+    "state": shared_state,
+}
+```
+
+**Conditional transitions**
+
+```python
+if shared_state["confidence"] < 0.8:
+    goto("verification_step")
+else:
+    goto("final_output")
+```
+
+These patterns make the control flow explicit and auditable, while still allowing agents to reason within each step.
+
+### Why workflows matter
+
+Workflows provide a bridge between autonomous reasoning and engineered reliability. By separating *what* an agent reasons about from *how* execution progresses, they enable better debugging, testing, and governance. They also integrate naturally with long-running and event-driven systems, where execution cannot be assumed to be linear or instantaneous.
+
+In orchestration-heavy systems, workflows are often the backbone on which more advanced patterns—graphs, replanning, and agent-to-agent protocols—are built.
+
+### References
+
+1. Smith, R. G. *The Contract Net Protocol*. IEEE Transactions on Computers, 1980.
+2. Erol, K., Hendler, J., Nau, D. *Hierarchical Task Network Planning*. Artificial Intelligence, 1994.
+3. Wooldridge, M. *An Introduction to MultiAgent Systems*. Wiley, 2002.
+4. LangChain Team. *Workflows and Agents in LangGraph*. LangChain Documentation, 2024. [https://docs.langchain.com/](https://docs.langchain.com/)
+5. LangChain Team. *Multi-Agent Workflows with LangGraph*. LangChain Blog, 2024. [https://blog.langchain.com/](https://blog.langchain.com/)
+
+
+## Graphs
+
+The graph pattern models agent execution as a directed graph of states and transitions, enabling explicit, inspectable, and controllable flows beyond linear or workflow-based orchestration.
+
+### Historical perspective
+
+The use of graphs to represent computation predates modern agentic systems by several decades. Early work on finite state machines and Petri nets in the 1960s established that complex behavior could be described as transitions between explicit states governed by formal rules. In parallel, compiler research introduced control flow graphs as a way to reason about all possible execution paths of a program, enabling static analysis, optimization, and verification.
+
+In artificial intelligence, graph-based representations became central through planning and decision-making research. Classical planners represented world states and actions as nodes connected by transitions, while later work on Markov Decision Processes framed sequential decision-making as movement through a state-transition graph under uncertainty. As large language models began to be used as reasoning components rather than static predictors, these ideas resurfaced in a practical form: explicit graphs provided a way to structure multi-step, branching, and iterative behaviors that were otherwise fragile when encoded implicitly in prompts.
+
+### The graph pattern in agentic systems
+
+In agentic systems, a graph is composed of nodes, edges, and shared state, with execution defined as traversal through this structure. A node represents a semantically meaningful unit of work, such as invoking a model, calling a tool, validating an intermediate result, or coordinating with another agent. Nodes are deliberately coarse-grained, reflecting conceptual steps in reasoning or action rather than low-level operations.
+
+Edges define the possible transitions between nodes. These transitions may be unconditional, rule-based, or dependent on runtime state, including model outputs. Unlike workflows, graphs naturally support branching, merging, and cycles, which makes them well suited for retry loops, refinement processes, conditional escalation, and adaptive strategies.
+
+State is the explicit data structure that flows through the graph. It accumulates inputs, intermediate artifacts, decisions, and metadata produced by nodes. Because state is explicit and typed, it can be validated at boundaries, persisted between steps, replayed for debugging, or partially reconstructed after failure. This explicitness is a key difference from prompt-centric approaches, where state is often implicit and difficult to reason about.
+
+Execution begins at a designated entry node. Each node consumes the current state, performs its logic, updates the state, and then selects the next edge to follow. Execution continues until a terminal node is reached or an external condition intervenes.
+
+### Typed state and deterministic transitions
+
+A central concept emphasized in modern graph-based agent frameworks is the use of explicitly defined state schemas. Rather than allowing arbitrary mutation, the state is treated as a well-defined contract between nodes. Each node declares which parts of the state it reads and which parts it may update, making data flow explicit.
+
+This approach has two important consequences. First, it enables early validation and clearer failure modes: invalid or incomplete state can be detected at node boundaries rather than propagating silently. Second, it allows transitions to be expressed deterministically over state, even when individual nodes rely on probabilistic model outputs. The graph structure remains stable and inspectable, while uncertainty is localized within nodes.
+
+### Conditional edges and control logic
+
+Graphs make control logic explicit by modeling decisions as conditional transitions rather than hidden prompt instructions. After a node executes, the next node is selected by evaluating conditions over the updated state. These conditions may encode business rules, confidence thresholds, validation results, or external signals.
+
+This separation between execution and control simplifies reasoning about system behavior. It becomes possible to enumerate all potential execution paths, understand where loops may occur, and verify that termination conditions exist. In contrast, when control logic is embedded implicitly in prompts, these properties are difficult to inspect or guarantee.
+
+### Cycles, retries, and refinement
+
+Cycles are a first-class feature of graph-based orchestration. They are commonly used to model refinement loops, such as drafting, evaluating, and revising an output until it meets a quality bar. Because the loop is explicit in the graph, exit conditions are also explicit and auditable, reducing the risk of unbounded retries or hidden infinite loops.
+
+This structure also supports bounded retries and fallback strategies. A node may transition back to a previous step a fixed number of times, after which execution is redirected to an alternative path, such as escalation to a human or a more expensive reasoning strategy.
+
+### Graphs in multi-agent orchestration
+
+In multi-agent systems, graphs provide a clear mechanism for coordinating specialized agents. Nodes may correspond to different agents, each with distinct capabilities and constraints. The graph encodes when responsibility is handed off, how partial results are integrated, and under what conditions an agent is re-invoked.
+
+Because the orchestration logic is explicit, system-level properties such as coverage, escalation paths, and failure handling can be reasoned about independently of individual agent prompts. This separation is essential for building reliable, production-grade agentic platforms.
+
+### Operational considerations
+
+From an operational standpoint, graph-based orchestration aligns naturally with long-running and fault-tolerant execution. Explicit nodes and transitions define natural checkpoints where state can be persisted. If execution is interrupted, it can resume from a known node with a known state. Execution traces map directly onto the graph, improving observability and post-mortem analysis.
+
+Although graphs introduce more upfront structure than simple chaining, this structure is what enables scale, robustness, and controlled evolution. As agentic systems grow in complexity, explicit graphs shift orchestration from an emergent property of prompts to a designed and verifiable component of the system.
+
+### References
+
+1. C. A. Petri. *Kommunikation mit Automaten*. PhD thesis, University of Bonn, 1962.
+2. R. Bellman. *Dynamic Programming*. Princeton University Press, 1957.
+3. S. Russell, P. Norvig. *Artificial Intelligence: A Modern Approach*. Pearson, 1995.
+4. Pydantic documentation. *Graphs*. 2024. [https://ai.pydantic.dev/graph/](https://ai.pydantic.dev/graph/)
+5. LangChain. *Introduction to LangGraph*. LangChain Academy, 2023. [https://academy.langchain.com/courses/intro-to-langgraph](https://academy.langchain.com/courses/intro-to-langgraph)
+
+
+# Chapter 5: Orchestration & Control Flow
+
+## A2A: Agent-to-Agent Communication
+
+**One-line introduction.**
+Agent-to-Agent (A2A) communication is a coordination pattern in which autonomous agents interact through a shared protocol to delegate work, exchange state, and compose system-level behavior.
+
+---
+
+### Historical perspective
+
+The intellectual roots of A2A go back to early work on distributed artificial intelligence and multi-agent systems in the late 1980s and 1990s. At that time, researchers observed that complex problem solving could not be reduced to a single reasoning entity, but instead emerged from cooperation, negotiation, and coordination between multiple agents. This led to the first explicit agent communication languages, such as KQML, and later to standardized specifications like FIPA-ACL, which formalized the structure and semantics of messages exchanged between agents.
+
+In parallel, research in distributed systems and software architecture shaped how independent components should interact. Message passing, remote procedure calls, and event-driven systems emphasized loose coupling, explicit interfaces, and failure isolation. The actor model reinforced the idea that independent computational entities should communicate only through messages, never by shared mutable state.
+
+Modern LLM-based agents inherit all of these traditions. While the internal reasoning mechanisms have changed dramatically, the architectural pressures remain the same: as soon as systems involve multiple agents with different responsibilities, lifecycles, or ownership boundaries, communication must be explicit, structured, and observable. The A2A Protocol emerges in this context as a contemporary formalization of agent communication, designed for long-running, heterogeneous, and production-grade agentic systems.
+
+---
+
+### The A2A pattern
+
+At its core, A2A treats each agent as an independent, network-addressable entity with a well-defined boundary. An agent exposes what it can do, accepts requests from other agents, and produces responses or follow-up messages, all without revealing its internal implementation. Coordination is achieved through message exchange rather than shared control flow or shared memory.
+
+This separation has important consequences. Agents can be developed, deployed, and evolved independently. Failures are localized to agent boundaries. System behavior emerges from interaction patterns rather than from a single central orchestrator. In this sense, A2A shifts orchestration from an internal control structure to an external protocol.
+
+Unlike workflows or graphs, which primarily describe how steps are sequenced within a bounded execution, A2A focuses on how autonomous agents relate to one another across time. It provides the connective tissue that allows multiple workflows, owned by different agents, to form a coherent system.
+
+---
+
+### Core capabilities
+
+A2A communication relies on a small set of foundational capabilities that are intentionally minimal but powerful. Each agent has a stable identity and a way to describe its capabilities so that other agents know what kinds of requests it can handle. Communication happens through standardized message envelopes that carry not only the payload, but also metadata such as sender, recipient, intent, and correlation identifiers. This metadata makes it possible to trace interactions, reason about partial failures, and correlate responses with earlier requests.
+
+Messages are typically intent-oriented rather than procedural. Instead of calling a specific function, an agent asks another agent to *perform an analysis*, *retrieve information*, or *review a decision*. This level of abstraction makes interactions more robust to internal refactoring and allows agents to apply their own policies, validation steps, or human-in-the-loop checks before acting.
+
+Crucially, A2A communication is asynchronous by default. An agent may acknowledge a request immediately, process it over minutes or hours, and send intermediate updates or a final result later. This makes the pattern well suited for long-running tasks, background analysis, and real-world integrations where latency and partial completion are unavoidable.
+
+---
+
+### How A2A works in practice
+
+From an execution standpoint, A2A introduces a thin protocol layer between agents. When one agent wants to delegate work, it constructs a message that describes the intent and provides the necessary input data. This message is sent through the A2A transport to another agent, which validates the request, performs the work according to its own logic, and replies with one or more messages.
+
+A minimal illustration looks like the following:
+
+```python
+# Agent A: delegate a task to another agent
+message = {
+    "to": "research-agent",
+    "intent": "analyze_document",
+    "payload": {"document_id": "doc-123"},
+    "correlation_id": "task-42",
+}
+
+send_message(message)
+```
+
+```python
+# Agent B: handle the request and respond
+def on_message(message):
+    if message["intent"] == "analyze_document":
+        result = analyze_document(message["payload"])
+        response = {
+            "to": message["from"],
+            "intent": "analysis_result",
+            "payload": result,
+            "correlation_id": message["correlation_id"],
+        }
+        send_message(response)
+```
+
+The important aspect is not the syntax, but the architectural boundary. Each agent owns its execution, state, and failure handling. The protocol provides just enough structure to make coordination reliable without constraining internal design choices.
+
+---
+
+### Role of A2A in orchestration
+
+As agentic systems scale, purely centralized orchestration becomes increasingly fragile. A2A enables a more decentralized model in which agents collaborate directly, while higher-level orchestration emerges from their interaction patterns. In practice, A2A often complements other control-flow constructs: workflows define local sequencing, graphs define structured decision paths, and A2A connects these pieces across agent boundaries.
+
+This section intentionally remains shallow. The goal is to position A2A as a first-class orchestration pattern rather than to exhaustively specify the protocol. Later chapters will examine transports, schemas, security models, and advanced coordination strategies built on top of A2A.
+
+---
+
+### References
+
+1. Wooldridge, M. *An Introduction to MultiAgent Systems*. Wiley, 2002.
+2. Finin, T. et al. *KQML as an Agent Communication Language*. International Conference on Information and Knowledge Management, 1994.
+3. FIPA. *FIPA ACL Message Structure Specification*. FIPA, 2002.
+4. A2A Protocol Working Group. *A2A Protocol Specification*. 2024. [https://a2a-protocol.org/latest/](https://a2a-protocol.org/latest/)
+
+
+## Long-running tasks and async execution
+
+Long-running tasks and asynchronous execution allow agents to pursue goals that extend beyond a single interaction by persisting state, delegating work, and resuming execution in response to events.
+
+### Historical perspective
+
+The roots of long-running and asynchronous agent behavior lie in early research on autonomous agents and distributed systems. In the late 1970s and 1980s, the actor model and message-passing systems established the idea that computation could be expressed as independent entities communicating asynchronously, without shared control flow. During the 1990s, agent-oriented research—most notably Belief–Desire–Intention (BDI) architectures—formalized the notion of persistent goals and plans that unfold over time, can be suspended, and are revised as new information arrives.
+
+Parallel developments in workflow systems, operating systems, and later cloud orchestration frameworks addressed similar problems from a systems perspective: how to manage long-running jobs, recover from partial failure, and coordinate independent workers. Modern agentic systems combine these traditions. Large language models provide flexible planning and reasoning, but must be embedded in orchestration layers that explicitly model time, state, and asynchronous coordination. Recent work on deep agents, sub-agents, and agent-to-agent protocols reflects this convergence between classical distributed systems and contemporary LLM-based agents.
+
+### Conceptual model
+
+In synchronous agent designs, reasoning and execution are tightly coupled: the agent plans, acts, and responds in a single linear flow. This breaks down when tasks take a long time, depend on slow external systems, or require parallel effort. The long-running and async execution pattern introduces a clear separation between intention, execution, and coordination.
+
+An agent first commits to an objective and records it as durable state. Execution then proceeds asynchronously, often delegated to subordinate agents or background workers. Rather than blocking, the parent agent yields control and resumes only when meaningful events occur, such as task completion, partial results, timeouts, or external signals. The agent’s reasoning step becomes episodic, triggered by state transitions instead of continuous conversation.
+
+### Deep agents and hierarchical delegation
+
+A common realization of this pattern is the use of deep agent hierarchies. A top-level agent is responsible for the overall goal and lifecycle, while subordinate agents are created to handle well-scoped pieces of work. These sub-agents may themselves spawn further agents, forming a tree of responsibility that mirrors the structure of the problem.
+
+The key property is that delegation is asynchronous. Once a sub-agent is launched, the parent does not wait synchronously for a response. Instead, it records expectations and moves on. When results eventually arrive, the parent agent incorporates them into its state and decides whether to proceed, replan, or terminate the task.
+
+```python
+# Conceptual sketch of async delegation
+
+task_id = create_task(goal="analyze dataset", state="planned")
+
+spawn_subagent(
+    parent_task=task_id,
+    objective="collect raw data",
+    on_complete="handle_result"
+)
+
+spawn_subagent(
+    parent_task=task_id,
+    objective="run statistical analysis",
+    on_complete="handle_result"
+)
+
+update_task(task_id, state="in_progress")
+```
+
+This structure enables parallelism and allows each sub-agent to operate on its own timeline.
+
+### State, events, and resumption
+
+Long-running tasks require explicit state management. Conversation history alone is insufficient, since execution may span hours or days and must survive restarts or failures. Instead, task state is externalized into durable storage and updated incrementally as events occur.
+
+Execution progresses through a sequence of state transitions. Each transition triggers a short reasoning step that decides the next action. In this sense, the agent behaves more like an event-driven system than a conversational chatbot.
+
+```python
+# Resumption triggered by an async event
+
+def handle_result(task_id, result):
+    record_result(task_id, result)
+    if task_is_complete(task_id):
+        update_task(task_id, state="completed")
+    else:
+        decide_next_step(task_id)
+```
+
+This approach makes long-running behavior explicit, observable, and recoverable.
+
+### Relationship to A2A protocols
+
+Agent-to-agent (A2A) protocols provide the communication layer that makes asynchronous execution robust and scalable. Instead of direct, synchronous calls, agents exchange structured messages that represent requests, progress updates, and completion signals. Time decoupling is essential: senders and receivers do not need to be active simultaneously.
+
+Within this pattern, long-running tasks can be understood as distributed conversations among agents, mediated by A2A messaging. Protocols define how agents identify tasks, correlate responses, and negotiate responsibility. This allows sub-agents to be deployed independently, scaled horizontally, or even operated by different organizations, while still participating in a coherent long-running workflow.
+
+### Failure, recovery, and human involvement
+
+Because long-running tasks operate over extended periods, failure is not exceptional but expected. The pattern therefore emphasizes retries, checkpoints, and escalation. Agents may automatically retry failed sub-tasks, switch strategies, or pause execution pending human review. Human-in-the-loop integration fits naturally at well-defined checkpoints, where the current task state can be inspected and adjusted without restarting the entire process.
+
+### References
+
+1. Hewitt, C. *Actor Model of Computation*. Artificial Intelligence, 1977.
+2. Rao, A. S., & Georgeff, M. P. *BDI Agents: From Theory to Practice*. Proceedings of the First International Conference on Multi-Agent Systems, 1995.
+3. Wooldridge, M. *An Introduction to Multi-Agent Systems*. John Wiley & Sons, 2002.
+4. LangChain Blog. *Multi-Agent Workflows and Long-Running Agents*, 2023.
+5. Pydantic AI Documentation. *Multi-agent applications and deep agents*. 2024. [https://ai.pydantic.dev/](https://ai.pydantic.dev/)
+6. Anthropic. *Sub-agents and task delegation*. Documentation, 2024. [https://code.claude.com/docs/en/sub-agents](https://code.claude.com/docs/en/sub-agents)
+
+
+## Event-driven agents
+
+Event-driven agents organize their behavior around the reception and handling of events, reacting incrementally to changes in their environment rather than executing a predefined sequence of steps.
+
+### Historical perspective
+
+The foundations of event-driven agents can be traced back to early work in distributed systems and concurrency. In the 1970s, the actor model introduced the idea of autonomous entities that communicate exclusively through asynchronous message passing, eliminating shared state and global control flow. This model already embodied the core intuition behind event-driven agents: computation progresses as a reaction to incoming messages, not as a linear program.
+
+During the 1980s and 1990s, research on reactive systems further refined these ideas. Reactive systems were defined not by producing a single output, but by maintaining ongoing interaction with an external environment. This work influenced state machines, event loops, and later publish–subscribe systems, which became common in large-scale distributed software during the 2000s. Complex event processing and event-driven middleware extended these ideas to environments with high event volumes and loose coupling between producers and consumers.
+
+Modern agentic systems revive and generalize these concepts. Large language model–based agents frequently operate in open-ended, asynchronous environments: user messages arrive unpredictably, tools may take seconds or hours to respond, and other agents may emit signals at any time. Event-driven control flow provides a natural abstraction for these conditions, avoiding the rigidity of synchronous pipelines and enabling agents to remain responsive over long periods.
+
+### Core idea
+
+In an event-driven agent architecture, execution is initiated by events rather than by a single entry point. An event represents a meaningful occurrence: a user request, a message from another agent, the completion of a long-running task, a timer firing, or a change in external state. The agent listens for such events and reacts by updating its internal state, invoking reasoning or tools, and potentially emitting new events.
+
+Control flow is therefore implicit. Instead of encoding “what happens next” as a fixed sequence, the agent’s behavior emerges from the combination of event types it understands, the current state it maintains, and the logic used to handle each event. This leads naturally to systems that are interruptible, resumable, and capable of handling multiple concurrent interactions.
+
+### Structure of an event-driven agent
+
+Conceptually, an event-driven agent is composed of three elements. First, there are event sources, which may be external (users, other agents, infrastructure callbacks) or internal (timers, state transitions). Second, there is an event dispatcher or loop that receives events and routes them to the appropriate logic. Third, there are event handlers that implement the agent’s reasoning and decision-making.
+
+A handler typically performs a small, well-defined reaction: it interprets the event, loads the relevant state, possibly invokes an LLM or a tool, updates state, and emits follow-up events. The following sketch illustrates the idea:
+
+```python
+def handle_event(event, state):
+    if event.type == "user_message":
+        state = process_user_input(event.payload, state)
+    elif event.type == "task_completed":
+        state = integrate_result(event.payload, state)
+
+    return state, next_events(state)
+```
+
+The important point is that handlers are written to be independent and idempotent. They do not assume exclusive control over execution, nor do they rely on a particular ordering beyond what is encoded in the state.
+
+### Relationship to workflows and graphs
+
+Event-driven agents differ fundamentally from workflow- or graph-based orchestration. Workflows and graphs make control flow explicit by defining steps and transitions ahead of time. Event-driven agents instead rely on reactions to stimuli. There is no single “next node”; the next action depends on which event arrives and how the current state interprets it.
+
+In practice, these approaches are often combined. Event-driven orchestration is commonly used at the top level, determining when and why something happens, while workflows or graphs are used inside individual handlers to structure more complex reasoning or tool usage. This hybrid model preserves flexibility without sacrificing clarity where structured control flow is beneficial.
+
+### Asynchrony, long-running tasks, and state
+
+Event-driven agents align naturally with asynchronous execution. A handler can trigger a long-running operation and return immediately, relying on a future event to resume processing when the operation completes. This avoids blocking the agent and allows many tasks to progress concurrently.
+
+State management becomes central in this model. Because events may arrive late, early, or more than once, handlers must validate assumptions against persisted state and handle duplicates safely. State is therefore externalized into durable storage, and events are treated as facts that may be replayed or retried.
+
+A typical completion handler follows this pattern:
+
+```python
+def handle_task_completed(event, state):
+    task_id = event.payload["task_id"]
+    if task_id not in state.pending_tasks:
+        return state  # stale or duplicate event
+
+    state.pending_tasks.remove(task_id)
+    state.results.append(event.payload["result"])
+    return state
+```
+
+This style ensures that the agent can recover from failures and restarts without losing coherence.
+
+### Event-driven agents in cloud environments
+
+In production systems, event-driven agents are commonly implemented using managed cloud services. The key architectural idea is to separate a lightweight, reactive control plane from heavyweight execution.
+
+The control plane consists of short-lived handlers that react to events, interpret state, and decide what to do next. In cloud platforms, these handlers are typically implemented as serverless functions or container-based services that scale automatically and are invoked by an event router. The data plane consists of longer-running or resource-intensive jobs executed in managed batch or container services.
+
+In an AWS-style architecture, events are routed through a managed event bus or message queue. Lightweight handlers execute in response to these events, updating persistent state and submitting long-running jobs when needed. Batch-style services execute those jobs and emit completion events back onto the event bus, closing the loop. The agent itself is not a single process, but an emergent behavior defined by the flow of events and state transitions across these components.
+
+A simplified control-plane handler might look like this:
+
+```python
+def on_event(event):
+    state = load_state(event.correlation_id)
+
+    if event.type == "request.received":
+        job_id = submit_long_task(event.payload)
+        state.pending[job_id] = "in_progress"
+        save_state(state)
+
+    elif event.type == "job.completed":
+        update_state_with_result(state, event.payload)
+        emit_event("agent.ready_for_next_step", state.summary())
+        save_state(state)
+```
+
+A similar pattern applies in other cloud environments, where event routing services deliver events to short-lived handlers and long-running work is delegated to managed compute services. The specific services differ, but the conceptual model remains the same: events drive execution, handlers coordinate state, and completion is signaled through new events.
+
+### Coordination between agents
+
+Event-driven architectures also provide a natural foundation for multi-agent systems. Instead of invoking each other directly, agents publish and subscribe to events. This reduces coupling and allows agents to evolve independently. Messages between agents become a special case of events with well-defined schemas and semantics.
+
+This approach also supports partial observability and access control. Agents can be restricted to seeing only certain event types or streams, which is critical in enterprise or safety-sensitive deployments.
+
+### Practical considerations
+
+Event-driven agents trade explicit control flow for flexibility. This increases the importance of observability, structured event schemas, and robust logging. Debugging often involves tracing event histories rather than stepping through code. Testing focuses on simulating event sequences and validating resulting state transitions.
+
+Despite these challenges, event-driven agents are increasingly central to real-world agentic systems. They provide a scalable and resilient foundation for long-lived, interactive agents that must operate reliably in asynchronous, distributed environments.
+
+### References
+
+1. Hewitt, C. *Viewing Control Structures as Patterns of Passing Messages*. Artificial Intelligence, 1973.
+2. Harel, D., Pnueli, A. *On the Development of Reactive Systems*. Logics and Models of Concurrent Systems, 1985.
+3. Eugster, P. et al. *The Many Faces of Publish/Subscribe*. ACM Computing Surveys, 2003.
+4. Luckham, D. *The Power of Events: An Introduction to Complex Event Processing*. Addison-Wesley, 2002.
+5. [https://ai.pydantic.dev/](https://ai.pydantic.dev/)
+
+
+# Execution Modes
+
+## CodeAct
+
+CodeAct is a code-centric execution pattern in which an agent reasons primarily by iteratively writing, executing, and refining code, using program execution itself as the main feedback loop.
+
+### Historical perspective
+
+Early agent systems treated code execution as an auxiliary tool: a way to call an API, run a calculation, or fetch data. This view began to shift with work on program synthesis, neural program induction, and reinforcement learning with executable environments, where the boundary between “reasoning” and “acting” blurred. In these settings, programs were not merely outputs but intermediate artifacts used to explore a solution space.
+
+The CodeAct approach crystallized this shift by explicitly framing agent behavior as alternating between natural language reasoning and concrete code execution. The key insight was that many complex tasks—data analysis, environment control, system configuration—are more reliably solved by letting the model *think in code*, observe runtime effects, and adapt. This lineage connects earlier ideas such as tool-augmented language models and ReAct-style loops, but places executable code at the center rather than at the periphery.
+
+### The CodeAct pattern
+
+At its core, CodeAct treats code execution as the agent’s primary action modality. Instead of planning entirely in natural language and then calling tools, the agent incrementally constructs small programs, runs them, inspects results, and revises its approach. Reasoning emerges from the interaction between generated code and observed execution outcomes.
+
+A typical CodeAct loop has four conceptual phases:
+
+1. **Intent formation**: the agent translates a goal into a concrete computational step.
+2. **Code generation**: the agent emits a small, focused code fragment.
+3. **Execution and observation**: the code is executed in a controlled environment and produces outputs, side effects, or errors.
+4. **Reflection and refinement**: the agent incorporates the observed behavior into the next iteration.
+
+This loop continues until the goal is satisfied or the agent determines it cannot proceed further. Importantly, the unit of work is intentionally small: short scripts, single commands, or incremental state changes. This keeps failures local and feedback immediate.
+
+Conceptually, this can be sketched as:
+
+```python
+while not goal_satisfied:
+    step = agent.propose_code(context)
+    result = execute(step)
+    context = agent.observe_and_update(context, result)
+```
+
+The distinguishing feature is that *execution results are first-class signals*. Errors, stack traces, runtime values, and filesystem changes all become part of the agent’s working context.
+
+### Execution environments and isolation
+
+Effective CodeAct systems rely on a well-defined execution substrate. Code must run in an environment that is both expressive enough to be useful and constrained enough to be safe. The implementation summarized in the MCP Sandbox design illustrates several architectural consequences of this requirement.
+
+Each agent session executes code inside a dedicated, isolated environment with its own filesystem and process space. This isolation allows the agent to experiment freely—creating files, starting processes, modifying state—without risking cross-session interference. From the agent’s perspective, the environment behaves like a persistent workspace rather than a disposable tool call.
+
+A common pattern is to fix a canonical working directory inside the execution environment and treat it as the agent’s “world”:
+
+```python
+# inside the execution environment
+with open("results.txt", "w") as f:
+    f.write(str(computation_output))
+```
+
+The persistence of this workspace across executions is crucial. It allows CodeAct agents to build state incrementally, revisit previous artifacts, and recover transparently from execution failures by recreating the environment while preserving data.
+
+### Failure, feedback, and recovery
+
+Because CodeAct agents execute arbitrary code, failures are expected rather than exceptional. Syntax errors, runtime exceptions, timeouts, and resource exhaustion all serve as informative feedback. Robust systems therefore separate *failure detection* from *failure recovery*.
+
+Execution is typically wrapped with pre-flight validation and post-execution checks:
+
+```python
+status = check_environment()
+if not status.ok:
+    recreate_environment()
+
+result = run_code(snippet, timeout=5)
+```
+
+If execution fails, the agent does not crash the session. Instead, the failure is surfaced as structured feedback that informs the next reasoning step. Automatic environment recreation, combined with persistent workspaces, ensures that recovery is transparent and does not erase progress.
+
+This design aligns naturally with the CodeAct philosophy: errors are signals to reason over, not terminal conditions.
+
+### Concurrency and long-running behavior
+
+Unlike simple tool calls, CodeAct executions may involve long-running processes such as servers, simulations, or background jobs. Treating these as first-class entities requires explicit lifecycle management distinct from one-off commands.
+
+A common pattern is to separate *commands* from *services*. Commands are synchronous and produce immediate feedback; services are started, monitored, and stopped explicitly. The agent reasons about service state by inspecting process health and logs rather than assuming success.
+
+This distinction enables CodeAct agents to orchestrate complex computational setups while retaining control over resource usage and cleanup.
+
+### Security and control boundaries
+
+Placing code execution at the center of agent behavior raises obvious safety concerns. CodeAct systems therefore rely on layered defenses: execution time limits, resource quotas, non-privileged runtimes, and strict filesystem scoping. From a pattern perspective, the important point is that these controls are *environmental*, not prompt-based. The agent is allowed to generate powerful code precisely because the execution substrate enforces hard constraints.
+
+This separation of concerns simplifies agent design. The model focuses on problem solving, while the execution layer guarantees containment.
+
+### Why CodeAct matters
+
+CodeAct represents a shift from “agents that occasionally run code” to “agents whose primary mode of thought is executable”. This shift has practical consequences: more reliable iteration, clearer grounding in observable behavior, and a tighter feedback loop between intention and outcome. In practice, CodeAct often reduces prompt complexity, because correctness is enforced by execution rather than by exhaustive natural language reasoning.
+
+As agents increasingly operate in technical domains—data engineering, infrastructure management, scientific computing—CodeAct provides a natural and scalable execution model.
+
+### References
+
+1. Wang et al. *CodeAct: Autonomous Code-Centric Agents*. arXiv, 2023.
+2. Yao et al. *ReAct: Synergizing Reasoning and Acting in Language Models*. arXiv, 2022.
+3. Chen et al. *Evaluating Large Language Models Trained on Code*. arXiv, 2021.
+4. MCP documentation and design notes. *Model Context Protocol*. 2024.
+
+
+## MCP Sandbox Overview
+
+MCP Sandbox is an implementation of CodeAct. Itprovides secure, isolated execution environments for running arbitrary code through Docker containers. The system manages concurrent multi-tenant sessions, each with dedicated containers and filesystems, while ensuring resource isolation, failure recovery, and operational observability.
+
+## Core Architecture
+
+### Multi-Tenant Session Model
+
+The architecture implements strict session isolation where each user session operates in a dedicated container with its own filesystem. Sessions are identified by a composite key (`user_id:session_id`), enabling multiple concurrent sessions per user while maintaining complete isolation.
+
+**Key Design Decisions**:
+- Composite session keys provide natural multi-tenancy without complex access control
+- One-to-one mapping between sessions and containers simplifies lifecycle management
+- Session state machines (CREATING → RUNNING → STOPPED/ERROR) enable predictable state transitions
+- Activity tracking with configurable timeouts enables automatic resource reclamation
+
+**Trade-offs**:
+- Each session requires a full container (higher resource usage vs. simpler isolation)
+- Container startup latency on first request (mitigated by lazy creation pattern)
+- Resource overhead acceptable for strong isolation guarantees
+
+### Data Isolation Through Filesystem Namespacing
+
+Each session's data resides in a host directory mounted into the container at a fixed path. This design provides filesystem isolation while enabling data persistence across container lifecycles.
+
+**Directory Hierarchy**:
+```
+{base_data_dir}/
+  └── {user_id}/
+      └── {session_id}/
+          └── [session data]
+```
+
+**Benefits**:
+- Physical isolation at filesystem level prevents cross-session access
+- Data persists when containers are recreated after failures
+- Path translation layer (`to_host_path`/`to_container_path`) abstracts storage details
+- Supports both bind mounts (local development) and named volumes (production)
+
+**Path Translation Pattern**:
+- Container paths are fixed (`/workspace`) for consistency
+- Host paths computed from session context (`user_id`, `session_id`)
+- Translation happens at the boundary between application and container layers
+- Volume subpaths enable multi-tenancy on shared storage
+
+### Lifecycle Management with Health Monitoring
+
+Containers follow a managed lifecycle with verification at each stage and continuous health monitoring to detect failures.
+
+**Startup Verification**:
+- Containers must achieve sustained "running" state (multiple consecutive checks)
+- Prevents race conditions where containers briefly appear running before crashing
+- Startup failures captured with diagnostic logs for debugging
+- Fast-fail approach: Reject containers that cannot reach stable state
+
+**Continuous Health Monitoring**:
+- Background thread periodically checks all tracked containers
+- Detects external failures: manual stops, crashes, OOM kills, removals
+- Handler pattern enables reactive responses to failures
+- Polling interval trades detection latency vs. system load
+
+**Automatic Cleanup**:
+- Age-based cleanup removes old containers automatically
+- Prevents resource accumulation from abandoned sessions
+- Force cleanup on startup handles unclean shutdowns
+- Port resources released synchronously with container removal
+
+### Multi-Level Failure Detection
+
+The system implements defense-in-depth for failure detection, combining proactive monitoring with reactive validation.
+
+**Detection Layers**:
+
+1. **Proactive Layer** (Health Monitoring):
+   - Periodic background polling of all containers
+   - Detects failures even when system is idle
+   - Marks affected sessions for automatic recovery
+
+2. **Reactive Layer** (Pre-Use Validation):
+   - Status check before every operation
+   - Catches failures between monitoring intervals
+   - Ensures container validity immediately before use
+
+3. **Recovery Layer** (Automatic Recreation):
+   - Sessions marked ERROR automatically recreated on next use
+   - Transparent to clients (idempotent operations)
+   - Data preserved through persistent storage
+
+**Failure Flow**:
+```
+External Failure
+    ↓
+Health Monitor Detection
+    ↓
+Session Marked ERROR
+    ↓
+Client Next Request
+    ↓
+Pre-Use Validation
+    ↓
+Container Recreated
+    ↓
+Operation Proceeds
+```
+
+This layered approach provides maximum detection latency of one monitoring interval while ensuring operations never proceed on failed containers.
+
+### Concurrency Model
+
+The system uses multi-threaded background processing with careful synchronization to handle concurrent operations safely.
+
+**Thread Categories**:
+- **Lifecycle Threads**: Container cleanup, session expiration
+- **Monitoring Threads**: Health checks, service status monitoring
+- **Execution Threads**: Command execution with timeout enforcement
+
+**Synchronization Strategy**:
+- Fine-grained locks protect shared data structures
+- Copy-before-iterate pattern prevents modification-during-iteration
+- All background threads are daemon threads (clean shutdown)
+- Lock-free reads where possible through immutable snapshots
+
+**Command Execution Isolation**:
+- Each command execution runs in isolated process
+- Timeout enforcement through process termination
+- Inter-process communication via queues (not shared memory)
+- Graceful degradation: SIGTERM → SIGKILL escalation
+
+**Race Condition Prevention**:
+- Sustained state checks (multiple consecutive reads) for critical transitions
+- Activity updates before status checks (establishes happens-before relationships)
+- Atomic state transitions through lock-protected modifications
+- No assumptions about operation ordering across threads
+
+### Service Management Architecture
+
+Long-running processes (web servers, databases) require different lifecycle management than one-off commands. The service subsystem addresses this with background process management and health monitoring.
+
+**Background Execution Pattern**:
+- Services started via `nohup` with output redirection
+- PID captured and tracked for lifecycle operations
+- Process monitoring through PID checks, not container status
+- Exit code captured for post-mortem analysis
+
+**Monitoring Strategy**:
+- Per-session service monitor with dedicated thread
+- Periodic process existence checks via PID
+- Port detection through `lsof` (dynamic port discovery)
+- Status updates don't affect session activity (read-only monitoring)
+
+**Service State Machine**:
+```
+STARTING → RUNNING → STOPPED (graceful)
+                   → FAILED (error exit)
+                   → STOPPING → STOPPED (manual stop)
+```
+
+**Lifecycle Operations**:
+- **Start**: Generate script, execute with nohup, capture PID
+- **Monitor**: Check PID, update ports, detect failures
+- **Stop**: Graceful SIGTERM, wait, force SIGKILL if needed, fallback to pattern kill
+- **Logs**: Tail stdout/stderr files, queryable by clients
+
+**Design Rationale**:
+- Services don't allocate specific ports (container has pre-allocated pool)
+- System detects actual ports post-startup (flexible port binding)
+- Services cleared on container failure (stale state eliminated)
+- No automatic restart (client controls service lifecycle)
+
+### Resource Management
+
+**Port Allocation**:
+- Fixed pool of ports allocated per container at creation
+- Singleton port manager prevents double-allocation
+- Ports released when container removed (no leaks)
+- Services bind to any available port within allocation
+
+**Resource Limits**:
+- CPU quotas prevent CPU exhaustion
+- Memory limits prevent OOM on host
+- Configurable per-container via ContainerConfig
+- Limits enforced by container runtime
+
+**Port Management Pattern**:
+- Pre-allocation at container creation (not on-demand)
+- Fixed pool per container (predictable resource usage)
+- Container-scoped allocation (cleanup happens naturally)
+- Detection over configuration (discover actual ports post-startup)
+
+### Security Architecture
+
+**Defense-in-Depth Layers**:
+
+1. **Container Isolation**:
+   - Separate Linux namespaces per session
+   - Non-root execution (runs as dedicated user)
+   - Resource limits prevent DoS
+   - Filesystem isolation through mount namespaces
+
+2. **Network Security**:
+   - Configurable port binding (localhost vs. all interfaces)
+   - Optional proxy mode for restricted environments
+   - Port exhaustion prevention through fixed pools
+   - Service port range isolation
+
+3. **Execution Security**:
+   - Timeout enforcement prevents infinite loops
+   - Working directory restrictions
+   - Command execution through controlled interfaces
+   - Script generation with safe path handling
+
+4. **Access Control**:
+   - Session-based isolation (no cross-session access)
+   - Path translation prevents directory traversal
+   - Workspace-scoped file operations
+   - Session authentication at API boundary
+
+**Proxy Mode Design**:
+- Containers inherit parent's network configuration
+- Enables corporate proxy compliance
+- Maintains network isolation in restricted environments
+- Optional feature activated via configuration
+
+### Observability Design
+
+Comprehensive structured logging enables debugging, auditing, and operational monitoring.
+
+**Log Categories**:
+- **System Logs**: Infrastructure events (container lifecycle, health monitoring)
+- **Command Logs**: Execution events with timing and results
+- **Code Logs**: Programming language execution with full context
+- **Service Logs**: Long-running process lifecycle and health
+
+**Log Enrichment Strategy**:
+- Context propagation: All logs include user_id, session_id, container_id
+- Timing information: Duration tracking for performance analysis
+- Error context: Stack traces, diagnostic output, pre-failure state
+- Correlation IDs: Trace requests across component boundaries
+
+**Structured Logging Benefits**:
+- Machine-readable format (JSON) enables automated analysis
+- Queryable by multiple dimensions (user, session, event type)
+- Consistent schema across all log types
+- Extensible through metadata fields
+
+**Operational Visibility**:
+- Container failures logged with diagnostic information
+- Service failures include stdout/stderr snapshots
+- Background thread errors logged without crashing threads
+- Health monitoring events tracked for trend analysis
+
+## Key Design Patterns
+
+### Lazy Initialization with Auto-Creation
+
+Resources created on first use rather than eagerly. Sessions and containers created when first accessed, not when user connects.
+
+**Benefits**:
+- Reduces resource consumption (only create what's needed)
+- Faster apparent response (no upfront cost)
+- Natural load distribution (creation spreads over time)
+
+**Implementation**: `ensure_container_available()` checks existence and creates if needed transparently to caller.
+
+### Handler Registration for Event Notification
+
+Components register callbacks with lifecycle managers to receive notifications about events (container failures, service crashes).
+
+**Benefits**:
+- Loose coupling between components
+- Easy to extend with new handlers
+- Event processing isolated from detection
+
+**Pattern**:
+```python
+container_manager.register_external_failure_handler(
+    session_manager.handle_external_container_failure
+)
+```
+
+### Copy-Before-Iterate for Thread Safety
+
+Shared collections copied before iteration to avoid modification-during-iteration errors without holding locks during processing.
+
+**Pattern**:
+```python
+with self.lock:
+    items_copy = list(self.items.values())
+# Process without lock
+for item in items_copy:
+    process(item)
+```
+
+**Trade-offs**: Memory cost of copy vs. reduced lock contention.
+
+### Singleton Pattern for Global Resources
+
+Shared resources like PortManager use singleton pattern to ensure single source of truth.
+
+**Rationale**: Port allocation must be globally coordinated to prevent conflicts.
+
+**Implementation**: Module-level instance with accessor function.
+
+### Base Class Pattern for Common Functionality
+
+`BaseOperator` provides common functionality (session management, container checks, logging) to all operator types (shell, code, service).
+
+**Benefits**:
+- Code reuse across operator types
+- Consistent patterns for container access
+- Centralized session activity tracking
+- Uniform error handling
+
+### Monitoring Pattern with Read-Only Operations
+
+Service monitoring reads status without updating session activity, preventing monitors from keeping sessions alive indefinitely.
+
+**Key Distinction**:
+- User operations: Update session activity (keep alive)
+- Monitoring operations: Read-only (don't affect lifetime)
+
+**Implementation**: Separate code paths with `update_activity` flag.
+
+## Key Learnings and Best Practices
+
+### Sustained State Verification
+
+Don't trust single status checks for critical state transitions. Container appearing "running" once doesn't guarantee stability.
+
+**Solution**: Require multiple consecutive checks before considering state stable. Prevents race conditions where containers briefly appear running before crashing.
+
+### Separation of Detection and Recovery
+
+Failure detection and recovery should be separate concerns handled at different layers.
+
+- Health monitoring detects failures and updates state
+- Request handling triggers recovery when needed
+- Separation enables testing each independently
+
+### Activity-Based Lifecycle Management
+
+Resources (sessions, containers) lifetime controlled by inactivity timeout rather than absolute TTL.
+
+**Benefits**:
+- Active sessions never expire unexpectedly
+- Inactive resources reclaimed automatically
+- Activity tracking simple (update timestamp on use)
+
+### Workspace Persistence Pattern
+
+Separating workspace storage from container lifecycle enables transparent container recreation.
+
+- Data outlives containers
+- Failures recoverable without data loss
+- Container becomes disposable execution environment
+
+### Monitoring Without Side Effects
+
+Background monitoring must not affect system state (beyond updates to monitoring data).
+
+**Principle**: Monitoring checks status but doesn't trigger activity updates, session creation, or container recreation.
+
+**Rationale**: Prevents monitoring from keeping resources alive indefinitely.
+
+### Graceful Degradation in Cleanup
+
+Cleanup operations should never crash the cleanup process. Log errors but continue processing remaining items.
+
+**Pattern**:
+```python
+for item in items:
+    try:
+        cleanup(item)
+    except Exception as e:
+        log_error(e)  # Don't crash cleanup thread
+        continue
+```
+
+### Timeout Enforcement Through Process Isolation
+
+Reliable timeout enforcement requires process isolation. Cannot reliably interrupt thread executing user code.
+
+**Solution**: Execute commands in separate process, terminate process on timeout.
+
+### Pre-allocated Resource Pools
+
+Pre-allocate resources (ports) at container creation rather than on-demand.
+
+**Benefits**:
+- Predictable resource usage
+- Simpler allocation logic
+- Natural cleanup (resources released with container)
+- Prevents resource exhaustion from gradual leaks
+
+### State Machine Clarity
+
+Explicit state machines with well-defined transitions make system behavior predictable.
+
+**Examples**:
+- Container status: CREATING → RUNNING → STOPPED/ERROR
+- Service status: STARTING → RUNNING → STOPPED/FAILED
+- Session status tracks container status
+
+Clear states enable:
+- Predictable error handling
+- Simplified recovery logic
+- Better observability
+
+## Scalability Considerations
+
+**Current Design Limits**:
+- One container per session (1:1 ratio)
+- Background threads poll all tracked resources
+- Port pool size limits concurrent containers
+
+**Scaling Strategies**:
+- Horizontal: Multiple MCP server instances with load balancing
+- Vertical: Increase container resource limits
+- Port pools: Separate ranges per server instance
+- Monitoring: Migrate to event-based model for large container counts
+
+**Trade-offs Accepted**:
+- Polling overhead acceptable for hundreds of containers
+- One container per session provides strongest isolation
+- Port pre-allocation wastes some resources for predictability
+
+
+## REPL
+
+**One-line introduction.**
+The REPL pattern enables an agent to iteratively execute code in a shared, stateful environment, providing immediate feedback while preserving the illusion of a continuous execution context.
+
+### Historical perspective
+
+The REPL (Read–Eval–Print Loop) is one of the oldest interaction models in computing. It emerged in the 1960s with interactive Lisp systems, where programmers could incrementally define functions, evaluate expressions, and inspect results without recompiling entire programs. This interactive style strongly influenced later environments such as Smalltalk workspaces and, decades later, Python and MATLAB shells.
+
+In the context of AI systems, early program synthesis and symbolic reasoning tools already relied on REPL-like loops to test hypotheses and refine partial solutions. More recently, the rise of notebook environments and agentic systems has renewed interest in REPL semantics as a way to let models explore, test, and refine code through execution. The key research shift has been from “single-shot” code generation to **execution-aware reasoning**, where intermediate results guide subsequent steps.
+
+### The REPL pattern in agentic systems
+
+In an agent setting, a REPL is not merely a convenience for developers; it is a reasoning primitive. The agent alternates between generating code, executing it, observing outputs or errors, and deciding what to do next. This loop allows the agent to ground abstract reasoning in concrete runtime behavior.
+
+A typical agent-driven REPL follows a conceptual loop:
+
+```
+while not task_complete:
+    code = agent.propose_next_step(observations)
+    result = execute(code, state)
+    observations = observations + result
+```
+
+Two properties distinguish a production-grade REPL from a simple shell.
+
+First, **state continuity**. Each execution step must see the effects of previous steps. Variables, user-defined functions, and imports should persist across executions so that the agent can build solutions incrementally.
+
+Second, **isolation and safety**. Arbitrary code execution is dangerous in long-running systems. Modern REPL designs therefore decouple *logical continuity* from *physical isolation*: each execution runs in a constrained environment, yet the system reconstructs enough context to make the experience appear continuous.
+
+### Process isolation with a persistent-state illusion
+
+A robust REPL for agents typically executes each step in a fresh process. This avoids crashes, memory leaks, and infinite loops from destabilizing the host system. To preserve continuity, the environment state is serialized before execution and merged back afterward.
+
+Conceptually:
+
+```
+# Before execution
+snapshot = serialize(namespace_without_modules)
+
+# In isolated process
+namespace = deserialize(snapshot)
+replay(imports)
+replay(function_definitions)
+exec(code, namespace)
+delta = extract_updated_variables(namespace)
+
+# After execution
+namespace.update(delta)
+```
+
+The important constraint is that only serializable objects can persist. Modules and other non-serializable artifacts are handled indirectly, usually by tracking their source representation rather than their in-memory form.
+
+### Import and function tracking
+
+One subtle challenge in isolated REPL execution is that imports and function definitions do not survive process boundaries. A common solution is to treat them as *replayable declarations*.
+
+Each execution step is analyzed to extract:
+
+* Import statements, stored as source strings.
+* Function definitions, stored as their full source.
+
+Before running the next step, all prior imports and function definitions are re-executed in order. This works because imports are idempotent and function redefinition is generally safe.
+
+A simplified illustration:
+
+```
+# On parsing a cell
+imports += extract_imports(code)
+functions += extract_functions(code)
+
+# On next execution
+for stmt in imports:
+    exec(stmt, namespace)
+for fn in functions:
+    exec(fn, namespace)
+exec(current_code, namespace)
+```
+
+This approach preserves developer- and agent-defined APIs across executions without requiring unsafe object sharing.
+
+### Output capture as first-class data
+
+For agents, execution output is not only for human inspection; it is input to the next reasoning step. A REPL therefore treats outputs as structured data rather than raw text.
+
+Typical output categories include:
+
+* Standard output and error streams.
+* The value of the last expression.
+* Exceptions and tracebacks.
+* Structured artifacts such as tables, HTML, or images.
+
+Separating *output storage* from *output references* is a useful best practice. Binary data (for example, images) can be stored internally and exposed via lightweight references, allowing the agent or client to fetch them on demand without bloating every response.
+
+### Asynchronous execution and concurrency
+
+In agent platforms, REPL execution often happens inside servers that must remain responsive. Blocking execution directly in the event loop does not scale. A common pattern is to expose an asynchronous API while offloading the actual execution to worker threads or subprocesses.
+
+Conceptually:
+
+```
+async def execute_step(code):
+    result = await run_in_worker(process_execute, code)
+    return result
+```
+
+This separation allows multiple agents or sessions to execute code concurrently while preserving responsiveness.
+
+### Sessions, persistence, and multi-user concerns
+
+Unlike a local shell, an agent REPL usually operates in a multi-user environment. Each session must be isolated, identifiable, and recoverable. Persisting execution history and state to disk after each operation ensures that work is not lost and that sessions can be resumed after failures.
+
+Persistence also enables secondary capabilities, such as exporting the session into a notebook format or replaying execution steps for audit and debugging.
+
+### Best practices distilled
+
+Several best practices consistently emerge when implementing REPLs for agents:
+
+* Prefer process-level isolation over threads for safety and control.
+* Serialize only data, not execution artifacts; replay imports and functions explicitly.
+* Treat outputs as structured, inspectable objects.
+* Make execution asynchronous at the API level.
+* Persist state frequently to support recovery and reproducibility.
+* Impose explicit limits on execution time and resource usage.
+
+Together, these patterns allow agents to reason *through execution* without compromising system stability.
+
+### References
+
+1. McCarthy, J. *LISP 1.5 Programmer’s Manual*. MIT Press, 1962.
+2. Abelson, H., Sussman, G. J., Sussman, J. *Structure and Interpretation of Computer Programs*. MIT Press, 1996.
+3. Kluyver, T. et al. *Jupyter Notebooks – a publishing format for reproducible computational workflows*. IOS Press, 2016.
+4. Chen, M. et al. *Evaluating Large Language Models Trained on Code*. arXiv, 2021.
+
+
+## NL2SQL (Natural Language to SQL)
+
+NL2SQL is the execution pattern in which an agent translates a natural language question into a validated, read-only SQL query, executes it safely, and returns results in a form suitable for both human inspection and downstream processing.
+
+### Historical perspective
+
+Research on translating natural language into database queries predates modern language models by several decades. Early systems in the 1970s and 1980s, such as LUNAR and CHAT-80, relied on hand-crafted rules and domain-specific grammars. These approaches demonstrated the feasibility of natural language interfaces to databases but were expensive to build and brittle outside narrowly defined schemas.
+
+From the late 2000s onward, statistical and neural semantic parsing reframed NL2SQL as a supervised learning problem: mapping text directly to formal query representations. Public datasets such as GeoQuery and WikiSQL enabled broader experimentation, while encoder–decoder architectures improved generalization across schemas. The recent emergence of large language models shifted the emphasis again. Instead of training a specialized parser per database, modern systems condition a general-purpose model with rich schema context, examples, and execution constraints. As a result, NL2SQL has become a practical and reliable execution mode in production agentic systems, provided it is embedded in a defensively designed pipeline.
+
+### The NL2SQL execution pattern
+
+NL2SQL should be understood as a controlled execution pipeline rather than a simple text-to-SQL transformation. The database is a high-impact tool, and the schema is the primary grounding mechanism that constrains the model’s reasoning.
+
+A typical workflow begins with a natural language question. Before any SQL is generated, the agent is provided with a complete, annotated schema describing tables, columns, relationships, and conventions. Using this context, the agent proposes a SQL query. That query is then passed through explicit validation steps that enforce security and correctness constraints, such as read-only access and single-statement execution. Only validated queries are executed, and results are returned in a bounded form.
+
+This separation between reasoning, validation, and execution is what makes NL2SQL robust enough for real-world use.
+
+### Schema as first-class context
+
+One of the most important lessons from production NL2SQL systems is that schema preparation belongs offline. Instead of querying database catalogs dynamically at runtime, schemas are extracted once, enriched, and cached as structured metadata. This cached schema becomes the authoritative reference for all NL2SQL reasoning.
+
+A “good” schema for agents is not minimal. It is intentionally verbose and explanatory, especially around ambiguous or overloaded fields. Confusing column names are clarified in comments, enum-like fields explicitly list their allowed values, and small samples of real data illustrate typical usage.
+
+A representative schema fragment might look like this:
+
+```sql
+-- Table: orders
+-- Purpose: Customer purchase orders in the e-commerce system
+
+CREATE TABLE orders (
+    order_id INTEGER PRIMARY KEY,
+        -- Unique identifier for each order
+
+    status VARCHAR(20),
+        -- Current lifecycle state of the order
+        -- Allowed values (controlled vocabulary):
+        --   pending    : order placed, not yet processed
+        --   shipped    : order shipped to customer
+        --   cancelled  : order cancelled before shipment
+
+    channel VARCHAR(20),
+        -- Sales channel through which the order was placed
+        -- Allowed values:
+        --   web, mobile_app, phone_support
+
+    total_amount DECIMAL(10,2),
+        -- Total order value in USD, including taxes
+
+    created_at TIMESTAMP,
+        -- Order creation timestamp in UTC
+
+    customer_id INTEGER
+        -- References customers.customer_id
+);
+
+-- Sample data (illustrative):
+-- order_id , status   , channel     , total_amount
+-- 10231    , shipped  , web         , 149.99
+-- 10232    , pending  , mobile_app  ,  29.50
+```
+
+This level of annotation significantly reduces ambiguity for the agent. It also discourages the model from inventing values that do not exist in the database, a common failure mode when schemas are underspecified.
+
+### Controlled vocabularies and query reliability
+
+Well-designed NL2SQL schemas emphasize controlled vocabularies. Fields such as status codes, categories, types, or channels should be treated as explicit enums, even if the underlying database does not enforce them strictly.
+
+From an agent’s perspective, controlled vocabularies serve two purposes. First, they constrain generation: when the model knows that `status` can only be one of a small, named set, it is far less likely to hallucinate invalid filter conditions. Second, they improve semantic alignment between user language and database values. Natural language phrases like “open orders” or “completed orders” can be reliably mapped to documented enum values rather than guessed strings.
+
+Embedding enum values directly in schema comments, along with short explanations, makes this mapping explicit. In practice, this often matters more than formal database constraints, because the agent reasons over the schema text rather than the physical DDL alone.
+
+### Query generation and validation
+
+Even with a high-quality schema, generated SQL must be treated as untrusted input. NL2SQL systems therefore apply multiple validation layers before execution.
+
+At a minimum, only read-only queries are permitted, and multiple statements are rejected, but this is a dangerous becaus harmfull code may still be possible. A simple syntactic validation step can catch common violations:
+
+```python
+query = query.strip()
+
+# WARNING: This is just a quick validation step, ALWAYS rely on DB permissions for security
+if not query.upper().startswith("SELECT"):
+    raise ValueError("Only SELECT queries are allowed")
+
+if query.rstrip(";").count(";") > 0:
+    raise ValueError("Multiple SQL statements are not allowed")
+```
+
+Much more effective is to have "READ-ONLY" database users that are restricted by permissions at the database level. This way, even if the agent generates a malicious query, it cannot perform harmful operations.
+
+Beyond syntactic checks, execution safeguards are typically applied. Query timeouts prevent expensive scans from monopolizing database resources, and explicit limits on result size protect both the database and the agent’s context window.
+
+### Result handling and the workspace
+
+Large result sets should not be injected directly into the agent context. Instead, results are written to files in a shared workspace, and only a small preview is returned.
+
+```python
+df.to_csv("workspace/results/orders_summary.csv")
+
+preview = df.head(10)
+```
+
+The agent can then summarize the findings, show a few representative rows, and provide the file path for full inspection. This pattern keeps prompts small while preserving complete, reusable data for humans or downstream tools.
+
+### Security and access control
+
+Production NL2SQL systems operate under strict security constraints. Database access is typically read-only, and credentials are managed externally through a secrets manager. Queries are executed on behalf of users without exposing raw credentials to the agent.
+
+This design supports auditing, user-specific permissions, and credential rotation without modifying agent logic. The agent interacts with the database only through a constrained execution interface.
+
+### Architectural considerations
+
+Successful NL2SQL systems usually adopt a layered architecture. Database-specific logic is isolated behind abstract interfaces, while business logic operates on standardized result types. This separation allows the same NL2SQL agent to work across multiple databases with minimal changes.
+
+Equally important is minimizing runtime complexity. Schema extraction, annotation, enum detection, and example query generation are expensive operations that belong in offline pipelines. At runtime, the agent should rely entirely on cached metadata and focus on reasoning, validation, and execution.
+
+### References
+
+1. Woods, W. A. *Progress in Natural Language Understanding: An Application to Lunar Geology*. AFIPS Conference Proceedings, 1973.
+2. Zelle, J., Mooney, R. *Learning to Parse Database Queries Using Inductive Logic Programming*. AAAI, 1996.
+3. Zhong, V., et al. *Seq2SQL: Generating Structured Queries from Natural Language using Reinforcement Learning*. arXiv, 2017.
+4. Yu, T., et al. *Spider: A Large-Scale Human-Labeled Dataset for Complex and Cross-Domain Semantic Parsing and Text-to-SQL Task*. EMNLP, 2018.
+
+
+## Autonomous vs supervised execution, approval, rollback, and reversibility
+
+An execution-mode pattern for tool- and code-running agents that balances autonomy with explicit control points (approvals) and safety nets (rollback / compensations) around state-changing actions.
+
+### Historical perspective
+
+The intellectual roots of “supervised autonomy” predate LLM agents by decades. In mixed-initiative user interfaces, researchers studied how systems should fluidly shift control between human and machine, often guided by uncertainty and the cost of mistakes (e.g., when to ask, when to act, when to defer). ([erichorvitz.com][1]) In parallel, databases and distributed systems developed a rigorous vocabulary for **commit**, **logging**, **recovery**, and **undo**, because real systems fail mid-execution and must restore consistent state. ([ACM Digital Library][2])
+
+In the LLM era, the “agent” framing made these older ideas operational again: LLMs began to interleave reasoning with actions (tool calls, API invocations, code execution), increasing both capability and risk. ReAct popularized the now-common loop of *think → act → observe → revise*, which naturally raises the question of when actions should be allowed to mutate the world without a checkpoint. ([arXiv][3]) At the same time, human feedback became a standard technique for aligning model behavior with user intent, reinforcing a broader pattern: autonomy works best when paired with *auditable steps* and *human arbitration* at the right moments. ([arXiv][4]) More recently, systems work has begun to formalize “undo,” “damage confinement,” and *post-facto validation* as first-class abstractions for LLM actions—explicitly connecting modern agents back to transaction and recovery concepts. ([arXiv][5])
+
+### The pattern in detail
+
+The core idea is to treat agent execution as a **controlled transaction over an external world**. The agent can reason freely, but actions that might change state are wrapped in a small number of well-defined mechanisms:
+
+1. **Autonomy levels (policy-driven):** not “autonomous vs supervised” as a binary, but a spectrum of allowed actions.
+2. **Approval gates (pre-commit controls):** pause execution before a risky or irreversible step, obtain an explicit decision, then continue.
+3. **Rollback / compensation (post-commit controls):** if something goes wrong—or if a human later rejects the outcome—undo what can be undone, and compensate what cannot.
+4. **Durability and auditability:** record enough to resume, explain, and repair.
+
+A practical way to implement this is to classify steps into **non-mutating** vs **mutating** actions (and optionally *irreversible mutating* as a special case). Recent work highlights that failures often hinge on a small number of mutating steps, motivating selective gating rather than gating everything. ([OpenReview][6])
+
+#### 1) Model the agent as an execution loop with explicit “pause and resume”
+
+Instead of running the agent until it prints an answer, run it until it either:
+
+* completes, or
+* reaches an action that requires external input (approval, UI-side execution, long-running job result).
+
+Conceptually:
+
+```python
+@dataclass
+class ToolCall:
+    name: str
+    args: dict
+    call_id: str
+    is_mutating: bool
+    requires_approval: bool
+
+@dataclass
+class PauseForApproval:
+    pending: list[ToolCall]
+    # include enough context to show a human what will happen
+    summary: str
+
+def agent_step(messages, tools, policy) -> str | PauseForApproval:
+    call = plan_next_tool_call(messages, tools)  # LLM decision
+    meta = tool_metadata(call.name)
+
+    if meta.is_mutating and policy.requires_approval(call):
+        return PauseForApproval(
+            pending=[ToolCall(call.name, call.args, call.id, True, True)],
+            summary=render_human_summary(call),
+        )
+
+    result = execute_tool(call)
+    messages = messages + [call_to_message(call), tool_result_message(result)]
+    return continue_or_finish(messages)
+```
+
+This “pause object” is the key architectural move: it turns human-in-the-loop from an ad-hoc UI prompt into a **first-class execution outcome** that can be persisted, audited, and resumed. Many modern agent frameworks implement a variant of this via “deferred tool calls” that end a run with a structured list of pending approvals/results, then continue later when those arrive. ([Pydantic AI][7])
+
+#### 2) Approval gates should be selective, contextual, and explainable
+
+A good approval gate is not “approve every tool call.” Instead, make approvals depend on:
+
+* **mutation risk:** does it change state (send, delete, purchase, write, deploy)?
+* **blast radius:** how big is the possible damage (one file vs an account)?
+* **reversibility:** can the action be undone cheaply and reliably?
+* **sensitivity:** does it touch secrets, money, user identity, regulated data?
+
+A simple policy sketch:
+
+```python
+def requires_approval(call: ToolCall, ctx) -> bool:
+    if not call.is_mutating:
+        return False
+
+    if call.name in {"send_email", "submit_payment", "delete_record"}:
+        return True
+
+    # contextual gating: protected resources, large diffs, prod env, etc.
+    if call.name == "write_file" and ctx.path in ctx.protected_paths:
+        return True
+
+    if estimate_blast_radius(call, ctx) > ctx.max_autonomous_blast_radius:
+        return True
+
+    return False
+```
+
+The human needs a crisp, non-LLM-shaped explanation: *what will be changed, where, and how to undo it.* Architecturally, store metadata alongside the paused call (reason codes, diffs, impacted resources) so the UI can render a reliable “approval card” rather than raw model text. Deferred-tool designs explicitly support attaching metadata to approval requests for exactly this purpose. ([Pydantic AI][7])
+
+#### 3) Treat rollback as a design constraint, not an afterthought
+
+Rollback is easy only in toy settings. In real systems:
+
+* some actions are **naturally reversible** (edit draft → revert, create resource → delete it),
+* others are **logically compensatable** (refund payment, send correction email),
+* others are **irreversible** (data leaked, notification pushed to many recipients).
+
+This leads to three complementary techniques:
+
+**A. Undo logs / versioned state** (classic transaction recovery)
+Record “before” state and/or a sequence of state transitions so you can restore consistency after partial failure. ([ACM Digital Library][2])
+
+**B. Compensating actions (Sagas)**
+For distributed or multi-step workflows, define a compensation for each step and run compensations in reverse order on failure. ([Microsoft Learn][8])
+
+**C. Damage confinement (blast-radius limits)**
+If you cannot guarantee undo, restrict what the agent is allowed to touch. Recent LLM-agent runtime work explicitly frames “undo” plus “damage confinement” as the practical path to post-facto validation. ([arXiv][5])
+
+A minimal “saga-like” execution record:
+
+```python
+@dataclass
+class StepRecord:
+    call: ToolCall
+    result: dict | None
+    compensation: ToolCall | None  # how to undo/compensate
+
+def run_workflow(plan: list[ToolCall]) -> list[StepRecord]:
+    log: list[StepRecord] = []
+    for call in plan:
+        res = execute_tool(call)
+        log.append(StepRecord(call=call, result=res, compensation=derive_compensation(call, res)))
+    return log
+
+def rollback(log: list[StepRecord]) -> None:
+    for step in reversed(log):
+        if step.compensation:
+            execute_tool(step.compensation)
+```
+
+Key best practice: require tool authors (or tool wrappers) to provide a compensation strategy *at the same time* they provide the mutating tool.
+
+#### 4) Idempotency and retries are part of “reversibility”
+
+Approval and rollback don’t matter if your execution layer is unreliable. Two properties reduce accidental double-effects:
+
+* **Idempotency keys:** if the agent retries, the external system should recognize “same request” and not re-apply it.
+* **Replayable logs:** if the agent process dies mid-run, you can resume from the last known-good step.
+
+This is why “durable execution” and “pause/resume” designs show up together in modern agent tool stacks: approvals and long-running jobs naturally imply persistence and resumption. ([Pydantic AI][9])
+
+#### 5) Putting it together: supervised autonomy as a small state machine
+
+The clean mental model is an agent runtime with a handful of states:
+
+* **Plan / Think** (free-form, no side effects)
+* **Dry-run / Preview** (compute diffs, show what would change)
+* **Approve** (human or policy decision)
+* **Commit** (execute mutating actions)
+* **Verify** (check postconditions; detect partial failure)
+* **Repair** (retry, compensate, or escalate)
+
+This also clarifies a subtle but important point: *human-in-the-loop is not only “before commit”*. Post-facto validation becomes credible only if you have real undo/containment mechanisms behind it, as argued in GoEx-style runtime proposals. 
+
+### References
+
+1. Eric Horvitz. *Principles of Mixed-Initiative User Interfaces*. CHI, 1999. ([erichorvitz.com][1])
+2. Theo Haerder and Andreas Reuter. *Principles of Transaction-Oriented Database Recovery*. ACM Computing Surveys, 1983. ([ACM Digital Library][2])
+3. Jim Gray and Andreas Reuter. *Transaction Processing: Concepts and Techniques*. Morgan Kaufmann, 1992. ([Elsevier Shop][10])
+4. Shunyu Yao et al. *ReAct: Synergizing Reasoning and Acting in Language Models*. arXiv, 2022. ([arXiv][3])
+5. Long Ouyang et al. *Training Language Models to Follow Instructions with Human Feedback*. NeurIPS, 2022. ([NeurIPS Proceedings][11])
+6. Reiichiro Nakano et al. *WebGPT: Browser-assisted Question-answering with Human Feedback*. arXiv, 2021. ([arXiv][12])
+7. Shishir G. Patil et al. *GoEx: Perspectives and Designs Towards a Runtime for Autonomous LLM Applications*. arXiv, 2024. ([arXiv][5])
+8. Microsoft Azure Architecture Center. *Saga Design Pattern*. (Documentation). ([Microsoft Learn][8])
+9. Pydantic AI Documentation. *Deferred Tools: Human-in-the-Loop Tool Approval*. (Documentation). ([Pydantic AI][7])
+
+[1]: https://erichorvitz.com/chi99horvitz.pdf?utm_source=chatgpt.com "Principles of Mixed-Initiative User Interfaces - of Eric Horvitz"
+[2]: https://dl.acm.org/doi/10.1145/289.291?utm_source=chatgpt.com "Principles of transaction-oriented database recovery"
+[3]: https://arxiv.org/abs/2210.03629?utm_source=chatgpt.com "ReAct: Synergizing Reasoning and Acting in Language Models"
+[4]: https://arxiv.org/abs/2203.02155?utm_source=chatgpt.com "Training language models to follow instructions with human feedback"
+[5]: https://arxiv.org/abs/2404.06921?utm_source=chatgpt.com "[2404.06921] GoEX: Perspectives and Designs Towards a ..."
+[6]: https://openreview.net/forum?id=JuwuBUnoJk&utm_source=chatgpt.com "Small Actions, Big Errors — Safeguarding Mutating Steps ..."
+[7]: https://ai.pydantic.dev/deferred-tools/ "Deferred Tools - Pydantic AI"
+[8]: https://learn.microsoft.com/en-us/azure/architecture/patterns/saga?utm_source=chatgpt.com "Saga Design Pattern - Azure Architecture Center"
+[9]: https://ai.pydantic.dev/?utm_source=chatgpt.com "Pydantic AI - Pydantic AI"
+[10]: https://shop.elsevier.com/books/transaction-processing/gray/978-0-08-051955-5?utm_source=chatgpt.com "Transaction Processing - 1st Edition"
+[11]: https://proceedings.neurips.cc/paper_files/paper/2022/file/b1efde53be364a73914f58805a001731-Paper-Conference.pdf?utm_source=chatgpt.com "Training language models to follow instructions with ..."
+[12]: https://arxiv.org/abs/2112.09332?utm_source=chatgpt.com "WebGPT: Browser-assisted question-answering with human feedback"
+
+
+
+# RAG (Retrieval-Augmented Generation)
+
+## RAG: Introduction
+
+**Retrieval-Augmented Generation (RAG)** is an architectural pattern that combines information retrieval systems with generative language models so that responses are grounded in external, up-to-date, and inspectable knowledge rather than relying solely on model parameters.
+
+### Historical perspective
+
+The core idea behind RAG predates modern large language models and can be traced back to classical information retrieval and question answering systems from the 1990s and early 2000s, where a retriever selected relevant documents and a separate component synthesized an answer. Early open-domain QA systems combined search engines with symbolic or statistical answer extractors, highlighting the separation between *finding information* and *using it*.
+
+With the rise of neural language models, research shifted toward integrating retrieval more tightly with generation. Dense retrieval methods, such as neural embeddings for semantic search, emerged in the late 2010s and enabled retrieval beyond keyword matching. This line of work culminated in explicit Retrieval-Augmented Generation formulations around 2020, where retrieved documents were injected into the model’s context to guide generation. The motivation was twofold: reduce hallucinations by grounding outputs in real documents, and decouple knowledge updates from expensive model retraining.
+
+### Conceptual overview of RAG
+
+At a high level, a RAG system treats external data as a first-class component of generation. Instead of asking a model to answer a question directly, the system first retrieves relevant information from a corpus, then conditions the model on that information when generating the final answer. The language model remains a reasoning and synthesis engine, while the retriever acts as a dynamic memory.
+
+This separation introduces a clear information workflow with two main phases: **document ingestion** and **document retrieval**, followed by **generation**.
+
+![Image](https://www.solulab.com/wp-content/uploads/2024/07/Retrieval-Augmented-Generation-2-1024x569.jpg)
+
+![Image](https://media.licdn.com/dms/image/v2/D4D12AQGfhRsQs5s4lA/article-inline_image-shrink_1000_1488/article-inline_image-shrink_1000_1488/0/1728125633128?e=2147483647\&t=Bj2Ev3UUFRmn5Jio99rQn2L95xJCQ8n6lWoz6HeGXto\&v=beta)
+
+![Image](https://media.geeksforgeeks.org/wp-content/uploads/20250620114121537025/Semantic-Search-using-VectorDB.webp)
+
+### Information workflow in RAG systems
+
+#### Document ingestion
+
+Document ingestion is the offline (or semi-offline) process that prepares raw data for efficient retrieval. It typically begins with collecting documents from sources such as filesystems, databases, APIs, or web crawls. These documents are then normalized into a common textual representation, which may involve parsing PDFs, stripping markup, or extracting structured fields.
+
+Because language models have limited context windows, documents are usually divided into smaller units. This chunking step aims to balance semantic coherence with retrievability: chunks should be large enough to preserve meaning, but small enough to be selectively retrieved. Each chunk is then transformed into a numerical representation, typically via embeddings that capture semantic similarity. The resulting vectors, along with metadata such as source, timestamps, or access permissions, are stored in an index optimized for similarity search.
+
+Ingested data is therefore not just stored text, but a structured memory that supports efficient and meaningful retrieval.
+
+#### Document retrieval
+
+Document retrieval is the online phase, executed at query time. Given a user query or task description, the system first produces a query representation, often using the same embedding space as the documents. This representation is used to search the index and retrieve the most relevant chunks according to a similarity or scoring function.
+
+Retrieval rarely ends at a single step. Results may be filtered using metadata constraints, re-ranked using more expensive scoring models, or combined with other retrieval strategies such as keyword search or structured database queries. The outcome is a small set of contextually relevant passages that can fit within the model’s context window.
+
+These retrieved chunks form the factual grounding for the generation step, effectively acting as an external, query-specific memory.
+
+### How a simple RAG works
+
+In its simplest form, a RAG system can be described as a linear pipeline: ingest documents, retrieve relevant chunks, and generate an answer conditioned on them. The following pseudocode illustrates the core idea, omitting implementation details:
+
+```python
+# Offline ingestion
+chunks = chunk_documents(documents)
+vectors = embed(chunks)
+index.store(vectors, metadata=chunks.metadata)
+
+# Online query
+query_vector = embed(query)
+retrieved_chunks = index.search(query_vector, top_k=5)
+
+# Generation
+context = "\n".join(chunk.text for chunk in retrieved_chunks)
+answer = llm.generate(
+    prompt=f"Use the following context to answer the question:\n{context}\n\nQuestion: {query}"
+)
+```
+
+Despite its simplicity, this pattern already delivers most of the benefits associated with RAG. The model is guided by retrieved evidence, answers can be traced back to source documents, and updating knowledge only requires re-ingesting data rather than retraining the model.
+
+More advanced systems extend this basic flow with richer chunking strategies, hybrid retrieval, iterative querying, and explicit evaluation loops, but the foundational pattern remains the same: retrieval first, generation second, with a clear boundary between the two.
+
+### References
+
+1. Lewis, P. et al. *Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks*. NeurIPS, 2020. [https://arxiv.org/abs/2005.11401](https://arxiv.org/abs/2005.11401)
+2. Karpukhin, V. et al. *Dense Passage Retrieval for Open-Domain Question Answering*. EMNLP, 2020. [https://arxiv.org/abs/2004.04906](https://arxiv.org/abs/2004.04906)
+3. Chen, D. et al. *Reading Wikipedia to Answer Open-Domain Questions*. ACL, 2017. [https://arxiv.org/abs/1704.00051](https://arxiv.org/abs/1704.00051)
+4. Izacard, G., Grave, E. *Leveraging Passage Retrieval with Generative Models for Open Domain Question Answering*. EACL, 2021. [https://arxiv.org/abs/2007.01282](https://arxiv.org/abs/2007.01282)
+
+
+## Embeddings
+
+Embeddings are the mechanism that transforms raw data (text, images, audio, etc.) into numerical vectors such that semantic similarity becomes geometric proximity.
+
+### Historical perspective
+
+The idea of representing language as vectors predates modern deep learning. Early information retrieval systems in the 1960s and 1970s relied on sparse vector representations such as term-frequency and TF-IDF, motivated by the *distributional hypothesis*: words that appear in similar contexts tend to have similar meanings. These approaches treated language as a high-dimensional but mostly empty space, where each dimension corresponded to a vocabulary term.
+
+In the early 2010s, research shifted toward *dense* representations that could be learned from data. Neural language models demonstrated that low-dimensional continuous vectors could encode syntactic and semantic regularities far more effectively than sparse counts. This transition laid the foundation for modern embedding-based retrieval systems and, eventually, for Retrieval-Augmented Generation.
+
+### From word counts to vector spaces (intuition)
+
+A simple way to build intuition is to start with word-count vectors. Consider the sentence:
+
+> “The cat is under the table”
+
+If the vocabulary is `{the, cat, is, under, table}`, the sentence can be represented as a vector of counts:
+
+```
+[the: 2, cat: 1, is: 1, under: 1, table: 1]
+```
+
+This representation is easy to construct and works reasonably well for keyword matching. However, it has two fundamental limitations. First, it is *sparse* and high-dimensional, which makes storage and comparison inefficient. Second, it carries no notion of meaning: “cat” and “dog” are as unrelated as “cat” and “table” unless they literally co-occur.
+
+Modern embeddings keep the core idea—mapping language to vectors—but replace sparse counts with dense, learned representations where proximity reflects semantics rather than surface form.
+
+![Image](https://www.researchgate.net/publication/343595281/figure/fig4/AS%3A963538206089244%401606736818940/Visualization-of-the-word-embedding-space.png)
+
+![Image](https://www.researchgate.net/publication/350132172/figure/fig1/AS%3A1002549867970561%401616037923375/Semantic-relevance-in-the-embedding-space-a-Global-semantic-similarity-vs-local.ppm)
+
+### Dense semantic embeddings
+
+Dense embeddings map words, sentences, or documents into a continuous vector space (often hundreds or thousands of dimensions). In this space, semantic relationships emerge naturally: synonyms cluster together, analogies correspond to vector offsets, and related concepts occupy nearby regions.
+
+Early influential methods include **Word2Vec**, which learns word vectors by predicting context words, **GloVe**, which combines local context with global co-occurrence statistics, and **FastText**, which incorporates character n-grams to better handle morphology and rare words. These models marked a decisive shift from symbolic counts to geometric meaning.
+
+Conceptually, these embeddings still rely on co-occurrence statistics, but they compress them into a dense space where distance metrics such as cosine similarity become meaningful signals for retrieval.
+
+### Transformer-based embeddings
+
+The next major step came with transformer architectures. Models such as **BERT** introduced *contextual embeddings*: a word’s vector depends on its surrounding words, so “bank” in “river bank” differs from “bank” in “investment bank”. This resolved a long-standing limitation of earlier static embeddings.
+
+Transformer-based embedding models typically operate at the sentence or document level for retrieval. They encode an entire passage into a single vector that captures its overall meaning. In a RAG system, these vectors are indexed in a vector database and compared against query embeddings to retrieve semantically relevant context, even when there is little lexical overlap.
+
+A minimal illustrative snippet for text embedding might look like:
+
+```python
+# Pseudocode: embed text into a dense vector
+text = "The cat is under the table"
+vector = embed(text)   # returns a dense float array
+```
+
+The key point is not the API, but the abstraction: text is projected into a semantic space where similarity search is efficient and meaningful.
+
+### Multimodal generalization
+
+The embedding concept generalizes naturally beyond text. Multimodal models learn a *shared* vector space for different data types, allowing cross-modal retrieval. A canonical example is **CLIP**, which aligns images and text descriptions so that an image of a “red chair” is close to the text “a red chair” in the same embedding space.
+
+This generalization is increasingly important in modern RAG systems, where documents may include text, diagrams, tables, or images. A single embedding space enables unified retrieval across modalities, simplifying system design while expanding capability.
+
+### Embeddings in the RAG pipeline
+
+Within a RAG architecture, embeddings serve as the semantic interface between raw data and retrieval. During ingestion, documents are converted into vectors and indexed. At query time, the user question is embedded into the same space, and nearest-neighbor search retrieves the most relevant chunks. The quality of the embeddings directly determines recall, precision, and ultimately the factual grounding of the generated answers.
+
+### References
+
+1. Salton, G., Wong, A., & Yang, C. S. *A Vector Space Model for Automatic Indexing*. Communications of the ACM, 1975.
+2. Mikolov, T., Chen, K., Corrado, G., & Dean, J. *Efficient Estimation of Word Representations in Vector Space*. arXiv, 2013.
+3. Pennington, J., Socher, R., & Manning, C. *GloVe: Global Vectors for Word Representation*. EMNLP, 2014.
+4. Bojanowski, P., Grave, E., Joulin, A., & Mikolov, T. *Enriching Word Vectors with Subword Information*. TACL, 2017.
+5. Devlin, J., Chang, M.-W., Lee, K., & Toutanova, K. *BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding*. NAACL, 2019.
+6. Radford, A. et al. *Learning Transferable Visual Models From Natural Language Supervision*. ICML, 2021.
+
+
+## Vector Databases
+
+Vector databases are specialized data systems designed to store high-dimensional vectors and efficiently retrieve the most similar vectors to a given query.
+
+### Historical perspective
+
+The foundations of vector databases lie in decades of research on similarity search and nearest-neighbor problems in information retrieval and computational geometry. Early work in the 1970s and 1980s focused on exact nearest-neighbor search in low-dimensional metric spaces, but these approaches did not scale to high dimensions. As datasets grew and feature representations became more complex, research shifted toward *approximate nearest neighbor* (ANN) methods, trading exactness for dramatic gains in speed and memory efficiency.
+
+In the late 1990s and 2000s, algorithms such as KD-trees, ball trees, and locality-sensitive hashing (LSH) emerged as practical approximations. However, the modern resurgence of vector search was driven by machine learning and deep learning, where embeddings routinely live in hundreds or thousands of dimensions. Systems like **FAISS** (2017) and later dedicated vector databases such as **Milvus** formalized these ideas into production-ready infrastructure, making vector search a core primitive for recommender systems, semantic search, and eventually Retrieval-Augmented Generation (RAG).
+
+### How vector databases work
+
+At a conceptual level, a vector database manages three tightly coupled concerns: storage, indexing, and similarity search. Each document, chunk, or entity is represented as a numerical vector produced by an embedding model. These vectors are stored alongside identifiers and optional metadata, but the primary operation is not key-value lookup—it is similarity search.
+
+When a query arrives, it is first embedded into the same vector space. The database then searches for vectors that are “close” to the query vector under a chosen similarity metric. Because naïvely comparing the query to every stored vector is prohibitively expensive at scale, vector databases rely on specialized indexes that dramatically reduce the search space while preserving good recall.
+
+In practice, a vector database behaves less like a traditional relational database and more like a search engine optimized for continuous spaces. Insertions update both raw storage and index structures; queries traverse those indexes to produce a ranked list of candidate vectors, often combined with metadata filtering before final results are returned.
+
+### Similarity metrics
+
+Similarity metrics define what it means for two vectors to be “close.” The choice of metric is not incidental; it encodes assumptions about how embeddings were trained and how magnitude and direction should be interpreted.
+
+Cosine similarity measures the angle between vectors and is invariant to vector length. It is commonly used when embeddings are normalized and direction encodes semantics. Dot product is closely related and often preferred in dense retrieval models trained with inner-product objectives. Euclidean distance measures absolute geometric distance and is natural when vector magnitudes are meaningful.
+
+Most vector databases treat the metric as a first-class configuration, because index structures and optimizations may depend on it. A mismatch between embedding model and similarity metric can significantly degrade retrieval quality, even if the infrastructure itself is functioning correctly.
+
+### Indexing strategies
+
+Indexing is the defining feature that distinguishes a vector database from a simple vector store. An index organizes vectors so that nearest-neighbor queries can be answered efficiently without exhaustive comparison.
+
+Tree-based structures, such as KD-trees or ball trees, recursively partition the space and work well in low to moderate dimensions, but they degrade rapidly as dimensionality increases. Hash-based methods, particularly locality-sensitive hashing, map nearby vectors to the same buckets with high probability, enabling fast candidate generation at the cost of approximate results.
+
+Graph-based indexes represent vectors as nodes in a graph, with edges connecting nearby neighbors. During search, the algorithm navigates the graph starting from an entry point and greedily moves toward vectors that are closer to the query. These structures scale well to high dimensions and large datasets and are widely used in modern systems.
+
+Quantization-based approaches compress vectors into more compact representations, reducing memory footprint and improving cache efficiency. While quantization introduces approximation error, it often yields favorable trade-offs for large-scale deployments.
+
+### Core vector database algorithms
+
+Most production vector databases rely on a small family of ANN algorithms, often combined or layered for better performance. Hierarchical Navigable Small World (HNSW) graphs build multi-layer proximity graphs that enable logarithmic-like search behavior in practice. Inverted file (IVF) indexes first cluster vectors and then search only within the most relevant clusters. Product quantization (PQ) decomposes vectors into subspaces and encodes them compactly, enabling fast distance estimation.
+
+These algorithms are rarely used in isolation. A common pattern is coarse partitioning (such as IVF) followed by graph-based or quantized search within partitions. The database exposes high-level configuration knobs—index type, efSearch, nprobe, recall targets—but internally orchestrates multiple algorithmic stages to balance latency, recall, and memory usage.
+
+### Vector databases in RAG systems
+
+In a RAG architecture, the vector database acts as the semantic memory layer. Document chunks are embedded and indexed once during ingestion, while user queries are embedded and searched at runtime. The quality of retrieval depends jointly on embedding quality, similarity metric, index choice, and search parameters. As a result, vector databases are not passive storage components but active participants in the behavior of the overall system.
+
+Tuning a RAG system often involves iterative adjustments to vector database configuration: choosing an index that matches data scale, increasing recall at the expense of latency, or combining vector search with metadata filters to enforce structural constraints. Understanding how vector databases work internally is therefore essential for diagnosing retrieval failures and for designing robust, scalable RAG pipelines.
+
+
+## Core Vector Database Algorithms
+
+Vector databases are fundamentally concerned with solving the *nearest neighbor search* problem in high-dimensional continuous spaces. The practical design of these systems is best understood by starting from the formal problem definition and then examining how successive algorithmic relaxations make large-scale retrieval tractable.
+
+### Formal problem definition
+
+Let
+[
+\mathcal{X} = {x_1, x_2, \dots, x_n}, \quad x_i \in \mathbb{R}^d
+]
+be a collection of vectors embedded in a ( d )-dimensional space, and let
+[
+q \in \mathbb{R}^d
+]
+be a query vector. Given a distance function ( \delta(\cdot, \cdot) ), the *exact nearest neighbor* problem is defined as
+[
+\operatorname{NN}(q) = \arg\min_{x_i \in \mathcal{X}} \delta(q, x_i)
+]
+
+For cosine similarity, this becomes
+[
+\operatorname{NN}(q) = \arg\max_{x_i \in \mathcal{X}} \frac{q \cdot x_i}{|q| |x_i|}
+]
+
+A brute-force solution requires ( O(nd) ) operations per query, which is computationally infeasible for large ( n ). The central challenge addressed by vector database algorithms is to reduce this complexity while preserving ranking quality.
+
+### High-dimensional effects and approximation
+
+As dimensionality increases, distances between points concentrate. For many distributions, the ratio
+[
+\frac{\min_i \delta(q, x_i)}{\max_i \delta(q, x_i)} \rightarrow 1 \quad \text{as } d \rightarrow \infty
+]
+
+This phenomenon undermines exact pruning strategies and motivates *Approximate Nearest Neighbor (ANN)* search. ANN replaces the exact objective with a relaxed one:
+[
+\delta(q, \hat{x}) \le (1 + \varepsilon) \cdot \delta(q, x^*)
+]
+where ( x^* ) is the true nearest neighbor.
+
+All modern vector database algorithms can be understood as structured approximations to this relaxed objective.
+
+---
+
+## Partition-based search: Inverted File Index (IVF)
+
+The inverted file index reduces search complexity by introducing a *coarse quantization* of the vector space. Let
+[
+C = {c_1, \dots, c_k}
+]
+be a set of centroids obtained via k-means clustering:
+[
+C = \arg\min_{C} \sum_{i=1}^{n} \min_{c_j \in C} |x_i - c_j|^2
+]
+
+Each vector is assigned to its closest centroid:
+[
+\text{bucket}(x_i) = \arg\min_{c_j \in C} |x_i - c_j|
+]
+
+At query time, the search proceeds in two stages. First, the query is compared against all centroids:
+[
+d_j = |q - c_j|
+]
+Then, only the vectors stored in the ( n_{\text{probe}} ) closest buckets are searched exhaustively.
+
+#### IVF query algorithm (pseudo-code)
+
+```
+function IVF_SEARCH(query q, centroids C, buckets B, n_probe):
+    distances = compute_distance(q, C)
+    selected = argmin_n(distances, n_probe)
+    candidates = union(B[c] for c in selected)
+    return top_k_by_distance(q, candidates)
+```
+
+This reduces query complexity to approximately
+[
+O(kd + \frac{n}{k} \cdot n_{\text{probe}} \cdot d)
+]
+which is sublinear in ( n ) for reasonable values of ( k ) and ( n_{\text{probe}} ).
+
+---
+
+## Vector compression: Product Quantization (PQ)
+
+Product Quantization further reduces computational and memory costs by compressing vectors. The original space ( \mathbb{R}^d ) is decomposed into ( m ) disjoint subspaces:
+[
+x = (x^{(1)}, x^{(2)}, \dots, x^{(m)})
+]
+
+Each subspace is quantized independently using a codebook:
+[
+Q_j : \mathbb{R}^{d/m} \rightarrow {1, \dots, k}
+]
+
+A vector is encoded as a sequence of discrete codes:
+[
+\text{PQ}(x) = (Q_1(x^{(1)}), \dots, Q_m(x^{(m)}))
+]
+
+Distance computation uses *asymmetric distance estimation*:
+[
+\delta(q, x) \approx \sum_{j=1}^{m} | q^{(j)} - c_{Q_j(x)}^{(j)} |^2
+]
+
+#### PQ distance computation (pseudo-code)
+
+```
+function PQ_DISTANCE(query q, codes c, lookup_tables T):
+    dist = 0
+    for j in 1..m:
+        dist += T[j][c[j]]
+    return dist
+```
+
+Theoretical justification comes from rate–distortion theory: PQ minimizes expected reconstruction error under constrained bit budgets. Empirically, it preserves relative ordering sufficiently well for ranking-based retrieval.
+
+---
+
+## Hash-based search: Locality-Sensitive Hashing (LSH)
+
+Locality-Sensitive Hashing constructs hash functions ( h \in \mathcal{H} ) such that
+[
+\Pr[h(x) = h(y)] = f(\delta(x, y))
+]
+where ( f ) decreases monotonically with distance.
+
+For Euclidean distance, a common family is
+[
+h_{a,b}(x) = \left\lfloor \frac{a \cdot x + b}{w} \right\rfloor
+]
+with random ( a \sim \mathcal{N}(0, I) ) and ( b \sim U(0, w) ).
+
+By concatenating hashes and using multiple tables, LSH achieves expected query complexity
+[
+O(n^\rho), \quad \rho < 1
+]
+
+Despite strong theoretical guarantees, LSH often underperforms graph-based methods in dense embedding spaces typical of neural models.
+
+---
+
+## Graph-based search: Navigable small-world graphs and HNSW
+
+Graph-based methods model the dataset as a proximity graph ( G = (V, E) ), where each node corresponds to a vector. Search proceeds via greedy graph traversal:
+[
+x_{t+1} = \arg\min_{y \in \mathcal{N}(x_t)} \delta(q, y)
+]
+
+Hierarchical Navigable Small World (HNSW) graphs extend this idea by constructing multiple graph layers. Each vector is assigned a maximum level:
+[
+\ell \sim \text{Geometric}(p)
+]
+
+Upper layers are sparse and provide long-range connections, while lower layers are dense and preserve local neighborhoods.
+
+#### HNSW search algorithm (simplified)
+
+```
+function HNSW_SEARCH(query q, entry e, graph G):
+    current = e
+    for level from max_level down to 1:
+        current = greedy_search(q, current, G[level])
+    return best_neighbors(q, current, G[0])
+```
+
+Theoretical intuition comes from small-world graph theory: the presence of long-range links reduces graph diameter, while local edges enable precise refinement. Expected search complexity is close to ( O(\log n) ), with high recall even in large, high-dimensional datasets.
+
+---
+
+## Algorithmic composition in vector databases
+
+In practice, vector databases compose these algorithms hierarchically. A typical pipeline applies IVF to reduce the candidate set, PQ to compress vectors and accelerate distance computation, and graph-based search to refine nearest neighbors. Each stage introduces controlled approximation while drastically reducing computational cost.
+
+This layered structure mirrors the mathematical decomposition of the nearest neighbor problem: spatial restriction, metric approximation, and navigational optimization.
+
+---
+
+## Implications for RAG systems
+
+In Retrieval-Augmented Generation, these algorithms define the semantic recall boundary of the system. Errors in retrieval are often consequences of approximation layers rather than embedding quality. Understanding the mathematical and algorithmic foundations of vector databases is therefore essential for diagnosing failure modes, tuning recall–latency trade-offs, and designing reliable RAG pipelines.
+
+Vector databases should thus be viewed not as storage engines, but as algorithmic systems grounded in decades of research on high-dimensional geometry, probabilistic approximation, and graph navigation.
+
+---
+
+## References
+
+1. Indyk, P., Motwani, R. *Approximate Nearest Neighbors: Towards Removing the Curse of Dimensionality*. STOC, 1998.
+2. Jégou, H., Douze, M., Schmid, C. *Product Quantization for Nearest Neighbor Search*. IEEE TPAMI, 2011.
+3. Johnson, J., Douze, M., Jégou, H. *Billion-scale similarity search with GPUs*. IEEE Transactions on Big Data, 2019.
+4. Malkov, Y., Yashunin, D. *Efficient and robust approximate nearest neighbor search using Hierarchical Navigable Small World graphs*. IEEE TPAMI, 2020.
+5. Andoni, A., Indyk, P. *Near-optimal hashing algorithms for approximate nearest neighbor in high dimensions*. FOCS, 2006.
+6. Indyk, P., Motwani, R. *Approximate Nearest Neighbors: Towards Removing the Curse of Dimensionality*. STOC, 1998.
+7. Johnson, J., Douze, M., Jégou, H. *Billion-scale similarity search with GPUs*. IEEE Transactions on Big Data, 2019.
+8. Malkov, Y., Yashunin, D. *Efficient and robust approximate nearest neighbor search using Hierarchical Navigable Small World graphs*. IEEE TPAMI, 2020.
+9. Jégou, H., Douze, M., Schmid, C. *Product Quantization for Nearest Neighbor Search*. IEEE TPAMI, 2011.
+10. [https://ai.pydantic.dev/](https://ai.pydantic.dev/)
+
+
+
+
+## Document Ingestion and Chunking
+
+Document ingestion is the process that transforms raw, heterogeneous source material into a structured, searchable representation suitable for retrieval-augmented generation.
+
+### Historical perspective
+
+The roots of document ingestion predate modern RAG systems by several decades. Early information retrieval systems in the 1960s and 1970s, such as vector space models and probabilistic retrieval, already required a preprocessing pipeline that normalized documents, removed noise, and represented text in a machine-processable form. Tokenization, stop-word removal, and stemming emerged in this era as practical responses to limited storage and computation.
+
+In the 1990s and early 2000s, large-scale search engines pushed ingestion pipelines further. Web crawling, HTML parsing, boilerplate removal, and inverted index construction became standard. Research on passage retrieval and question answering in the late 1990s introduced the idea that documents should not always be treated as indivisible units, but rather decomposed into smaller spans to improve recall and precision.
+
+The modern RAG ingestion pipeline crystallized after the widespread adoption of neural embeddings around 2018–2020. Dense vector representations made it possible to retrieve semantically similar content, but also introduced new constraints: embedding models have context length limits, and retrieval quality degrades when vectors represent overly long or heterogeneous text. As a result, document chunking became a first-class design concern, tightly coupled with ingestion rather than an afterthought.
+
+### The document ingestion pipeline
+
+At a conceptual level, document ingestion is a deterministic transformation pipeline. Its purpose is not to answer queries, but to prepare a stable corpus over which retrieval can operate efficiently and reproducibly.
+
+The pipeline typically begins with **source acquisition**. Documents may originate from files (PDFs, Word documents, Markdown), databases, web pages, APIs, or generated artifacts such as logs and reports. At this stage, ingestion systems focus on completeness and traceability: every ingested unit should retain a reference to its origin, version, and ingestion time.
+
+Next comes **parsing and normalization**. Raw formats are converted into a canonical internal representation, usually plain text plus structural annotations. For PDFs this may involve OCR; for HTML, DOM traversal and boilerplate removal; for code or structured data, language-aware parsers. Normalization also includes character encoding fixes, whitespace normalization, and the preservation of semantic boundaries such as headings, paragraphs, tables, or code blocks.
+
+Once text is normalized, the pipeline enriches it with **metadata**. Metadata may include document-level attributes (title, author, date, source, access control labels) and section-level attributes (heading hierarchy, page number, offsets). This metadata is critical later for filtering, ranking, and provenance tracking, even if it plays no role in embedding computation itself.
+
+Only after these steps does **chunking** occur. Chunking transforms a single normalized document into a sequence of smaller, partially overlapping or non-overlapping text segments. Each chunk becomes the atomic unit for embedding and storage in a vector database. Importantly, chunking is not merely a technical workaround for context limits; it encodes assumptions about how information should be retrieved and recombined at generation time.
+
+Finally, each chunk is **embedded and stored**, together with its metadata and a reference back to the source document. Although embedding and storage are sometimes discussed as part of retrieval infrastructure, from a systems perspective they conclude the ingestion phase: the corpus is now ready to be queried.
+
+### Document chunking: motivations and constraints
+
+Chunking addresses three fundamental constraints.
+
+First, embedding models have finite context windows. A single vector must summarize its input text, and beyond a certain length this summary becomes lossy. Chunking bounds this loss.
+
+Second, retrieval operates at the level of chunks, not documents. If a document contains multiple unrelated topics, a single embedding will conflate them. Chunking improves semantic locality, allowing retrieval to surface only the relevant parts.
+
+Third, generation benefits from focused context. Passing a handful of precise chunks to a language model is generally more effective than passing an entire document, even if the model could technically accept it.
+
+These constraints imply that chunking is an information-theoretic trade-off between context completeness and semantic specificity.
+
+### Chunking strategies
+
+The simplest strategy is **fixed-size chunking**, where text is split every *N* tokens or characters. This approach is easy to implement and model-agnostic, but it ignores document structure. Chunks may begin or end mid-sentence, which can reduce embedding quality.
+
+A small refinement is **fixed-size chunking with overlap**. Consecutive chunks share a window of tokens, reducing boundary effects and preserving continuity across chunks. Overlap improves recall at the cost of storage and compute.
+
+A more semantically informed approach is **structure-aware chunking**. Here, chunk boundaries align with natural units such as paragraphs, sections, or headings, subject to a maximum size constraint. This strategy preserves discourse coherence and is especially effective for technical documents, manuals, and academic papers.
+
+In domains where meaning depends on logical flow, **recursive or hierarchical chunking** is often used. Large sections are split into subsections, then paragraphs, and finally sentences until size constraints are satisfied. Each chunk retains metadata describing its position in the hierarchy, enabling later aggregation or re-ranking.
+
+Finally, **semantic chunking** attempts to split text based on topic shifts rather than explicit structure. This can be implemented using lightweight similarity checks between adjacent spans. While more computationally expensive, it can produce chunks that align closely with conceptual units.
+
+### Illustrative chunking logic
+
+The following pseudocode illustrates structure-aware chunking with a size constraint, without committing to a specific framework or library:
+
+```python
+def chunk_document(sections, max_tokens, overlap):
+    chunks = []
+    for section in sections:
+        buffer = []
+        token_count = 0
+
+        for paragraph in section.paragraphs:
+            p_tokens = count_tokens(paragraph)
+
+            if token_count + p_tokens > max_tokens:
+                chunks.append(join(buffer))
+                buffer = buffer[-overlap:] if overlap > 0 else []
+                token_count = count_tokens(buffer)
+
+            buffer.append(paragraph)
+            token_count += p_tokens
+
+        if buffer:
+            chunks.append(join(buffer))
+
+    return chunks
+```
+
+This pattern highlights two core ideas: chunking respects document structure, and size constraints are enforced incrementally rather than by naïve slicing.
+
+### Chunking as a design decision
+
+Chunk size, overlap, and boundary selection are not universal constants. They depend on embedding dimensionality, model context limits, expected query granularity, and downstream re-ranking strategies. In practice, ingestion pipelines often expose these parameters explicitly, treating chunking as a tunable component rather than a fixed preprocessing step.
+
+A well-designed ingestion pipeline therefore makes chunking reproducible, auditable, and revisable. Re-chunking a corpus with different parameters should be possible without re-ingesting raw sources, enabling systematic evaluation and iteration.
+
+### Statistical chunking (unsupervised segmentation)
+
+Statistical chunking refers to a family of methods that segment documents into coherent units using distributional signals derived directly from the text, without relying on predefined structure or large language models.
+
+The origins of statistical chunking can be traced to work on **text segmentation** and **topic boundary detection** in the 1990s. Early systems sought to divide long documents into topically coherent segments by exploiting lexical cohesion: the intuition that words related to the same topic tend to recur within a segment and change abruptly at topic boundaries. This line of research emerged in parallel with probabilistic language modeling and information retrieval, well before dense embeddings were available.
+
+A canonical example is the TextTiling algorithm, which introduced the idea of sliding a window over a document and measuring similarity between adjacent blocks of text. When similarity drops sharply, a topic boundary is inferred. Later work extended this idea using probabilistic models, such as Hidden Markov Models and Bayesian topic models, to infer latent segment structure.
+
+In a modern ingestion pipeline, statistical chunking is best understood as a **model-light, data-driven alternative** to both rule-based and LLM-based chunking. Instead of enforcing fixed sizes or asking a model to reason about discourse, the system observes how word distributions evolve across the document and places boundaries where the statistics change.
+
+The core mechanism typically follows a common pattern. The document is first divided into small, uniform units such as sentences or short paragraphs. Each unit is represented as a vector, often using term frequency–inverse document frequency (TF–IDF) or other bag-of-words–based representations. A similarity measure is then computed between adjacent windows of units. Low similarity indicates a potential topic shift and thus a candidate chunk boundary.
+
+Conceptually, this can be expressed as follows:
+
+```python
+units = split_into_sentences(document)
+vectors = tfidf_encode(units)
+
+boundaries = []
+for i in range(1, len(vectors)):
+    sim = cosine_similarity(vectors[i-1], vectors[i])
+    if sim < threshold:
+        boundaries.append(i)
+
+chunks = merge_units(units, boundaries)
+```
+
+Although simplified, this illustrates the essence of statistical chunking: segmentation emerges from local changes in distributional similarity rather than explicit semantic reasoning.
+
+Several variations exist. Some approaches smooth similarity scores over a wider window to avoid spurious boundaries. Others apply clustering algorithms, grouping adjacent units into segments that maximize intra-segment similarity. Topic-model–based approaches, such as Latent Dirichlet Allocation, infer a latent topic mixture for each unit and place boundaries where the dominant topic changes.
+
+Statistical chunking offers a number of practical advantages. It is deterministic, reproducible, and inexpensive compared to LLM-based methods. It also scales well to very large corpora and can be applied uniformly across domains without prompt engineering. For ingestion pipelines that prioritize stability and cost control, these properties are attractive.
+
+However, statistical methods have well-known limitations. Lexical variation can obscure topic continuity, especially when the same concept is expressed using different terminology. Conversely, shared vocabulary can mask genuine topic shifts. As a result, statistical chunking tends to perform best on expository or technical text with consistent terminology and degrades on narrative, conversational, or highly abstract material.
+
+In contemporary RAG systems, statistical chunking is often used as a **baseline or first-pass segmentation**. Its output may be refined by structure-aware heuristics or selectively reprocessed using LLM-based chunking. This layered approach preserves the efficiency and determinism of statistical methods while allowing higher-level semantic models to intervene where they add the most value.
+
+From an architectural perspective, statistical chunking reinforces the idea that document ingestion is a spectrum of techniques rather than a single algorithm, with different strategies occupying different points in the trade-off space between cost, interpretability, and semantic fidelity.
+
+
+### LLM-based chunking (topic-aware chunking)
+
+An increasingly common alternative to heuristic chunking is **LLM-based chunking**, where a language model is explicitly asked to segment a document into coherent topical units.
+
+The idea of using models to guide segmentation has roots in earlier work on text segmentation and discourse modeling, such as topic segmentation with probabilistic models or lexical cohesion methods in the late 1990s. However, these approaches were limited by shallow representations and required careful feature engineering. Large language models change the landscape by providing a strong prior over discourse structure, topic boundaries, and semantic coherence, making it possible to delegate chunking decisions to the model itself.
+
+In LLM-based chunking, the ingestion pipeline treats the document (or a large section of it) as input to a language model and asks the model to identify topical segments. Instead of enforcing a fixed token budget upfront, the model is instructed to split the text into chunks that each represent a single topic, concept, or subtask, optionally subject to soft size constraints. Each resulting chunk is then embedded and stored like any other ingestion unit.
+
+Conceptually, this approach reframes chunking from a syntactic operation into a semantic one. The model is no longer constrained to respect paragraph or sentence boundaries alone; it can merge multiple paragraphs into one chunk if they form a single idea, or split a long paragraph if it contains multiple distinct topics. This is particularly valuable for documents with weak or inconsistent structure, such as internal reports, design documents, meeting notes, or conversational transcripts.
+
+A typical prompt for LLM-based chunking specifies three elements. First, the **segmentation objective**, for example “split the document into self-contained topical sections suitable for retrieval.” Second, **constraints**, such as a maximum target length per chunk or a preference for fewer, larger chunks over many small ones. Third, the **output schema**, which usually requires the model to return a list of chunks with titles, summaries, or offsets to support traceability.
+
+The following pseudocode illustrates the pattern at a high level:
+
+```python
+prompt = """
+You are given a document.
+Split it into coherent topical chunks.
+Each chunk should cover a single topic and be self-contained.
+Prefer chunks under 300 tokens when possible.
+
+Return a JSON list of:
+- title
+- chunk_text
+"""
+
+chunks = llm(prompt, document_text)
+
+for chunk in chunks:
+    vector = embed(chunk["chunk_text"])
+    store(vector, metadata={
+        "title": chunk["title"],
+        "source_doc": doc_id
+    })
+```
+
+This pattern highlights a key difference from traditional chunking: the model produces **semantic boundaries**, not just text spans. Titles or summaries generated during chunking can later be reused for retrieval diagnostics, re-ranking, or citation.
+
+LLM-based chunking has clear advantages, but it also introduces new trade-offs. Because the model is non-deterministic, chunk boundaries may vary across runs unless temperature is tightly controlled. The process is also more expensive than rule-based chunking and may require batching or hierarchical application for very large documents. Additionally, errors at ingestion time can be harder to detect, since chunk boundaries are no longer derived from explicit document structure.
+
+For these reasons, LLM-based chunking is often used selectively. Common patterns include applying it only to long or poorly structured documents, combining it with structure-aware pre-segmentation, or using it to refine coarse chunks produced by heuristic methods. In all cases, it should be treated as a configurable ingestion strategy rather than a default replacement for simpler approaches.
+
+From a systems perspective, LLM-based chunking reinforces a broader theme in modern RAG pipelines: ingestion is no longer a purely mechanical preprocessing step, but an opportunity to inject semantic understanding early in the lifecycle of the data.
+
+### References
+
+1. Salton, G., Wong, A., Yang, C. S. *A Vector Space Model for Automatic Indexing*. Communications of the ACM, 1975.
+2. Voorhees, E. M., Tice, D. M. *The TREC-8 Question Answering Track Evaluation*. TREC, 1999.
+3. Karpukhin, V. et al. *Dense Passage Retrieval for Open-Domain Question Answering*. EMNLP, 2020.
+4. Lewis, P. et al. *Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks*. NeurIPS, 2020.
+5. Izacard, G., Grave, E. *Leveraging Passage Retrieval with Generative Models for Open Domain Question Answering*. EACL, 2021.
+
+
+## Document Retrieval
+
+Document retrieval is the stage in a RAG system that transforms a user query into a ranked, filtered set of candidate documents or passages that are most likely to support a correct answer.
+
+### Historical perspective
+
+Document retrieval predates modern language models by several decades and originates in classical Information Retrieval (IR). Early systems in the 1960s–1980s focused on Boolean retrieval and term matching, culminating in the vector space model, where documents and queries were represented as sparse term-frequency vectors. The introduction of probabilistic IR models in the 1990s, most notably BM25, provided a principled scoring framework grounded in relevance estimation rather than pure geometric similarity.
+
+From the mid-2000s onward, learning-to-rank methods reframed retrieval as a supervised ranking problem, combining many signals into a single scoring function. The 2010s introduced neural retrieval, first through latent semantic models and later through dense embeddings learned with deep neural networks. Modern RAG systems inherit all of these ideas: symbolic query rewriting from classical IR, sparse and dense retrieval models, multi-stage ranking pipelines, and explicit filtering using structured metadata. What is new is not the individual components, but their tight integration into a single retrieval pipeline optimized to serve downstream generative models.
+
+### Conceptual overview of document retrieval
+
+In a RAG system, document retrieval is not a single operation but a pipeline. A raw user query is progressively transformed, evaluated, and constrained until a small, high-quality context set is produced. Each stage trades recall for precision, with early stages favoring breadth and later stages favoring accuracy and relevance.
+
+At a high level, the retrieval process consists of query interpretation and rewriting, candidate generation, scoring, re-ranking, filtering, and combination with structured constraints. While these stages can be collapsed in small systems, large-scale RAG deployments almost always implement them explicitly to control cost, latency, and quality.
+
+### Query interpretation and rewriting
+
+User queries are often underspecified, ambiguous, or conversational. Before retrieval, the system may rewrite the query into one or more canonical forms that are better aligned with the indexed representation of documents. This includes expanding abbreviations, resolving coreferences, normalizing terminology, or decomposing a complex question into multiple sub-queries.
+
+In neural systems, query rewriting is frequently performed by a language model that produces a more retrieval-friendly query while preserving intent. Importantly, rewriting does not aim to answer the question, but to maximize the likelihood that relevant documents are retrieved.
+
+```python
+# Pseudocode for query rewriting
+rewritten_query = rewrite_model.generate(
+    original_query,
+    objective="maximize retrievability"
+)
+```
+
+Multiple rewritten queries may be generated to increase recall, with their results merged downstream.
+
+### Candidate generation
+
+Candidate generation is the first retrieval pass over the corpus. Its purpose is to retrieve a relatively large set of potentially relevant documents with high recall and low computational cost. This stage commonly uses either sparse retrieval (e.g., inverted indexes with BM25), dense vector search over embeddings, or both.
+
+Dense retrieval maps the rewritten query into the same embedding space as documents and retrieves nearest neighbors under a similarity metric. At this stage, approximate nearest neighbor algorithms are typically used to ensure scalability.
+
+```python
+# Dense candidate generation
+query_vector = embed(rewritten_query)
+candidates = vector_index.search(
+    query_vector,
+    top_k=K_large
+)
+```
+
+The output of this stage is intentionally noisy. Precision is improved later.
+
+### Scoring and initial ranking
+
+Each candidate document is assigned a relevance score with respect to the query. In simple systems, this score may be the similarity returned by the vector database or the BM25 score. In more advanced systems, multiple signals are combined, such as dense similarity, sparse similarity, document freshness, or domain-specific heuristics.
+
+Formally, scoring can be expressed as a function
+( s(d, q) \rightarrow \mathbb{R} ),
+where ( d ) is a document and ( q ) is the rewritten query. At this stage, the goal is to produce a reasonably ordered list, not a final ranking.
+
+### Re-ranking with cross-encoders or task-aware models
+
+Re-ranking refines the initial ranking using more expensive but more accurate models. Instead of independently embedding queries and documents, re-rankers jointly encode the query–document pair, allowing fine-grained interaction between their tokens. This substantially improves precision, especially at the top of the ranking.
+
+Because re-ranking is computationally expensive, it is applied only to a small subset of top candidates from the previous stage.
+
+```python
+# Re-ranking stage
+top_candidates = candidates[:K_small]
+reranked = reranker.score_pairs(
+    query=rewritten_query,
+    documents=top_candidates
+)
+```
+
+The result is a high-precision ordering optimized for downstream generation rather than generic relevance.
+
+### Filtering and constraints
+
+Filtering removes candidates that are irrelevant or invalid given explicit constraints. These constraints often come from metadata, such as document type, access permissions, time ranges, language, or domain tags. Filtering can be applied before retrieval to reduce the search space, after retrieval to prune results, or at both stages.
+
+In enterprise RAG systems, filtering is critical for correctness and safety. A highly relevant document that violates a constraint is worse than a less relevant but valid one.
+
+```python
+# Metadata-based filtering
+filtered = [
+    d for d in reranked
+    if d.metadata["access_level"] <= user_access
+]
+```
+
+### Combined strategies: metadata, SQL, and embeddings
+
+Modern retrieval pipelines frequently combine symbolic and vector-based approaches. A common pattern is to use structured queries (e.g., SQL or metadata filters) to narrow the candidate set, followed by dense similarity search within that subset. This hybrid approach exploits the strengths of both paradigms: exactness and interpretability from structured filters, and semantic generalization from embeddings.
+
+Conceptually, this corresponds to retrieving from a conditional distribution
+( p(d \mid q, m) ),
+where ( m ) represents structured metadata constraints.
+
+This combination is especially powerful in domains with rich schemas, such as scientific literature, enterprise knowledge bases, or regulatory documents.
+
+### Retrieval as a system, not a single model
+
+A key insight in modern RAG is that retrieval quality emerges from the interaction of stages rather than from any single algorithm. Query rewriting increases recall, candidate generation ensures coverage, scoring and re-ranking enforce relevance, and filtering guarantees validity. Treating retrieval as a modular pipeline allows systematic evaluation, targeted optimization, and controlled trade-offs between cost and quality.
+
+### References
+
+1. Gerard Salton, Andrew Wong, and Chung-Shu Yang. *A Vector Space Model for Automatic Indexing*. Communications of the ACM, 1975.
+2. Stephen Robertson and Hugo Zaragoza. *The Probabilistic Relevance Framework: BM25 and Beyond*. Foundations and Trends in Information Retrieval, 2009.
+3. Omar Khattab and Matei Zaharia. *ColBERT: Efficient and Effective Passage Search via Contextualized Late Interaction*. SIGIR, 2020.
+4. Lee et al. *Dense Passage Retrieval for Open-Domain Question Answering*. EMNLP, 2019.
+5. Nogueira and Cho. *Passage Re-ranking with BERT*. arXiv, 2019.
+6. Litschko et al. *Evaluating Hybrid Retrieval Approaches for Retrieval-Augmented Generation*. arXiv, 2023.
+
+
+# Chapter 7: RAG
+
+## Evaluating RAG Systems
+
+**Evaluating a Retrieval-Augmented Generation (RAG) system means measuring, in a principled way, how well retrieval and generation jointly support factual, relevant, and grounded answers.**
+
+### Historical perspective
+
+Evaluation of RAG systems sits at the intersection of two older research traditions: information retrieval (IR) and natural language generation. Long before RAG, classical IR research in the 1960s–1990s focused on evaluating document retrieval quality using relevance judgments and set-based metrics such as precision and recall, formalized in early test collections like Cranfield and later standardized through TREC. These methods assumed a human reader as the final consumer of retrieved documents, not a generative model.
+
+In parallel, natural language generation and question answering research developed its own evaluation practices, often relying on string-overlap metrics such as BLEU and ROUGE, or task-specific accuracy measures. With the emergence of neural open-domain QA in the 2010s, retrieval and generation began to merge, but evaluation was still typically split: retrieval was evaluated independently, and generation was evaluated against gold answers.
+
+The first RAG-style systems, appearing around 2020 with dense retrieval and pretrained language models, exposed the limitations of this separation. A system could retrieve highly relevant documents yet fail to use them correctly, or produce fluent answers that were weakly grounded or even hallucinated. This led to a shift toward multi-level evaluation: measuring vector search quality, document retrieval effectiveness, and end-to-end answer quality together. More recent work emphasizes faithfulness, attribution, and robustness, reflecting the use of RAG in high-stakes and enterprise settings where correctness and traceability matter as much as surface-level answer quality.
+
+---
+
+## Evaluation layers in RAG systems
+
+A modern RAG system is best evaluated as a pipeline with interacting components rather than a single black box. Each layer answers a different question: *are we retrieving the right things, are we selecting the right evidence, and does the final answer correctly use that evidence?*
+
+### Metrics for vector search
+
+Vector search evaluation focuses on the quality of nearest-neighbor retrieval in embedding space, independent of any downstream generation. The goal is to assess whether semantically relevant items are geometrically close to the query embedding.
+
+Typical metrics are based on ranked retrieval. Recall@k measures whether at least one relevant item appears in the top-k results, which is particularly important in RAG because downstream components only see a small retrieved set. Precision@k captures how many of the retrieved items are relevant, but is often secondary to recall in early retrieval stages. Mean Reciprocal Rank (MRR) emphasizes how early the first relevant item appears, reflecting latency-sensitive pipelines. Normalized Discounted Cumulative Gain (nDCG) generalizes these ideas when relevance is graded rather than binary.
+
+In practice, vector search evaluation requires a labeled dataset of queries paired with relevant documents or passages. These labels are often incomplete or noisy, which is why recall-oriented metrics are preferred: they are more robust to missing judgments.
+
+```python
+def recall_at_k(retrieved_ids, relevant_ids, k):
+    top_k = set(retrieved_ids[:k])
+    return int(len(top_k & relevant_ids) > 0)
+```
+
+This level of evaluation answers the question: *given a query embedding, does the vector index surface semantically relevant candidates?* It does not tell us whether these candidates are actually useful for answering the question.
+
+---
+
+### Metrics for document retrieval
+
+Document retrieval metrics evaluate the effectiveness of the full retrieval stack, which may include query rewriting, filtering, hybrid search, and re-ranking. Unlike pure vector search, this level is concerned with the *final set of documents passed to the generator*.
+
+The same families of metrics—Recall@k, MRR, and nDCG—are commonly used, but the unit of relevance is often more task-specific. Relevance may be defined as containing sufficient evidence to answer the question, not merely semantic similarity. This distinction is critical: a document can be topically related yet useless for grounding an answer.
+
+Evaluation at this level often relies on human annotation or weak supervision, such as matching retrieved passages against known supporting facts. In enterprise systems, retrieval quality is frequently evaluated by measuring coverage over authoritative sources, policy documents, or curated knowledge bases.
+
+Conceptually, this layer answers: *does the system retrieve the right evidence, in the right form, for generation?*
+
+---
+
+### End-to-end RAG metrics
+
+End-to-end evaluation treats the RAG system as a whole and measures the quality of the final answer. This is the most user-visible layer and the hardest to evaluate reliably.
+
+Traditional generation metrics such as exact match, F1, BLEU, or ROUGE are sometimes used when gold answers are available, but they are poorly aligned with the goals of RAG. A correct answer phrased differently may score poorly, while an answer that matches the gold text but is unsupported by retrieved evidence may score well.
+
+As a result, modern RAG evaluation increasingly emphasizes three complementary properties. **Answer correctness** measures whether the answer is factually correct with respect to a reference or authoritative source. **Groundedness or faithfulness** measures whether the answer can be directly supported by the retrieved documents. **Attribution quality** measures whether the system correctly cites or points to the evidence it used.
+
+LLM-based judges are often used to operationalize these criteria by comparing the answer against retrieved context and scoring dimensions such as correctness and support. While imperfect, this approach scales better than manual evaluation and aligns more closely with real-world usage.
+
+```python
+def judge_groundedness(answer, context):
+    prompt = f"""
+    Is the answer fully supported by the context?
+    Answer: {answer}
+    Context: {context}
+    """
+    return call_llm(prompt)
+```
+
+This level answers the question users actually care about: *does the system produce a correct, well-supported answer?*
+
+---
+
+## Measuring improvements in RAG systems
+
+Evaluating a single snapshot of a RAG system is rarely sufficient. What matters in practice is measuring *improvement* as the system evolves.
+
+A common baseline is a non-RAG model that answers questions without retrieval. Comparing end-to-end performance against this baseline isolates the value added by retrieval. If RAG does not outperform a strong non-RAG baseline, retrieval may be unnecessary or poorly integrated.
+
+Ablation studies are equally important. By selectively disabling components—such as query rewriting, re-ranking, or metadata filtering—one can measure their marginal contribution. This helps avoid overfitting to complex pipelines whose benefits are not well understood.
+
+Offline metrics should be complemented with online or human-in-the-loop evaluation where possible. User feedback, answer acceptance rates, and error analysis often reveal failure modes that are invisible to automated metrics, such as subtle hallucinations or missing caveats.
+
+Taken together, these practices shift evaluation from a one-time score to a continuous measurement discipline, which is essential for maintaining reliable RAG systems in production.
+
+---
+
+## References
+
+1. Voorhees, E. M., and Harman, D. *TREC: Experiment and Evaluation in Information Retrieval*. MIT Press, 2005.
+2. Karpukhin, V., et al. *Dense Passage Retrieval for Open-Domain Question Answering*. EMNLP, 2020. [https://arxiv.org/abs/2004.04906](https://arxiv.org/abs/2004.04906)
+3. Lewis, P., et al. *Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks*. NeurIPS, 2020. [https://arxiv.org/abs/2005.11401](https://arxiv.org/abs/2005.11401)
+4. Thorne, J., et al. *Evidence-based Fact Checking with Retrieval-Augmented Models*. EMNLP, 2018.
+5. Gao, T., et al. *RARR: Researching and Revising What Language Models Say, Using Language Models*. ACL, 2023. [https://arxiv.org/abs/2210.08726](https://arxiv.org/abs/2210.08726)
+
+
+## Attribution, Citation, Provenance, and Truth Maintenance
+
+Attribution in RAG systems concerns the ability to explicitly link generated statements to the source documents, data items, and transformations that produced them.
+
+### Historical perspective
+
+The roots of attribution and provenance long predate modern RAG systems. In database research of the late 1980s and 1990s, work on *data lineage* and *why-provenance* sought to explain how query results were derived from relational tables. This line of research matured in the early 2000s with formal models of provenance for SQL, XML, and workflow systems, motivated by scientific computing and data-intensive experiments where reproducibility was critical.
+
+In parallel, information retrieval and question answering research emphasized citation and evidence extraction. Early open-domain QA systems in the 2000s already attempted to return answer snippets together with document references, but attribution was heuristic and weakly coupled to generation. With the rise of neural language models in the late 2010s, attribution became a central concern again, now framed around *hallucinations* and unverifiable model outputs. Retrieval-augmented generation, introduced as a way to ground language models in external knowledge, naturally revived provenance, citation, and truth maintenance as first-class design goals. Recent work focuses on making attribution machine-readable, auditable, and robust across multi-step retrieval and generation pipelines.
+
+### Conceptual overview
+
+In a RAG system, attribution spans the entire information flow. Documents are ingested, transformed, chunked, embedded, retrieved, possibly re-ranked, and finally used as conditioning context for generation. Each of these steps introduces opportunities to lose or blur the connection between an output token and its original source. Attribution mechanisms aim to preserve this connection explicitly.
+
+Closely related but distinct concepts are often conflated. *Attribution* answers the question “which source supports this statement?”. *Citation* is the presentation layer, deciding how that source is exposed to users (for example, inline references or footnotes). *Provenance tracking* is the internal bookkeeping that records how data flowed through the system. *Truth maintenance* addresses how these links remain valid over time as documents, embeddings, or models change.
+
+A robust RAG system treats these as complementary layers rather than a single feature.
+
+### Attribution in RAG generation
+
+At generation time, attribution typically operates at the level of retrieved chunks rather than entire documents. Each chunk carries stable identifiers and metadata inherited from ingestion. During retrieval, these identifiers are preserved and propagated alongside the text content. The generator is then constrained or guided to associate generated statements with one or more of these chunk identifiers.
+
+A common pattern is to structure the model output so that answers and sources are produced together. This reduces ambiguity and allows downstream validation.
+
+```python
+# Conceptual output schema used by the generator
+{
+    "answer": "The BRCA1 gene is involved in DNA repair.",
+    "sources": [
+        {"doc_id": "oncology_review_2019", "chunk_id": "p3_c2"},
+        {"doc_id": "genetics_textbook", "chunk_id": "ch5_c7"}
+    ]
+}
+```
+
+Even when the language model is free-form, the system can post-process token spans and align them with the retrieved chunks that were present in context. The key requirement is that attribution identifiers remain machine-readable and stable across the pipeline.
+
+### References and citation strategies
+
+Citation is the user-facing expression of attribution. In RAG systems, citation strategies range from coarse to fine-grained. Some systems attach a single list of documents supporting the entire answer. More advanced designs provide sentence-level or clause-level citations, which improves trust and debuggability but requires tighter coupling between generation and retrieval.
+
+A critical design choice is whether citations are generated by the model or imposed by the system. Model-generated citations are flexible but error-prone, while system-enforced citations trade fluency for correctness. In practice, hybrid approaches are common: the system restricts the citation candidates to retrieved chunks, and the model selects among them.
+
+### Provenance tracking across the pipeline
+
+Provenance tracking is not limited to the final answer. It begins at ingestion and continues through retrieval and generation. Each transformation step should preserve or enrich provenance metadata rather than overwrite it.
+
+A minimal provenance record typically includes the original document identifier, version information, chunk boundaries, and timestamps. More advanced systems also track the embedding model version, retrieval parameters, and re-ranking decisions. This allows engineers to answer questions such as whether an incorrect answer was caused by stale data, poor retrieval, or model behavior.
+
+```python
+# Example of a provenance record attached to a retrieved chunk
+provenance = {
+    "doc_id": "clinical_guidelines_v2",
+    "doc_version": "2024-06-15",
+    "chunk_id": "sec4_para1",
+    "embedding_model": "text-embedding-v3",
+    "retrieval_score": 0.87
+}
+```
+
+Such records are rarely exposed to end users, but they are essential for auditing, debugging, and offline evaluation.
+
+### Truth maintenance in evolving RAG systems
+
+Truth maintenance addresses the fact that RAG systems are not static. Documents are updated, embeddings are recomputed, and models are replaced. Without explicit mechanisms, previously correct attributions can silently become invalid.
+
+One approach is versioned provenance. Every answer is associated not just with a document identifier, but with a specific document version and ingestion timestamp. When the underlying data changes, the system can detect that an answer depends on outdated sources and either invalidate it or trigger regeneration.
+
+Another approach borrows ideas from classical truth maintenance systems, where derived facts are linked to their supporting assumptions. When an assumption changes, all dependent conclusions are marked for review. In RAG, the “assumptions” correspond to retrieved chunks and their content. This framing is particularly useful in regulated or high-stakes domains, where stale answers are unacceptable.
+
+### Practical implications
+
+Attribution, provenance, and truth maintenance are often treated as optional add-ons in early RAG prototypes. In production systems, they quickly become essential. They enable explainability, support compliance requirements, and make systematic evaluation possible. More importantly, they turn RAG from a black-box augmentation trick into a transparent information system whose outputs can be inspected, trusted, and improved over time.
+
+### References
+
+1. Buneman, P., Khanna, S., Tan, W.-C. *Why and Where: A Characterization of Data Provenance*. ICDT, 2001.
+2. Cheney, J., Chiticariu, L., Tan, W.-C. *Provenance in Databases: Why, How, and Where*. Foundations and Trends in Databases, 2009.
+3. Lewis, P., et al. *Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks*. NeurIPS, 2020.
+4. Rashkin, H., et al. *Increasing Faithfulness in Knowledge-Grounded Dialogue with Attributed Responses*. ACL, 2021.
+5. Thorne, J., Vlachos, A. *Automated Fact Checking: Task Formulations, Methods and Future Directions*. COLING, 2018.
 
 
 
