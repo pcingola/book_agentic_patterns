@@ -1,4 +1,4 @@
-# MCP: Model
+# MCP: Model Context Protocol
 
 [Intro](./introduction.md)
 

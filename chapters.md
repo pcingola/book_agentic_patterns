@@ -148,9 +148,13 @@ All about building larger systems from smaller pieces.
 
 ### Chapter 8: [MCP](chapters/08_mcp/chapter.md)
 
-- [ ] MCP in depth
+- [x] Intro
+- [x] Tools
+- [x] Features
+- [x] Achitecture
+- [x] Code snuppets
 
-### Chapter 9: A2A
+### Chapter 9: [A2A](./chapters/09_a2a/chapter.md)
 
 - [ ] A2A in depth
 
