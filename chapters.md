@@ -156,12 +156,29 @@ All about building larger systems from smaller pieces.
 
 ### Chapter 9: [A2A](./chapters/09_a2a/chapter.md)
 
-- [ ] A2A in depth
+- [x] Intro
+- [x] Tassk: 
+- [x] A2A in Detail
+- [x] Security
+
+### Chapter 10: [Skills](./chapters/10_skills/chapter.md)
+
+- [x] Introduction
+- [x] Specification
+- [x] Engineering: Skills with A2A, and MCPs.
+
+### Chapter 10: Connectors
+
+- [ ] Introduction
+- [ ] Connector patterns
+- [ ] SQL databases
+- [ ] OpenApi / REST APIs
+- [ ] File based connectors (CSV, Excel, JSON, XML, etc)
+- [ ] SaaS connectors (e.g. Google Sheets, Salesforce, etc)
 
 ### Chapter 10: Modularity & Composition
 
 - [ ] AGENTS.md and coding-agent conventions
-- [ ] Skills and progressive disclosure
 - [ ] Subagents
 - [ ] Agent hierarchies
 - [ ] Agent swarms

@@ -2,9 +2,14 @@
 
 # References (to read / include)
 
-- [LLMs TXT](https://llmstxt.org/)
-- https://www.philschmid.de/agent-harness-2026
-- http://www.incompleteideas.net/IncIdeas/BitterLesson.html
+- CONCEPT "Connectors": https://claude.com/connectors
+
+- CONCEPT "Harness": https://www.philschmid.de/agent-harness-2026
+
+- STANDARDT "llms.txt": https://llmstxt.org
+
+- BEST PRACTICE: http://www.incompleteideas.net/IncIdeas/BitterLesson.html
+
 - https://opencode.ai/
 
 

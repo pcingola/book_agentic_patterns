@@ -12,6 +12,10 @@ fi
 rm -rf "$OUTPUT_DIR"
 mkdir -p "$OUTPUT_DIR"
 
+if [ -f "$PROJECT_DIR/title_page.md" ]; then
+    cat "$PROJECT_DIR/title_page.md" > "$OUTPUT_DIR/book.md"
+fi
+
 find "$PROJECT_DIR/chapters" -maxdepth 1 -type d -name "[0-9]*" | sort | while read -r chapter_dir; do
     chapter_name=$(basename "$chapter_dir")
     chapter_file="$chapter_dir/chapter.md"
@@ -21,6 +25,8 @@ find "$PROJECT_DIR/chapters" -maxdepth 1 -type d -name "[0-9]*" | sort | while r
         echo "Processing chapter '$chapter_dir'"
         "$PROJECT_DIR/scripts/make.py" "$chapter_file" > "$output_file"
         cat "$output_file" >> "$OUTPUT_DIR/book.md"
+        echo "" >> "$OUTPUT_DIR/book.md"
+        echo '\newpage' >> "$OUTPUT_DIR/book.md"
         echo "" >> "$OUTPUT_DIR/book.md"
 
         if [ "$GENERATE_PDF" = true ]; then

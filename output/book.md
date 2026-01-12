@@ -1,3 +1,11 @@
+---
+title: "Agentic Patterns"
+subtitle: "Design Patterns and Best Practices for Building Agentic Systems"
+author: ""
+date: ""
+---
+
+\newpage
 # Chapter 1: Core Agentic Patterns
 
 # Chapter 3: Core Agentic Patterns
@@ -335,6 +343,8 @@ When implemented correctly, HITL does not slow agents down unnecessarily. Instea
 5. OpenAI. *Best Practices for Human-in-the-Loop AI Systems*. Technical blog and documentation, 2023.
 
 
+
+\newpage
 
 # Tools
 
@@ -1065,6 +1075,8 @@ For modern agentic systems—especially those operating over long horizons, with
 5. Yao et al. *ReAct: Synergizing Reasoning and Acting in Language Models*. ICLR, 2023.
 
 
+\newpage
+
 ### Orchestration & Control Flow
 
 # Chapter 5: Orchestration & Control Flow
@@ -1511,6 +1523,8 @@ Despite these challenges, event-driven agents are increasingly central to real-w
 4. Luckham, D. *The Power of Events: An Introduction to Complex Event Processing*. Addison-Wesley, 2002.
 5. [https://ai.pydantic.dev/](https://ai.pydantic.dev/)
 
+
+\newpage
 
 # Execution Modes
 
@@ -2482,6 +2496,8 @@ This also clarifies a subtle but important point: *human-in-the-loop is not only
 
 
 
+\newpage
+
 # RAG (Retrieval-Augmented Generation)
 
 ## RAG: Introduction
@@ -3353,6 +3369,8 @@ Attribution, provenance, and truth maintenance are often treated as optional add
 5. Thorne, J., Vlachos, A. *Automated Fact Checking: Task Formulations, Methods and Future Directions*. COLING, 2018.
 
 
+
+\newpage
 
 # MCP: Model Context Protocol
 
@@ -4578,6 +4596,8 @@ mcp = create_mcp_server(
 
 This design document captures the essential patterns and architecture for building production-grade MCP servers with proper isolation, security, and error handling.
 
+\newpage
+
 # A2A: Model
 
 ## Introduction
@@ -5195,4 +5215,6 @@ This matches the spec’s client responsibilities (ACK with 2xx; process idempot
 
 
 
+
+\newpage
 
