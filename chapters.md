@@ -19,10 +19,11 @@ BEST PRACTICE: This is a label for best practices, it should be shown in a highl
 
 ### Chapter 1: Foundations
 
-- [ ] What is an Agent / Agentic System
-- [ ] Code and chapters
-- [ ] Single-agent vs multi-agent systems
-- [ ] Determinism vs stochasticity
+- [x] Book outline
+- [x] What is an Agent / Agentic System
+- [x] Determinism vs stochasticity
+- [x] Modularity: prompts, tools, MCP, A2A, Skills, sub-agents, workflows, graphs, etc.
+- [x] Best practices
 
 ### Chapter 2: [Core Patterns](chapters/02_core_patterns/chapter.md)
 
