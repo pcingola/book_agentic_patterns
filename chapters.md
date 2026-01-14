@@ -23,10 +23,16 @@ BEST PRACTICE: This is a label for best practices, it should be shown in a highl
 - [ ] Prompts: System, prompt, instructions
 - [ ] Prompt doctor
 
-- [ ] BEST PRACTICE: Define agent params in '.env' (use standard variable names across projects): `get_agent()`
+- [ ] BEST PRACTICE (single agent): Define (agent) params in '.env' (use standard variable names across projects): `get_agent()`
+- [ ] BEST PRACTICE (mult-agent): Define (agent) params in '.agents.json': `get_agent()`
 - [ ] BEST PRACTICE: Do not hard-code prompts (load prompts from files)
 - [ ] BEST PRACTICE: Read the prompt! Assume you are a junior person, on their first day at a new job: If you cannot do the task with ONLY the information in the prompt, the agent won't be able to do it either.
-- [ ] BEST PRACTICE: Prompt Doctor
+- [ ] BEST PRACTICE: Doctors / reviewer
+  - [ ] Prompt Doctor
+  - [ ] MCP Doctor
+  - [ ] A2A doctor
+  - [ ] Skills doctor
+  - [ ] llms.txt doctor
 
 ### Chapter 1: Foundations & Architecture
 
@@ -123,6 +129,7 @@ These are agents that execute code in different ways
   - [x] Metric for vector search / vector DBs
   - [x] End-to-end RAG metrics
 - [x] References, Citation, attribution, provenance and truth maintenance
+- [ ] BEST PRACTICE: Doctors / reviewer
 
 ### Chapter 7: Context & Memory
 
@@ -131,7 +138,7 @@ These are all about how agents manage information over time.
 - [ ] Prompts: System, prompt, instructions
 - [ ] Prompt engineering
 - [ ] Context engineering / Context window engineering
-  - [ ] "The dumb zone"
+  - [ ] DEFINITION: "The dumb zone"
   - [ ] Context compression
 - [ ] Token budgeting
 - [ ] Conversation history
@@ -161,14 +168,19 @@ All about building larger systems from smaller pieces.
 - [x] A2A in Detail
 - [x] Security
 
-### Chapter 10: [Skills](./chapters/10_skills/chapter.md)
+### Chapter: [Skills](./chapters/10_skills/chapter.md)
 
 - [x] Introduction
 - [x] Specification
 - [x] Engineering: Skills with A2A, and MCPs.
 
-### Chapter 10: Connectors
+### Chapter: Controlled vocabularies
 
+- [ ] Intro to controlled vocabularies
+- [ ] Enums: Small controlled vocabularies
+- [ ] Ontologies: RAG / Tree search / Beam search
+
+### Chapter: Connectors
 - [ ] Introduction
 - [ ] Connector patterns
 - [ ] SQL databases
@@ -176,25 +188,7 @@ All about building larger systems from smaller pieces.
 - [ ] File based connectors (CSV, Excel, JSON, XML, etc)
 - [ ] SaaS connectors (e.g. Google Sheets, Salesforce, etc)
 
-### Chapter 10: Modularity & Composition
-
-- [ ] AGENTS.md and coding-agent conventions
-- [ ] Subagents
-- [ ] Agent hierarchies
-- [ ] Agent swarms
-- [ ] MCP-based composition
-- [ ] A2A communication patterns
-
-### Chapter 11: UI
-
-- [ ] Chainlit
-- [ ] AGUI
-- [ ] ...(google's new protocol)
-- [ ] Session ID -> MCP / A2A tracking
-- [ ] File uploads
-- [ ] Error propagation
-
-### Chapter 12: Testing, Debugging, Evals, and Benchmarks
+### Chapter: Testing, Debugging, Evals, and Benchmarks
 
 - [ ] Prompt and tool unit tests
 - [ ] Contract tests for tools
@@ -203,15 +197,34 @@ All about building larger systems from smaller pieces.
 - [ ] Offline evals and benchmarks
 - [ ] Online evals and A/B testing
 - [ ] Regression testing across model and prompt versions
+- [ ] Eval creators (Agent that creates evals)
 
-### Chapter 13: Data
+### Chapter: Modularity & Composition
+
+- [ ] AGENTS.md and coding-agent conventions
+- [ ] Subagents
+- [ ] Agent hierarchies
+- [ ] Agent swarms
+- [ ] MCP-based composition
+- [ ] A2A communication patterns
+
+### Chapter: UI
+
+- [ ] Chainlit
+- [ ] AGUI
+- [ ] ...(google's new protocol)
+- [ ] Session ID -> MCP / A2A tracking
+- [ ] File uploads
+- [ ] Error propagation
+
+### Chapter: Data
 
 - [ ] Data source selection
 - [ ] CodeIndex
 - [ ] Document consistency
 - [ ] Knowledge updating and reconciliation
 
-### Chapter 14: Research & Science Agents
+### Chapter: Research & Science Agents
 
 - [ ] Biomni
 - [ ] Deep research
@@ -222,7 +235,7 @@ All about building larger systems from smaller pieces.
 
 ### Section 3: Production, Scaling & Enterprise
 
-### Chapter 15: Privacy & Governance
+### Chapter: Privacy & Governance
 
 Corporate security
 
@@ -232,7 +245,7 @@ Corporate security
 - [ ] Kill switches and containment
 - [ ] Compliance and auditability
 
-### Chapter 16: Security & Compliance for Agentic Systems
+### Chapter: Security & Compliance for Agentic Systems
 
 - [ ] Threat model for tool-using agents
 - [ ] Prompt injection and retrieval attacks
@@ -243,7 +256,7 @@ Corporate security
 - [ ] Policy enforcement (pre- [ ] and post-execution)
 - [ ] Human approval gates for high-impact actions
 
-### Chapter 17: Operations & Production
+### Chapter: Operations & Production
 
 - [ ] Error propagation: Tool, MCP, A2A, Agent, UI
   - [ ] MCP error handling and retry different than tool error handling
@@ -259,7 +272,7 @@ Corporate security
 
 ### Section 4: Advanced Topics
 
-### Chapter 18: Model Strategy & Runtime Economics
+### Chapter: Model Strategy & Runtime Economics
 
 - [ ] Model selection and routing
 - [ ] Small vs large models
@@ -270,7 +283,7 @@ Corporate security
 - [ ] Caching, memoization, batching
 - [ ] Streaming and early stopping
 
-### Chapter 19: Distributed Systems Concerns for Agentic Systems
+### Chapter: Distributed Systems Concerns for Agentic Systems
 
 - [ ] Distributed Systems Concerns for Agentic Systems
 - [ ] Partial observability and belief maintenance
@@ -279,14 +292,14 @@ Corporate security
 - [ ] Fault tolerance, partitions, and degraded operation
 - [ ] Idempotency and exactly-once semantics across agents
 
-### Chapter 20: Advanced Patterns
+### Chapter: Advanced Patterns
 
 - [ ] Personas and simulation
 - [ ] Role-playing and multi-perspective reasoning
 - [ ] Governance boards
 - [ ] Debate and arbitration agents
 
-### Chapter 21: Learning, Adaptation, and Self-Improvement
+### Chapter: Learning, Adaptation, and Self-Improvement
 
 - [ ] Online learning vs offline retraining
 - [ ] Preference learning and user modeling
@@ -295,7 +308,7 @@ Corporate security
 - [ ] Updating skills, tools, and policies safely
 - [ ] Guardrails for self-modifying agents
 
-### Chapter 22: Human Factors & Product Design
+### Chapter: Human Factors & Product Design
 
 - [ ] Intent clarification
 - [ ] When agents should ask questions

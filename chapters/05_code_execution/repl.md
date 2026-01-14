@@ -1,6 +1,5 @@
 ## REPL
 
-**One-line introduction.**
 The REPL pattern enables an agent to iteratively execute code in a shared, stateful environment, providing immediate feedback while preserving the illusion of a continuous execution context.
 
 ### Historical perspective

@@ -348,9 +348,7 @@ When implemented correctly, HITL does not slow agents down unnecessarily. Instea
 
 # Tools
 
-# Chapter 4: Tool Use
-
-## Tool Use (from Core Patterns)
+## Tool Use
 
 Tool use is the core of AI agents and agentic behavior: it is the pattern by which a model reasons about the world and then deliberately acts on it through external capabilities, closing the loop between cognition and execution.
 
@@ -418,8 +416,6 @@ In this sense, structured output is not an optional refinement but a foundationa
 5. PydanticAI. *Structured Output Concepts*. Documentation, 2024–2025. [https://ai.pydantic.dev/output/](https://ai.pydantic.dev/output/)
 
 
-# Chapter 4: Tool Use — the Fundamental Pattern
-
 ## Tool Discovery and Selection
 
 Tool discovery and selection is the pattern by which an agent determines which external capabilities are relevant to a task and decides which of them to invoke in order to make progress toward its goal.
@@ -434,7 +430,7 @@ With the advent of large language models, tool discovery and selection re-emerge
 
 At its core, tool discovery and selection separates *capability awareness* from *capability execution*. An agent reasons over descriptions of available tools—what they do, what inputs they require, what outputs they produce, and what constraints they impose—without being tightly coupled to their implementations. This allows the agent to treat tools as interchangeable capabilities rather than fixed function calls.
 
-In simple systems, a single agent may both select and invoke tools. However, as tool catalogs grow, this approach becomes inefficient. Presenting dozens or hundreds of tools to an agent increases context length, dilutes attention, and raises the likelihood of incorrect selection. To address this, tool discovery and selection can be structured as a two-stage agent process.
+In simple systems, a single agent may both select and invoke tools. However, as tool catalogs grow, this approach becomes inefficient. Presenting hundreds or thousands of tools to an agent increases context length, dilutes attention, and raises the likelihood of incorrect selection. To address this, tool discovery and selection can be structured as a two-stage agent process.
 
 In the first stage, a *tool-selection agent* performs global reasoning over the task and the full set of available tools. This agent does not execute tools. Its responsibility is to analyze the task requirements and identify which capabilities are potentially relevant. The output of this stage is a structured filter: a restricted subset of tools, possibly accompanied by constraints such as read-only access or domain limitations. This step may be cached or reused across similar tasks, since it is concerned with capability matching rather than execution details.
 
@@ -496,7 +492,13 @@ Once tool contracts are available, the model is constrained to produce structure
 Conceptually, a tool call looks like:
 
 ```json
-{ "name": "get_weather", "arguments": { "city": "Buenos Aires", "unit": "C" } }
+{
+    "name": "get_weather", 
+    "arguments": { 
+        "city": "Buenos Aires", 
+        "unit": "C"
+    }
+}
 ```
 
 Arguments are validated before execution. If validation fails, the error is returned to the model as structured feedback, allowing it to correct itself. Structured output thus replaces brittle parsing with explicit, enforceable contracts.
@@ -602,7 +604,7 @@ A useful mental model is to treat every tool invocation as a privileged operatio
 
 The most fundamental distinction is between **read** and **write** capabilities.
 
-**Read tools** observe or retrieve information without modifying external state. Examples include database queries, file reads, or internet search. Although often considered “safe,” read tools can still leak sensitive information indirectly, especially when their results are combined with private context.
+**Read tools** observe or retrieve information without modifying external state. Examples include database queries, file reads, or internet search. Although often considered “safe”, read tools can still leak sensitive information indirectly, especially when their results are combined with private context.
 
 **Write tools** mutate state: updating a database, sending an email, executing a transaction, or modifying files. These tools carry a higher risk because mistakes are persistent and sometimes irreversible.
 
@@ -687,8 +689,6 @@ Tool permissions therefore act as the practical bridge between abstract agent au
 
 The workspace pattern introduces a shared, persistent file system that agents and tools use to externalize intermediate artifacts, manage context, and coordinate work beyond the limits of the model’s prompt.
 
----
-
 ### Historical perspective
 
 The workspace pattern has deep roots in earlier AI research, long before language models imposed explicit context window constraints. Classical symbolic AI systems already separated transient reasoning from persistent state. Planning systems of the 1970s represented world states and intermediate plans in external data structures that survived individual inference steps. This separation made it possible to reason incrementally without recomputing everything from scratch.
@@ -696,8 +696,6 @@ The workspace pattern has deep roots in earlier AI research, long before languag
 In the 1980s, blackboard architectures made this idea explicit. Multiple specialized components cooperated indirectly by reading from and writing to a shared data store, rather than communicating through tightly coupled message passing. Cognitive architectures such as Soar and ACT-R later reinforced this distinction between short-term working memory and longer-lived declarative or procedural memory.
 
 Modern agentic systems rediscover the same need under new constraints. Large language models are stateless and bounded by a finite context window, while real-world tasks often produce artifacts that are large, multi-modal, and persistent. The workspace re-emerges as the natural solution: a place outside the model where results, evidence, and intermediate state can accumulate over time.
-
----
 
 ### The workspace as a concrete abstraction
 
@@ -707,15 +705,11 @@ By relying on files as the shared medium, the workspace becomes universally acce
 
 Conceptually, the workspace sits between the agent’s internal reasoning loop and the external world. It is not part of the model’s hidden state, and it is not necessarily user-facing output. Instead, it functions as shared working material: drafts, logs, datasets, generated assets, and partial results.
 
----
-
 ### Sharing and coordination
 
 A defining property of the workspace is that it is shared. Tools do not pass large payloads to each other directly; they leave artifacts behind. Another tool, or another agent, can later pick them up by reading the same files. Humans can also inspect or modify these artifacts, turning the workspace into a collaboration surface rather than a hidden implementation detail.
 
 This indirect coordination significantly reduces coupling. A tool only needs to know how to write its output and how to describe where it was written. It does not need to know which agent, tool, or human will consume it next. As systems scale to dozens of tools and agents, this loose coupling becomes essential.
-
----
 
 ### Context management, memory, and RAG
 
@@ -724,8 +718,6 @@ The workspace plays a central role in managing limited context windows. Large in
 Over time, the workspace naturally takes on the role of long-term memory. Artifacts persist across runs and can be selectively reintroduced into context when needed. This aligns closely with retrieval-augmented generation: documents stored in the workspace can be indexed, embedded, retrieved, and summarized, without ever forcing the full content back into the model’s prompt.
 
 The result is a clear separation of concerns. The model reasons over concise summaries and pointers, while the workspace holds the unbounded, durable material.
-
----
 
 ### Writing files instead of returning large outputs
 
@@ -747,8 +739,6 @@ def analyze_large_dataset(data, workspace):
 
 This allows the agent to continue reasoning without polluting its context, while preserving full fidelity in the external artifact.
 
----
-
 ### Multi-modal tools and the workspace
 
 The workspace pattern is especially important for multi-modal tools. Images, audio, and video are naturally file-based artifacts and do not fit cleanly into textual prompts. Rather than attempting to encode or inline such outputs, tools should write them to the workspace and return lightweight metadata.
@@ -769,15 +759,11 @@ def generate_image(prompt, workspace):
 
 This keeps the agent’s reasoning loop purely textual while enabling rich, multi-modal outputs to flow through the system.
 
----
-
 ### Tool composition and system robustness
 
 Because tools communicate indirectly through files, the workspace enables flexible composition. Tool chains can be rearranged without changing interfaces, partial failures can be inspected by examining intermediate artifacts, and retries become simpler because previous outputs already exist on disk.
 
 In practice, the workspace often doubles as a debugging and audit surface. Especially in enterprise or regulated environments, the ability to inspect what an agent produced at each step is as important as the final answer.
-
----
 
 ### References
 
@@ -911,7 +897,7 @@ for r in recommendations:
         apply_fix(r)
 ```
 
-Your provided implementation follows this pattern closely. It batches tools to stay within context limits, ignores well-defined or irrelevant tools, and focuses on non-trivial improvements. This batching is not an optimization detail but a design constraint: tool doctors are meant to be run repeatedly during development, and they must scale to tool libraries with dozens or hundreds of entries.
+Your provided implementation follows this pattern closely. It batches tools to stay within context limits, ignores well-defined or irrelevant tools, and focuses on non-trivial improvements. This batching is not an optimization detail but a design constraint: tool doctors are meant to be run repeatedly during development, and they must scale to tool libraries with hundreds or thousands of entries.
 
 A key design choice is that recommendations are *structured*, not free-form text. By emitting typed findings—tool name, issue category, severity, and suggested changes—the tool doctor enables downstream automation. Recommendations can be surfaced in CI pipelines, turned into pull request comments, or even applied semi-automatically to regenerate improved tool schemas.
 
@@ -966,8 +952,6 @@ This combination preserves autonomy where it is safe and cheap, while providing 
 
 The Model Context Protocol (MCP) defines a standardized, long-lived interface through which models interact with external capabilities—tools, resources, and stateful services—using structured messages over well-defined transports.
 
----
-
 ### Historical perspective
 
 The emergence of MCP is closely tied to the practical challenges encountered in early desktop and IDE-style agent deployments around 2023–2024. Systems such as Claude Desktop exposed local capabilities—files, shells, search indices, and custom utilities—to language models. Initially, these integrations relied on embedding tool descriptions directly into prompts and parsing structured outputs. While workable for short-lived interactions, this approach quickly showed its limits as sessions became longer, tools more numerous, and state more complex.
@@ -976,23 +960,17 @@ The architectural inspiration for MCP comes largely from the Language Server Pro
 
 From a research perspective, MCP builds on earlier work in tool-augmented language models, program synthesis with external oracles, and agent architectures that distinguish reasoning from acting. As agents evolved from single-turn planners into systems expected to operate continuously—maintaining memory, monitoring processes, and reacting to external events—the lack of a stable interaction protocol became a bottleneck. MCP arises not as a new reasoning paradigm, but as the infrastructural layer required to make agentic behavior robust over time.
 
----
-
 ### From embedded tools to protocolized capabilities
 
 Traditional tool use patterns treat tools as prompt-level constructs: schemas are injected into context, the model emits a structured call, and the runtime executes it. MCP reframes this interaction by moving tools out of the prompt and into **external servers** that expose capabilities through a shared protocol.
 
 In this model, a tool is no longer a static definition bundled with the agent. It is a remotely exposed capability with its own lifecycle, versioning, and state. The agent connects to a server, queries what is available, and then reasons about which capabilities to invoke. This shift enables reuse across agents, reduces prompt size, and makes tool behavior observable and debuggable at the protocol level.
 
----
-
 ### Transport evolution and protocol design
 
 MCP adopts JSON-RPC 2.0 as its core message format, inheriting well-understood semantics for requests, responses, notifications, and error handling. Early implementations favored persistent local transports, closely mirroring LSP. As MCP moved beyond desktop use cases, the protocol evolved to support web-native transports.
 
 HTTP enables MCP servers to be deployed behind standard infrastructure, integrated with authentication and authorization systems, and scaled independently. Server-Sent Events (SSE) complement this by allowing servers to push asynchronous updates and streamed results back to the agent runtime. Crucially, MCP separates message semantics from transport details, allowing the same protocol concepts to operate across local, remote, and hybrid environments.
-
----
 
 ### MCP as a generalization of tool use
 
@@ -1024,15 +1002,11 @@ Rather than embedding all of this information in the model’s context window, t
 
 The model never needs to know where the tool runs or how it is implemented—only the contract exposed by the server.
 
----
-
 ### MCP as an architectural boundary
 
 A key contribution of MCP is the introduction of a **hard architectural boundary** between models and execution environments. MCP makes explicit that models reason, but do not own stateful side effects. Files, caches, background tasks, and long-running computations live on the server side; the model interacts with them through identifiers and protocol messages.
 
 This separation clarifies responsibilities. Tool servers evolve independently of agent prompts. Multiple agents can share the same capabilities. Security and permissioning can be enforced at the protocol boundary rather than through fragile prompt conventions. Conceptually, MCP plays a role similar to an operating system interface: it mediates access to resources without embedding implementation details into application logic.
-
----
 
 ### Capability discovery and late binding
 
@@ -1040,15 +1014,11 @@ MCP emphasizes late binding. Capabilities are discovered at connection time rath
 
 This design is particularly important in enterprise and multi-tenant settings, where available tools may depend on user identity, organizational policy, or runtime context. By deferring binding decisions to the protocol layer, MCP avoids the combinatorial explosion that would result from statically encoding all possibilities into prompts.
 
----
-
 ### Stateful servers and long-running interactions
 
 Another defining aspect of MCP is the explicit distinction between stateless models and stateful servers. Persistent context belongs with the server: open documents, indexed corpora, partial computations, or monitoring tasks. The model references this state indirectly, using handles or resource identifiers.
 
 This inversion is essential for long-running agents. Instead of repeatedly expanding prompts to carry accumulated state, MCP allows agents to operate over compact references. Token usage is reduced, failure modes become clearer, and sessions can span far beyond what prompt-based approaches allow.
-
----
 
 ### Streaming, events, and non-blocking tools
 
@@ -1056,15 +1026,11 @@ MCP also generalizes beyond simple request–response interactions. Tools may em
 
 At the protocol level, these interactions are explicit, rather than simulated through repeated polling or prompt reconstruction.
 
----
-
 ### Why MCP matters
 
 MCP provides the connective tissue that allows all prior tool-use patterns to scale. Tool contracts define what can be called, permissions define whether it may be called, workspaces define where artifacts live, and MCP defines how these pieces interact over time. It does not replace tool use; it stabilizes it.
 
 For modern agentic systems—especially those operating over long horizons, with many tools or multiple agents—MCP is less an optimization than a prerequisite for maintainable design.
-
----
 
 ### References
 
@@ -1077,13 +1043,10 @@ For modern agentic systems—especially those operating over long horizons, with
 
 \newpage
 
-### Orchestration & Control Flow
-
-# Chapter 5: Orchestration & Control Flow
+# Orchestration & Control Flow
 
 ## Workflows
 
-**One-line introduction.**
 Workflows define a structured, repeatable control flow that coordinates multiple agent steps—often across roles, tools, and time—into a coherent execution pipeline.
 
 ### Historical perspective
@@ -1239,14 +1202,9 @@ Although graphs introduce more upfront structure than simple chaining, this stru
 5. LangChain. *Introduction to LangGraph*. LangChain Academy, 2023. [https://academy.langchain.com/courses/intro-to-langgraph](https://academy.langchain.com/courses/intro-to-langgraph)
 
 
-# Chapter 5: Orchestration & Control Flow
-
 ## A2A: Agent-to-Agent Communication
 
-**One-line introduction.**
 Agent-to-Agent (A2A) communication is a coordination pattern in which autonomous agents interact through a shared protocol to delegate work, exchange state, and compose system-level behavior.
-
----
 
 ### Historical perspective
 
@@ -1256,8 +1214,6 @@ In parallel, research in distributed systems and software architecture shaped ho
 
 Modern LLM-based agents inherit all of these traditions. While the internal reasoning mechanisms have changed dramatically, the architectural pressures remain the same: as soon as systems involve multiple agents with different responsibilities, lifecycles, or ownership boundaries, communication must be explicit, structured, and observable. The A2A Protocol emerges in this context as a contemporary formalization of agent communication, designed for long-running, heterogeneous, and production-grade agentic systems.
 
----
-
 ### The A2A pattern
 
 At its core, A2A treats each agent as an independent, network-addressable entity with a well-defined boundary. An agent exposes what it can do, accepts requests from other agents, and produces responses or follow-up messages, all without revealing its internal implementation. Coordination is achieved through message exchange rather than shared control flow or shared memory.
@@ -1266,8 +1222,6 @@ This separation has important consequences. Agents can be developed, deployed, a
 
 Unlike workflows or graphs, which primarily describe how steps are sequenced within a bounded execution, A2A focuses on how autonomous agents relate to one another across time. It provides the connective tissue that allows multiple workflows, owned by different agents, to form a coherent system.
 
----
-
 ### Core capabilities
 
 A2A communication relies on a small set of foundational capabilities that are intentionally minimal but powerful. Each agent has a stable identity and a way to describe its capabilities so that other agents know what kinds of requests it can handle. Communication happens through standardized message envelopes that carry not only the payload, but also metadata such as sender, recipient, intent, and correlation identifiers. This metadata makes it possible to trace interactions, reason about partial failures, and correlate responses with earlier requests.
@@ -1275,8 +1229,6 @@ A2A communication relies on a small set of foundational capabilities that are in
 Messages are typically intent-oriented rather than procedural. Instead of calling a specific function, an agent asks another agent to *perform an analysis*, *retrieve information*, or *review a decision*. This level of abstraction makes interactions more robust to internal refactoring and allows agents to apply their own policies, validation steps, or human-in-the-loop checks before acting.
 
 Crucially, A2A communication is asynchronous by default. An agent may acknowledge a request immediately, process it over minutes or hours, and send intermediate updates or a final result later. This makes the pattern well suited for long-running tasks, background analysis, and real-world integrations where latency and partial completion are unavoidable.
-
----
 
 ### How A2A works in practice
 
@@ -1312,15 +1264,11 @@ def on_message(message):
 
 The important aspect is not the syntax, but the architectural boundary. Each agent owns its execution, state, and failure handling. The protocol provides just enough structure to make coordination reliable without constraining internal design choices.
 
----
-
 ### Role of A2A in orchestration
 
 As agentic systems scale, purely centralized orchestration becomes increasingly fragile. A2A enables a more decentralized model in which agents collaborate directly, while higher-level orchestration emerges from their interaction patterns. In practice, A2A often complements other control-flow constructs: workflows define local sequencing, graphs define structured decision paths, and A2A connects these pieces across agent boundaries.
 
 This section intentionally remains shallow. The goal is to position A2A as a first-class orchestration pattern rather than to exhaustively specify the protocol. Later chapters will examine transports, schemas, security models, and advanced coordination strategies built on top of A2A.
-
----
 
 ### References
 
@@ -2053,7 +2001,6 @@ Clear states enable:
 
 ## REPL
 
-**One-line introduction.**
 The REPL pattern enables an agent to iteratively execute code in a shared, stateful environment, providing immediate feedback while preserving the illusion of a continuous execution context.
 
 ### Historical perspective
@@ -5214,7 +5161,485 @@ This matches the spec’s client responsibilities (ACK with 2xx; process idempot
 [4]: https://ai.pydantic.dev/api/fasta2a/ "fasta2a - Pydantic AI"
 
 
+## Security
 
+A2A security defines how agents authenticate, authorize, isolate, and audit cross-agent interactions while preserving composability and asynchronous execution.
+
+### Authentication and Agent Identity
+
+At the protocol level, A2A assumes strong, explicit agent identity rather than implicit trust between peers. Each agent is identified by a stable agent ID and presents verifiable credentials with every request. The protocol deliberately avoids mandating a single authentication mechanism, but its security model presumes cryptographically verifiable identity, typically implemented using OAuth2-style bearer tokens or mutual TLS.
+
+Authentication is performed before any task lifecycle logic is evaluated. A crucial requirement is that the cryptographic identity asserted by the credential is bound to the declared agent ID, preventing confused-deputy and identity-spoofing attacks.
+
+```python
+def authenticate_request(http_request):
+    token = extract_bearer_token(http_request.headers)
+    claims = verify_token_signature(token)
+
+    assert claims.issuer in TRUSTED_ISSUERS
+    assert claims.audience == "a2a"
+
+    agent_id = claims.subject
+    return AuthContext(
+        agent_id=agent_id,
+        scopes=claims.scopes,
+        expires_at=claims.exp
+    )
+```
+
+An important design constraint is that task payloads are treated as untrusted data until authentication has completed. Identity verification is therefore orthogonal to task semantics.
+
+### Authorization and Capability Scoping
+
+Authorization in A2A is capability-oriented rather than role-oriented. Instead of assigning broad roles to agents, the protocol evaluates whether a specific agent is permitted to perform a specific protocol operation on a specific resource. This allows fine-grained control over actions such as task creation, inspection, streaming, or cancellation.
+
+Authorization is evaluated at several layers simultaneously: the operation being requested, the relationship between the agent and the task (for example, creator versus observer), and the scope of resources exposed by that task. These checks are intentionally redundant, ensuring that partial privilege does not accidentally grant full access.
+
+```python
+def authorize(auth_ctx, operation, task=None):
+    if operation not in auth_ctx.scopes:
+        raise Forbidden("scope missing")
+
+    if task is not None:
+        if operation in WRITE_OPS and task.owner != auth_ctx.agent_id:
+            raise Forbidden("not task owner")
+
+    return True
+```
+
+A key property of the protocol is that authorization is never assumed to be static. Even for long-running tasks, permissions are re-evaluated on every request, including status polling and streaming updates.
+
+### Task Isolation and Trust Boundaries
+
+In A2A, a task is not merely a unit of work; it is a security boundary. Task state, intermediate artifacts, and final outputs are all scoped to a task ID and an explicit access policy. This prevents unrelated agents from inferring information about concurrent or historical tasks.
+
+Isolation is enforced whenever task state is loaded. Visibility is determined by explicit allow-lists rather than implicit trust derived from network location or execution context.
+
+```python
+def load_task(task_id, auth_ctx):
+    task = storage.get(task_id)
+
+    if auth_ctx.agent_id not in task.allowed_readers:
+        raise Forbidden("task not visible")
+
+    return task
+```
+
+This model discourages shared mutable global state across agents. Any shared context must be materialized as task-scoped artifacts with clearly defined read and write permissions.
+
+### Streaming, Polling, and Push Security
+
+Asynchronous interaction modes introduce additional attack surfaces, particularly around replay, hijacking, and information leakage. A2A addresses these risks by binding every asynchronous interaction to authenticated agent identity.
+
+For streaming and polling, authorization is enforced on each request, and continuation tokens or cursors are non-guessable and cryptographically bound to the requesting agent. A stolen cursor cannot be reused by a different agent.
+
+```python
+def stream_updates(task_id, cursor, auth_ctx):
+    assert cursor.agent_id == auth_ctx.agent_id
+    authorize(auth_ctx, "tasks.stream", task_id)
+
+    return event_stream(task_id, cursor)
+```
+
+Push notifications require even stricter controls. Endpoints must be explicitly registered and verified, delivery credentials are scoped to a single task or subscription, and revocation immediately invalidates any pending deliveries. This ensures that long-lived subscriptions do not become permanent exfiltration channels.
+
+### Secure Delegation and Agent-to-Agent Calls
+
+Delegation is a core feature of A2A and one of its most sensitive security mechanisms. The protocol does not permit implicit privilege propagation. Instead, delegation is implemented using explicit, narrowly scoped credentials issued by the delegating agent.
+
+When one agent delegates execution to another, the delegated agent receives only the minimal capabilities required to perform the delegated work, and only for a limited time. Even if the delegated agent has broader native permissions, those permissions are not applied to the delegated task.
+
+```python
+def create_delegation_token(parent_ctx, allowed_ops, ttl):
+    return sign_token({
+        "delegator": parent_ctx.agent_id,
+        "scopes": allowed_ops,
+        "exp": now() + ttl
+    })
+```
+
+This design prevents privilege amplification across agent networks and ensures that delegation chains remain auditable and bounded.
+
+### Auditability and Non-Repudiation
+
+A2A is designed for environments where accountability matters. Every security-relevant action is expected to generate an audit record, including authentication failures, authorization denials, task lifecycle events, and delegation operations.
+
+Audit records must include the agent identity, the affected task, the operation performed, and a timestamp. Because tasks may span minutes or days, audit logs must be durable and resistant to tampering.
+
+```python
+audit_log.write({
+    "agent": auth_ctx.agent_id,
+    "operation": operation,
+    "task_id": task_id,
+    "timestamp": now()
+})
+```
+
+This auditability enables forensic analysis, compliance verification, and operational debugging in multi-agent deployments.
+
+### Interaction with MCP Security
+
+When A2A is composed with Model Context Protocol, the security boundary remains explicit. A2A governs agent identity, task lifecycle, and delegation, while MCP governs tool invocation and context access. Credentials are not implicitly shared across protocols, preventing cross-protocol privilege leakage while preserving composability.
+
+### References
+
+1. A2A Protocol Authors. *Enterprise-Ready Security*. A2A Protocol Documentation, 2024. [https://a2a-protocol.org/latest/topics/enterprise-ready/](https://a2a-protocol.org/latest/topics/enterprise-ready/)
+2. A2A Protocol Authors. *A2A Specification*. A2A Protocol Documentation, 2024. [https://a2a-protocol.org/latest/specification/](https://a2a-protocol.org/latest/specification/)
+3. Hardt, D. *The OAuth 2.0 Authorization Framework*. IETF RFC 6749, 2012. [https://datatracker.ietf.org/doc/html/rfc6749](https://datatracker.ietf.org/doc/html/rfc6749)
+4. Rescorla, E. *The Transport Layer Security (TLS) Protocol*. IETF RFC 8446, 2018. [https://datatracker.ietf.org/doc/html/rfc8446](https://datatracker.ietf.org/doc/html/rfc8446)
+
+
+
+
+\newpage
+
+# Skills
+
+## Skills
+
+Skills are structured, reusable capability abstractions that encapsulate complex behavior behind a minimal, declarative interface, revealing detail only when it is needed.
+
+### Historical perspective
+
+The intellectual roots of skills predate large language models. Classical AI planning introduced hierarchical task decomposition, where high-level goals were achieved by invoking abstract operators that expanded into concrete actions only during execution. In parallel, software engineering converged on similar ideas through procedures, modules, and APIs, all designed to hide implementation details behind stable contracts.
+
+With the emergence of LLM-based agents, these ideas resurfaced in a new form. Early systems relied heavily on long prompts and explicit step-by-step instructions, but this quickly proved brittle and expensive in terms of tokens. As tool use and function calling became common, practitioners observed that exposing *all* tools and instructions at once degraded model performance. Skills emerged as a response: a way to combine abstraction, modularity, and context efficiency into a single concept, tailored specifically to the constraints of probabilistic language models.
+
+### Core concept
+
+A skill defines **what a capability does**, **when it should be used**, and **what inputs and outputs are expected**, while deliberately omitting *how* it is implemented. The internal mechanics—scripts, heuristics, sub-tools, or even sub-agents—are hidden unless the agent explicitly needs them.
+
+This separation has three immediate benefits. First, it reduces cognitive and token load on the model, improving reliability. Second, it creates reusable building blocks that can be shared across agents and systems. Third, it establishes clear reasoning boundaries: the model reasons about *selecting* and *composing* skills, not about low-level execution details.
+
+### Progressive disclosure and context efficiency
+
+Progressive disclosure is the defining design principle behind skills. Instead of loading all instructions and references into the model context upfront, information is revealed incrementally.
+
+At discovery time, the agent may only see a skill’s name and short description. When the skill is selected, its main instructions are loaded. Only if the agent needs deeper guidance—edge cases, background knowledge, or operational details—are additional reference files consulted. This staged reveal is essential even for models with large context windows: performance degrades long before hard limits are reached.
+
+In practice, progressive disclosure is not an optimization; it is a prerequisite for scalable agent systems.
+
+### A spec-aligned skill example
+
+The AgentSkills specification formalizes skills as directories with a required `SKILL.md` file written in Markdown, optionally accompanied by scripts and reference material. The Markdown file serves as the primary interface between the agent and the skill.
+
+A minimal, spec-aligned skill layout looks like this:
+
+```
+pdf-processing/
+├── SKILL.md
+├── scripts/
+│   └── extract_text_and_tables.py
+└── references/
+    └── REFERENCE.md
+```
+
+The `SKILL.md` file combines structured metadata with natural-language instructions:
+
+```md
+---
+name: pdf-processing
+description: Extract text and tables from PDF files.
+allowed-tools: Bash(python:*) Read
+---
+
+# PDF Processing
+
+## When to use this skill
+Use this skill when the task involves reading, extracting, or transforming content from PDF documents.
+
+## How to use
+For standard extraction, run the bundled script:
+`scripts/extract_text_and_tables.py <file.pdf>`
+
+## Output
+Return extracted text with page numbers and any detected tables in a structured format.
+
+## Notes
+If you encounter scanned PDFs or complex layouts, consult the reference file.
+```
+
+Several important ideas are illustrated here. The YAML frontmatter provides machine-readable metadata for discovery and policy enforcement. The Markdown body provides human-readable guidance for the agent. Crucially, implementation details are *not* embedded inline; they are delegated to scripts and references that are only loaded if needed.
+
+A corresponding script might look like this (simplified for illustration):
+
+```python
+def extract(pdf_path: str) -> dict:
+    # Implementation details live here, not in the prompt
+    return {"text": [], "tables": []}
+```
+
+The agent never needs to reason about how extraction works unless explicitly instructed to inspect or modify the implementation.
+
+### Skills versus tools and prompts
+
+A tool is typically a thin wrapper around an external operation. A prompt is static text. A skill is neither. It is a *capability contract* that may orchestrate tools, enforce invariants, and embed domain knowledge, while remaining opaque by default.
+
+From the agent’s perspective, invoking a skill is an act of intent: *“I want this outcome.”* The skill handles execution. This division allows planning and execution to scale independently.
+
+### Skills as reasoning boundaries
+
+Beyond modularity, skills act as constraints on agent reasoning. By limiting the exposed surface area of capabilities, designers reduce misuse, prompt injection risks, and accidental complexity. Planning becomes a matter of selecting and sequencing skills rather than inventing procedures on the fly, making agent behavior more interpretable and auditable.
+
+As agent systems grow, skills increasingly define the action vocabulary of the agent.
+
+### References
+
+1. AgentSkills Initiative. *What Are Skills?* AgentSkills.io, 2024. [https://agentskills.io/what-are-skills](https://agentskills.io/what-are-skills)
+2. AgentSkills Initiative. *Skill Specification*. AgentSkills.io, 2024. [https://agentskills.io/specification](https://agentskills.io/specification)
+3. Anthropic. *Claude Skills Documentation*. Anthropic, 2024. [https://code.claude.com/docs/en/skills](https://code.claude.com/docs/en/skills)
+
+
+# Chapter: Skills
+
+## Skills Specification
+
+The skills specification defines a **small, rigorous contract** that allows agentic capabilities to be described, reasoned about, and invoked reliably—without exposing implementation details or inflating the agent’s context.
+
+### Engineering goals of the specification
+
+From an engineer’s perspective, the specification is designed to solve three concrete problems that emerge once agents move beyond toy demos.
+
+First, agents must **plan before they execute**. This requires a representation of capabilities that is cheap to load into context, stable across versions, and precise enough to support reasoning and validation. Second, capabilities must be **portable across runtimes**: the same skill should work whether it is backed by a local function, an MCP server, or a remote service invoked via A2A. Third, the system must support **progressive disclosure**, so that agents reason over compact specifications and only pay the cost of execution when necessary.
+
+The skills specification addresses these constraints by being declarative, schema-driven, and intentionally minimal.
+
+### Skill as a declarative contract
+
+A skill is defined as a pure declaration of *what* is offered, not *how* it is implemented. The specification treats a skill as an interface with four essential components: identity, description, input schema, and output schema. Everything else is optional metadata.
+
+A canonical definition starts with identity and intent:
+
+```yaml
+id: filesystem.search
+version: "1.0.0"
+description: >
+  Search files by name or content and return matching paths.
+```
+
+The identifier is stable and globally unique within the agent’s skill universe. Versioning is explicit and semantic, allowing agents to reason about compatibility and upgrades. The description is written for the model, not for a human reader skimming documentation. In practice, short declarative sentences outperform long prose.
+
+### Typed inputs as the primary control surface
+
+The input schema is the most operationally important part of the specification. It defines exactly what arguments an agent may supply and constrains the space of valid invocations.
+
+```yaml
+input:
+  type: object
+  properties:
+    query:
+      type: string
+      description: Text to search for
+    recursive:
+      type: boolean
+      default: true
+    limit:
+      type: integer
+      minimum: 1
+      maximum: 100
+      default: 10
+  required: [query]
+```
+
+Several design choices matter here. Inputs are always explicit objects, never positional arguments, which makes partial construction and validation straightforward. Defaults reduce token overhead during invocation. Simple constraints such as bounds or enums significantly reduce failure modes when models generate arguments.
+
+For an engineer, this schema doubles as runtime validation and as a *prompting primitive*. The model internalizes the structure and learns to stay within it.
+
+### Outputs as guarantees, not suggestions
+
+Output schemas provide a hard guarantee about the shape of the result. This is essential for downstream composition, where one skill’s output often feeds directly into another’s input.
+
+```yaml
+output:
+  type: object
+  properties:
+    matches:
+      type: array
+      items:
+        type: object
+        properties:
+          path:
+            type: string
+          score:
+            type: number
+```
+
+Unlike traditional APIs, agents often consume outputs probabilistically. A strict schema anchors that uncertainty. Engineers can rely on structural correctness even if semantic quality varies.
+
+### Optional metadata and execution hints
+
+The specification allows lightweight metadata that informs planning and orchestration without constraining implementation. These fields are advisory, not prescriptive.
+
+```yaml
+metadata:
+  side_effects: false
+  latency: low
+  idempotent: true
+```
+
+This information becomes valuable once agents perform speculative planning, retries, or parallel execution. For example, a planner may freely retry an idempotent skill but require confirmation before invoking one with side effects.
+
+### Separation from implementation
+
+A key property of the specification is that it is **implementation-agnostic**. The runtime binding between a skill definition and executable code is external to the spec.
+
+From the agent’s point of view, invocation is uniform:
+
+```json
+{
+  "skill": "filesystem.search",
+  "arguments": {
+    "query": "report",
+    "limit": 5
+  }
+}
+```
+
+Whether this call resolves to a local function, an MCP tool, or an A2A task is irrelevant at the specification level. This separation is what enables skills to act as the common currency between heterogeneous systems.
+
+### Minimal implementation burden
+
+Despite the rigor of the specification, implementing a skill is deliberately lightweight. In most runtimes, an implementation consists of binding a callable to a validated schema and returning structured data.
+
+```python
+@skill(
+    id="filesystem.search",
+    input=SearchInput,
+    output=SearchOutput,
+)
+def search(query: str, recursive: bool = True, limit: int = 10):
+    ...
+    return {"matches": matches}
+```
+
+There is no required inheritance model, lifecycle interface, or framework lock-in. This is a deliberate engineering trade-off: the specification optimizes for *many small skills* rather than a few monolithic tools.
+
+### Why simplicity matters at scale
+
+As agentic systems grow, complexity tends to accumulate at the boundaries: discovery, invocation, validation, and composition. The skills specification pushes that complexity into a single, well-defined layer and keeps everything else flexible.
+
+For engineers, this means faster iteration, safer composition, and the ability to integrate skills cleanly with orchestration layers such as MCP and A2A without rewriting or re-prompting core logic.
+
+### References
+
+1. Anthropic. *Claude Skills Documentation*. 2024. [https://code.claude.com/docs/en/skills](https://code.claude.com/docs/en/skills)
+2. AgentSkills. *What Are Skills?*. 2024. [https://agentskills.io/what-are-skills](https://agentskills.io/what-are-skills)
+3. AgentSkills. *Skill Specification*. 2024. [https://agentskills.io/specification](https://agentskills.io/specification)
+
+
+## Engineering
+
+We discuss making skills discoverable, cheap to advertise to a model, and safe to activate and execute inside a broader agent system.
+
+### What “engineering skills” actually means
+
+The Agent Skills integration guide is explicit about what a skills-compatible runtime must do: it discovers skill directories, loads only metadata at startup, matches tasks to skills, activates a selected skill by loading full instructions, and then executes scripts and accesses bundled resources as needed. ([Agent Skills][1]) The important architectural point is that integration is designed around progressive disclosure: startup and routing should rely on frontmatter only, while “activation” is the moment you pay to load instructions and any additional files. ([Agent Skills][1])
+
+The specification formalizes the artifact you are integrating. A skill is a directory with a required `SKILL.md` file and optional `scripts/`, `references/`, and `assets/` directories. ([Agent Skills][2]) The `SKILL.md` file begins with YAML frontmatter that must include `name` and `description`, and may include fields such as `compatibility`, `metadata`, and an experimental `allowed-tools` allowlist. ([Agent Skills][2]) The body is arbitrary Markdown instructions, and the spec notes that the agent loads the whole body only after it has decided to activate the skill. ([Agent Skills][2])
+
+A minimal discovery and metadata loader therefore looks like:
+
+```python
+def discover_skills(skill_roots: list[str]) -> list[dict]:
+    skills = []
+    for root in skill_roots:
+        for skill_dir in list_directories(root):
+            if exists(f"{skill_dir}/SKILL.md"):
+                fm = extract_yaml_frontmatter(read_file(f"{skill_dir}/SKILL.md"))
+                skills.append(
+                    {"name": fm["name"], "description": fm["description"], "path": skill_dir}
+                )
+    return skills
+```
+
+This is not an implementation detail; it is the core performance/safety contract. The integration guide recommends parsing only the frontmatter at startup “to keep initial context usage low.” ([Agent Skills][1]) The specification quantifies the intended disclosure tiers: metadata (name/description) is loaded for all skills, full instructions are loaded on activation, and resources are loaded only when required. ([Agent Skills][2])
+
+### Filesystem-based integration vs tool-based integration
+
+The Agent Skills guide describes two integration approaches.
+
+In a filesystem-based agent, the model operates in a computer-like environment (bash/unix). A skill is “activated” when the model reads `SKILL.md` directly (the guide’s example uses a shell `cat` of the file), and bundled resources are accessed through normal file operations. ([Agent Skills][1]) This approach is “the most capable option” precisely because it does not require you to pre-invent an API for every way the skill might need to read or run something; the skill can ship scripts and references and the runtime can expose them as files.
+
+In a tool-based agent, there is no dedicated computer environment, so the developer implements explicit tools that let the model list skills, fetch `SKILL.md`, and retrieve bundled assets. ([Agent Skills][1]) The guide deliberately does not prescribe the exact tool design (“the specific tool implementation is up to the developer”), which is a reminder not to conflate the skill format with a particular invocation API. ([Agent Skills][1])
+
+### Injecting skill metadata into the model context
+
+The guide says to include skill metadata in the system prompt so the model knows what skills exist, and to “follow your platform’s guidance” for how system prompts are updated. ([Agent Skills][1]) It then provides a single example: for Claude models, it shows an XML wrapper format. ([Agent Skills][1]) That example is platform-specific and should not be treated as a general recommendation for other runtimes.
+
+The general requirement is simpler: at runtime start (or on refresh), you provide a compact catalog containing at least `name`, `description`, and a way to locate the skill so the runtime can load `SKILL.md` when selected. The integration guide’s own pseudocode returns `{ name, description, path }`, which is the essential structure. ([Agent Skills][1]) A neutral, implementation-agnostic representation could be expressed as JSON (or any equivalent internal structure) without implying any particular prompt markup language:
+
+```json
+{
+  "available_skills": [
+    {
+      "name": "pdf-processing",
+      "description": "Extract text and tables from PDF files, fill forms, merge documents.",
+      "path": "/skills/pdf-processing"
+    }
+  ]
+}
+```
+
+The skill system works because selection can be done from the metadata alone; the body is only loaded when the orchestrator commits to activation. ([Agent Skills][1])
+
+### Security boundaries during activation
+
+Skill integration changes the risk profile the moment `scripts/` are involved. The specification defines `scripts/` as executable code that agents can run, and explicitly notes that supported languages and execution details depend on the agent implementation. ([Agent Skills][2]) The frontmatter’s experimental `allowed-tools` field exists to help some runtimes enforce “pre-approved tools” a skill may use, but support may vary. ([Agent Skills][2])
+
+For integration, the key design is to treat activation and execution as a controlled transition. Discovery and metadata loading are read-only operations over a directory tree; activation is when the model receives instructions that may request tool use or script execution; execution is when side effects happen. Mapping that to your agent runtime typically means (a) restricting what the model can do before activation, (b) enforcing tool/script policies during execution, and (c) logging what happened in a way that can be audited later. The Skill spec’s progressive disclosure guidance is as much about control and review as it is about context budget. ([Agent Skills][2])
+
+### How skills relate to MCP
+
+MCP defines a client/server protocol where servers expose primitives, and “tools” are one of those primitives: executable functions that an AI application can invoke, alongside resources and prompts. ([Model Context Protocol][3]) In MCP terms, tools are meant to be small, schema’d capabilities: file operations, API calls, database queries, and similar discrete actions. ([Model Context Protocol][3])
+
+A skill is not a competing notion of a tool. It is a packaging format for instructions plus optional scripts and references that can orchestrate one or more tools. The clean modularization pattern is to keep MCP tools narrow and reusable, and compose them inside skills where the domain workflow lives. The skill remains stable as an interface and knowledge bundle, while the underlying tool calls are the mechanical substrate that can be reused across many skills.
+
+A concrete way to express that separation is to have a skill instruct the agent to use a database-query tool and then post-process results, without embedding database details into the tool itself:
+
+```markdown
+# In SKILL.md body (instructions)
+
+When you need cohort statistics:
+1) Use the database query tool to fetch rows for the cohort definition.
+2) Compute summary metrics.
+3) If a chart is requested, call the charting tool with the computed series.
+```
+
+The reuse comes from the fact that the database-query MCP tool stays the same whether it is used by “cohort-analysis”, “data-quality-check”, or “report-generator” skills.
+
+### How skills relate to A2A
+
+The A2A protocol is positioned as an application-level protocol for agents to discover each other, negotiate interactions, manage tasks, and exchange conversational context and complex data as peers. ([a2a-protocol.org][4]) The A2A documentation frames MCP as the domain of “tools and resources” (primitives with structured inputs/outputs, often stateless) and A2A as the domain of “agents” (autonomous systems that reason, plan, maintain state, and conduct multi-turn interaction). ([a2a-protocol.org][4])
+
+Skills align with this split. A skill is a capability package that is typically invoked “tool-like” from the outside: it has a clear name/description for routing, and activation loads instructions that define how to perform the task. ([Agent Skills][2]) Internally, a skill may run a complex workflow and call many tools, but the integration surface is a capability boundary. In an A2A deployment, that boundary can be hosted by a remote agent instead of a local runtime.
+
+The A2A text even notes that an A2A server could expose some of its skills as MCP-compatible resources when they are well-defined and can be invoked in a more tool-like manner, while emphasizing that A2A’s strength is more flexible, stateful collaboration beyond typical tool invocation. ([a2a-protocol.org][4]) This gives a practical integration rule: use skills (and MCP) for capability invocation; use A2A when you need delegation to a peer that will plan, negotiate, and collaborate over time.
+
+### Converting an A2A agent into a skill, and a skill into an A2A agent
+
+A safe way to talk about “conversion” without inventing protocol features is to describe what must remain invariant and what changes.
+
+What should remain invariant is the capability contract: the thing you want to be able to select by name/description, activate with full instructions, and produce outputs from. In skill terms, that contract is represented by `SKILL.md` frontmatter plus its instruction body and any referenced files. ([Agent Skills][2]) In A2A terms, the contract is represented by whatever the remote agent advertises and accepts as task input, together with the task lifecycle semantics A2A provides. ([a2a-protocol.org][4])
+
+Converting an A2A agent into a skill is therefore a packaging move: you take one externally meaningful capability that the agent provides and express it as a skill directory whose `SKILL.md` contains the instructions that the agent previously embodied in code and prompts. The integration consequences are that (a) any long-lived statefulness must be made explicit in inputs or moved up into the orchestrator, and (b) any external dependencies must be declared via `compatibility` and/or enforced via execution policy. ([Agent Skills][2])
+
+Converting a skill into an A2A agent is a hosting move: you take the skill as the unit of work and put it behind an A2A server that offers it to other agents. The skill still remains the internal playbook and resource bundle, while A2A provides the network-level concerns: discovery, negotiation, task lifecycle, and exchange of context/results. ([a2a-protocol.org][4])
+
+The important point is that “conversion” is rarely a literal mechanical transform. It is an architectural refactoring where the skill remains the portable capability artifact, and A2A is the transport and collaboration wrapper when that capability needs to be offered across trust boundaries or organizational boundaries.
+
+## References
+
+1. AgentSkills Working Group. *Integrate skills into your agent*. AgentSkills.io, 2024. [https://agentskills.io/integrate-skills](https://agentskills.io/integrate-skills) ([Agent Skills][1])
+2. AgentSkills Working Group. *Specification*. AgentSkills.io, 2024. [https://agentskills.io/specification](https://agentskills.io/specification) ([Agent Skills][2])
+3. A2A Protocol Authors. *A2A and MCP*. A2A Protocol, 2025. [https://a2a-protocol.org/latest/topics/a2a-and-mcp/](https://a2a-protocol.org/latest/topics/a2a-and-mcp/) ([a2a-protocol.org][4])
+4. Model Context Protocol Authors. *Architecture (Primitives)*. Model Context Protocol, 2025. [https://modelcontextprotocol.io/docs/learn/architecture](https://modelcontextprotocol.io/docs/learn/architecture) ([Model Context Protocol][3])
+5. Model Context Protocol Authors. *Architecture (Specification 2025-06-18)*. Model Context Protocol, 2025. [https://modelcontextprotocol.io/specification/2025-06-18/architecture](https://modelcontextprotocol.io/specification/2025-06-18/architecture) ([Model Context Protocol][5])
+
+[1]: https://agentskills.io/integrate-skills "Integrate skills into your agent - Agent Skills"
+[2]: https://agentskills.io/specification "Specification - Agent Skills"
+[3]: https://modelcontextprotocol.io/docs/learn/architecture?utm_source=chatgpt.com "Architecture overview"
+[4]: https://a2a-protocol.org/latest/topics/a2a-and-mcp/ "A2A and MCP - A2A Protocol"
+[5]: https://modelcontextprotocol.io/specification/2025-06-18/architecture?utm_source=chatgpt.com "Architecture"
 
 \newpage
 

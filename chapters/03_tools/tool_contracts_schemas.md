@@ -37,7 +37,13 @@ Once tool contracts are available, the model is constrained to produce structure
 Conceptually, a tool call looks like:
 
 ```json
-{ "name": "get_weather", "arguments": { "city": "Buenos Aires", "unit": "C" } }
+{
+    "name": "get_weather", 
+    "arguments": { 
+        "city": "Buenos Aires", 
+        "unit": "C"
+    }
+}
 ```
 
 Arguments are validated before execution. If validation fails, the error is returned to the model as structured feedback, allowing it to correct itself. Structured output thus replaces brittle parsing with explicit, enforceable contracts.

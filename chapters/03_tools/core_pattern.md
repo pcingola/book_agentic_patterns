@@ -1,6 +1,4 @@
-# Chapter 4: Tool Use
-
-## Tool Use (from Core Patterns)
+## Tool Use
 
 Tool use is the core of AI agents and agentic behavior: it is the pattern by which a model reasons about the world and then deliberately acts on it through external capabilities, closing the loop between cognition and execution.
 

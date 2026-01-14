@@ -88,8 +88,6 @@ where $x^*$ is the true nearest neighbor.
 
 All modern vector database algorithms can be understood as structured approximations to this relaxed objective.
 
----
-
 ## Partition-based search: Inverted File Index (IVF)
 
 The inverted file index reduces search complexity by introducing a *coarse quantization* of the vector space. Let
@@ -128,8 +126,6 @@ O(kd + \frac{n}{k} \cdot n_{\text{probe}} \cdot d)
 $$
 which is sublinear in $n$ for reasonable values of $k$ and $n_{\text{probe}}$.
 
----
-
 ## Vector compression: Product Quantization (PQ)
 
 Product Quantization further reduces computational and memory costs by compressing vectors. The original space $\mathbb{R}^d$ is decomposed into $m$ disjoint subspaces:
@@ -164,8 +160,6 @@ function PQ_DISTANCE(query q, codes c, lookup_tables T):
 
 Theoretical justification comes from rate–distortion theory: PQ minimizes expected reconstruction error under constrained bit budgets. Empirically, it preserves relative ordering sufficiently well for ranking-based retrieval.
 
----
-
 ## Hash-based search: Locality-Sensitive Hashing (LSH)
 
 Locality-Sensitive Hashing constructs hash functions $h \in \mathcal{H}$ such that
@@ -186,8 +180,6 @@ O(n^\rho), \quad \rho < 1
 $$
 
 Despite strong theoretical guarantees, LSH often underperforms graph-based methods in dense embedding spaces typical of neural models.
-
----
 
 ## Graph-based search: Navigable small-world graphs and HNSW
 
@@ -215,23 +207,17 @@ function HNSW_SEARCH(query q, entry e, graph G):
 
 Theoretical intuition comes from small-world graph theory: the presence of long-range links reduces graph diameter, while local edges enable precise refinement. Expected search complexity is close to $O(\log n)$, with high recall even in large, high-dimensional datasets.
 
----
-
 ## Algorithmic composition in vector databases
 
 In practice, vector databases compose these algorithms hierarchically. A typical pipeline applies IVF to reduce the candidate set, PQ to compress vectors and accelerate distance computation, and graph-based search to refine nearest neighbors. Each stage introduces controlled approximation while drastically reducing computational cost.
 
 This layered structure mirrors the mathematical decomposition of the nearest neighbor problem: spatial restriction, metric approximation, and navigational optimization.
 
----
-
 ## Implications for RAG systems
 
 In Retrieval-Augmented Generation, these algorithms define the semantic recall boundary of the system. Errors in retrieval are often consequences of approximation layers rather than embedding quality. Understanding the mathematical and algorithmic foundations of vector databases is therefore essential for diagnosing failure modes, tuning recall–latency trade-offs, and designing reliable RAG pipelines.
 
 Vector databases should thus be viewed not as storage engines, but as algorithmic systems grounded in decades of research on high-dimensional geometry, probabilistic approximation, and graph navigation.
-
----
 
 ## References
 

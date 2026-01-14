@@ -1,8 +1,5 @@
-# Chapter 5: Orchestration & Control Flow
-
 ## Workflows
 
-**One-line introduction.**
 Workflows define a structured, repeatable control flow that coordinates multiple agent steps—often across roles, tools, and time—into a coherent execution pipeline.
 
 ### Historical perspective

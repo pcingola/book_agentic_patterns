@@ -1,8 +1,6 @@
-# Chapter 7: RAG
-
 ## Evaluating RAG Systems
 
-**Evaluating a Retrieval-Augmented Generation (RAG) system means measuring, in a principled way, how well retrieval and generation jointly support factual, relevant, and grounded answers.**
+Evaluating a Retrieval-Augmented Generation (RAG) system means measuring, in a principled way, how well retrieval and generation jointly support factual, relevant, and grounded answers.
 
 ### Historical perspective
 
@@ -12,7 +10,6 @@ In parallel, natural language generation and question answering research develop
 
 The first RAG-style systems, appearing around 2020 with dense retrieval and pretrained language models, exposed the limitations of this separation. A system could retrieve highly relevant documents yet fail to use them correctly, or produce fluent answers that were weakly grounded or even hallucinated. This led to a shift toward multi-level evaluation: measuring vector search quality, document retrieval effectiveness, and end-to-end answer quality together. More recent work emphasizes faithfulness, attribution, and robustness, reflecting the use of RAG in high-stakes and enterprise settings where correctness and traceability matter as much as surface-level answer quality.
 
----
 
 ## Evaluation layers in RAG systems
 
@@ -34,7 +31,6 @@ def recall_at_k(retrieved_ids, relevant_ids, k):
 
 This level of evaluation answers the question: *given a query embedding, does the vector index surface semantically relevant candidates?* It does not tell us whether these candidates are actually useful for answering the question.
 
----
 
 ### Metrics for document retrieval
 
@@ -46,7 +42,6 @@ Evaluation at this level often relies on human annotation or weak supervision, s
 
 Conceptually, this layer answers: *does the system retrieve the right evidence, in the right form, for generation?*
 
----
 
 ### End-to-end RAG metrics
 
@@ -70,7 +65,6 @@ def judge_groundedness(answer, context):
 
 This level answers the question users actually care about: *does the system produce a correct, well-supported answer?*
 
----
 
 ## Measuring improvements in RAG systems
 
@@ -84,7 +78,6 @@ Offline metrics should be complemented with online or human-in-the-loop evaluati
 
 Taken together, these practices shift evaluation from a one-time score to a continuous measurement discipline, which is essential for maintaining reliable RAG systems in production.
 
----
 
 ## References
 

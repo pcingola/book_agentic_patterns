@@ -24,7 +24,7 @@ A useful mental model is to treat every tool invocation as a privileged operatio
 
 The most fundamental distinction is between **read** and **write** capabilities.
 
-**Read tools** observe or retrieve information without modifying external state. Examples include database queries, file reads, or internet search. Although often considered “safe,” read tools can still leak sensitive information indirectly, especially when their results are combined with private context.
+**Read tools** observe or retrieve information without modifying external state. Examples include database queries, file reads, or internet search. Although often considered “safe”, read tools can still leak sensitive information indirectly, especially when their results are combined with private context.
 
 **Write tools** mutate state: updating a database, sending an email, executing a transaction, or modifying files. These tools carry a higher risk because mistakes are persistent and sometimes irreversible.
 

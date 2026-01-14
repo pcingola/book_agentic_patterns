@@ -1,4 +1,4 @@
-### Orchestration & Control Flow
+# Orchestration & Control Flow
 
 [Workflows](./workflows.md)
 
