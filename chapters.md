@@ -11,38 +11,17 @@ Book Approach: This book is supposed to have a strong theoretical background, ye
 
 Here are the propoed chapters (divided in to sections for clarity):
 
----
-### Section 1: Basics
-
-
 TIPS: This is a lable for tips, it should be shown in a highlighted box
 BEST PRACTICE: This is a label for best practices, it should be shown in a highlighted box
 
-### To add
+---
+### Section 1: Basics
 
-- [ ] Prompts: System, prompt, instructions
-- [ ] Prompt doctor
-
-- [ ] BEST PRACTICE (single agent): Define (agent) params in '.env' (use standard variable names across projects): `get_agent()`
-- [ ] BEST PRACTICE (mult-agent): Define (agent) params in '.agents.json': `get_agent()`
-- [ ] BEST PRACTICE: Do not hard-code prompts (load prompts from files)
-- [ ] BEST PRACTICE: Read the prompt! Assume you are a junior person, on their first day at a new job: If you cannot do the task with ONLY the information in the prompt, the agent won't be able to do it either.
-- [ ] BEST PRACTICE: Doctors / reviewer
-  - [ ] Prompt Doctor
-  - [ ] MCP Doctor
-  - [ ] A2A doctor
-  - [ ] Skills doctor
-  - [ ] llms.txt doctor
-
-### Chapter 1: Foundations & Architecture
+### Chapter 1: Foundations
 
 - [ ] What is an Agent / Agentic System
 - [ ] Code and chapters
-- [ ] Reference architectures (perception, planning, acting, feedback)
 - [ ] Single-agent vs multi-agent systems
-- [ ] Agent lifecycle, state management, and execution (init, execution, pause/resume, cancellation, state machines, checkpoints, idempotency, retries, partial failure)
-- [ ] System boundaries and responsibility split
-- [ ] Contracts and schemas (inputs, outputs, tools)
 - [ ] Determinism vs stochasticity
 
 ### Chapter 2: [Core Patterns](chapters/02_core_patterns/chapter.md)

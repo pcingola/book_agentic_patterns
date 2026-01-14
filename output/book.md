@@ -5,7 +5,52 @@ author: ""
 date: ""
 ---
 
+This book was directed and edited by Pablo Cingolani, who defined its structure, scope, and technical direction, and ensured that the content forms a coherent and consistent whole. While much of the text and many of the code examples were primarily produced with the assistance of AI tools, substantial effort was invested in curating, refining, and integrating these materials so that the narrative flows logically, the concepts build on one another, and the code reflects sound engineering practices. The result is not an automated compilation, but a carefully guided and edited work shaped by clear architectural intent and hands-on experience.
+
+
 \newpage
+# Foundations
+
+## Book Outline
+
+This chapter introduces the structure, intent, and learning philosophy of the book, establishing a clear mental model for how the material is organized and how it should be used.
+
+### Structure of the Book
+
+The book is organized to move from foundational concepts to production-grade systems, mirroring how real-world agentic platforms are designed, implemented, and operated. Early chapters establish definitions, mental models, and historical context: what agents are, what distinguishes agentic systems from conventional software, and why planning, tool use, memory, and feedback loops matter. From there, the text progressively introduces architectural patterns, execution models, and interoperability standards, followed by deeper dives into orchestration, context management, evaluation, security, and operations.
+
+Rather than treating topics in isolation, chapters are intentionally interdependent. Concepts introduced early—such as tasks, skills, tools, and state—are revisited and refined as the system grows in capability and complexity. Later chapters assume familiarity with earlier abstractions and focus on trade-offs, failure modes, and scaling considerations that only become visible in non-trivial deployments. The result is a cohesive narrative rather than a reference manual: each chapter exists to support the construction and understanding of a complete agentic system.
+
+### Intended Audience
+
+This book is written for engineers building agentic systems, not for readers seeking a high-level overview of AI or large language models. The assumed audience is comfortable with programming, distributed systems concepts, APIs, and schemas, and has at least some experience deploying production software. Familiarity with Python, JSON-based protocols, asynchronous execution, and modern backend architectures is assumed throughout.
+
+The book does not attempt to abstract away engineering complexity. Instead, it makes that complexity explicit, framing agentic systems as a new class of software systems with their own constraints and failure modes. Readers are expected to engage critically with design choices, understand why certain abstractions exist, and reason about trade-offs between correctness, cost, latency, safety, and scalability.
+
+### Learning Approach: Theory and Hands-On Practice
+
+The learning approach deliberately combines theoretical grounding with practical implementation. Core ideas are motivated by research literature and prior systems—such as planning algorithms, reinforcement learning concepts, and human-in-the-loop control—but are always tied back to concrete engineering patterns. When a concept is introduced, it is followed by examples, pseudo-code, or real-world design sketches that show how the idea manifests in working systems.
+
+Hands-on sections emphasize partial implementations rather than toy examples. Code snippets are used to illustrate interfaces, contracts, and control flow, while full implementations are assumed to live in accompanying repositories. This approach reflects how agentic systems are built in practice: by composing well-defined components rather than writing monolithic scripts. The goal is not to teach a specific framework, but to equip the reader with transferable patterns that apply across ecosystems and tooling choices.
+
+### A Running Enterprise-Grade Example
+
+Throughout the book, all major concepts are grounded in a single, evolving example: an enterprise-grade multi-agent system designed for organizational use. Conceptually, this system resembles an internal “AI operations layer” for a company—capable of planning work, delegating tasks across specialized agents, interacting with internal tools and data, and operating under governance, security, and compliance constraints.
+
+This running example is intentionally ambitious. It includes multiple agents with distinct responsibilities, long-running tasks, shared state, tool orchestration, human approval gates, and auditability requirements. Early chapters introduce a minimal version of the system, while later chapters incrementally add capabilities such as task persistence, inter-agent protocols, skill modularization, observability, and policy enforcement. By the end of the book, the reader will have seen how a realistic agentic platform can be assembled from first principles, and how architectural decisions made early on influence the system’s behavior at scale.
+
+The purpose of this example is not to prescribe a single “correct” architecture, but to provide a concrete anchor for discussion. Abstract ideas become easier to reason about when they are consistently mapped onto the same system, and design trade-offs become clearer when their consequences are traced across multiple chapters.
+
+### References
+
+1. Russell, S., Norvig, P. *Artificial Intelligence: A Modern Approach*. Pearson, 2021.
+2. Wooldridge, M. *An Introduction to MultiAgent Systems*. Wiley, 2009.
+3. Sutton, R. S., Barto, A. G. *Reinforcement Learning: An Introduction*. MIT Press, 2018.
+4. Amodei, D. et al. *Concrete Problems in AI Safety*. arXiv, 2016.
+5. OpenAI. *Planning and Acting with Large Language Models*. OpenAI research blog, 2023.
+
+\newpage
+
 # Chapter 1: Core Agentic Patterns
 
 # Chapter 3: Core Agentic Patterns
@@ -1202,7 +1247,7 @@ Although graphs introduce more upfront structure than simple chaining, this stru
 5. LangChain. *Introduction to LangGraph*. LangChain Academy, 2023. [https://academy.langchain.com/courses/intro-to-langgraph](https://academy.langchain.com/courses/intro-to-langgraph)
 
 
-## A2A: Agent-to-Agent Communication
+## A2A: Agent-to-Agent
 
 Agent-to-Agent (A2A) communication is a coordination pattern in which autonomous agents interact through a shared protocol to delegate work, exchange state, and compose system-level behavior.
 
@@ -2447,7 +2492,6 @@ This also clarifies a subtle but important point: *human-in-the-loop is not only
 
 # RAG (Retrieval-Augmented Generation)
 
-## RAG: Introduction
 
 **Retrieval-Augmented Generation (RAG)** is an architectural pattern that combines information retrieval systems with generative language models so that responses are grounded in external, up-to-date, and inspectable knowledge rather than relying solely on model parameters.
 
@@ -2475,7 +2519,7 @@ This separation introduces a clear information workflow with two main phases: **
 
 Document ingestion is the offline (or semi-offline) process that prepares raw data for efficient retrieval. It typically begins with collecting documents from sources such as filesystems, databases, APIs, or web crawls. These documents are then normalized into a common textual representation, which may involve parsing PDFs, stripping markup, or extracting structured fields.
 
-Because language models have limited context windows, documents are usually divided into smaller units. This chunking step aims to balance semantic coherence with retrievability: chunks should be large enough to preserve meaning, but small enough to be selectively retrieved. Each chunk is then transformed into a numerical representation, typically via embeddings that capture semantic similarity. The resulting vectors, along with metadata such as source, timestamps, or access permissions, are stored in an index optimized for similarity search.
+Because language models have limited context windows, documents are usually divided into smaller units called "chunks". This chunking step aims to balance semantic coherence with retrievability: chunks should be large enough to preserve meaning, but small enough to be selectively retrieved. Each chunk is then transformed into a numerical representation, typically via embeddings that capture semantic similarity. The resulting vectors, along with metadata such as source, timestamps, or access permissions, are stored in an index optimized for similarity search.
 
 Ingested data is therefore not just stored text, but a structured memory that supports efficient and meaningful retrieval.
 
@@ -2684,8 +2728,6 @@ where $x^*$ is the true nearest neighbor.
 
 All modern vector database algorithms can be understood as structured approximations to this relaxed objective.
 
----
-
 ## Partition-based search: Inverted File Index (IVF)
 
 The inverted file index reduces search complexity by introducing a *coarse quantization* of the vector space. Let
@@ -2724,8 +2766,6 @@ O(kd + \frac{n}{k} \cdot n_{\text{probe}} \cdot d)
 $$
 which is sublinear in $n$ for reasonable values of $k$ and $n_{\text{probe}}$.
 
----
-
 ## Vector compression: Product Quantization (PQ)
 
 Product Quantization further reduces computational and memory costs by compressing vectors. The original space $\mathbb{R}^d$ is decomposed into $m$ disjoint subspaces:
@@ -2760,8 +2800,6 @@ function PQ_DISTANCE(query q, codes c, lookup_tables T):
 
 Theoretical justification comes from rate–distortion theory: PQ minimizes expected reconstruction error under constrained bit budgets. Empirically, it preserves relative ordering sufficiently well for ranking-based retrieval.
 
----
-
 ## Hash-based search: Locality-Sensitive Hashing (LSH)
 
 Locality-Sensitive Hashing constructs hash functions $h \in \mathcal{H}$ such that
@@ -2782,8 +2820,6 @@ O(n^\rho), \quad \rho < 1
 $$
 
 Despite strong theoretical guarantees, LSH often underperforms graph-based methods in dense embedding spaces typical of neural models.
-
----
 
 ## Graph-based search: Navigable small-world graphs and HNSW
 
@@ -2811,23 +2847,17 @@ function HNSW_SEARCH(query q, entry e, graph G):
 
 Theoretical intuition comes from small-world graph theory: the presence of long-range links reduces graph diameter, while local edges enable precise refinement. Expected search complexity is close to $O(\log n)$, with high recall even in large, high-dimensional datasets.
 
----
-
 ## Algorithmic composition in vector databases
 
 In practice, vector databases compose these algorithms hierarchically. A typical pipeline applies IVF to reduce the candidate set, PQ to compress vectors and accelerate distance computation, and graph-based search to refine nearest neighbors. Each stage introduces controlled approximation while drastically reducing computational cost.
 
 This layered structure mirrors the mathematical decomposition of the nearest neighbor problem: spatial restriction, metric approximation, and navigational optimization.
 
----
-
 ## Implications for RAG systems
 
 In Retrieval-Augmented Generation, these algorithms define the semantic recall boundary of the system. Errors in retrieval are often consequences of approximation layers rather than embedding quality. Understanding the mathematical and algorithmic foundations of vector databases is therefore essential for diagnosing failure modes, tuning recall–latency trade-offs, and designing reliable RAG pipelines.
 
 Vector databases should thus be viewed not as storage engines, but as algorithmic systems grounded in decades of research on high-dimensional geometry, probabilistic approximation, and graph navigation.
-
----
 
 ## References
 
@@ -3136,11 +3166,9 @@ A key insight in modern RAG is that retrieval quality emerges from the interacti
 6. Litschko et al. *Evaluating Hybrid Retrieval Approaches for Retrieval-Augmented Generation*. arXiv, 2023.
 
 
-# Chapter 7: RAG
-
 ## Evaluating RAG Systems
 
-**Evaluating a Retrieval-Augmented Generation (RAG) system means measuring, in a principled way, how well retrieval and generation jointly support factual, relevant, and grounded answers.**
+Evaluating a Retrieval-Augmented Generation (RAG) system means measuring, in a principled way, how well retrieval and generation jointly support factual, relevant, and grounded answers.
 
 ### Historical perspective
 
@@ -3150,7 +3178,6 @@ In parallel, natural language generation and question answering research develop
 
 The first RAG-style systems, appearing around 2020 with dense retrieval and pretrained language models, exposed the limitations of this separation. A system could retrieve highly relevant documents yet fail to use them correctly, or produce fluent answers that were weakly grounded or even hallucinated. This led to a shift toward multi-level evaluation: measuring vector search quality, document retrieval effectiveness, and end-to-end answer quality together. More recent work emphasizes faithfulness, attribution, and robustness, reflecting the use of RAG in high-stakes and enterprise settings where correctness and traceability matter as much as surface-level answer quality.
 
----
 
 ## Evaluation layers in RAG systems
 
@@ -3172,7 +3199,6 @@ def recall_at_k(retrieved_ids, relevant_ids, k):
 
 This level of evaluation answers the question: *given a query embedding, does the vector index surface semantically relevant candidates?* It does not tell us whether these candidates are actually useful for answering the question.
 
----
 
 ### Metrics for document retrieval
 
@@ -3184,7 +3210,6 @@ Evaluation at this level often relies on human annotation or weak supervision, s
 
 Conceptually, this layer answers: *does the system retrieve the right evidence, in the right form, for generation?*
 
----
 
 ### End-to-end RAG metrics
 
@@ -3208,7 +3233,6 @@ def judge_groundedness(answer, context):
 
 This level answers the question users actually care about: *does the system produce a correct, well-supported answer?*
 
----
 
 ## Measuring improvements in RAG systems
 
@@ -3222,7 +3246,6 @@ Offline metrics should be complemented with online or human-in-the-loop evaluati
 
 Taken together, these practices shift evaluation from a one-time score to a continuous measurement discipline, which is essential for maintaining reliable RAG systems in production.
 
----
 
 ## References
 

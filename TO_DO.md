@@ -1,7 +1,5 @@
 # To do
 
-# References (to read / include)
-
 - Tool contracts and schemas `tool_contracts_schemas.md`: 
   - "Explicit termination via final schemas" (Langchain is like this as well?)
   - "Retries as part of the contract": Pydantic-AI is not like this: "Errors can be marked as retryable or fatal, allowing the model to reason explicitly about recovery. Because retries are mediated through the same schema, repeated calls remain safe, auditable, and deterministic."
@@ -69,9 +67,13 @@
 
 - CONCEPT "Harness": https://www.philschmid.de/agent-harness-2026
 
-- STANDARDT "llms.txt": https://llmstxt.org
+- STANDARD "llms.txt": https://llmstxt.org
 
 - BEST PRACTICE: http://www.incompleteideas.net/IncIdeas/BitterLesson.html
+- https://www.anthropic.com/engineering/building-effective-agents
+- https://www.anthropic.com/engineering/writing-tools-for-agents
+
+- https://www.anthropic.com/engineering/multi-agent-research-system
 
 - https://opencode.ai/
 
@@ -100,34 +102,35 @@
 
 - Historical perspective: Join at the begiining of the chapter
 
-- Charts and diagrams (from papers if ArXiv)
+- Add charts and diagrams (from papers if ArXiv)
 
-# Services
+- STANDARD UCP (Universal Commerce Protocol): 
+  - https://ucp.dev/
+  - https://developers.googleblog.com/under-the-hood-universal-commerce-protocol-ucp/
+  - https://developers.google.com/merchant/ucp
 
-Basic services (no LLM)
-- To do: MCP
-- Sandbox + Workspace: MCP
-- REPL (Sandboxed): MCP
-- Private daata maker: MCP / API
+- [A2UI](https://github.com/google/A2UI)
 
-Advacned services:
-- Doctors: (connect as LLM OpenAi-API)
-  - Prompt 
-  - Tool
-  - MCP: (can also use MCP protocol)
-  - A2A: Read card.json
-- NL2SQL: a2a (streamming)
-- Controlled vocabularies, Ontologies: a2a (streamming)
-- Annonimizer: Streamming a2a
-- Eval Creator
+- Prompts: System, prompt, instructions
 
-### Solution
-- Account creation / management
-- Auth, API key creation (MCP)
-- Storing secrets: OpenAI credentials 
-- Payment options, billing, free tiers
-- Rate limits (API)
+- Prompt doctor
 
-# Done
+- BEST PRACTICE (single agent): Define (agent) params in '.env' (use standard variable names across projects): `get_agent()`
+- BEST PRACTICE (mult-agent): Define (agent) params in '.agents.json': `get_agent()`
+- BEST PRACTICE: Do not hard-code prompts (load prompts from files)
+- BEST PRACTICE: Read the prompt! Assume you are a junior person, on their first day at a new job: If you cannot do the task with ONLY the information in the prompt, the agent won't be able to do it either.
+- BEST PRACTICE: Doctors / reviewer
+  - Prompt Doctor
+  - MCP Doctor
+  - A2A doctor
+  - Skills doctor
+  - llms.txt doctor
 
 
+
+# Suggested topics
+
+- [Interactions API](https://ai.google.dev/gemini-api/docs/interactions)
+- [Claude code VS-Code](https://code.claude.com/docs/en/vs-code)
+- [Introducing advanced tool use on the Claude Developer Platform](https://www.anthropic.com/engineering/advanced-tool-use)
+- [Personalized AI](https://github.com/danielmiessler/Personal_AI_Infrastructure/tree/main)
