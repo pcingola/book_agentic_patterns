@@ -4,7 +4,7 @@ Build agentic systems that scale with computation, remain simple under iteration
 
 ### Historical perspective: from hand-built intelligence to scalable methods
 
-A repeating pattern in AI history is that approaches which “bake in” human knowledge and reasoning tricks often deliver quick wins, but are eventually outpaced by more general methods that can absorb more compute and data. Sutton’s *The Bitter Lesson* distilled this from decades of results across search and learning: progress tends to come from methods that scale (and from the discipline to keep systems simple enough to scale), even when the “hand-designed” approach feels more insightful in the moment. ([UT Austin Computer Science][1])
+A repeating pattern in AI history is that approaches which “bake in” human knowledge and reasoning tricks often deliver quick wins, but are eventually outpaced by more general methods that can absorb more compute and data. Sutton’s *The Bitter Lesson* distilled this from decades of results across search and learning: progress tends to come from methods that scale (and from the discipline to keep systems simple enough to scale), even when the “hand-designed” approach feels more insightful in the moment. ([UT Austin Computer Science][26])
 
 Modern LLM agents reintroduce an old temptation in a new form: over-fitting behavior through elaborate prompting, brittle heuristics, or highly bespoke orchestration. The best current practice is to resist that temptation by investing in (1) strong interfaces (tools, schemas, contracts), (2) evaluation-driven iteration, and (3) designs that keep the model doing what it’s good at (flexible reasoning under uncertainty) while pushing deterministic work into code.
 
@@ -20,7 +20,7 @@ Third, keep the system **composable**. The more your architecture resembles smal
 
 ### Building effective agents: when to use workflows vs agents
 
-Anthropic draws a practical architectural distinction: **workflows** are LLM+tools orchestrated through predefined code paths, while **agents** are systems where the model dynamically decides what to do and which tools to call. Both are “agentic systems,” but they behave very differently in production. ([Anthropic][2])
+Anthropic draws a practical architectural distinction: **workflows** are LLM+tools orchestrated through predefined code paths, while **agents** are systems where the model dynamically decides what to do and which tools to call. Both are “agentic systems,” but they behave very differently in production. ([Anthropic][27])
 
 A useful best practice is to start with workflows whenever possible:
 
@@ -53,7 +53,7 @@ Two concrete practices matter disproportionately in agent deployments:
 
 ### Writing tools for agents: contracts, context, and token economics
 
-Tools are where agent reliability is won or lost. Anthropic’s tool guidance is fundamentally about turning tool calling into a high-signal, low-ambiguity interface: pick the right tools, name and namespace them clearly, return meaningful context, keep responses token-efficient, and iterate using evaluations (including having agents help improve the tools themselves). ([Anthropic][3])
+Tools are where agent reliability is won or lost. Anthropic’s tool guidance is fundamentally about turning tool calling into a high-signal, low-ambiguity interface: pick the right tools, name and namespace them clearly, return meaningful context, keep responses token-efficient, and iterate using evaluations (including having agents help improve the tools themselves). ([Anthropic][28])
 
 A few practices are especially transferable:
 
@@ -72,7 +72,7 @@ CreateTicket(
 ) -> { ticket_id: str, url: str }
 ```
 
-This style aligns with the broader “structured outputs” approach: use schemas to validate what the model returns, keep interfaces object-shaped, and make it easy to reject/repair malformed outputs. ([Pydantic AI][4])
+This style aligns with the broader “structured outputs” approach: use schemas to validate what the model returns, keep interfaces object-shaped, and make it easy to reject/repair malformed outputs. ([Pydantic AI][29])
 
 #### Return enough context for the model to make the next decision
 
@@ -96,7 +96,7 @@ Agent systems sit on top of probabilistic components and unreliable external ser
 
 #### Retries belong at the system boundary
 
-Retries should be configured for the kinds of failures you expect: rate limits, timeouts, temporary outages, context-length issues. Treat retries as policy, not ad-hoc try/except scattered across tools. The Pydantic ecosystem’s guidance for retry strategies in evals mirrors what works in production systems: consistent retry configuration, bounded attempts, and exponential backoff where appropriate. ([Pydantic AI][5])
+Retries should be configured for the kinds of failures you expect: rate limits, timeouts, temporary outages, context-length issues. Treat retries as policy, not ad-hoc try/except scattered across tools. The Pydantic ecosystem’s guidance for retry strategies in evals mirrors what works in production systems: consistent retry configuration, bounded attempts, and exponential backoff where appropriate. ([Pydantic AI][30])
 
 ```python
 def call_with_retry(fn, *, max_attempts=3, backoff_s=1.0):
@@ -113,11 +113,11 @@ The important part is not the mechanism—it’s the decision to classify errors
 
 #### Validate model outputs like untrusted user input
 
-Whether it’s a tool call, a structured output, or a plan, treat the model as an untrusted producer. Schema validation and type checking catch entire categories of silent failures early (wrong types, missing fields, invalid enum values) and give you a clean “ask the model to try again” loop. ([Pydantic AI][4])
+Whether it’s a tool call, a structured output, or a plan, treat the model as an untrusted producer. Schema validation and type checking catch entire categories of silent failures early (wrong types, missing fields, invalid enum values) and give you a clean “ask the model to try again” loop. ([Pydantic AI][29])
 
 #### Use evals as the main lever for improvement
 
-The most reliable path to better agents is expanding your evaluation set with real failures and near-misses. Tool design, prompt changes, and orchestration tweaks should be judged against regression suites, not vibes. Anthropic’s tool-writing guidance explicitly centers comprehensive evaluations and iterative improvement loops (including using agents to help optimize tools). ([Anthropic][3])
+The most reliable path to better agents is expanding your evaluation set with real failures and near-misses. Tool design, prompt changes, and orchestration tweaks should be judged against regression suites, not vibes. Anthropic’s tool-writing guidance explicitly centers comprehensive evaluations and iterative improvement loops (including using agents to help optimize tools). ([Anthropic][28])
 
 A minimal pattern is: capture a transcript → turn it into a test case → add an automated check.
 
@@ -143,17 +143,17 @@ Simplicity over cleverness (because you will iterate), contracts over prose (bec
 
 ### References
 
-1. Sutton, R. S. *The Bitter Lesson*. Incomplete Ideas (essay), 2019. [http://www.incompleteideas.net/IncIdeas/BitterLesson.html](http://www.incompleteideas.net/IncIdeas/BitterLesson.html) ([Incomplete Ideas][6])
-2. Anthropic. *Building effective agents*. Anthropic Engineering, 2024. [https://www.anthropic.com/engineering/building-effective-agents](https://www.anthropic.com/engineering/building-effective-agents) ([Anthropic][2])
-3. Anthropic. *Writing effective tools for agents — with agents*. Anthropic Engineering, 2025. [https://www.anthropic.com/engineering/writing-tools-for-agents](https://www.anthropic.com/engineering/writing-tools-for-agents) ([Anthropic][3])
-4. Pydantic AI. *Output (structured outputs and validation)*. Documentation, n.d. [https://ai.pydantic.dev/output/](https://ai.pydantic.dev/output/) ([Pydantic AI][4])
-5. Pydantic AI. *Function tools (tools, tool schema, toolsets)*. Documentation, n.d. [https://ai.pydantic.dev/tools/](https://ai.pydantic.dev/tools/) ([Pydantic AI][7])
-6. Pydantic Evals. *Retry strategies*. Documentation, n.d. [https://ai.pydantic.dev/evals/how-to/retry-strategies/](https://ai.pydantic.dev/evals/how-to/retry-strategies/) ([Pydantic AI][5])
+1. Sutton, R. S. *The Bitter Lesson*. Incomplete Ideas (essay), 2019. [http://www.incompleteideas.net/IncIdeas/BitterLesson.html](http://www.incompleteideas.net/IncIdeas/BitterLesson.html) ([Incomplete Ideas][31])
+2. Anthropic. *Building effective agents*. Anthropic Engineering, 2024. [https://www.anthropic.com/engineering/building-effective-agents](https://www.anthropic.com/engineering/building-effective-agents) ([Anthropic][27])
+3. Anthropic. *Writing effective tools for agents — with agents*. Anthropic Engineering, 2025. [https://www.anthropic.com/engineering/writing-tools-for-agents](https://www.anthropic.com/engineering/writing-tools-for-agents) ([Anthropic][28])
+4. Pydantic AI. *Output (structured outputs and validation)*. Documentation, n.d. [https://ai.pydantic.dev/output/](https://ai.pydantic.dev/output/) ([Pydantic AI][29])
+5. Pydantic AI. *Function tools (tools, tool schema, toolsets)*. Documentation, n.d. [https://ai.pydantic.dev/tools/](https://ai.pydantic.dev/tools/) ([Pydantic AI][32])
+6. Pydantic Evals. *Retry strategies*. Documentation, n.d. [https://ai.pydantic.dev/evals/how-to/retry-strategies/](https://ai.pydantic.dev/evals/how-to/retry-strategies/) ([Pydantic AI][30])
 
-[1]: https://www.cs.utexas.edu/~eunsol/courses/data/bitter_lesson.pdf?utm_source=chatgpt.com "The Bitter Lesson"
-[2]: https://www.anthropic.com/research/building-effective-agents "Building Effective AI Agents \ Anthropic"
-[3]: https://www.anthropic.com/engineering/writing-tools-for-agents "Writing effective tools for AI agents—using AI agents \ Anthropic"
-[4]: https://ai.pydantic.dev/output/ "Output - Pydantic AI"
-[5]: https://ai.pydantic.dev/evals/how-to/retry-strategies/ "Retry Strategies - Pydantic AI"
-[6]: https://www.incompleteideas.net/IncIdeas/BitterLesson.html?utm_source=chatgpt.com "The Bitter Lesson"
-[7]: https://ai.pydantic.dev/tools/ "Function Tools - Pydantic AI"
+[26]: https://www.cs.utexas.edu/~eunsol/courses/data/bitter_lesson.pdf?utm_source=chatgpt.com "The Bitter Lesson"
+[27]: https://www.anthropic.com/research/building-effective-agents "Building Effective AI Agents \ Anthropic"
+[28]: https://www.anthropic.com/engineering/writing-tools-for-agents "Writing effective tools for AI agents—using AI agents \ Anthropic"
+[29]: https://ai.pydantic.dev/output/ "Output - Pydantic AI"
+[30]: https://ai.pydantic.dev/evals/how-to/retry-strategies/ "Retry Strategies - Pydantic AI"
+[31]: https://www.incompleteideas.net/IncIdeas/BitterLesson.html?utm_source=chatgpt.com "The Bitter Lesson"
+[32]: https://ai.pydantic.dev/tools/ "Function Tools - Pydantic AI"

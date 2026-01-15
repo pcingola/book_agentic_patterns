@@ -14,15 +14,15 @@ Reinforcement learning formalizes an agent as a *sequential decision-maker*, and
 
 In a Markov Decision Process (MDP), an agent interacts with an environment characterized by states (s), actions (a), transition dynamics, and rewards. The *state-value function* (V^\pi(s)) under a policy (\pi) is defined as the expected cumulative reward starting from state (s). Bellman showed that this value can be written recursively:
 
-[
+$$
 V^\pi(s) = \mathbb{E}_{a \sim \pi,, s'} \left[ r(s,a) + \gamma V^\pi(s') \right]
-]
+$$
 
 This equation says that the value of the current state is the immediate reward plus the discounted value of the next state. The *optimal* value function satisfies the Bellman optimality equation:
 
-[
+$$
 V^*(s) = \max_a \mathbb{E}_{s'} \left[ r(s,a) + \gamma V^*(s') \right]
-]
+$$
 
 Conceptually, this is the agent loop in its purest form: at each step, choose the action that leads to the best expected future outcome, assuming optimal behavior thereafter. Richard Bellman’s key contribution was recognizing that long-horizon decision-making can be decomposed into local decisions evaluated recursively.
 

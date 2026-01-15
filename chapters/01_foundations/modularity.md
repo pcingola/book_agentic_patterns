@@ -4,9 +4,9 @@ Modularity is the discipline of decomposing an agentic system into composable pa
 
 ### Historical perspective: from software modules to tool-using agents
 
-Modularity predates “agents” by decades. In classic software engineering, information hiding and stable interfaces were formalized as the core mechanism for building systems that can change without collapsing under their own complexity. The canonical argument is that you do *not* modularize by “steps in the processing,” but by design decisions likely to change—so changes are localized behind module boundaries. ([ACM Digital Library][1])
+Modularity predates “agents” by decades. In classic software engineering, information hiding and stable interfaces were formalized as the core mechanism for building systems that can change without collapsing under their own complexity. The canonical argument is that you do *not* modularize by “steps in the processing,” but by design decisions likely to change—so changes are localized behind module boundaries. ([ACM Digital Library][11])
 
-As systems grew, the same pressure pushed modularity “out of process” into services: independently deployable components with explicit network contracts. This trajectory is often summarized as monolith → modules/packages → services/SOA → microservices, with the key idea remaining constant: smaller components, clear interfaces, and ownership boundaries. ([martinfowler.com][2])
+As systems grew, the same pressure pushed modularity “out of process” into services: independently deployable components with explicit network contracts. This trajectory is often summarized as monolith → modules/packages → services/SOA → microservices, with the key idea remaining constant: smaller components, clear interfaces, and ownership boundaries. ([martinfowler.com][12])
 
 In LLM systems, modularity reappeared in a new form around 2022–2023: language models began to *route* to external tools and specialized components rather than “do everything in weights.” Neuro-symbolic and tool-augmented architectures (e.g., MRKL) made modular routing explicit, while ReAct showed the practical value of interleaving reasoning with actions (tool calls) during execution. ([arXiv][3]) Toolformer then pushed toward models that can learn to decide *when* to call tools. ([arXiv][4])
 
@@ -84,11 +84,11 @@ This is the same mental model as functions/classes:
 * errors = exceptions contract
 * retryable vs not = idempotency + side-effect model
 
-Modern “tool calling” APIs formalize this multi-step control flow (model proposes a call → app executes → model continues with results), which makes tool contracts a first-class modular boundary. ([OpenAI Platform][5])
+Modern “tool calling” APIs formalize this multi-step control flow (model proposes a call → app executes → model continues with results), which makes tool contracts a first-class modular boundary. ([OpenAI Platform][15])
 
 #### MCP: modularity at the “port” boundary
 
-Model Context Protocol (MCP) pushes modularity one level outward: tools, prompts, and resources are exposed by *servers* behind a standard client/server protocol. Instead of each application inventing bespoke integrations, MCP aims to standardize the boundary so components become swappable. The MCP specification explicitly frames this as a modular protocol design where implementations can support only the layers they need. ([Model Context Protocol][6])
+Model Context Protocol (MCP) pushes modularity one level outward: tools, prompts, and resources are exposed by *servers* behind a standard client/server protocol. Instead of each application inventing bespoke integrations, MCP aims to standardize the boundary so components become swappable. The MCP specification explicitly frames this as a modular protocol design where implementations can support only the layers they need. ([Model Context Protocol][16])
 
 Two key modularity consequences follow:
 
@@ -96,7 +96,7 @@ Two key modularity consequences follow:
    A database connector, a filesystem browser, or a domain API wrapper can be shipped as an MCP server with a stable contract, then reused across multiple agents/apps.
 
 2. **“Context” becomes a structured dependency**
-   MCP resources and prompts let you treat context not as “more text in the prompt,” but as a separate module with its own retrieval and lifecycle rules. ([Model Context Protocol][7])
+   MCP resources and prompts let you treat context not as “more text in the prompt,” but as a separate module with its own retrieval and lifecycle rules. ([Model Context Protocol][17])
 
 Conceptually:
 
@@ -122,7 +122,7 @@ Note what changed versus “plain tool calling”: the agent no longer links dir
 
 #### A2A: modularity at the “agent as a service” boundary
 
-If MCP makes *tools* reusable modules, A2A makes *agents themselves* reusable modules: independently hosted, potentially opaque systems that interoperate through a common language and interaction model. ([a2a-protocol.org][8])
+If MCP makes *tools* reusable modules, A2A makes *agents themselves* reusable modules: independently hosted, potentially opaque systems that interoperate through a common language and interaction model. ([a2a-protocol.org][18])
 
 The software analogy is direct:
 
@@ -153,7 +153,7 @@ This is modularity at the same boundary as “service calls,” except the remot
 
 #### Skills: packaging and discoverability as modularity
 
-“Skills” address a different (often underestimated) modularity problem: **packaging, documentation, and discoverability**. A skill format standardizes *how* a capability is described and shipped—typically as a small directory with a canonical manifest (e.g., a `SKILL.md`) plus optional scripts/assets/references. ([Agent Skills][9])
+“Skills” address a different (often underestimated) modularity problem: **packaging, documentation, and discoverability**. A skill format standardizes *how* a capability is described and shipped—typically as a small directory with a canonical manifest (e.g., a `SKILL.md`) plus optional scripts/assets/references. ([Agent Skills][19])
 
 In software terms, skills are closest to:
 
@@ -164,7 +164,7 @@ This becomes especially valuable when capabilities are not only code (tools), bu
 
 #### Sub-agents: classes and dependency injection for behavior
 
-Inside a single application, you often want multiple specialized agents (e.g., “planner,” “researcher,” “executor,” “critic”). That is modularity at the *component* level: each sub-agent has a purpose, its own prompt constraints, and a limited toolset. Frameworks that emphasize typed dependencies and structured outputs make this decomposition less fragile by turning hidden coupling (prompt conventions) into explicit interfaces. ([Pydantic AI][10])
+Inside a single application, you often want multiple specialized agents (e.g., “planner,” “researcher,” “executor,” “critic”). That is modularity at the *component* level: each sub-agent has a purpose, its own prompt constraints, and a limited toolset. Frameworks that emphasize typed dependencies and structured outputs make this decomposition less fragile by turning hidden coupling (prompt conventions) into explicit interfaces. ([Pydantic AI][20])
 
 A useful engineering rule: a sub-agent should have a narrower surface area than the parent agent—fewer tools, stricter output schema, clearer termination conditions.
 
@@ -238,29 +238,29 @@ The common principle is to choose boundaries based on what changes at different 
 
 ## References
 
-1. David L. Parnas. *On the Criteria To Be Used in Decomposing Systems into Modules*. Communications of the ACM, 1972. ([ACM Digital Library][1])
-2. Shunyu Yao, Jeffrey Zhao, Dian Yu, Nan Du, Izhak Shafran, Karthik Narasimhan, Yuan Cao. *ReAct: Synergizing Reasoning and Acting in Language Models*. arXiv, 2022. ([arXiv][12])
-3. Ehud Karpas et al. *MRKL Systems: A modular, neuro-symbolic architecture that combines large language models, external knowledge sources and discrete reasoning*. arXiv, 2022. ([arXiv][3])
-4. Timo Schick et al. *Toolformer: Language Models Can Teach Themselves to Use Tools*. arXiv, 2023. ([arXiv][4])
-5. Model Context Protocol Contributors. *Model Context Protocol Specification (2025-06-18)*. 2025. ([Model Context Protocol][13])
-6. A2A Protocol Contributors. *Agent2Agent (A2A) Protocol Specification*. 2025. ([a2a-protocol.org][8])
-7. Google Developers Blog. *Announcing the Agent2Agent Protocol (A2A)*. 2025. ([Google Developers Blog][14])
-8. Pydantic Services Inc. *Pydantic AI Documentation: Multi-agent applications & workflows*. 2024–present. ([Pydantic AI][15])
-9. Pydantic Services Inc. *Pydantic AI Documentation: Graphs and finite state machines*. 2024–present. ([Pydantic AI][11])
-10. AgentSkills Contributors. *Agent Skills Specification*. 2024–present. ([Agent Skills][9])
+1. David L. Parnas. *On the Criteria To Be Used in Decomposing Systems into Modules*. Communications of the ACM, 1972. ([ACM Digital Library][11])
+2. Shunyu Yao, Jeffrey Zhao, Dian Yu, Nan Du, Izhak Shafran, Karthik Narasimhan, Yuan Cao. *ReAct: Synergizing Reasoning and Acting in Language Models*. arXiv, 2022. ([arXiv][22])
+3. Ehud Karpas et al. *MRKL Systems: A modular, neuro-symbolic architecture that combines large language models, external knowledge sources and discrete reasoning*. arXiv, 2022. ([arXiv][13])
+4. Timo Schick et al. *Toolformer: Language Models Can Teach Themselves to Use Tools*. arXiv, 2023. ([arXiv][14])
+5. Model Context Protocol Contributors. *Model Context Protocol Specification (2025-06-18)*. 2025. ([Model Context Protocol][23])
+6. A2A Protocol Contributors. *Agent2Agent (A2A) Protocol Specification*. 2025. ([a2a-protocol.org][18])
+7. Google Developers Blog. *Announcing the Agent2Agent Protocol (A2A)*. 2025. ([Google Developers Blog][24])
+8. Pydantic Services Inc. *Pydantic AI Documentation: Multi-agent applications & workflows*. 2024–present. ([Pydantic AI][25])
+9. Pydantic Services Inc. *Pydantic AI Documentation: Graphs and finite state machines*. 2024–present. ([Pydantic AI][21])
+10. AgentSkills Contributors. *Agent Skills Specification*. 2024–present. ([Agent Skills][19])
 
-[1]: https://dl.acm.org/doi/10.1145/361598.361623?utm_source=chatgpt.com "On the criteria to be used in decomposing systems into ..."
-[2]: https://martinfowler.com/articles/microservices.html?utm_source=chatgpt.com "Microservices"
-[3]: https://arxiv.org/abs/2205.00445?utm_source=chatgpt.com "[2205.00445] MRKL Systems: A modular, neuro-symbolic ..."
-[4]: https://arxiv.org/abs/2302.04761?utm_source=chatgpt.com "Toolformer: Language Models Can Teach Themselves to Use Tools"
-[5]: https://platform.openai.com/docs/guides/function-calling?utm_source=chatgpt.com "Function calling | OpenAI API"
-[6]: https://modelcontextprotocol.io/specification/2025-06-18/basic?utm_source=chatgpt.com "Overview - Model Context Protocol"
-[7]: https://modelcontextprotocol.io/?utm_source=chatgpt.com "Model Context Protocol"
-[8]: https://a2a-protocol.org/latest/specification/?utm_source=chatgpt.com "Agent2Agent (A2A) Protocol Specification (DRAFT v1.0)"
-[9]: https://agentskills.io/specification?utm_source=chatgpt.com "Specification - Agent Skills"
-[10]: https://ai.pydantic.dev/?utm_source=chatgpt.com "Pydantic AI - Pydantic AI"
-[11]: https://ai.pydantic.dev/graph/?utm_source=chatgpt.com "Graph"
-[12]: https://arxiv.org/abs/2210.03629?utm_source=chatgpt.com "ReAct: Synergizing Reasoning and Acting in Language Models"
-[13]: https://modelcontextprotocol.io/specification/2025-06-18?utm_source=chatgpt.com "Specification"
-[14]: https://developers.googleblog.com/en/a2a-a-new-era-of-agent-interoperability/?utm_source=chatgpt.com "Announcing the Agent2Agent Protocol (A2A)"
-[15]: https://ai.pydantic.dev/multi-agent-applications/?utm_source=chatgpt.com "Multi-agent Applications & Workflows - Pydantic AI"
+[11]: https://dl.acm.org/doi/10.1145/361598.361623?utm_source=chatgpt.com "On the criteria to be used in decomposing systems into ..."
+[12]: https://martinfowler.com/articles/microservices.html?utm_source=chatgpt.com "Microservices"
+[13]: https://arxiv.org/abs/2205.00445?utm_source=chatgpt.com "[2205.00445] MRKL Systems: A modular, neuro-symbolic ..."
+[14]: https://arxiv.org/abs/2302.04761?utm_source=chatgpt.com "Toolformer: Language Models Can Teach Themselves to Use Tools"
+[15]: https://platform.openai.com/docs/guides/function-calling?utm_source=chatgpt.com "Function calling | OpenAI API"
+[16]: https://modelcontextprotocol.io/specification/2025-06-18/basic?utm_source=chatgpt.com "Overview - Model Context Protocol"
+[17]: https://modelcontextprotocol.io/?utm_source=chatgpt.com "Model Context Protocol"
+[18]: https://a2a-protocol.org/latest/specification/?utm_source=chatgpt.com "Agent2Agent (A2A) Protocol Specification (DRAFT v1.0)"
+[19]: https://agentskills.io/specification?utm_source=chatgpt.com "Specification - Agent Skills"
+[20]: https://ai.pydantic.dev/?utm_source=chatgpt.com "Pydantic AI - Pydantic AI"
+[21]: https://ai.pydantic.dev/graph/?utm_source=chatgpt.com "Graph"
+[22]: https://arxiv.org/abs/2210.03629?utm_source=chatgpt.com "ReAct: Synergizing Reasoning and Acting in Language Models"
+[23]: https://modelcontextprotocol.io/specification/2025-06-18?utm_source=chatgpt.com "Specification"
+[24]: https://developers.googleblog.com/en/a2a-a-new-era-of-agent-interoperability/?utm_source=chatgpt.com "Announcing the Agent2Agent Protocol (A2A)"
+[25]: https://ai.pydantic.dev/multi-agent-applications/?utm_source=chatgpt.com "Multi-agent Applications & Workflows - Pydantic AI"

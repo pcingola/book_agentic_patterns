@@ -49,6 +49,693 @@ The purpose of this example is not to prescribe a single “correct” architect
 4. Amodei, D. et al. *Concrete Problems in AI Safety*. arXiv, 2016.
 5. OpenAI. *Planning and Acting with Large Language Models*. OpenAI research blog, 2023.
 
+
+## What is an Agent / Agentic System
+
+An agentic system is software that repeatedly decides what to do next—often by invoking tools—based on its current state, until it achieves a goal.
+
+```
+Agent = LLM + tools
+```
+
+### A short historical perspective
+
+The notion of an *agent* predates modern language models by several decades. In classical AI, an agent is defined as an entity that perceives its environment and acts upon it, with the objective of maximizing some notion of performance. This framing was formalized most clearly in reinforcement learning, where the agent–environment interaction loop became the dominant abstraction.
+
+Reinforcement learning formalizes an agent as a *sequential decision-maker*, and Bellman’s equations provide the mathematical backbone of this idea. At their core, they express a simple but powerful principle: **the value of a decision depends on the value of the decisions that follow it**.
+
+In a Markov Decision Process (MDP), an agent interacts with an environment characterized by states (s), actions (a), transition dynamics, and rewards. The *state-value function* (V^\pi(s)) under a policy (\pi) is defined as the expected cumulative reward starting from state (s). Bellman showed that this value can be written recursively:
+
+$$
+V^\pi(s) = \mathbb{E}_{a \sim \pi,, s'} \left[ r(s,a) + \gamma V^\pi(s') \right]
+$$
+
+This equation says that the value of the current state is the immediate reward plus the discounted value of the next state. The *optimal* value function satisfies the Bellman optimality equation:
+
+$$
+V^*(s) = \max_a \mathbb{E}_{s'} \left[ r(s,a) + \gamma V^*(s') \right]
+$$
+
+Conceptually, this is the agent loop in its purest form: at each step, choose the action that leads to the best expected future outcome, assuming optimal behavior thereafter. Richard Bellman’s key contribution was recognizing that long-horizon decision-making can be decomposed into local decisions evaluated recursively.
+
+Modern agentic systems do **not** solve Bellman equations explicitly. There is no value table, no learned reward model, and often no explicit notion of optimality. However, the *structure* remains the same. Each tool call corresponds to an action, each tool result is an observation of the next state, and the language model implicitly approximates a policy that reasons about future consequences (“If I query the database first, I can answer more accurately later”).
+
+Seen through this lens, LLM-based agents are best understood not as a departure from classical agent theory, but as a practical approximation of it—replacing explicit value functions with learned heuristics expressed in natural language, while preserving the recursive, step-by-step decision structure that Bellman formalized decades ago.
+
+Later work in the 1990s on intelligent and multi-agent systems emphasized properties such as autonomy, reactivity, and proactiveness, as well as the ability of agents to interact with one another. While these systems were often symbolic or rule-based, the conceptual loop—observe, decide, act, learn—remained the same.
+
+What changed with large language models is not the agent abstraction itself, but the mechanism used to approximate the policy. Instead of learning a value function or policy explicitly via reward signals, modern agentic systems use language models as powerful, general-purpose policy approximators that can reason over unstructured inputs and decide which actions (tools) to take next.
+
+### The concept of AI agentic systems
+
+An AI agentic system can be understood as an instantiation of the classic agent loop, implemented with contemporary components. The system maintains some notion of state (explicit or implicit), observes new information, decides on an action, executes that action via tools or APIs, and incorporates the result before repeating the process.
+
+From a reinforcement learning perspective, this is immediately familiar. The “environment” may be a database, an internal service, a file system, or the open web. “Actions” correspond to tool calls. “Observations” are the outputs of those tools. The policy is approximated by a language model conditioned on instructions, context, and prior interaction history. Even when no explicit reward signal is present, the structure of the interaction mirrors the Bellman-style decomposition of decisions over time: each step is chosen with awareness that it will influence future options.
+
+The crucial difference from traditional chat-based systems is that decisions are not terminal. A single response is rarely sufficient. Instead, the model is embedded in a loop that allows it to refine its understanding of the task and adapt its actions based on intermediate results.
+
+### Key characteristics that distinguish agentic systems from traditional software
+
+Traditional software encodes control flow explicitly. Decisions are implemented as conditional branches, loops are fixed, and the system’s behavior is fully specified ahead of time.
+
+Agentic systems shift part of this responsibility to the model. The developer defines the goal, constraints, and available actions, while the model determines *which* action to take and *when*. This makes agentic systems goal-directed rather than procedure-directed: the emphasis is on achieving an outcome, not following a predefined script.
+
+Another defining characteristic is the centrality of tools. In agentic systems, tools are not auxiliary features; they are the primary means by which the agent interacts with the world. This mirrors the action space in reinforcement learning, where the expressiveness and safety of available actions strongly shape the learned policy.
+
+Agentic systems are also inherently iterative. Rarely does the first action succeed. Instead, the system relies on feedback—tool outputs, errors, partial results—to update its internal state and make a better decision at the next step. This feedback loop is essential for robustness and aligns closely with the trial-and-error dynamics studied in reinforcement learning.
+
+Finally, uncertainty and stochasticity are unavoidable. Language models are probabilistic, and identical inputs may produce different outputs. As a result, reliability emerges not from determinism, but from system-level design: validation, structured outputs, constrained tool interfaces, retries, and well-defined stopping conditions.
+
+### A simplified definition: “Agent = LLM + tools”
+
+For the purposes of this book, we adopt a deliberately pragmatic definition:
+
+**Agent = LLM + tools (executed in a loop).**
+
+This definition intentionally omits many refinements—explicit memory modules, planners, critics, reward models, or hierarchical policies—not because they are unimportant, but because they can be understood as extensions of this core pattern. If a language model can decide which tool to call next, observe the result, and repeat until a goal is met, the system already behaves like an agent in the classical sense.
+
+A minimal agent loop looks like this:
+
+```python
+def run_agent(user_input: str, tools: dict) -> str:
+    messages = [
+        {"role": "system", "content": "Solve the task using tools when appropriate."},
+        {"role": "user", "content": user_input},
+    ]
+
+    while True:
+        response = llm_chat(messages=messages, tools=tool_schemas(tools))
+
+        if response["type"] == "final":
+            return response["content"]
+
+        tool_name = response["name"]
+        tool_args = response["args"]
+        result = tools[tool_name](**tool_args)
+
+        messages.append(response)
+        messages.append({
+            "role": "tool",
+            "name": tool_name,
+            "content": serialize(result),
+        })
+```
+
+Conceptually, this loop is no different from an agent interacting with an environment step by step. The language model plays the role of the policy, the tools define the action space, and the message history serves as a lightweight state representation.
+
+### Our approach: simplicity over taxonomy
+
+There is an understandable temptation to draw sharp boundaries between workflows, assistants, planners, autonomous agents, and multi-agent systems. While these distinctions can be useful analytically, they often obscure the engineering reality.
+
+In this book, we take a deliberately simple stance. If a system repeatedly observes, decides, acts, and incorporates feedback—using a language model and tools—it is agentic enough to matter. This perspective aligns naturally with the reinforcement learning view of agents as sequential decision-makers, while remaining practical for engineers building real systems today.
+
+---
+
+### References
+
+1. Richard Bellman. *Dynamic Programming*. Princeton University Press, 1957.
+2. Richard S. Sutton, Andrew G. Barto. *Reinforcement Learning: An Introduction*. MIT Press, 2018.
+3. Stuart Russell, Peter Norvig. *Artificial Intelligence: A Modern Approach*. Pearson, 2020.
+4. Michael Wooldridge, Nicholas R. Jennings. *Intelligent Agents: Theory and Practice*. The Knowledge Engineering Review, 1995.
+5. Shunyu Yao et al. *ReAct: Synergizing Reasoning and Acting in Language Models*. ICLR, 2023.
+6. Timo Schick et al. *Toolformer: Language Models Can Teach Themselves to Use Tools*. NeurIPS, 2023.
+
+
+## Determinism vs stochasticity
+
+Agentic systems sit at the boundary between deterministic software and stochastic model behavior, so you design for *reproducibility* rather than pretending you can get perfect determinism.
+
+### Historical perspective: from probabilistic language models to modern decoding
+
+Language modeling has been probabilistic from the start: the core object is a probability distribution over sequences, not a single “correct” next token. Early information theory formalized the idea of modeling sources statistically, which later became the conceptual backbone of language modeling. ([ESSRL][1])
+
+Neural language models made this explicit by learning a parameterized distribution over next tokens, and modern LLMs are essentially extremely large versions of that idea. ([Journal of Machine Learning Research][2]) What changed in practice is that, as models became strong generators, *decoding* became a first-class engineering decision. Deterministic decoding (greedy/beam) tends to be repeatable but can degrade quality (repetition, blandness), while stochastic decoding (temperature, top-k/top-p) trades determinism for diversity and sometimes robustness. Nucleus sampling is a canonical example of decoding research motivated by these practical failures. ([arXiv][3])
+
+### LLMs are stochastic (even when you try to “turn it off”)
+
+An LLM call is not “a function” in the strict software sense. Even if the model were held fixed, generation typically involves sampling from a distribution; lowering temperature just sharpens that distribution. Many production model APIs also involve infrastructure-level nondeterminism (e.g., backend changes, load balancing, numerical differences), which means that setting “temperature = 0” is best understood as “reduce randomness,” not “prove determinism.” This is explicitly called out in agent-oriented tooling docs: even with temperature set to 0.0, outputs are not guaranteed to be fully deterministic. ([Pydantic AI][4])
+
+Two practical implications follow:
+
+First, you should separate **semantic determinism** (“the agent makes the same decision”) from **token determinism** (“the exact same text”). Token determinism is fragile and often not worth pursuing except for narrow regression tests.
+
+Second, you should treat stochasticity as a design constraint: once you add tools, retries, multi-step plans, and multi-agent delegation, tiny variations compound into divergent trajectories. The goal becomes: constrain the degrees of freedom that matter, and validate behavior with tests that tolerate harmless variation.
+
+A minimal “variance control” configuration typically fixes the parameters that influence sampling, and records run metadata so you can reason about drift when it happens:
+
+```python
+request = {
+    "model": model_name,
+    "temperature": 0.0,
+    "top_p": 1.0,
+    # If your provider supports it, fix a seed for higher repeatability.
+    "seed": 42,
+}
+
+resp = llm.generate(prompt, **request)
+
+# Store enough metadata to diagnose drift later (backend revisions, fingerprints, etc.).
+run_log = {
+    "prompt_hash": sha256(prompt.encode()).hexdigest(),
+    "params": request,
+    "provider_metadata": resp.metadata,  # e.g., fingerprint/revision identifiers if available
+}
+```
+
+### Testing and validation strategies for stochastic agents
+
+The key move is to stop thinking “unit test the LLM” and start thinking “test the agent’s contract.” In practice, that means composing multiple layers of checks, from fully deterministic to probabilistic, and designing your architecture so those layers are easy to apply.
+
+#### 1) Make the boundaries deterministic: validate *structure* before you judge *content*
+
+Most agent failures in production are not “the answer is slightly different,” but “the agent emitted something unparseable,” “it called the wrong tool,” “it violated permissions,” or “it produced an object that breaks downstream code.” Your first testing layer should therefore be deterministic validation of interfaces: schema checks, tool-call argument validation, invariants, and policy constraints.
+
+```python
+# Example: validate that the model output conforms to a strict schema,
+# and fail fast with actionable errors.
+output = agent.run(input)
+
+validate_schema(output)           # types, required fields, enums
+validate_invariants(output)       # domain rules
+validate_policy(output)           # permissions / tool allowlist constraints
+```
+
+This is also where “structured outputs” and typed contracts pay off: they convert a fuzzy generative step into something you can deterministically accept/reject.
+
+#### 2) Record/replay to isolate nondeterminism (and make regressions cheap)
+
+Stochasticity becomes unmanageable when failures are not reproducible. A standard pattern is to record *external effects* (tool calls, retrieved documents, database rows, HTTP responses) and replay them in tests. That pins the environment so you can focus on the agent logic and prompts.
+
+```python
+def tool_call(tool_name, args):
+    if replay_mode:
+        return cassette.read(tool_name, args)
+    result = real_tool_call(tool_name, args)
+    cassette.write(tool_name, args, result)
+    return result
+```
+
+With this, you can run “golden” scenarios where tools behave identically run-to-run, and any change comes from prompts/model behavior (or your scaffolding).
+
+#### 3) Use deterministic test doubles for fast iteration
+
+A second accelerator is a deterministic “fake model” used in unit tests that returns scripted outputs (or outputs derived from simple rules). The point is not to approximate the LLM; it is to make agent control flow testable: branching, retries, fallback behavior, tool orchestration, and state handling.
+
+```python
+class FakeModel:
+    def generate(self, prompt, **params):
+        if "need_tool" in prompt:
+            return {"tool": {"name": "search", "args": {"q": "..."}}}
+        return {"final": "stubbed answer"}
+```
+
+This lets you test the *agent as software* with the speed and determinism you expect from normal unit tests.
+
+#### 4) Treat evaluation as a first-class harness, not ad-hoc assertions
+
+For end-to-end behavior, you typically need evaluation infrastructure: curated datasets, repeatable runs, and scoring. Evaluation frameworks aimed at agentic systems emphasize running many scenarios and attaching evaluators that produce scores/labels/assertions, including “LLM-as-judge” when deterministic checks are insufficient. ([Pydantic AI][5])
+
+A practical rubric pattern is: deterministic checks first, then an LLM judge for the remaining ambiguity, with guidance to keep the judge itself as stable as possible (for example, low temperature) and to combine multiple judges when needed. ([Pydantic AI][6])
+
+```python
+case = {"input": "...", "expected_facts": [...], "constraints": [...]}
+out = agent.run(case["input"])
+
+assert contains_required_facts(out, case["expected_facts"])   # deterministic
+assert violates_no_constraints(out, case["constraints"])      # deterministic
+
+score = llm_judge(
+    rubric="""
+    Rate correctness and completeness. Penalize hallucinated claims.
+    """,
+    candidate=out,
+    reference=case.get("reference"),
+)
+assert score >= 0.8
+```
+
+The important engineering point is that “evaluation” is not only for model selection. It is your regression suite for prompt edits, tool changes, and dependency upgrades.
+
+#### 5) Prefer behavioral assertions over exact-match snapshots
+
+Exact text snapshots are brittle. When you *must* snapshot, snapshot the right thing: tool sequences, structured outputs, and key decisions. If you need to compare free text, use normalization and tolerance: compare extracted facts, compare JSON fields, or compare embeddings / semantic similarity with thresholds (carefully, and ideally with a deterministic baseline).
+
+#### 6) Design for controlled nondeterminism in production
+
+Even if your tests are solid, production will still face drift. The production counterpart of your testing strategy is: log the parameters and environment identifiers; keep prompts versioned; isolate tools behind stable contracts; and monitor outcome metrics so you detect behavior changes quickly. If your provider supports seeds and fingerprints, treat them as debugging aids, not as a determinism guarantee. ([OpenAI Cookbook][7])
+
+## References
+
+1. C. E. Shannon. *A Mathematical Theory of Communication*. Bell System Technical Journal, 1948. ([ESSRL][1])
+2. Yoshua Bengio, Réjean Ducharme, Pascal Vincent, Christian Jauvin. *A Neural Probabilistic Language Model*. JMLR, 2003. ([Journal of Machine Learning Research][2])
+3. Ashish Vaswani et al. *Attention Is All You Need*. NeurIPS, 2017. ([NeurIPS Papers][8])
+4. Ari Holtzman et al. *The Curious Case of Neural Text Degeneration*. ICLR, 2020. ([OpenReview][9])
+5. Pydantic AI Documentation. *Model settings (temperature) — note on nondeterminism*. 2025. ([Pydantic AI][4])
+6. Pydantic Evals Documentation. *Overview and evaluators (including LLM judge best practices)*. 2025. ([Pydantic AI][5])
+7. OpenAI Cookbook. *Reproducible outputs with the seed parameter*. 2023. ([OpenAI Cookbook][7])
+8. Microsoft Learn (Azure OpenAI). *Reproducible output (seed and parameter matching)*. 2025. ([Microsoft Learn][10])
+
+[1]: https://www.essrl.wustl.edu/~jao/itrg/shannon.pdf?utm_source=chatgpt.com "shannon.pdf"
+[2]: https://www.jmlr.org/papers/volume3/bengio03a/bengio03a.pdf?utm_source=chatgpt.com "A Neural Probabilistic Language Model"
+[3]: https://arxiv.org/abs/1904.09751?utm_source=chatgpt.com "The Curious Case of Neural Text Degeneration"
+[4]: https://ai.pydantic.dev/api/settings/?utm_source=chatgpt.com "pydantic_ai.settings"
+[5]: https://ai.pydantic.dev/evals/?utm_source=chatgpt.com "Pydantic Evals"
+[6]: https://ai.pydantic.dev/evals/evaluators/llm-judge/?utm_source=chatgpt.com "LLM Judge"
+[7]: https://cookbook.openai.com/examples/reproducible_outputs_with_the_seed_parameter?utm_source=chatgpt.com "How to make your completions outputs consistent with the ..."
+[8]: https://papers.neurips.cc/paper/7181-attention-is-all-you-need.pdf?utm_source=chatgpt.com "Attention is All you Need"
+[9]: https://openreview.net/pdf?id=rygGQyrFvH&utm_source=chatgpt.com "THE CURIOUS CASE OF NEURAL TEXT DeGENERATION"
+[10]: https://learn.microsoft.com/en-us/azure/ai-foundry/openai/how-to/reproducible-output?view=foundry-classic&utm_source=chatgpt.com "How to generate reproducible output with Azure OpenAI in ..."
+
+
+## Modularity in agentic systems
+
+Modularity is the discipline of decomposing an agentic system into composable parts—each with a clear interface—so you can evolve prompts, tools, agents, and orchestration independently.
+
+### Historical perspective: from software modules to tool-using agents
+
+Modularity predates “agents” by decades. In classic software engineering, information hiding and stable interfaces were formalized as the core mechanism for building systems that can change without collapsing under their own complexity. The canonical argument is that you do *not* modularize by “steps in the processing,” but by design decisions likely to change—so changes are localized behind module boundaries. ([ACM Digital Library][11])
+
+As systems grew, the same pressure pushed modularity “out of process” into services: independently deployable components with explicit network contracts. This trajectory is often summarized as monolith → modules/packages → services/SOA → microservices, with the key idea remaining constant: smaller components, clear interfaces, and ownership boundaries. ([martinfowler.com][12])
+
+In LLM systems, modularity reappeared in a new form around 2022–2023: language models began to *route* to external tools and specialized components rather than “do everything in weights.” Neuro-symbolic and tool-augmented architectures (e.g., MRKL) made modular routing explicit, while ReAct showed the practical value of interleaving reasoning with actions (tool calls) during execution. ([arXiv][3]) Toolformer then pushed toward models that can learn to decide *when* to call tools. ([arXiv][4])
+
+### A modularity “stack” for agentic systems
+
+A useful way to think about modularity in agentic systems is as a stack of boundaries—from the smallest (prompt fragments) to the largest (inter-agent protocols). Each layer solves a different engineering problem, and mature systems usually use several layers at once.
+
+#### Prompt modularity: functions for cognition
+
+Prompts are often treated as monolithic strings, but they behave more like *code*: they have “APIs” (inputs/outputs), invariants, and callers. Prompt modularity means splitting a large prompt into stable, testable pieces:
+
+* **Policy/invariants** (never change lightly): safety constraints, formatting rules, refusal behavior, logging requirements.
+* **Role and task spec** (changes with product): what the component is responsible for, what it must not do.
+* **Few-shot examples** (change with quality work): curated demonstrations, counterexamples, edge cases.
+* **Adapters** (change with environment): tool availability, domain glossary, tenant-specific rules.
+
+A practical pattern is to treat prompt fragments like functions and compose them deterministically:
+
+```python
+def prompt_contract() -> str:
+    return """You are a component that outputs JSON only.
+Validate inputs. Never invent IDs. If uncertain, ask for clarification."""
+
+def prompt_task(task_name: str) -> str:
+    return f"""Task: {task_name}
+Return fields: plan[], risks[], open_questions[]"""
+
+def prompt_examples() -> str:
+    return """Example input: ...
+Example output: ..."""
+
+def build_prompt(task_name: str) -> str:
+    # Composition is deterministic; variability is pushed to model sampling.
+    return "\n\n".join([prompt_contract(), prompt_task(task_name), prompt_examples()])
+```
+
+This mirrors software decomposition: `prompt_contract()` is your stable interface guarantee; `prompt_task()` is the “business logic spec;” examples are regression tests in disguise.
+
+#### Tool modularity: typed interfaces and stable contracts
+
+Tools are “callable modules” for agents. The modularity win is not merely *having* tools, but having **stable tool contracts** so that:
+
+1. the agent can discover capabilities reliably, and
+2. you can refactor tool internals without changing agent behavior.
+
+A minimal tool contract has (a) a name, (b) a schema, (c) error semantics, and (d) determinism expectations.
+
+```python
+# Pseudo-interface: tool contracts are the agent equivalent of function signatures.
+TOOL = {
+  "name": "customer_lookup",
+  "input_schema": {
+    "type": "object",
+    "properties": {"customer_id": {"type": "string"}},
+    "required": ["customer_id"]
+  },
+  "output_schema": {
+    "type": "object",
+    "properties": {
+      "status": {"enum": ["ok", "not_found", "error"]},
+      "customer": {"type": ["object", "null"]}
+    },
+    "required": ["status", "customer"]
+  },
+  "errors": [
+    {"code": "INVALID_ARGUMENT", "retryable": False},
+    {"code": "RATE_LIMITED", "retryable": True}
+  ]
+}
+```
+
+This is the same mental model as functions/classes:
+
+* schema = signature / type hints
+* errors = exceptions contract
+* retryable vs not = idempotency + side-effect model
+
+Modern “tool calling” APIs formalize this multi-step control flow (model proposes a call → app executes → model continues with results), which makes tool contracts a first-class modular boundary. ([OpenAI Platform][15])
+
+#### MCP: modularity at the “port” boundary
+
+Model Context Protocol (MCP) pushes modularity one level outward: tools, prompts, and resources are exposed by *servers* behind a standard client/server protocol. Instead of each application inventing bespoke integrations, MCP aims to standardize the boundary so components become swappable. The MCP specification explicitly frames this as a modular protocol design where implementations can support only the layers they need. ([Model Context Protocol][16])
+
+Two key modularity consequences follow:
+
+1. **Tool and resource providers become independent modules**
+   A database connector, a filesystem browser, or a domain API wrapper can be shipped as an MCP server with a stable contract, then reused across multiple agents/apps.
+
+2. **“Context” becomes a structured dependency**
+   MCP resources and prompts let you treat context not as “more text in the prompt,” but as a separate module with its own retrieval and lifecycle rules. ([Model Context Protocol][17])
+
+Conceptually:
+
+```python
+# Pseudocode: an agent runtime wired to multiple MCP servers.
+mcp_servers = [
+  {"name": "crm", "endpoint": "..."},
+  {"name": "docs", "endpoint": "..."},
+  {"name": "tickets", "endpoint": "..."},
+]
+
+tool_registry = aggregate_tools(mcp_servers)      # modular capability surface
+resource_registry = aggregate_resources(mcp_servers)
+
+result = agent.run(
+  prompt=build_prompt("resolve_ticket"),
+  tools=tool_registry,
+  context=resource_registry.fetch("ticket:1234")
+)
+```
+
+Note what changed versus “plain tool calling”: the agent no longer links directly to each tool implementation. It depends on a protocol boundary, like depending on an interface rather than a class.
+
+#### A2A: modularity at the “agent as a service” boundary
+
+If MCP makes *tools* reusable modules, A2A makes *agents themselves* reusable modules: independently hosted, potentially opaque systems that interoperate through a common language and interaction model. ([a2a-protocol.org][18])
+
+The software analogy is direct:
+
+* **tools** ≈ library functions
+* **MCP servers** ≈ shared services exposing functions/resources
+* **A2A agents** ≈ microservices with richer behavior, state, and long-running work
+
+The modularity payoff is organizational and architectural: teams can publish an “agent capability” behind an A2A interface, and other agents can delegate to it without embedding its prompt/tool internals.
+
+```python
+# Pseudocode: delegating work to a remote agent over an agent-to-agent protocol.
+remote = discover_agent("finance.approvals")
+
+task_id = remote.submit_task({
+  "intent": "approve_refund",
+  "inputs": {"order_id": "O-9182", "amount": 149.99}
+})
+
+while True:
+  status, partial = remote.poll(task_id)
+  if status in ("completed", "failed"):
+    break
+
+final = remote.get_result(task_id)
+```
+
+This is modularity at the same boundary as “service calls,” except the remote endpoint is an *agent* with its own reasoning loop, tools, and policies.
+
+#### Skills: packaging and discoverability as modularity
+
+“Skills” address a different (often underestimated) modularity problem: **packaging, documentation, and discoverability**. A skill format standardizes *how* a capability is described and shipped—typically as a small directory with a canonical manifest (e.g., a `SKILL.md`) plus optional scripts/assets/references. ([Agent Skills][19])
+
+In software terms, skills are closest to:
+
+* a package that includes README + examples + test vectors, and
+* a contract that makes capabilities indexable and portable across environments.
+
+This becomes especially valuable when capabilities are not only code (tools), but also prompt templates, evaluation harnesses, and operational notes.
+
+#### Sub-agents: classes and dependency injection for behavior
+
+Inside a single application, you often want multiple specialized agents (e.g., “planner,” “researcher,” “executor,” “critic”). That is modularity at the *component* level: each sub-agent has a purpose, its own prompt constraints, and a limited toolset. Frameworks that emphasize typed dependencies and structured outputs make this decomposition less fragile by turning hidden coupling (prompt conventions) into explicit interfaces. ([Pydantic AI][20])
+
+A useful engineering rule: a sub-agent should have a narrower surface area than the parent agent—fewer tools, stricter output schema, clearer termination conditions.
+
+```python
+# Pseudocode: sub-agent boundaries are enforced by tool scoping + output contracts.
+
+def planner_agent(goal: str) -> dict:
+    # tools: none (or read-only); output: structured plan
+    return llm_json(
+        prompt=build_prompt("planning"),
+        input={"goal": goal},
+        tools=[]
+    )
+
+def executor_agent(step: dict) -> dict:
+    # tools: execution tools only; output: step result
+    return llm_json(
+        prompt=build_prompt("execution"),
+        input=step,
+        tools=[TOOL_customer_lookup, TOOL_ticket_update]
+    )
+
+plan = planner_agent("Resolve ticket 1234 without violating refund policy")["plan"]
+results = [executor_agent(step) for step in plan]
+```
+
+This mirrors classes/modules: each component has its own invariants and dependencies, and coupling is managed by explicit inputs/outputs.
+
+#### Workflows and graphs: modularity in control flow
+
+When the number of components grows, the primary complexity shifts from “what does each part do?” to “who calls whom, and when?” That’s a control-flow modularity problem.
+
+Workflows (pipelines, supervisor/worker, handoffs) keep control flow mostly linear and are often sufficient. Graphs (DAGs, state machines) make branching, retries, and long-lived state explicit and inspectable—useful when execution paths are numerous or must be audited. ([Pydantic AI][11])
+
+A simple graph-shaped interface looks like this:
+
+```python
+# Pseudocode: a graph node is a module with a typed contract.
+def node_retrieve(state): ...
+def node_plan(state): ...
+def node_execute(state): ...
+def node_verify(state): ...
+
+GRAPH = {
+  "start": "retrieve",
+  "nodes": {
+    "retrieve": {"fn": node_retrieve, "next": "plan"},
+    "plan": {"fn": node_plan, "next": "execute"},
+    "execute": {"fn": node_execute, "next": "verify"},
+    "verify": {"fn": node_verify, "next": lambda s: "execute" if s["needs_retry"] else "end"},
+  }
+}
+```
+
+The modularity benefit is not “graphs are cool,” but that *control flow becomes data*: you can visualize it, test it, version it, and enforce policies at edges (e.g., human approval before `ticket_update`).
+
+### Mapping to classic software modularity
+
+A compact mental mapping helps align agent architecture choices with well-understood software concepts:
+
+* **Prompt fragment** ↔ function body / configuration block
+* **Tool contract** ↔ function signature / interface
+* **Skill package** ↔ library/package with docs and examples
+* **Sub-agent** ↔ class/component with scoped dependencies
+* **Workflow** ↔ application service layer / use-case orchestrator
+* **Graph** ↔ explicit state machine / workflow engine
+* **MCP server** ↔ reusable service exposing tools/resources via a standard port
+* **A2A agent** ↔ autonomous service with a richer interaction model and long-running tasks
+
+The common principle is to choose boundaries based on what changes at different rates. Prompts and examples may change weekly; tool schemas change rarely; protocols and cross-team contracts should change almost never. Good agentic modularity aligns those change rates with explicit interfaces so iteration remains cheap where it should be cheap, and stability exists where it must be stable.
+
+## References
+
+1. David L. Parnas. *On the Criteria To Be Used in Decomposing Systems into Modules*. Communications of the ACM, 1972. ([ACM Digital Library][11])
+2. Shunyu Yao, Jeffrey Zhao, Dian Yu, Nan Du, Izhak Shafran, Karthik Narasimhan, Yuan Cao. *ReAct: Synergizing Reasoning and Acting in Language Models*. arXiv, 2022. ([arXiv][22])
+3. Ehud Karpas et al. *MRKL Systems: A modular, neuro-symbolic architecture that combines large language models, external knowledge sources and discrete reasoning*. arXiv, 2022. ([arXiv][13])
+4. Timo Schick et al. *Toolformer: Language Models Can Teach Themselves to Use Tools*. arXiv, 2023. ([arXiv][14])
+5. Model Context Protocol Contributors. *Model Context Protocol Specification (2025-06-18)*. 2025. ([Model Context Protocol][23])
+6. A2A Protocol Contributors. *Agent2Agent (A2A) Protocol Specification*. 2025. ([a2a-protocol.org][18])
+7. Google Developers Blog. *Announcing the Agent2Agent Protocol (A2A)*. 2025. ([Google Developers Blog][24])
+8. Pydantic Services Inc. *Pydantic AI Documentation: Multi-agent applications & workflows*. 2024–present. ([Pydantic AI][25])
+9. Pydantic Services Inc. *Pydantic AI Documentation: Graphs and finite state machines*. 2024–present. ([Pydantic AI][21])
+10. AgentSkills Contributors. *Agent Skills Specification*. 2024–present. ([Agent Skills][19])
+
+[11]: https://dl.acm.org/doi/10.1145/361598.361623?utm_source=chatgpt.com "On the criteria to be used in decomposing systems into ..."
+[12]: https://martinfowler.com/articles/microservices.html?utm_source=chatgpt.com "Microservices"
+[13]: https://arxiv.org/abs/2205.00445?utm_source=chatgpt.com "[2205.00445] MRKL Systems: A modular, neuro-symbolic ..."
+[14]: https://arxiv.org/abs/2302.04761?utm_source=chatgpt.com "Toolformer: Language Models Can Teach Themselves to Use Tools"
+[15]: https://platform.openai.com/docs/guides/function-calling?utm_source=chatgpt.com "Function calling | OpenAI API"
+[16]: https://modelcontextprotocol.io/specification/2025-06-18/basic?utm_source=chatgpt.com "Overview - Model Context Protocol"
+[17]: https://modelcontextprotocol.io/?utm_source=chatgpt.com "Model Context Protocol"
+[18]: https://a2a-protocol.org/latest/specification/?utm_source=chatgpt.com "Agent2Agent (A2A) Protocol Specification (DRAFT v1.0)"
+[19]: https://agentskills.io/specification?utm_source=chatgpt.com "Specification - Agent Skills"
+[20]: https://ai.pydantic.dev/?utm_source=chatgpt.com "Pydantic AI - Pydantic AI"
+[21]: https://ai.pydantic.dev/graph/?utm_source=chatgpt.com "Graph"
+[22]: https://arxiv.org/abs/2210.03629?utm_source=chatgpt.com "ReAct: Synergizing Reasoning and Acting in Language Models"
+[23]: https://modelcontextprotocol.io/specification/2025-06-18?utm_source=chatgpt.com "Specification"
+[24]: https://developers.googleblog.com/en/a2a-a-new-era-of-agent-interoperability/?utm_source=chatgpt.com "Announcing the Agent2Agent Protocol (A2A)"
+[25]: https://ai.pydantic.dev/multi-agent-applications/?utm_source=chatgpt.com "Multi-agent Applications & Workflows - Pydantic AI"
+
+
+## Best practices
+
+Build agentic systems that scale with computation, remain simple under iteration, and treat prompts and tools as testable engineering artifacts rather than clever one-off solutions.
+
+### Historical perspective: from hand-built intelligence to scalable methods
+
+A repeating pattern in AI history is that approaches which “bake in” human knowledge and reasoning tricks often deliver quick wins, but are eventually outpaced by more general methods that can absorb more compute and data. Sutton’s *The Bitter Lesson* distilled this from decades of results across search and learning: progress tends to come from methods that scale (and from the discipline to keep systems simple enough to scale), even when the “hand-designed” approach feels more insightful in the moment. ([UT Austin Computer Science][26])
+
+Modern LLM agents reintroduce an old temptation in a new form: over-fitting behavior through elaborate prompting, brittle heuristics, or highly bespoke orchestration. The best current practice is to resist that temptation by investing in (1) strong interfaces (tools, schemas, contracts), (2) evaluation-driven iteration, and (3) designs that keep the model doing what it’s good at (flexible reasoning under uncertainty) while pushing deterministic work into code.
+
+### The Bitter Lesson applied to agent engineering
+
+Sutton’s argument can be operationalized as a design filter for agentic systems:
+
+First, prefer **general, scalable mechanisms** over intricate prompt “micro-surgery.” In practice, this means using prompts to set intent and constraints, but relying on tool calls, retrieval, search, and verification loops to do the heavy lifting. When you feel compelled to add complex prompt logic, ask whether the same reliability can be achieved by improving tool contracts, adding a check, or expanding an eval set.
+
+Second, invest in **feedback loops that can run at scale**. For agents, the analog of “more compute” is not only bigger models, but also more runs: more automated eval cases, more traces, more counterexamples captured from production. Agent quality improves fastest when iteration is systematic and measured.
+
+Third, keep the system **composable**. The more your architecture resembles small, replaceable parts (tools, sub-agents, evaluators, retrievers) rather than a monolithic prompt, the easier it becomes to scale improvements without rewriting everything.
+
+### Building effective agents: when to use workflows vs agents
+
+Anthropic draws a practical architectural distinction: **workflows** are LLM+tools orchestrated through predefined code paths, while **agents** are systems where the model dynamically decides what to do and which tools to call. Both are “agentic systems,” but they behave very differently in production. ([Anthropic][27])
+
+A useful best practice is to start with workflows whenever possible:
+
+Workflows are typically easier to test, cheaper, and more predictable because control flow is owned by code. Many “agent” problems are actually workflow problems (data extraction, enrichment, routing, standard business processes) with a few probabilistic steps. Promote a workflow to a fully dynamic agent only when you truly need open-ended decomposition, long-horizon exploration, or adaptive tool use.
+
+When you do need an agent, keep the agent loop deliberately simple and make uncertainty explicit:
+
+```python
+def run_agent(task: str, tools, policy, max_steps: int = 20):
+    state = {"task": task, "notes": [], "artifacts": []}
+
+    for step in range(max_steps):
+        action = policy.decide_next_action(state, tools=tools)
+        if action.kind == "FINAL":
+            return action.final_answer
+
+        result = tools.call(action.tool_name, action.args)
+        state["notes"].append({"action": action, "result": result})
+
+    raise RuntimeError("agent_exhausted_steps")
+```
+
+The “policy” here can be an LLM prompt, but notice what makes this production-friendly: bounded steps, explicit state, and a strict tool boundary.
+
+Two concrete practices matter disproportionately in agent deployments:
+
+**Define stopping conditions and budgets.** Agents without step limits, token budgets, and cancellation paths tend to fail expensively and unpredictably. Production-grade systems treat “give up gracefully” as a first-class success mode.
+
+**Treat tool-use transcripts as the primary debugging surface.** Most real failures show up as wrong tool selection, missing arguments, or misinterpreted tool results—not as a purely “reasoning” issue.
+
+### Writing tools for agents: contracts, context, and token economics
+
+Tools are where agent reliability is won or lost. Anthropic’s tool guidance is fundamentally about turning tool calling into a high-signal, low-ambiguity interface: pick the right tools, name and namespace them clearly, return meaningful context, keep responses token-efficient, and iterate using evaluations (including having agents help improve the tools themselves). ([Anthropic][28])
+
+A few practices are especially transferable:
+
+#### Make tool interfaces self-describing and hard to misuse
+
+Agent tools should be closer to *APIs with guardrails* than to thin wrappers around internal functions. Use typed inputs, constrained enums, and explicit error shapes. If a tool can fail, make failures structured so the agent can recover.
+
+```python
+# Illustrative schema shape (language/framework agnostic)
+CreateTicket(
+  title: str,                    # short, user-facing
+  body_markdown: str,            # long-form details
+  severity: "low"|"med"|"high",  # constrained
+  owner_team: "eng"|"ops"|"sec", # constrained
+  idempotency_key: str           # retries without duplicates
+) -> { ticket_id: str, url: str }
+```
+
+This style aligns with the broader “structured outputs” approach: use schemas to validate what the model returns, keep interfaces object-shaped, and make it easy to reject/repair malformed outputs. ([Pydantic AI][29])
+
+#### Return enough context for the model to make the next decision
+
+A common failure mode is tools that return “OK” or a single scalar. Agents need *actionable* results: identifiers, next-step hints, partial state, and especially “what happened” when something fails.
+
+```python
+SearchContacts(query: str, limit: int) -> {
+  matches: [{id: str, name: str, email: str}],
+  truncated: bool,
+  explanation: str   # brief, factual: how matching was done
+}
+```
+
+#### Optimize tool responses for tokens, not for humans
+
+Tool responses compete directly with working memory. Prefer short fields, avoid redundant prose, and return only what will plausibly affect the next step. If large payloads are needed (documents, logs, tables), return handles/URLs/IDs and provide a separate “fetch” tool with pagination.
+
+### Reliability engineering for agents: retries, validation, and evals
+
+Agent systems sit on top of probabilistic components and unreliable external services. Best practice is to assume transient failure and build a disciplined recovery strategy.
+
+#### Retries belong at the system boundary
+
+Retries should be configured for the kinds of failures you expect: rate limits, timeouts, temporary outages, context-length issues. Treat retries as policy, not ad-hoc try/except scattered across tools. The Pydantic ecosystem’s guidance for retry strategies in evals mirrors what works in production systems: consistent retry configuration, bounded attempts, and exponential backoff where appropriate. ([Pydantic AI][30])
+
+```python
+def call_with_retry(fn, *, max_attempts=3, backoff_s=1.0):
+    for attempt in range(1, max_attempts + 1):
+        try:
+            return fn()
+        except TransientError as e:
+            if attempt == max_attempts:
+                raise
+            sleep(backoff_s * (2 ** (attempt - 1)))
+```
+
+The important part is not the mechanism—it’s the decision to classify errors (transient vs permanent), to cap retries, and to make the failure mode explicit.
+
+#### Validate model outputs like untrusted user input
+
+Whether it’s a tool call, a structured output, or a plan, treat the model as an untrusted producer. Schema validation and type checking catch entire categories of silent failures early (wrong types, missing fields, invalid enum values) and give you a clean “ask the model to try again” loop. ([Pydantic AI][29])
+
+#### Use evals as the main lever for improvement
+
+The most reliable path to better agents is expanding your evaluation set with real failures and near-misses. Tool design, prompt changes, and orchestration tweaks should be judged against regression suites, not vibes. Anthropic’s tool-writing guidance explicitly centers comprehensive evaluations and iterative improvement loops (including using agents to help optimize tools). ([Anthropic][28])
+
+A minimal pattern is: capture a transcript → turn it into a test case → add an automated check.
+
+```python
+case = {
+  "task": "Schedule a meeting with Jane next week and attach the notes doc",
+  "expected": {
+    "meeting_created": True,
+    "attendees_include": ["jane@corp.com"],
+    "notes_attached": True,
+  }
+}
+
+result = run_agent(case["task"])
+assert check_expectations(result, case["expected"])
+```
+
+### Practical synthesis: what “best practices” means in day-to-day work
+
+In agentic engineering, “best practices” is less about any single framework or pattern and more about consistently choosing:
+
+Simplicity over cleverness (because you will iterate), contracts over prose (because tools are your control surface), measurement over intuition (because stochastic systems deceive), and scalable feedback loops over handcrafted behavior (because that is where long-run performance comes from).
+
+### References
+
+1. Sutton, R. S. *The Bitter Lesson*. Incomplete Ideas (essay), 2019. [http://www.incompleteideas.net/IncIdeas/BitterLesson.html](http://www.incompleteideas.net/IncIdeas/BitterLesson.html) ([Incomplete Ideas][31])
+2. Anthropic. *Building effective agents*. Anthropic Engineering, 2024. [https://www.anthropic.com/engineering/building-effective-agents](https://www.anthropic.com/engineering/building-effective-agents) ([Anthropic][27])
+3. Anthropic. *Writing effective tools for agents — with agents*. Anthropic Engineering, 2025. [https://www.anthropic.com/engineering/writing-tools-for-agents](https://www.anthropic.com/engineering/writing-tools-for-agents) ([Anthropic][28])
+4. Pydantic AI. *Output (structured outputs and validation)*. Documentation, n.d. [https://ai.pydantic.dev/output/](https://ai.pydantic.dev/output/) ([Pydantic AI][29])
+5. Pydantic AI. *Function tools (tools, tool schema, toolsets)*. Documentation, n.d. [https://ai.pydantic.dev/tools/](https://ai.pydantic.dev/tools/) ([Pydantic AI][32])
+6. Pydantic Evals. *Retry strategies*. Documentation, n.d. [https://ai.pydantic.dev/evals/how-to/retry-strategies/](https://ai.pydantic.dev/evals/how-to/retry-strategies/) ([Pydantic AI][30])
+
+[26]: https://www.cs.utexas.edu/~eunsol/courses/data/bitter_lesson.pdf?utm_source=chatgpt.com "The Bitter Lesson"
+[27]: https://www.anthropic.com/research/building-effective-agents "Building Effective AI Agents \ Anthropic"
+[28]: https://www.anthropic.com/engineering/writing-tools-for-agents "Writing effective tools for AI agents—using AI agents \ Anthropic"
+[29]: https://ai.pydantic.dev/output/ "Output - Pydantic AI"
+[30]: https://ai.pydantic.dev/evals/how-to/retry-strategies/ "Retry Strategies - Pydantic AI"
+[31]: https://www.incompleteideas.net/IncIdeas/BitterLesson.html?utm_source=chatgpt.com "The Bitter Lesson"
+[32]: https://ai.pydantic.dev/tools/ "Function Tools - Pydantic AI"
+
+
 \newpage
 
 # Chapter 1: Core Agentic Patterns
