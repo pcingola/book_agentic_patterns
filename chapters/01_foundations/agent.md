@@ -12,7 +12,7 @@ The notion of an *agent* predates modern language models by several decades. In 
 
 Reinforcement learning formalizes an agent as a *sequential decision-maker*, and Bellman’s equations provide the mathematical backbone of this idea. At their core, they express a simple but powerful principle: **the value of a decision depends on the value of the decisions that follow it**.
 
-In a Markov Decision Process (MDP), an agent interacts with an environment characterized by states (s), actions (a), transition dynamics, and rewards. The *state-value function* (V^\pi(s)) under a policy (\pi) is defined as the expected cumulative reward starting from state (s). Bellman showed that this value can be written recursively:
+In a Markov Decision Process (MDP), an agent interacts with an environment characterized by states (s), actions (a), transition dynamics, and rewards. The *state-value function* ($V^\pi(s)$) under a policy ($\pi$) is defined as the expected cumulative reward starting from state (s). Bellman showed that this value can be written recursively:
 
 $$
 V^\pi(s) = \mathbb{E}_{a \sim \pi,, s'} \left[ r(s,a) + \gamma V^\pi(s') \right]

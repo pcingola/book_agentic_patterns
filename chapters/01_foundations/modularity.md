@@ -126,9 +126,9 @@ If MCP makes *tools* reusable modules, A2A makes *agents themselves* reusable mo
 
 The software analogy is direct:
 
-* **tools** ≈ library functions
-* **MCP servers** ≈ shared services exposing functions/resources
-* **A2A agents** ≈ microservices with richer behavior, state, and long-running work
+* **tools** ~= library functions
+* **MCP servers** ~= shared services exposing functions/resources
+* **A2A agents** ~= microservices with richer behavior, state, and long-running work
 
 The modularity payoff is organizational and architectural: teams can publish an “agent capability” behind an A2A interface, and other agents can delegate to it without embedding its prompt/tool internals.
 
@@ -225,14 +225,14 @@ The modularity benefit is not “graphs are cool,” but that *control flow beco
 
 A compact mental mapping helps align agent architecture choices with well-understood software concepts:
 
-* **Prompt fragment** ↔ function body / configuration block
-* **Tool contract** ↔ function signature / interface
-* **Skill package** ↔ library/package with docs and examples
-* **Sub-agent** ↔ class/component with scoped dependencies
-* **Workflow** ↔ application service layer / use-case orchestrator
-* **Graph** ↔ explicit state machine / workflow engine
-* **MCP server** ↔ reusable service exposing tools/resources via a standard port
-* **A2A agent** ↔ autonomous service with a richer interaction model and long-running tasks
+* **Prompt fragment** <-> function body / configuration block
+* **Tool contract** <-> function signature / interface
+* **Skill package** <-> library/package with docs and examples
+* **Sub-agent** <-> class/component with scoped dependencies
+* **Workflow** <-> application service layer / use-case orchestrator
+* **Graph** <-> explicit state machine / workflow engine
+* **MCP server** <-> reusable service exposing tools/resources via a standard port
+* **A2A agent** <-> autonomous service with a richer interaction model and long-running tasks
 
 The common principle is to choose boundaries based on what changes at different rates. Prompts and examples may change weekly; tool schemas change rarely; protocols and cross-team contracts should change almost never. Good agentic modularity aligns those change rates with explicit interfaces so iteration remains cheap where it should be cheap, and stability exists where it must be stable.
 

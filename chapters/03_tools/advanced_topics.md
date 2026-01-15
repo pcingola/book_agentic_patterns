@@ -36,7 +36,7 @@ def requires_approval(tool_name: str, args: dict) -> bool:
 
 When approval is required, the agent should emit a structured “tool request” that is easy to review: tool name, arguments, rationale, expected side effects, and a rollback story (if any). The approval channel can also support *human steering*: the reviewer edits arguments, adds constraints, or supplies missing context, then resumes the run.
 
-HITL is increasingly described as a first-class mechanism in agent frameworks, where certain tool calls can be flagged for approval based on context or arguments. ([GitHub][3])
+HITL is increasingly described as a first-class mechanism in agent frameworks, where certain tool calls can be flagged for approval based on context or arguments. ([GitHub][41])
 
 ### Dynamic tools
 
@@ -65,7 +65,7 @@ def prepare_tools(all_tools: list, state: dict) -> list:
     return [t for t in all_tools if t.meta.get("risk") in {"low"}]
 ```
 
-This pattern is explicitly supported in modern tool systems as an agent-wide hook to filter/modify tool definitions step-by-step. ([Pydantic AI][4])
+This pattern is explicitly supported in modern tool systems as an agent-wide hook to filter/modify tool definitions step-by-step. ([Pydantic AI][42])
 
 ### Deferred tools
 
@@ -99,7 +99,7 @@ for call in deferred.calls:
 final = agent.resume_with_results(history=deferred.history, results=approved_results)
 ```
 
-This “pause with requests → resume with results” mechanism is described directly in deferred-tool documentation. ([Pydantic AI][5])
+This “pause with requests → resume with results” mechanism is described directly in deferred-tool documentation. ([Pydantic AI][43])
 
 ### Tool doctor (development-time focus)
 
@@ -143,30 +143,30 @@ In short, the tool doctor belongs squarely in the development loop. It formalize
 
 Advanced tool use is best understood as a *control architecture* around the basic tool loop:
 
-1. **Prepare toolset (dynamic tools):** expose only relevant/safe tools for this step. ([Pydantic AI][4])
+1. **Prepare toolset (dynamic tools):** expose only relevant/safe tools for this step. ([Pydantic AI][42])
 2. **Model proposes tool calls:** possibly multiple calls in a plan.
-3. **Gate execution (HITL policy):** auto-run safe calls; defer risky calls for approval. ([GitHub][3])
-4. **Pause/resume (deferred tools):** return structured requests; later resume with structured results. ([Pydantic AI][5])
+3. **Gate execution (HITL policy):** auto-run safe calls; defer risky calls for approval. ([GitHub][41])
+4. **Pause/resume (deferred tools):** return structured requests; later resume with structured results. ([Pydantic AI][43])
 5. **Diagnose and improve (tool doctor):** if failures recur, repair the tool contract (and optionally code), then re-run.
 
 This combination preserves autonomy where it is safe and cheap, while providing strong guarantees—reviewability, auditability, and controllable side effects—where it matters.
 
 ### References
 
-1. Eric Horvitz. *Principles of Mixed-Initiative User Interfaces*. CHI, 1999. ([ACM Digital Library][7])
-2. Saleema Amershi, et al. *Power to the People: The Role of Humans in Interactive Machine Learning*. AI Magazine, 2014. ([Microsoft][2])
-3. Shunyu Yao, et al. *ReAct: Synergizing Reasoning and Acting in Language Models*. 2022 (ICLR 2023). ([arXiv][8])
-4. PydanticAI Documentation. *Advanced Tool Features (Dynamic Tools)*. ([Pydantic AI][4])
-5. PydanticAI Documentation. *Deferred Tools*. ([Pydantic AI][5])
-6. Ilyes Bouzenia, et al. *An Autonomous, LLM-Based Agent for Program Repair (RepairAgent)*. arXiv, 2024. ([arXiv][6])
-7. W. Takerngsaksiri, et al. *Human-In-the-Loop Software Development Agents*. arXiv, 2024. ([arXiv][9])
+1. Eric Horvitz. *Principles of Mixed-Initiative User Interfaces*. CHI, 1999. ([ACM Digital Library][45])
+2. Saleema Amershi, et al. *Power to the People: The Role of Humans in Interactive Machine Learning*. AI Magazine, 2014. ([Microsoft][40])
+3. Shunyu Yao, et al. *ReAct: Synergizing Reasoning and Acting in Language Models*. 2022 (ICLR 2023). ([arXiv][46])
+4. PydanticAI Documentation. *Advanced Tool Features (Dynamic Tools)*. ([Pydantic AI][42])
+5. PydanticAI Documentation. *Deferred Tools*. ([Pydantic AI][43])
+6. Ilyes Bouzenia, et al. *An Autonomous, LLM-Based Agent for Program Repair (RepairAgent)*. arXiv, 2024. ([arXiv][44])
+7. W. Takerngsaksiri, et al. *Human-In-the-Loop Software Development Agents*. arXiv, 2024. ([arXiv][47])
 
-[1]: https://erichorvitz.com/chi99horvitz.pdf?utm_source=chatgpt.com "Principles of Mixed-Initiative User Interfaces - of Eric Horvitz"
-[2]: https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/amershi_AIMagazine2014.pdf?utm_source=chatgpt.com "The Role of Humans in Interactive Machine Learning"
-[3]: https://github.com/pydantic/pydantic-ai?utm_source=chatgpt.com "GenAI Agent Framework, the Pydantic way"
-[4]: https://ai.pydantic.dev/tools-advanced/?utm_source=chatgpt.com "Advanced Tool Features"
-[5]: https://ai.pydantic.dev/deferred-tools/?utm_source=chatgpt.com "Deferred Tools"
-[6]: https://arxiv.org/abs/2403.17134?utm_source=chatgpt.com "An Autonomous, LLM-Based Agent for Program Repair"
-[7]: https://dl.acm.org/doi/10.1145/302979.303030?utm_source=chatgpt.com "Principles of mixed-initiative user interfaces"
-[8]: https://arxiv.org/abs/2210.03629?utm_source=chatgpt.com "ReAct: Synergizing Reasoning and Acting in Language Models"
-[9]: https://arxiv.org/abs/2411.12924?utm_source=chatgpt.com "Human-In-the-Loop Software Development Agents"
+[39]: https://erichorvitz.com/chi99horvitz.pdf?utm_source=chatgpt.com "Principles of Mixed-Initiative User Interfaces - of Eric Horvitz"
+[40]: https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/amershi_AIMagazine2014.pdf?utm_source=chatgpt.com "The Role of Humans in Interactive Machine Learning"
+[41]: https://github.com/pydantic/pydantic-ai?utm_source=chatgpt.com "GenAI Agent Framework, the Pydantic way"
+[42]: https://ai.pydantic.dev/tools-advanced/?utm_source=chatgpt.com "Advanced Tool Features"
+[43]: https://ai.pydantic.dev/deferred-tools/?utm_source=chatgpt.com "Deferred Tools"
+[44]: https://arxiv.org/abs/2403.17134?utm_source=chatgpt.com "An Autonomous, LLM-Based Agent for Program Repair"
+[45]: https://dl.acm.org/doi/10.1145/302979.303030?utm_source=chatgpt.com "Principles of mixed-initiative user interfaces"
+[46]: https://arxiv.org/abs/2210.03629?utm_source=chatgpt.com "ReAct: Synergizing Reasoning and Acting in Language Models"
+[47]: https://arxiv.org/abs/2411.12924?utm_source=chatgpt.com "Human-In-the-Loop Software Development Agents"

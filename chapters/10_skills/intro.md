@@ -30,11 +30,11 @@ A minimal, spec-aligned skill layout looks like this:
 
 ```
 pdf-processing/
-├── SKILL.md
-├── scripts/
-│   └── extract_text_and_tables.py
-└── references/
-    └── REFERENCE.md
+  SKILL.md
+  scripts/
+    extract_text_and_tables.py
+  references/
+    REFERENCE.md
 ```
 
 The `SKILL.md` file combines structured metadata with natural-language instructions:
