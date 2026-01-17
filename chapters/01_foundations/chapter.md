@@ -19,3 +19,5 @@
 [Hands-on: Running Agents](./hands_on_04_run_agent.md)
 
 [Hands-On: System Prompt vs User Prompt](./hands_on_05_translate.md)
+
+[Hands-On: Multi-Turn Conversations](./hands_on_06_multi_turn.md)

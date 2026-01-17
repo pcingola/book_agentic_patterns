@@ -145,7 +145,3 @@
 
 ## Code
 
-- agentic_patterns/core/agents/agents.py: 
-  - move non 'get_agent' functions
-  - JSON / YAML config
-  - run_agent: Return full response (not only tuple)

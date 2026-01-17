@@ -10,34 +10,18 @@ This is a repository for the book "Agentic Patterns", which explores design patt
 
 ```
 book_agentic_patterns/
-├── chapters/
-│   ├── 01_foundations/
-│   │   ├── chapter.md          # Chapter content
-│   │   └── img/               # Images for this chapter
-│   ├── 02_pattern_name/
-│   │   ├── chapter.md
-│   │   └── img/
-│   └── 03_pattern_name/
-│       ├── chapter.md
-│       └── img/
-├── agentic_patterns/
-│   ├── 01_foundations/       # Code examples for chapter 1
-│   │   ├── example_01.py
-│   │   └── example_02.py
-│   ├── 02_pattern_name/       # Code examples for chapter 2
-│   └── core/                  # Core utilities across chapters
-├── scripts/                   # Build, validation, lint scripts
-└── tests/                     # Tests for code examples
-    ├── test_01.py
-    ├── test_02.py
-    └── test_03.py
+├── chapters/           # Book chapters (markdown files)
+├── agentic_patterns/   # Python code examples
+├── scripts/            # Build, validation, lint scripts
+├── tests/              # Tests for code examples
+└── docs/               # Generated documentation
 ```
 
 ## Conventions
 
-**Chapter directories**: All chapters under `chapters/` directory. Name them `XX_descriptive_name` where XX is zero-padded (01, 02, etc.). Each contains only `chapter.md` with the chapter text in markdown format.
+**Chapter directories**: All chapters under `chapters/` directory. Name them `XX_descriptive_name` where XX is zero-padded (01, 02, etc.). Each chapter directory contains a `chapter.md` index file that links to individual section markdown files.
 
-**Code organization**: All code in `agentic_patterns/`. Mirror chapter structure with `agentic_patterns/XX_descriptive_name/` directories using chapter numbers. Core utilities go in `agentic_patterns/core/`. Follow global Python conventions (type hints, pathlib, etc.).
+**Code organization**: All code in `agentic_patterns/`. Code examples are organized in numbered directories that loosely correspond to chapters. Code examples may be Python files (.py) or Jupyter notebooks (.ipynb). Core utilities shared across chapters go in `agentic_patterns/core/`. Follow global Python conventions (type hints, pathlib, etc.).
 
 **Images**: Stored within each chapter directory in an `img/` subdirectory. Reference from markdown using relative paths: `![Description](img/diagram.png)`. This keeps images co-located with their corresponding chapter content.
 
@@ -51,4 +35,4 @@ book_agentic_patterns/
 
 **Image optimization**: Use compressed PNGs or SVGs for diagrams to keep repository size manageable. Large images bloat git history permanently.
 
-**References**: All refereences and citations should be included in a `references.md` file
+**References**: All references and citations should be included in a `references.md` file
