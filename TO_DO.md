@@ -2,6 +2,11 @@
 
 ## Text
 
+- hands_on.md: -> hands_on_01.md
+  - Add explanation of the helper library (run_agent)
+  - Recap on 'async', what is a co-routine
+  - Recap on 'async with' (context manager, async context manager)
+
 - Remove "---"
 
 - Tool contracts and schemas `tool_contracts_schemas.md`: 

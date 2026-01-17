@@ -14,21 +14,12 @@ from agentic_patterns.core.agents.config import AgentConfig, Models, AzureConfig
 from agentic_patterns.core.config.config import MAIN_PROJECT_DIR
 
 
-_cached_models: Models | None = None
-
-
 def _load_models(config_path: Path | str | None = None) -> Models:
-    """Load model configurations from YAML file with caching."""
-    global _cached_models
-
-    if _cached_models is not None:
-        return _cached_models
-
+    """Load model configurations from YAML file."""
     if config_path is None:
         config_path = MAIN_PROJECT_DIR / "config.yaml"
 
-    _cached_models = load_models(config_path)
-    return _cached_models
+    return load_models(config_path)
 
 
 def _get_config(config_name: str = "default", config_path: Path | str | None = None) -> AgentConfig:

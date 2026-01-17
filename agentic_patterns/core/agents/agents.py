@@ -6,7 +6,7 @@ import logging
 from pathlib import Path
 from typing import Sequence
 
-from pydantic_ai import AgentRunResult, ModelMessage, RequestUsage
+from pydantic_ai import AgentRun, AgentRunResult, ModelMessage, RequestUsage
 import rich
 from fastmcp import Context
 from pydantic_ai.agent import Agent
@@ -69,9 +69,8 @@ async def run_agent(
         usage_limits: UsageLimits | None = None,
         verbose: bool = False,
         catch_exceptions: bool = False,
-        show_usage: bool = False,
         ctx: Context | None = None,
-    ) -> AgentRunResult | None:
+    ) -> tuple[AgentRun | None, list[ModelMessage]]:
     """
     Run the agent with the given prompt and log the execution details.
     Args:
@@ -79,33 +78,25 @@ async def run_agent(
         prompt (str | list[str]): The input prompt(s) for the agent.
         usage_limits (UsageLimits | None): Optional usage limits for the agent.
         verbose (bool): If True, enables verbose logging.
-        debug (bool): If True, enables debug logging.
+        catch_exceptions (bool): If True, catches exceptions during agent run.
         parent_logger (ObjectLogger | None): Optional parent logger for hierarchical logging.
         ctx (Context | None): Optional FastMCP context for logging messages to the MCP client.
     Returns:
-        AgentRunResult | None: The result of the agent run, or None if an exception occurred and was caught.
+        AgentRun, list[ModelMessage]: The agent run object and the list of model messages.
     """
     # Results
-    request_usage = RequestUsage()
-    nodes, result = [], None
+    agent_run, nodes = None, []
     try:
         async with agent.iter(prompt, usage_limits=usage_limits, message_history=message_history) as agent_run:
             # Run the agent
             async for node in agent_run:
-                if ctx:
-                    # If we are executing in an MCP server, send info messages to the client for better debugging
-                    server_name = ctx.fastmcp.name
-                    await ctx.info(f"MCP server {server_name}: {node}")
                 nodes.append(node)
-                if show_usage:
-                    usage = get_usage(node)
-                    if usage:
-                        request_usage.incr(usage)
-                        logger.info("Usage: %s, Total: %s", usage, request_usage)
-            result = agent_run.result
+                # If we are executing in an MCP server, send debug messages to the MCP client (for easier debugging)
+                if ctx:
+                    await ctx.debug(f"MCP server {ctx.fastmcp.name}: {node}")
     except Exception as e:  # pylint: disable=broad-exception-caught
         if verbose:
             rich.print(f"[red]Error running agent:[/red] {e}")
         if not catch_exceptions:
             raise e
-    return result
+    return agent_run, nodes

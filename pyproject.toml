@@ -7,7 +7,11 @@ requires-python = ">=3.12.2"
 dependencies = [
     "dotenv>=0.9.9",
     "fastmcp>=2.14.2",
+    "ipykernel>=7.1.0",
     "openai>=2.14.0",
     "pydantic-ai>=1.39.0",
     "pyyaml>=6.0.0",
 ]
+
+[tool.setuptools]
+packages = ["agentic_patterns"]
