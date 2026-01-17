@@ -17,3 +17,5 @@
 [Hands-on: Building Your First Agent](./hands_on_03_first_agent.md)
 
 [Hands-on: Running Agents](./hands_on_04_run_agent.md)
+
+[Hands-On: System Prompt vs User Prompt](./hands_on_05_translate.md)

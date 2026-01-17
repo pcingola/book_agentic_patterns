@@ -22,7 +22,7 @@ Hands-on sections emphasize partial implementations rather than toy examples. Co
 
 ### A Running Enterprise-Grade Example
 
-Throughout the book, all major concepts are grounded in a single, evolving example: an enterprise-grade multi-agent system designed for organizational use. Conceptually, this system resembles an internal “AI operations layer” for a company—capable of planning work, delegating tasks across specialized agents, interacting with internal tools and data, and operating under governance, security, and compliance constraints.
+Throughout the book, all major concepts are grounded in a single, evolving example: an enterprise-grade agentic platform designed for organizational use. We will be building a "Manus"-like agentic system suitable for both large enterprise and start-up companies. Conceptually, this system resembles an internal "AI operations layer" for a company—capable of planning work, delegating tasks across specialized agents, interacting with internal tools and data, and operating under governance, security, and compliance constraints.
 
 This running example is intentionally ambitious. It includes multiple agents with distinct responsibilities, long-running tasks, shared state, tool orchestration, human approval gates, and auditability requirements. Early chapters introduce a minimal version of the system, while later chapters incrementally add capabilities such as task persistence, inter-agent protocols, skill modularization, observability, and policy enforcement. By the end of the book, the reader will have seen how a realistic agentic platform can be assembled from first principles, and how architectural decisions made early on influence the system’s behavior at scale.
 

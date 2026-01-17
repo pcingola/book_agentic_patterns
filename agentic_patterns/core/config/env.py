@@ -14,19 +14,19 @@ logger = logging.getLogger(__name__)
 def find_env_file(env_search_dirs: list[Path]) -> str | None:
     """Find the first .env file in the given list of paths and their parents."""
     env_file = find_dotenv()
-    logging.warning("Looking for '.env' file in default directory")
+    logging.debug("Looking for '.env' file in default directory")
     if env_file:
         return env_file
     # Find all parents of the paths
     for search_dir in env_search_dirs:
         # '.env' file in this directory?
-        logging.warning("Looking for '.env' file at '%s'", search_dir)
+        logging.debug("Looking for '.env' file at '%s'", search_dir)
         env_file = find_dotenv(str(search_dir / ".env"))
         if env_file:
             return env_file
         # Try all parents of this dir
         for parent_dir in all_parents(search_dir):
-            logging.warning("Looking for '.env' file at '%s'", parent_dir)
+            logging.debug("Looking for '.env' file at '%s'", parent_dir)
             env_file = find_dotenv(str(parent_dir / ".env"))
             if env_file:
                 return env_file
@@ -50,7 +50,7 @@ def load_env_variables():
     env_file = find_env_file(env_dirs)
 
     if env_file:
-        logger.info("Using .env file at '%s'", env_file)
+        logger.debug("Using .env file at '%s'", env_file)
         # Load the environment variables from the found .env file
         load_dotenv(env_file)
         # Assign variables in '.env' global python environment

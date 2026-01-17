@@ -94,6 +94,8 @@ async def run_agent(
                 # If we are executing in an MCP server, send debug messages to the MCP client (for easier debugging)
                 if ctx:
                     await ctx.debug(f"MCP server {ctx.fastmcp.name}: {node}")
+                if verbose:
+                    rich.print(f"[green]Agent step:[/green] {node}")
     except Exception as e:  # pylint: disable=broad-exception-caught
         if verbose:
             rich.print(f"[red]Error running agent:[/red] {e}")
