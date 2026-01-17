@@ -919,6 +919,8 @@ These Python concepts combine to enable efficient, streaming agent execution.
 
 This section walks through creating and running a simple agent. We use Pydantic-ai as our framework, but the underlying concepts apply universally to all agentic frameworks.
 
+We'll follow the example code in `agentic_patterns/01_foundations/example_01.ipynb`.
+
 ## High-Level Overview
 
 Building an agent involves three fundamental steps:

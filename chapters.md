@@ -24,6 +24,10 @@ BEST PRACTICE: This is a label for best practices, it should be shown in a highl
 - [x] Determinism vs stochasticity
 - [x] Modularity: prompts, tools, MCP, A2A, Skills, sub-agents, workflows, graphs, etc.
 - [x] Best practices
+- [x] Hands-on: Python Recap
+- [x] Hands-on: Understanding the OpenAI API
+- [x] Hands-on: Building Your First Agent
+- [x] Hands-on: Running Agents
 
 ### Chapter 2: [Core Patterns](chapters/02_core_patterns/chapter.md)
 

@@ -42,7 +42,7 @@ This configuration approach offers several advantages. You can define multiple m
 
 Our library supports multiple model families: Azure OpenAI, AWS Bedrock, Ollama for local models, OpenRouter for multi-provider access, and direct OpenAI API.
 
-## Example 1: Simple Translation Agent
+## Simple Translation Agent
 
 Let's walk through our first example in `agentic_patterns/01_foundations/example_01.ipynb`.
 
@@ -92,23 +92,6 @@ print(agent_run.result.output)
 ```
 
 The result object comes directly from Pydantic-ai. For our translation example, it contains: "J'aime le café."
-
-### Inspecting Execution Details
-
-```python
-import rich
-
-rich.print(agent_run)
-```
-
-The `agent_run` object provides comprehensive execution information including token counts (important for cost tracking), model name, timing, and usage statistics.
-
-```python
-for node in nodes:
-    rich.print(node)
-```
-
-The nodes list shows the execution flow. For this simple example, you'll see the user prompt node and the model response node. In later examples with tools, you'll see additional nodes for tool calls and their results.
 
 ## Understanding Agent Execution
 
