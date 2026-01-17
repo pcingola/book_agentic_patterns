@@ -9,4 +9,5 @@ dependencies = [
     "fastmcp>=2.14.2",
     "openai>=2.14.0",
     "pydantic-ai>=1.39.0",
+    "pyyaml>=6.0.0",
 ]

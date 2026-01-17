@@ -1,5 +1,9 @@
 # To do
 
+## Text
+
+- Remove "---"
+
 - Tool contracts and schemas `tool_contracts_schemas.md`: 
   - "Explicit termination via final schemas" (Langchain is like this as well?)
   - "Retries as part of the contract": Pydantic-AI is not like this: "Errors can be marked as retryable or fatal, allowing the model to reason explicitly about recovery. Because retries are mediated through the same schema, repeated calls remain safe, auditable, and deterministic."
@@ -126,11 +130,17 @@
   - Skills doctor
   - llms.txt doctor
 
-
-
-# Suggested topics
+### Suggested topics
 
 - [Interactions API](https://ai.google.dev/gemini-api/docs/interactions)
 - [Claude code VS-Code](https://code.claude.com/docs/en/vs-code)
 - [Introducing advanced tool use on the Claude Developer Platform](https://www.anthropic.com/engineering/advanced-tool-use)
 - [Personalized AI](https://github.com/danielmiessler/Personal_AI_Infrastructure/tree/main)
+- [Genetic Algorithms for search](https://arxiv.org/html/2601.10657v1)
+
+## Code
+
+- agentic_patterns/core/agents/agents.py: 
+  - move non 'get_agent' functions
+  - JSON / YAML config
+  - run_agent: Return full response (not only tuple)

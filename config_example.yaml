@@ -1,0 +1,50 @@
+models:
+  default:
+    model_family: openai
+    model_name: gpt-52
+    api_key: sk-proj-your-openai-api-key-here
+    timeout: 120
+
+  azure_gpt4:
+    model_family: azure
+    model_name: gpt-4
+    api_key: your-azure-api-key-here
+    endpoint: https://your-resource.openai.azure.com/
+    api_version: 2024-02-15-preview
+    timeout: 120
+
+  bedrock_claude:
+    model_family: bedrock
+    model_name: anthropic.claude-3-5-sonnet-20240620-v1:0
+    aws_region: us-east-1
+    aws_profile: null
+    claude_sonnet_1m_tokens: false
+    timeout: 180
+
+  bedrock_claude_extended:
+    model_family: bedrock
+    model_name: anthropic.claude-sonnet-4-20250514-v1:0
+    aws_region: us-east-1
+    aws_profile: null
+    claude_sonnet_1m_tokens: true
+    timeout: 300
+
+  ollama_local:
+    model_family: ollama
+    model_name: llama3
+    url: http://localhost:11434/v1
+    timeout: 60
+
+  openrouter_claude:
+    model_family: openrouter
+    model_name: anthropic/claude-3.5-sonnet
+    api_key: your-openrouter-api-key-here
+    api_url: https://openrouter.ai/api/v1
+    timeout: 120
+
+  openrouter_gpt4:
+    model_family: openrouter
+    model_name: openai/gpt-4o
+    api_key: your-openrouter-api-key-here
+    api_url: https://openrouter.ai/api/v1
+    timeout: 120

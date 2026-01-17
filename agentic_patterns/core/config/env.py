@@ -5,8 +5,7 @@ from pathlib import Path
 import sys
 from dotenv import dotenv_values, find_dotenv, load_dotenv
 
-from agentic_patterns.core.config.config import PROJECT_ROOT
-from agentic_patterns.core.config.utils import all_parents
+from agentic_patterns.core.config.utils import all_parents, get_project_root
 
 
 logger = logging.getLogger(__name__)
@@ -47,7 +46,7 @@ def load_env_variables():
     # Start with the most specific (current directory) and expand outward
     # This file's path
     file_path = Path(__file__).resolve()
-    env_dirs = [Path.cwd(), PROJECT_ROOT, file_path.parent]
+    env_dirs = [Path.cwd(), get_project_root(), file_path.parent]
     env_file = find_env_file(env_dirs)
 
     if env_file:
