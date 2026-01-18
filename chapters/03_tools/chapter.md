@@ -21,3 +21,5 @@
 [Hands-On: Structured Outputs](./hands_on_structured_outputs.md)
 
 [Hands-On: Tool Selection](./hands_on_tool_selection.md)
+
+[Hands-On: Tool Permissions](./hands_on_tool_permissions.md)
