@@ -19,3 +19,5 @@
 [Hands-On: Tool Use](./hands_on_tools.md)
 
 [Hands-On: Structured Outputs](./hands_on_structured_outputs.md)
+
+[Hands-On: Tool Selection](./hands_on_tool_selection.md)
