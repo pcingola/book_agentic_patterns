@@ -28,3 +28,7 @@
 
 [Hands-On: Tree of Thought](./hands_on_tot.md)
 
+[Hands-On: ReAct](./hands_on_react.md)
+
+[Hands-On: Verification / Critique](./hands_on_verification_critique.md)
+
