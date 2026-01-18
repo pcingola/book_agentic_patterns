@@ -83,7 +83,6 @@ A minimal task invocation at the wire level (illustrative, independent of any sp
 
 The important point is not the method name per se, but the design: JSON-RPC provides the envelope; A2A defines the task/message/artifact semantics; and implementations can remain diverse behind the boundary.
 
----
 
 ## References
 

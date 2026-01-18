@@ -10,7 +10,6 @@ The specification then defines how those operations and objects map onto concret
 
 A key design point is that the same *logical* operations are intended to be functionally equivalent across bindings; the binding decides *how* parameters and service-wide headers/metadata are carried, but not what they mean. ([A2A Protocol][60])
 
----
 
 ### Operation surface and execution semantics
 
@@ -36,7 +35,6 @@ The `blocking` flag is normative and affects correctness expectations:
 
 This matters because it pushes queueing/execution details out of band: even if the server’s internal worker system is distributed, the *observable* behavior must match these semantics.
 
----
 
 ### The protocol data model: the “shape” constraints that make interoperability work
 
@@ -77,7 +75,6 @@ Tasks have states; the spec enumerates states including working, input-required,
 
 A task’s status container includes the current state, optional associated message, and timestamp. ([A2A Protocol][60])
 
----
 
 ### Streaming updates: the `StreamResponse` envelope and event types
 
@@ -100,7 +97,6 @@ Artifact updates are deltas. Each update carries the artifact plus two key boole
 
 This is the protocol’s answer to “how do I stream a large file/structured output?”: the artifact is the stable identity, and the parts are chunked. A client must reconstruct by `(taskId, artifactId)` and apply append semantics to parts.
 
----
 
 ### Push notifications: webhook delivery that reuses the same envelope
 
@@ -113,7 +109,6 @@ The push payload section is unusually explicit about responsibilities:
 
 This means production-grade push is *not* “fire and forget”: both sides are expected to implement retry/idempotency logic.
 
----
 
 ### Service parameters, versioning, and extensions: the “horizontal” control plane
 
@@ -126,7 +121,6 @@ Two standard service parameters are called out:
 
 This is the practical mechanism for incremental evolution: extensions let you strongly-type metadata for specific use cases, while the core stays stable. ([A2A Protocol][60])
 
----
 
 ### Protocol bindings and interface negotiation
 
@@ -136,7 +130,6 @@ The ordering of interfaces is meaningful: clients should prefer earlier entries 
 
 This makes interoperability practical in heterogeneous environments: a client can pick JSON-RPC for browser-like integrations, gRPC for intra-datacenter low-latency, or HTTP+JSON for simple REST stacks—while preserving the same logical semantics.
 
----
 
 ### Implementation patterns extracted from real server stacks: broker, worker, storage
 
@@ -158,7 +151,6 @@ The key protocol-driven reason to build it this way is that A2A requires coheren
 
 You only get correct semantics if task state and artifact state are stored durably enough to be re-served and re-streamed.
 
----
 
 ## Concrete pseudocode: “correct-by-construction” client and server logic
 
@@ -372,7 +364,6 @@ function webhook_handler(http_request):
 
 This matches the spec’s client responsibilities (ACK with 2xx; process idempotently; validate task IDs). ([A2A Protocol][60])
 
----
 
 ## References
 

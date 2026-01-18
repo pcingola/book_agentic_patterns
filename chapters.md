@@ -14,7 +14,6 @@ Here are the propoed chapters (divided in to sections for clarity):
 TIPS: This is a lable for tips, it should be shown in a highlighted box
 BEST PRACTICE: This is a label for best practices, it should be shown in a highlighted box
 
----
 ### Section 1: Basics
 
 ### Chapter 1: Foundations
@@ -132,8 +131,6 @@ These are all about how agents manage information over time.
 - [ ] Write-back patterns
 - [ ] Knowledge bases and consistency (Batch conversion of memory to knowledge)
 
---- 
-
 ### Section 2: Modularization & Composition
 All about building larger systems from smaller pieces.
 
@@ -215,8 +212,6 @@ All about building larger systems from smaller pieces.
 - [ ] ....
 - [ ]
 
----
-
 ### Section 3: Production, Scaling & Enterprise
 
 ### Chapter: Privacy & Governance
@@ -251,8 +246,6 @@ Corporate security
 - [ ] Logging and tracing
 - [ ] Incident response
 - [ ] Model, prompt, and tool version management
-
----
 
 ### Section 4: Advanced Topics
 

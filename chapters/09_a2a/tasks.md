@@ -2,7 +2,6 @@
 
 In A2A systems, a task is a durable, observable unit of work whose lifecycle is decoupled from synchronous execution through streaming, polling, notifications, and explicit coordination components.
 
----
 
 ### Asynchronous Execution as a First-Class Concept
 
@@ -10,7 +9,6 @@ A2A tasks are explicitly designed to be asynchronous. Once a task is created, th
 
 Asynchrony in A2A is not an implementation detail but a protocol-level guarantee: every task can be observed, resumed, or completed independently of the original request–response channel.
 
----
 
 ### Streaming Task Updates
 
@@ -30,7 +28,6 @@ event = {
 
 This model aligns with modern server-sent events and async streaming patterns. In practice, agent runtimes inspired by Pydantic AI expose streaming as an optional observation channel, allowing clients to switch seamlessly between synchronous completion and live progress reporting.
 
----
 
 ### Polling as a Baseline Observation Mechanism
 
@@ -49,7 +46,6 @@ status = {
 
 From a design perspective, streaming and polling are complementary rather than competing approaches. Streaming optimizes for latency and responsiveness, while polling guarantees durability and simplicity.
 
----
 
 ### Push Notifications and External Callbacks
 
@@ -67,7 +63,6 @@ notification = {
 
 This pattern is especially relevant in enterprise environments, where tasks may need to trigger downstream workflows, update dashboards, or notify humans without tight coupling to the agent runtime.
 
----
 
 ### Task Storage and Persistence
 
@@ -77,7 +72,6 @@ Persistent storage enables several critical behaviors: recovery after failure, r
 
 Agent runtimes built around A2A concepts treat storage as an explicit abstraction rather than an internal cache, ensuring that task state can be shared, inspected, or migrated if needed.
 
----
 
 ### Workers as Task Executors
 
@@ -95,7 +89,6 @@ while True:
 
 This separation mirrors established distributed systems patterns and is directly reflected in FastMCP-style agent servers, where execution logic is isolated from task persistence and coordination.
 
----
 
 ### The Task Broker and Coordination
 
@@ -105,13 +98,11 @@ In multi-agent systems, the broker becomes essential for preventing overload and
 
 Conceptually, the broker decouples *who wants work done* from *who is currently able to do it*, enabling flexible deployment and scaling strategies.
 
----
 
 ### Putting It All Together
 
 Streaming, polling, push notifications, storage, workers, and brokers form a coherent execution model around the A2A task abstraction. Tasks are created once, stored durably, executed by interchangeable workers, coordinated by a broker, and observed through multiple complementary channels. This design allows A2A systems to support deep agent collaboration, long-running workflows, and enterprise-grade reliability without sacrificing transparency or control.
 
----
 
 ## References
 

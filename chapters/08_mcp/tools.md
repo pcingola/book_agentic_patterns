@@ -8,7 +8,6 @@ In practical MCP systems, tools are not an auxiliary feature; they are the core 
 
 This section focuses on how tools work *in practice*, with concrete examples drawn from common MCP server implementations such as FastMCP, and how errors and failures propagate back into an agent loop typically implemented with frameworks like Pydantic-AI.
 
----
 
 ## From functions to tools: contracts, not code
 
@@ -33,7 +32,6 @@ When exposed via an MCP server, this function is translated into a tool definiti
 
 At this point, the function body becomes irrelevant to the protocol. The model reasons entirely over the contract. This separation allows the server to validate inputs, enforce permissions, and reject invalid requests before execution.
 
----
 
 ## Tool invocation as structured output
 
@@ -54,7 +52,6 @@ The MCP server validates this payload against the schema derived from the functi
 
 This is the first and most important safety boundary in MCP. Tool calls are not “best effort”. They are either valid or they do not run.
 
----
 
 ## Validation failures and early rejection
 
@@ -76,7 +73,6 @@ For example, if the model omits a required field, the server might return:
 
 This error is returned to the client and injected back into the agent’s context. The agent can now reason over the failure deterministically, rather than guessing what went wrong from an unstructured error string.
 
----
 
 ## Domain errors inside tool execution
 
@@ -98,7 +94,6 @@ Returning to the file-writing example, suppose the file already exists and `over
 
 This distinction matters. The model provided valid inputs, but the requested action is not permissible under current conditions. A well-designed agent can respond by retrying with `overwrite=true`, choosing a different path, or asking the user for confirmation.
 
----
 
 ## How tool errors propagate into the agent loop
 
@@ -121,7 +116,6 @@ The critical point is that tool failures are *observations*, not exceptions that
 
 This is where MCP’s design aligns naturally with typed agent frameworks. Errors are values. They can be inspected, classified, and acted upon using ordinary control logic.
 
----
 
 ## Retry and recovery as explicit policy
 
@@ -143,7 +137,6 @@ The tool implementation does not decide whether to retry. It merely reports what
 
 This separation prevents hidden retries, duplicated side effects, and uncontrolled loops—failure modes that are common in naïve tool-calling systems.
 
----
 
 ## Transient vs terminal failures
 
@@ -151,7 +144,6 @@ A crucial practical concern is distinguishing transient failures from terminal o
 
 By standardizing error codes and propagating them explicitly, MCP enables agents to make this distinction reliably. Over time, this allows agent behavior to evolve from brittle heuristics into deliberate recovery strategies.
 
----
 
 ## Why this level of rigor matters
 
@@ -161,7 +153,6 @@ MCP’s tool model addresses this by treating tool invocation as a first-class, 
 
 In practice, this is what allows MCP-based systems to move beyond demos and into production-grade agentic platforms.
 
----
 
 ## References
 

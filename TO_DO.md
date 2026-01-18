@@ -8,8 +8,6 @@
   - Install uv
   - Virtueal environment
 
-- Remove "---"
-
 - Tool contracts and schemas `tool_contracts_schemas.md`: 
   - "Explicit termination via final schemas" (Langchain is like this as well?)
   - "Retries as part of the contract": Pydantic-AI is not like this: "Errors can be marked as retryable or fatal, allowing the model to reason explicitly about recovery. Because retries are mediated through the same schema, repeated calls remain safe, auditable, and deterministic."

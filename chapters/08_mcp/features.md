@@ -4,7 +4,6 @@ MCP features beyond tools define how instructions, data, generation control, and
 
 This section omits tools and focuses on the remaining server- and client-side features that structure *context* and *control flow* around model execution.
 
----
 
 ## Prompts (server feature)
 
@@ -43,7 +42,6 @@ response = client.run(
 
 The client never embeds the instruction text itself. This makes prompt changes transparent to clients and easier to review and test centrally.
 
----
 
 ## Resources (server feature)
 
@@ -90,7 +88,6 @@ analysis = client.run(
 
 This pattern avoids copying large documents into every prompt and supports workspace-style workflows where artifacts are produced, stored, and revisited across turns.
 
----
 
 ## Sampling (client feature)
 
@@ -130,7 +127,6 @@ final_report = client.run(
 
 Sampling becomes an explicit part of orchestration logic rather than a hidden global setting.
 
----
 
 ## Elicitation (client feature)
 
@@ -164,7 +160,6 @@ deployment = client.run(
 
 This makes human-in-the-loop interaction explicit, auditable, and composable with automated steps.
 
----
 
 ## How these features work together
 
@@ -178,7 +173,6 @@ A typical flow combining these features might look as follows:
 
 None of these steps require embedding large instructions or data blobs directly into prompts. The protocol enforces structure while remaining agnostic to storage, UI, or orchestration frameworks.
 
----
 
 ## References
 
