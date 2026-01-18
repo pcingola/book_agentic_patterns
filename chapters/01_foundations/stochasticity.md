@@ -2,12 +2,6 @@
 
 Agentic systems sit at the boundary between deterministic software and stochastic model behavior, so you design for *reproducibility* rather than pretending you can get perfect determinism.
 
-### Historical perspective: from probabilistic language models to modern decoding
-
-Language modeling has been probabilistic from the start: the core object is a probability distribution over sequences, not a single “correct” next token. Early information theory formalized the idea of modeling sources statistically, which later became the conceptual backbone of language modeling. ([ESSRL][1])
-
-Neural language models made this explicit by learning a parameterized distribution over next tokens, and modern LLMs are essentially extremely large versions of that idea. ([Journal of Machine Learning Research][2]) What changed in practice is that, as models became strong generators, *decoding* became a first-class engineering decision. Deterministic decoding (greedy/beam) tends to be repeatable but can degrade quality (repetition, blandness), while stochastic decoding (temperature, top-k/top-p) trades determinism for diversity and sometimes robustness. Nucleus sampling is a canonical example of decoding research motivated by these practical failures. ([arXiv][3])
-
 ### LLMs are stochastic (even when you try to “turn it off”)
 
 An LLM call is not “a function” in the strict software sense. Even if the model were held fixed, generation typically involves sampling from a distribution; lowering temperature just sharpens that distribution. Many production model APIs also involve infrastructure-level nondeterminism (e.g., backend changes, load balancing, numerical differences), which means that setting “temperature = 0” is best understood as “reduce randomness,” not “prove determinism.” This is explicitly called out in agent-oriented tooling docs: even with temperature set to 0.0, outputs are not guaranteed to be fully deterministic. ([Pydantic AI][4])
@@ -123,22 +117,12 @@ Even if your tests are solid, production will still face drift. The production c
 
 ## References
 
-1. C. E. Shannon. *A Mathematical Theory of Communication*. Bell System Technical Journal, 1948. ([ESSRL][1])
-2. Yoshua Bengio, Réjean Ducharme, Pascal Vincent, Christian Jauvin. *A Neural Probabilistic Language Model*. JMLR, 2003. ([Journal of Machine Learning Research][2])
-3. Ashish Vaswani et al. *Attention Is All You Need*. NeurIPS, 2017. ([NeurIPS Papers][8])
-4. Ari Holtzman et al. *The Curious Case of Neural Text Degeneration*. ICLR, 2020. ([OpenReview][9])
-5. Pydantic AI Documentation. *Model settings (temperature) — note on nondeterminism*. 2025. ([Pydantic AI][4])
-6. Pydantic Evals Documentation. *Overview and evaluators (including LLM judge best practices)*. 2025. ([Pydantic AI][5])
-7. OpenAI Cookbook. *Reproducible outputs with the seed parameter*. 2023. ([OpenAI Cookbook][7])
-8. Microsoft Learn (Azure OpenAI). *Reproducible output (seed and parameter matching)*. 2025. ([Microsoft Learn][10])
+1. Pydantic AI Documentation. *Model settings (temperature) — note on nondeterminism*. 2025. ([Pydantic AI][4])
+2. Pydantic Evals Documentation. *Overview and evaluators (including LLM judge best practices)*. 2025. ([Pydantic AI][5])
+3. Pydantic Evals Documentation. *LLM Judge*. 2025. ([Pydantic AI][6])
+4. OpenAI Cookbook. *Reproducible outputs with the seed parameter*. 2023. ([OpenAI Cookbook][7])
 
-[1]: https://www.essrl.wustl.edu/~jao/itrg/shannon.pdf?utm_source=chatgpt.com "shannon.pdf"
-[2]: https://www.jmlr.org/papers/volume3/bengio03a/bengio03a.pdf?utm_source=chatgpt.com "A Neural Probabilistic Language Model"
-[3]: https://arxiv.org/abs/1904.09751?utm_source=chatgpt.com "The Curious Case of Neural Text Degeneration"
-[4]: https://ai.pydantic.dev/api/settings/?utm_source=chatgpt.com "pydantic_ai.settings"
-[5]: https://ai.pydantic.dev/evals/?utm_source=chatgpt.com "Pydantic Evals"
-[6]: https://ai.pydantic.dev/evals/evaluators/llm-judge/?utm_source=chatgpt.com "LLM Judge"
-[7]: https://cookbook.openai.com/examples/reproducible_outputs_with_the_seed_parameter?utm_source=chatgpt.com "How to make your completions outputs consistent with the ..."
-[8]: https://papers.neurips.cc/paper/7181-attention-is-all-you-need.pdf?utm_source=chatgpt.com "Attention is All you Need"
-[9]: https://openreview.net/pdf?id=rygGQyrFvH&utm_source=chatgpt.com "THE CURIOUS CASE OF NEURAL TEXT DeGENERATION"
-[10]: https://learn.microsoft.com/en-us/azure/ai-foundry/openai/how-to/reproducible-output?view=foundry-classic&utm_source=chatgpt.com "How to generate reproducible output with Azure OpenAI in ..."
+[4]: https://ai.pydantic.dev/api/settings/ "pydantic_ai.settings"
+[5]: https://ai.pydantic.dev/evals/ "Pydantic Evals"
+[6]: https://ai.pydantic.dev/evals/evaluators/llm-judge/ "LLM Judge"
+[7]: https://cookbook.openai.com/examples/reproducible_outputs_with_the_seed_parameter "How to make your completions outputs consistent with the seed parameter"

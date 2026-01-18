@@ -2,15 +2,7 @@
 
 Modularity is the discipline of decomposing an agentic system into composable parts—each with a clear interface—so you can evolve prompts, tools, agents, and orchestration independently.
 
-### Historical perspective: from software modules to tool-using agents
-
-Modularity predates “agents” by decades. In classic software engineering, information hiding and stable interfaces were formalized as the core mechanism for building systems that can change without collapsing under their own complexity. The canonical argument is that you do *not* modularize by “steps in the processing,” but by design decisions likely to change—so changes are localized behind module boundaries. ([ACM Digital Library][11])
-
-As systems grew, the same pressure pushed modularity “out of process” into services: independently deployable components with explicit network contracts. This trajectory is often summarized as monolith → modules/packages → services/SOA → microservices, with the key idea remaining constant: smaller components, clear interfaces, and ownership boundaries. ([martinfowler.com][12])
-
-In LLM systems, modularity reappeared in a new form around 2022–2023: language models began to *route* to external tools and specialized components rather than “do everything in weights.” Neuro-symbolic and tool-augmented architectures (e.g., MRKL) made modular routing explicit, while ReAct showed the practical value of interleaving reasoning with actions (tool calls) during execution. ([arXiv][3]) Toolformer then pushed toward models that can learn to decide *when* to call tools. ([arXiv][4])
-
-### A modularity “stack” for agentic systems
+### A modularity "stack" for agentic systems
 
 A useful way to think about modularity in agentic systems is as a stack of boundaries—from the smallest (prompt fragments) to the largest (inter-agent protocols). Each layer solves a different engineering problem, and mature systems usually use several layers at once.
 
@@ -238,29 +230,17 @@ The common principle is to choose boundaries based on what changes at different 
 
 ## References
 
-1. David L. Parnas. *On the Criteria To Be Used in Decomposing Systems into Modules*. Communications of the ACM, 1972. ([ACM Digital Library][11])
-2. Shunyu Yao, Jeffrey Zhao, Dian Yu, Nan Du, Izhak Shafran, Karthik Narasimhan, Yuan Cao. *ReAct: Synergizing Reasoning and Acting in Language Models*. arXiv, 2022. ([arXiv][22])
-3. Ehud Karpas et al. *MRKL Systems: A modular, neuro-symbolic architecture that combines large language models, external knowledge sources and discrete reasoning*. arXiv, 2022. ([arXiv][13])
-4. Timo Schick et al. *Toolformer: Language Models Can Teach Themselves to Use Tools*. arXiv, 2023. ([arXiv][14])
-5. Model Context Protocol Contributors. *Model Context Protocol Specification (2025-06-18)*. 2025. ([Model Context Protocol][23])
-6. A2A Protocol Contributors. *Agent2Agent (A2A) Protocol Specification*. 2025. ([a2a-protocol.org][18])
-7. Google Developers Blog. *Announcing the Agent2Agent Protocol (A2A)*. 2025. ([Google Developers Blog][24])
-8. Pydantic Services Inc. *Pydantic AI Documentation: Multi-agent applications & workflows*. 2024–present. ([Pydantic AI][25])
-9. Pydantic Services Inc. *Pydantic AI Documentation: Graphs and finite state machines*. 2024–present. ([Pydantic AI][21])
-10. AgentSkills Contributors. *Agent Skills Specification*. 2024–present. ([Agent Skills][19])
+1. OpenAI. *Function calling*. OpenAI Platform Documentation. ([OpenAI Platform][15])
+2. Model Context Protocol Contributors. *Model Context Protocol Specification (2025-06-18)*. 2025. ([Model Context Protocol][16])
+3. A2A Protocol Contributors. *Agent2Agent (A2A) Protocol Specification*. 2025. ([a2a-protocol.org][18])
+4. AgentSkills Contributors. *Agent Skills Specification*. 2024–present. ([Agent Skills][19])
+5. Pydantic Services Inc. *Pydantic AI Documentation*. 2024–present. ([Pydantic AI][20])
+6. Pydantic Services Inc. *Pydantic AI Documentation: Graphs and finite state machines*. 2024–present. ([Pydantic AI][21])
 
-[11]: https://dl.acm.org/doi/10.1145/361598.361623?utm_source=chatgpt.com "On the criteria to be used in decomposing systems into ..."
-[12]: https://martinfowler.com/articles/microservices.html?utm_source=chatgpt.com "Microservices"
-[13]: https://arxiv.org/abs/2205.00445?utm_source=chatgpt.com "[2205.00445] MRKL Systems: A modular, neuro-symbolic ..."
-[14]: https://arxiv.org/abs/2302.04761?utm_source=chatgpt.com "Toolformer: Language Models Can Teach Themselves to Use Tools"
-[15]: https://platform.openai.com/docs/guides/function-calling?utm_source=chatgpt.com "Function calling | OpenAI API"
-[16]: https://modelcontextprotocol.io/specification/2025-06-18/basic?utm_source=chatgpt.com "Overview - Model Context Protocol"
-[17]: https://modelcontextprotocol.io/?utm_source=chatgpt.com "Model Context Protocol"
-[18]: https://a2a-protocol.org/latest/specification/?utm_source=chatgpt.com "Agent2Agent (A2A) Protocol Specification (DRAFT v1.0)"
-[19]: https://agentskills.io/specification?utm_source=chatgpt.com "Specification - Agent Skills"
-[20]: https://ai.pydantic.dev/?utm_source=chatgpt.com "Pydantic AI - Pydantic AI"
-[21]: https://ai.pydantic.dev/graph/?utm_source=chatgpt.com "Graph"
-[22]: https://arxiv.org/abs/2210.03629?utm_source=chatgpt.com "ReAct: Synergizing Reasoning and Acting in Language Models"
-[23]: https://modelcontextprotocol.io/specification/2025-06-18?utm_source=chatgpt.com "Specification"
-[24]: https://developers.googleblog.com/en/a2a-a-new-era-of-agent-interoperability/?utm_source=chatgpt.com "Announcing the Agent2Agent Protocol (A2A)"
-[25]: https://ai.pydantic.dev/multi-agent-applications/?utm_source=chatgpt.com "Multi-agent Applications & Workflows - Pydantic AI"
+[15]: https://platform.openai.com/docs/guides/function-calling "Function calling | OpenAI API"
+[16]: https://modelcontextprotocol.io/specification/2025-06-18/basic "Overview - Model Context Protocol"
+[17]: https://modelcontextprotocol.io/ "Model Context Protocol"
+[18]: https://a2a-protocol.org/latest/specification/ "Agent2Agent (A2A) Protocol Specification (DRAFT v1.0)"
+[19]: https://agentskills.io/specification "Specification - Agent Skills"
+[20]: https://ai.pydantic.dev/ "Pydantic AI - Pydantic AI"
+[21]: https://ai.pydantic.dev/graph/ "Graph"

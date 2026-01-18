@@ -2,6 +2,8 @@
 
 [Outline](./outline.md)
 
+[Historical Perspectives](./historical_perspectives.md)
+
 [Agent](./agent.md)
 
 [Stochasticity](./stochasticity.md)

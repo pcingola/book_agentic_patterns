@@ -2,12 +2,6 @@
 
 Build agentic systems that scale with computation, remain simple under iteration, and treat prompts and tools as testable engineering artifacts rather than clever one-off solutions.
 
-### Historical perspective: from hand-built intelligence to scalable methods
-
-A repeating pattern in AI history is that approaches which “bake in” human knowledge and reasoning tricks often deliver quick wins, but are eventually outpaced by more general methods that can absorb more compute and data. Sutton’s *The Bitter Lesson* distilled this from decades of results across search and learning: progress tends to come from methods that scale (and from the discipline to keep systems simple enough to scale), even when the “hand-designed” approach feels more insightful in the moment. ([UT Austin Computer Science][26])
-
-Modern LLM agents reintroduce an old temptation in a new form: over-fitting behavior through elaborate prompting, brittle heuristics, or highly bespoke orchestration. The best current practice is to resist that temptation by investing in (1) strong interfaces (tools, schemas, contracts), (2) evaluation-driven iteration, and (3) designs that keep the model doing what it’s good at (flexible reasoning under uncertainty) while pushing deterministic work into code.
-
 ### The Bitter Lesson applied to agent engineering
 
 Sutton’s argument can be operationalized as a design filter for agentic systems:
@@ -144,17 +138,16 @@ Simplicity over cleverness (because you will iterate), contracts over prose (bec
 
 ### References
 
-1. Sutton, R. S. *The Bitter Lesson*. Incomplete Ideas (essay), 2019. [http://www.incompleteideas.net/IncIdeas/BitterLesson.html](http://www.incompleteideas.net/IncIdeas/BitterLesson.html) ([Incomplete Ideas][31])
-2. Anthropic. *Building effective agents*. Anthropic Engineering, 2024. [https://www.anthropic.com/engineering/building-effective-agents](https://www.anthropic.com/engineering/building-effective-agents) ([Anthropic][27])
-3. Anthropic. *Writing effective tools for agents — with agents*. Anthropic Engineering, 2025. [https://www.anthropic.com/engineering/writing-tools-for-agents](https://www.anthropic.com/engineering/writing-tools-for-agents) ([Anthropic][28])
-4. Pydantic AI. *Output (structured outputs and validation)*. Documentation, n.d. [https://ai.pydantic.dev/output/](https://ai.pydantic.dev/output/) ([Pydantic AI][29])
-5. Pydantic AI. *Function tools (tools, tool schema, toolsets)*. Documentation, n.d. [https://ai.pydantic.dev/tools/](https://ai.pydantic.dev/tools/) ([Pydantic AI][32])
-6. Pydantic Evals. *Retry strategies*. Documentation, n.d. [https://ai.pydantic.dev/evals/how-to/retry-strategies/](https://ai.pydantic.dev/evals/how-to/retry-strategies/) ([Pydantic AI][30])
+1. Sutton, R. S. *The Bitter Lesson*. Incomplete Ideas (essay), 2019. ([Incomplete Ideas][31])
+2. Anthropic. *Building effective agents*. Anthropic Engineering, 2024. ([Anthropic][27])
+3. Anthropic. *Writing effective tools for agents — with agents*. Anthropic Engineering, 2025. ([Anthropic][28])
+4. Pydantic AI. *Output (structured outputs and validation)*. Documentation. ([Pydantic AI][29])
+5. Pydantic AI. *Function tools (tools, tool schema, toolsets)*. Documentation. ([Pydantic AI][32])
+6. Pydantic Evals. *Retry strategies*. Documentation. ([Pydantic AI][30])
 
-[26]: https://www.cs.utexas.edu/~eunsol/courses/data/bitter_lesson.pdf?utm_source=chatgpt.com "The Bitter Lesson"
-[27]: https://www.anthropic.com/research/building-effective-agents "Building Effective AI Agents \ Anthropic"
-[28]: https://www.anthropic.com/engineering/writing-tools-for-agents "Writing effective tools for AI agents—using AI agents \ Anthropic"
+[27]: https://www.anthropic.com/research/building-effective-agents "Building Effective AI Agents | Anthropic"
+[28]: https://www.anthropic.com/engineering/writing-tools-for-agents "Writing effective tools for AI agents—using AI agents | Anthropic"
 [29]: https://ai.pydantic.dev/output/ "Output - Pydantic AI"
 [30]: https://ai.pydantic.dev/evals/how-to/retry-strategies/ "Retry Strategies - Pydantic AI"
-[31]: https://www.incompleteideas.net/IncIdeas/BitterLesson.html?utm_source=chatgpt.com "The Bitter Lesson"
+[31]: https://www.incompleteideas.net/IncIdeas/BitterLesson.html "The Bitter Lesson"
 [32]: https://ai.pydantic.dev/tools/ "Function Tools - Pydantic AI"
