@@ -197,7 +197,7 @@ This mirrors classes/modules: each component has its own invariants and dependen
 
 When the number of components grows, the primary complexity shifts from “what does each part do?” to “who calls whom, and when?” That’s a control-flow modularity problem.
 
-Workflows (pipelines, supervisor/worker, handoffs) keep control flow mostly linear and are often sufficient. Graphs (DAGs, state machines) make branching, retries, and long-lived state explicit and inspectable—useful when execution paths are numerous or must be audited. ([Pydantic AI][11])
+Workflows (pipelines, supervisor/worker, handoffs) keep control flow mostly linear and are often sufficient. Graphs (DAGs, state machines) make branching, retries, and long-lived state explicit and inspectable—useful when execution paths are numerous or must be audited. ([Pydantic AI][21])
 
 A simple graph-shaped interface looks like this:
 

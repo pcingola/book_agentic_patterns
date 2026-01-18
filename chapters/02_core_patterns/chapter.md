@@ -34,3 +34,5 @@
 
 [Hands-On: Verification / Critique](./hands_on_verification_critique.md)
 
+[Hands-On: Human in the Loop](./hands_on_human_in_the_loop.md)
+

@@ -58,8 +58,8 @@ system_prompt = f"Translate into {language}"
 agent = get_agent(system_prompt=system_prompt)
 
 prompt = "I like coffee."
-ret, nodes = await run_agent(agent, prompt, verbose=True)
-print(ret)
+agent_run, nodes = await run_agent(agent, prompt, verbose=True)
+print(agent_run.result.output)
 ```
 
 This approach separates concerns. The system prompt defines the agent's behavior (translate into French), while the user prompt provides the content to process (I like coffee).
@@ -105,8 +105,8 @@ agent = get_agent(system_prompt=system_prompt)
 # Translate multiple sentences with the same agent
 sentences = ["I like coffee.", "The weather is nice.", "Good morning."]
 for sentence in sentences:
-    ret, _ = await run_agent(agent, sentence)
-    print(ret)
+    agent_run, _ = await run_agent(agent, sentence)
+    print(agent_run.result.output)
 ```
 
 **Maintainability**: Change the instruction once in the system prompt rather than updating every user prompt. Want to switch from French to Spanish? Modify one line.

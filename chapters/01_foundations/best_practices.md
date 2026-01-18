@@ -29,6 +29,7 @@ Workflows are typically easier to test, cheaper, and more predictable because co
 When you do need an agent, keep the agent loop deliberately simple and make uncertainty explicit:
 
 ```python
+# Pseudocode: conceptual agent loop (not framework-specific)
 def run_agent(task: str, tools, policy, max_steps: int = 20):
     state = {"task": task, "notes": [], "artifacts": []}
 
