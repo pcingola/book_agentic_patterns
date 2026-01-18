@@ -4,7 +4,7 @@ Agentic systems sit at the boundary between deterministic software and stochasti
 
 ### LLMs are stochastic (even when you try to “turn it off”)
 
-An LLM call is not “a function” in the strict software sense. Even if the model were held fixed, generation typically involves sampling from a distribution; lowering temperature just sharpens that distribution. Many production model APIs also involve infrastructure-level nondeterminism (e.g., backend changes, load balancing, numerical differences), which means that setting “temperature = 0” is best understood as “reduce randomness,” not “prove determinism.” This is explicitly called out in agent-oriented tooling docs: even with temperature set to 0.0, outputs are not guaranteed to be fully deterministic. ([Pydantic AI][4])
+An LLM call is not “a function” in the strict software sense. Even if the model were held fixed, generation typically involves sampling from a distribution; lowering temperature just sharpens that distribution. Many production model APIs also involve infrastructure-level nondeterminism (e.g., backend changes, load balancing, numerical differences), which means that setting “temperature = 0” is best understood as “reduce randomness,” not “prove determinism.” This is explicitly called out in agent-oriented tooling docs: even with temperature set to 0.0, outputs are not guaranteed to be fully deterministic. ([Pydantic AI][5])
 
 Two practical implications follow:
 
@@ -84,9 +84,9 @@ This lets you test the *agent as software* with the speed and determinism you ex
 
 #### 4) Treat evaluation as a first-class harness, not ad-hoc assertions
 
-For end-to-end behavior, you typically need evaluation infrastructure: curated datasets, repeatable runs, and scoring. Evaluation frameworks aimed at agentic systems emphasize running many scenarios and attaching evaluators that produce scores/labels/assertions, including “LLM-as-judge” when deterministic checks are insufficient. ([Pydantic AI][5])
+For end-to-end behavior, you typically need evaluation infrastructure: curated datasets, repeatable runs, and scoring. Evaluation frameworks aimed at agentic systems emphasize running many scenarios and attaching evaluators that produce scores/labels/assertions, including “LLM-as-judge” when deterministic checks are insufficient. ([Pydantic AI][6])
 
-A practical rubric pattern is: deterministic checks first, then an LLM judge for the remaining ambiguity, with guidance to keep the judge itself as stable as possible (for example, low temperature) and to combine multiple judges when needed. ([Pydantic AI][6])
+A practical rubric pattern is: deterministic checks first, then an LLM judge for the remaining ambiguity, with guidance to keep the judge itself as stable as possible (for example, low temperature) and to combine multiple judges when needed. ([Pydantic AI][7])
 
 ```python
 case = {"input": "...", "expected_facts": [...], "constraints": [...]}
@@ -113,9 +113,9 @@ Exact text snapshots are brittle. When you *must* snapshot, snapshot the right t
 
 #### 6) Design for controlled nondeterminism in production
 
-Even if your tests are solid, production will still face drift. The production counterpart of your testing strategy is: log the parameters and environment identifiers; keep prompts versioned; isolate tools behind stable contracts; and monitor outcome metrics so you detect behavior changes quickly. If your provider supports seeds and fingerprints, treat them as debugging aids, not as a determinism guarantee. ([OpenAI Cookbook][7])
+Even if your tests are solid, production will still face drift. The production counterpart of your testing strategy is: log the parameters and environment identifiers; keep prompts versioned; isolate tools behind stable contracts; and monitor outcome metrics so you detect behavior changes quickly. If your provider supports seeds and fingerprints, treat them as debugging aids, not as a determinism guarantee. ([OpenAI Cookbook][8])
 
-[4]: https://ai.pydantic.dev/api/settings/
-[5]: https://ai.pydantic.dev/evals/
-[6]: https://ai.pydantic.dev/evals/evaluators/llm-judge/
-[7]: https://cookbook.openai.com/examples/reproducible_outputs_with_the_seed_parameter
+[5]: https://ai.pydantic.dev/api/settings/
+[6]: https://ai.pydantic.dev/evals/
+[7]: https://ai.pydantic.dev/evals/evaluators/llm-judge/
+[8]: https://cookbook.openai.com/examples/reproducible_outputs_with_the_seed_parameter

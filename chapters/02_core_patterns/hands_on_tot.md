@@ -140,16 +140,16 @@ The execution forms a tree:
 
 ```
 Problem Statement
-├─ Approach A (whole-file hash)
-│  ├─ Evaluation: 18/20
-│  └─ Detailed Implementation
-│     └─ Final Analysis
-├─ Approach B (chunking)
-│  ├─ Evaluation: 16/20
-│  └─ Detailed Implementation
-│     └─ Final Analysis
-└─ Approach C (perceptual)
-   └─ Evaluation: 15/20 [pruned]
++-- Approach A (whole-file hash)
+|   +-- Evaluation: 18/20
+|   +-- Detailed Implementation
+|       +-- Final Analysis
++-- Approach B (chunking)
+|   +-- Evaluation: 16/20
+|   +-- Detailed Implementation
+|       +-- Final Analysis
++-- Approach C (perceptual)
+    +-- Evaluation: 15/20 [pruned]
 ```
 
 Approach C was pruned after evaluation. Approaches A and B were expanded. Final analysis compared the expanded approaches to select a winner.
