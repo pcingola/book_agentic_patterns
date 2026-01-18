@@ -15,3 +15,7 @@
 [Advanced topics](./advanced_topics.md)
 
 [MCP: Introduction](./mcp.md)
+
+[Hands-On: Tool Use](./hands_on_tools.md)
+
+[Hands-On: Structured Outputs](./hands_on_structured_outputs.md)
