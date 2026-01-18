@@ -2,14 +2,6 @@
 
 **Human-in-the-loop (HITL)** is the pattern where an agent deliberately pauses autonomous execution to request human input, validation, or authorization before proceeding with tool use or decision making.
 
-### Historical perspective
-
-The idea of keeping humans actively involved in automated decision systems predates modern AI by decades. Early work in control theory and human–computer interaction in the 1960s and 1970s already emphasized *human supervisory control*, where automated systems executed routine actions but escalated uncertain or high-risk situations to human operators. In machine learning, this evolved into *interactive learning* and *active learning*, where models selectively queried humans for labels when uncertainty was high.
-
-In the 2010s, research on human-in-the-loop machine learning formalized these ideas around feedback loops, uncertainty estimation, and cost-aware querying. With the rise of large language models and agentic systems in the 2020s, HITL re-emerged as a practical necessity rather than a theoretical preference. Early autonomous agents demonstrated impressive capabilities but also highlighted failure modes related to hallucinations, unsafe actions, and irreversible side effects when tools had real-world impact. As a result, human-in-the-loop patterns became a core design principle for production-grade agents, especially in enterprise, safety-critical, and compliance-sensitive environments.
-
-### The pattern in agentic systems
-
 In agentic tool use, human-in-the-loop is not simply “asking the user a question.” It is a structured control point in the agent’s execution graph where autonomy is intentionally suspended. The agent externalizes its current state—intent, assumptions, planned actions, and proposed tool calls—and waits for a human signal to continue, modify, or abort execution.
 
 At a high level, the pattern consists of three steps:
@@ -67,10 +59,3 @@ Effective human-in-the-loop systems share several characteristics. They minimize
 
 When implemented correctly, HITL does not slow agents down unnecessarily. Instead, it creates well-defined synchronization points between human judgment and machine execution, enabling safe scaling of agentic systems.
 
-### References
-
-1. Sheridan, T. B., & Verplank, W. L. *Human and Computer Control of Undersea Teleoperators*. MIT Man-Machine Systems Laboratory, 1978.
-2. Settles, B. *Active Learning Literature Survey*. University of Wisconsin–Madison, 2010.
-3. Amershi, S. et al. *Human-in-the-Loop Machine Learning*. ACM CHI, 2014.
-4. Russell, S. *Human-Compatible Artificial Intelligence*. AI Magazine, 2019.
-5. OpenAI. *Best Practices for Human-in-the-Loop AI Systems*. Technical blog and documentation, 2023.

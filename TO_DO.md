@@ -2,20 +2,7 @@
 
 ## Text
 
-- hands_on.md: -> hands_on_01.md
-  - Add explanation of the helper library (run_agent)
-  - Recap on 'async', what is a co-routine
-  - Recap on 'async with' (context manager, async context manager)
-
-- Chapter 02: 
-  - IMPORTANT: These patterns are precursors to more advanced agentic systems we have today
-  - Modern LLMs have thinking, planning capabilities built-in
-  - Modern frameworks have 'tools' built-in. ReACT was the precursor to it (React was a breakthrough at the time, but now tool use is standard)
-  - These are important as historical perspective, and to understand the building blocks of more advanced systems
-  - Modern systems combine multiple of these patterns (e.g. ReACT + CoT + verification, etc)
-  - EXAMPLES: Use simple model without advanced capabilities / thinking to illustrate the patterns
-
-- Section: Hands_on setting up the environment
+- ADD Chapter 1: Hands_on setting up the environment
   - VS-Code
   - extensions: Jupyter, Python, Pylance, ...
   - Install uv

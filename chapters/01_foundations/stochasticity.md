@@ -115,14 +115,7 @@ Exact text snapshots are brittle. When you *must* snapshot, snapshot the right t
 
 Even if your tests are solid, production will still face drift. The production counterpart of your testing strategy is: log the parameters and environment identifiers; keep prompts versioned; isolate tools behind stable contracts; and monitor outcome metrics so you detect behavior changes quickly. If your provider supports seeds and fingerprints, treat them as debugging aids, not as a determinism guarantee. ([OpenAI Cookbook][7])
 
-## References
-
-1. Pydantic AI Documentation. *Model settings (temperature) — note on nondeterminism*. 2025. ([Pydantic AI][4])
-2. Pydantic Evals Documentation. *Overview and evaluators (including LLM judge best practices)*. 2025. ([Pydantic AI][5])
-3. Pydantic Evals Documentation. *LLM Judge*. 2025. ([Pydantic AI][6])
-4. OpenAI Cookbook. *Reproducible outputs with the seed parameter*. 2023. ([OpenAI Cookbook][7])
-
-[4]: https://ai.pydantic.dev/api/settings/ "pydantic_ai.settings"
-[5]: https://ai.pydantic.dev/evals/ "Pydantic Evals"
-[6]: https://ai.pydantic.dev/evals/evaluators/llm-judge/ "LLM Judge"
-[7]: https://cookbook.openai.com/examples/reproducible_outputs_with_the_seed_parameter "How to make your completions outputs consistent with the seed parameter"
+[4]: https://ai.pydantic.dev/api/settings/
+[5]: https://ai.pydantic.dev/evals/
+[6]: https://ai.pydantic.dev/evals/evaluators/llm-judge/
+[7]: https://cookbook.openai.com/examples/reproducible_outputs_with_the_seed_parameter

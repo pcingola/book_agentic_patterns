@@ -136,18 +136,7 @@ In agentic engineering, “best practices” is less about any single framework 
 
 Simplicity over cleverness (because you will iterate), contracts over prose (because tools are your control surface), measurement over intuition (because stochastic systems deceive), and scalable feedback loops over handcrafted behavior (because that is where long-run performance comes from).
 
-### References
-
-1. Sutton, R. S. *The Bitter Lesson*. Incomplete Ideas (essay), 2019. ([Incomplete Ideas][31])
-2. Anthropic. *Building effective agents*. Anthropic Engineering, 2024. ([Anthropic][27])
-3. Anthropic. *Writing effective tools for agents — with agents*. Anthropic Engineering, 2025. ([Anthropic][28])
-4. Pydantic AI. *Output (structured outputs and validation)*. Documentation. ([Pydantic AI][29])
-5. Pydantic AI. *Function tools (tools, tool schema, toolsets)*. Documentation. ([Pydantic AI][32])
-6. Pydantic Evals. *Retry strategies*. Documentation. ([Pydantic AI][30])
-
-[27]: https://www.anthropic.com/research/building-effective-agents "Building Effective AI Agents | Anthropic"
-[28]: https://www.anthropic.com/engineering/writing-tools-for-agents "Writing effective tools for AI agents—using AI agents | Anthropic"
-[29]: https://ai.pydantic.dev/output/ "Output - Pydantic AI"
-[30]: https://ai.pydantic.dev/evals/how-to/retry-strategies/ "Retry Strategies - Pydantic AI"
-[31]: https://www.incompleteideas.net/IncIdeas/BitterLesson.html "The Bitter Lesson"
-[32]: https://ai.pydantic.dev/tools/ "Function Tools - Pydantic AI"
+[27]: https://www.anthropic.com/research/building-effective-agents
+[28]: https://www.anthropic.com/engineering/writing-tools-for-agents
+[29]: https://ai.pydantic.dev/output/
+[30]: https://ai.pydantic.dev/evals/how-to/retry-strategies/

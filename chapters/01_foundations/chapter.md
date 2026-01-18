@@ -23,3 +23,5 @@
 [Hands-On: System Prompt vs User Prompt](./hands_on_translate.md)
 
 [Hands-On: Multi-Turn Conversations](./hands_on_multi_turn.md)
+
+[References](./references.md)

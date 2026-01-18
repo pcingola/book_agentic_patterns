@@ -228,19 +228,10 @@ A compact mental mapping helps align agent architecture choices with well-unders
 
 The common principle is to choose boundaries based on what changes at different rates. Prompts and examples may change weekly; tool schemas change rarely; protocols and cross-team contracts should change almost never. Good agentic modularity aligns those change rates with explicit interfaces so iteration remains cheap where it should be cheap, and stability exists where it must be stable.
 
-## References
-
-1. OpenAI. *Function calling*. OpenAI Platform Documentation. ([OpenAI Platform][15])
-2. Model Context Protocol Contributors. *Model Context Protocol Specification (2025-06-18)*. 2025. ([Model Context Protocol][16])
-3. A2A Protocol Contributors. *Agent2Agent (A2A) Protocol Specification*. 2025. ([a2a-protocol.org][18])
-4. AgentSkills Contributors. *Agent Skills Specification*. 2024–present. ([Agent Skills][19])
-5. Pydantic Services Inc. *Pydantic AI Documentation*. 2024–present. ([Pydantic AI][20])
-6. Pydantic Services Inc. *Pydantic AI Documentation: Graphs and finite state machines*. 2024–present. ([Pydantic AI][21])
-
-[15]: https://platform.openai.com/docs/guides/function-calling "Function calling | OpenAI API"
-[16]: https://modelcontextprotocol.io/specification/2025-06-18/basic "Overview - Model Context Protocol"
-[17]: https://modelcontextprotocol.io/ "Model Context Protocol"
-[18]: https://a2a-protocol.org/latest/specification/ "Agent2Agent (A2A) Protocol Specification (DRAFT v1.0)"
-[19]: https://agentskills.io/specification "Specification - Agent Skills"
-[20]: https://ai.pydantic.dev/ "Pydantic AI - Pydantic AI"
-[21]: https://ai.pydantic.dev/graph/ "Graph"
+[15]: https://platform.openai.com/docs/guides/function-calling
+[16]: https://modelcontextprotocol.io/specification/2025-06-18/basic
+[17]: https://modelcontextprotocol.io/
+[18]: https://a2a-protocol.org/latest/specification/
+[19]: https://agentskills.io/specification
+[20]: https://ai.pydantic.dev/
+[21]: https://ai.pydantic.dev/graph/

@@ -14,10 +14,3 @@ As reasoning chains grow longer and more complex, the risk of compounding errors
 
 Taken together, these patterns are not isolated techniques but composable building blocks. Zero-shot and few-shot prompting establish the baseline, Chain-of-Thought makes reasoning explicit, planning and decomposition structure longer horizons, Tree of Thought introduces search, ReAct grounds reasoning in action, and reflection and verification provide corrective feedback. The remainder of this chapter examines each pattern in detail, tracing its origins and showing how it is used in practical agentic systems.
 
-### References
-
-1. Brown et al. *Language Models are Few-Shot Learners*. NeurIPS, 2020.
-2. Wei et al. *Chain-of-Thought Prompting Elicits Reasoning in Large Language Models*. NeurIPS, 2022.
-3. Yao et al. *Tree of Thoughts: Deliberate Problem Solving with Large Language Models*. arXiv, 2023.
-4. Yao et al. *ReAct: Synergizing Reasoning and Acting in Language Models*. ICLR, 2023.
-5. Shinn et al. *Reflexion: Language Agents with Verbal Reinforcement Learning*. NeurIPS, 2023.

@@ -2,6 +2,8 @@
 
 [Introduction](./intro.md)
 
+[Historical Perspectives](./historical_perspectives.md)
+
 [Zero-shot & Few-shot](./zero_shot.md)
 
 [Chain-of-Thought (CoT)](./cot.md)
@@ -36,3 +38,4 @@
 
 [Hands-On: Human in the Loop](./hands_on_human_in_the_loop.md)
 
+[References](./references.md)

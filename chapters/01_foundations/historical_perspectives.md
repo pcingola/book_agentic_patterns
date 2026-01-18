@@ -50,27 +50,10 @@ A repeating pattern in AI history is that approaches which "bake in" human knowl
 
 Modern LLM agents reintroduce an old temptation in a new form: over-fitting behavior through elaborate prompting, brittle heuristics, or highly bespoke orchestration. The best current practice is to resist that temptation by investing in (1) strong interfaces (tools, schemas, contracts), (2) evaluation-driven iteration, and (3) designs that keep the model doing what it's good at (flexible reasoning under uncertainty) while pushing deterministic work into code.
 
-## References
-
-1. Richard Bellman. *Dynamic Programming*. Princeton University Press, 1957.
-2. Richard S. Sutton, Andrew G. Barto. *Reinforcement Learning: An Introduction*. MIT Press, 2018.
-3. Stuart Russell, Peter Norvig. *Artificial Intelligence: A Modern Approach*. Pearson, 2020.
-4. Michael Wooldridge, Nicholas R. Jennings. *Intelligent Agents: Theory and Practice*. The Knowledge Engineering Review, 1995.
-5. C. E. Shannon. *A Mathematical Theory of Communication*. Bell System Technical Journal, 1948. ([ESSRL][1])
-6. Yoshua Bengio, Rejean Ducharme, Pascal Vincent, Christian Jauvin. *A Neural Probabilistic Language Model*. JMLR, 2003. ([Journal of Machine Learning Research][2])
-7. Ari Holtzman et al. *The Curious Case of Neural Text Degeneration*. ICLR, 2020. ([arXiv][3])
-8. David L. Parnas. *On the Criteria To Be Used in Decomposing Systems into Modules*. Communications of the ACM, 1972. ([ACM Digital Library][11])
-9. Ehud Karpas et al. *MRKL Systems: A modular, neuro-symbolic architecture that combines large language models, external knowledge sources and discrete reasoning*. arXiv, 2022. ([arXiv][13])
-10. Timo Schick et al. *Toolformer: Language Models Can Teach Themselves to Use Tools*. arXiv, 2023. ([arXiv][4])
-11. Shunyu Yao et al. *ReAct: Synergizing Reasoning and Acting in Language Models*. ICLR, 2023.
-12. Sutton, R. S. *The Bitter Lesson*. Incomplete Ideas (essay), 2019. ([Incomplete Ideas][31])
-
-[1]: https://www.essrl.wustl.edu/~jao/itrg/shannon.pdf "shannon.pdf"
-[2]: https://www.jmlr.org/papers/volume3/bengio03a/bengio03a.pdf "A Neural Probabilistic Language Model"
-[3]: https://arxiv.org/abs/1904.09751 "The Curious Case of Neural Text Degeneration"
-[4]: https://arxiv.org/abs/2302.04761 "Toolformer: Language Models Can Teach Themselves to Use Tools"
-[11]: https://dl.acm.org/doi/10.1145/361598.361623 "On the criteria to be used in decomposing systems into modules"
-[12]: https://martinfowler.com/articles/microservices.html "Microservices"
-[13]: https://arxiv.org/abs/2205.00445 "MRKL Systems"
-[26]: https://www.cs.utexas.edu/~eunsol/courses/data/bitter_lesson.pdf "The Bitter Lesson"
-[31]: https://www.incompleteideas.net/IncIdeas/BitterLesson.html "The Bitter Lesson"
+[1]: https://www.essrl.wustl.edu/~jao/itrg/shannon.pdf
+[2]: https://www.jmlr.org/papers/volume3/bengio03a/bengio03a.pdf
+[3]: https://arxiv.org/abs/1904.09751
+[4]: https://arxiv.org/abs/2302.04761
+[11]: https://dl.acm.org/doi/10.1145/361598.361623
+[12]: https://martinfowler.com/articles/microservices.html
+[26]: https://www.cs.utexas.edu/~eunsol/courses/data/bitter_lesson.pdf
