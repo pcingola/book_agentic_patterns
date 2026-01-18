@@ -2,7 +2,7 @@
 
 Language models are stateless. Each time you send a prompt, the model processes only that input and has no memory of previous interactions. To create coherent conversations that span multiple turns, you must explicitly provide the conversation history with each new request.
 
-This hands-on explores message history using `example_03_multi_turn.ipynb`, building on the translation examples from the previous section.
+This hands-on explores message history using `example_multi_turn.ipynb`, building on the translation examples from the previous section.
 
 ## The Problem: Context Loss
 
@@ -33,7 +33,7 @@ The helper function `nodes_to_message_history` extracts the conversation history
 
 ## Example: Translation Follow-Up
 
-Let's examine `example_03_multi_turn.ipynb`, which demonstrates a simple two-turn conversation.
+Let's examine `example_multi_turn.ipynb`, which demonstrates a simple two-turn conversation.
 
 ### Setup
 
@@ -44,7 +44,7 @@ from agentic_patterns.core.agents.utils import nodes_to_message_history
 agent = get_agent()
 ```
 
-We create a basic agent without a system prompt, similar to `example_01_translate.ipynb`.
+We create a basic agent without a system prompt, similar to `example_translate_basic.ipynb`.
 
 ### Turn 1: Translation Request
 
@@ -139,7 +139,7 @@ Message history and system prompts serve different purposes:
 
 **Message history** contains the actual back-and-forth exchange between user and agent. It grows with each turn as new messages are added.
 
-In `example_02_translate.ipynb`, we used a system prompt:
+In `example_translate_system_prompt.ipynb`, we used a system prompt:
 
 ```python
 system_prompt = f"Translate into {language}"

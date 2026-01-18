@@ -1,6 +1,6 @@
 # Hands-On: System Prompts vs. User Prompts
 
-This section explores two different approaches to prompting language models using a translation task as our example. We'll compare `example_01_translate.ipynb` and `example_02_translate.ipynb` to understand when and why to separate instructions from content.
+This section explores two different approaches to prompting language models using a translation task as our example. We'll compare `example_translate_basic.ipynb` and `example_translate_system_prompt.ipynb` to understand when and why to separate instructions from content.
 
 ## Two Ways to Prompt
 
@@ -14,7 +14,7 @@ Both approaches produce the same output, but they differ in reusability, maintai
 
 ## Example 1: Everything in the User Prompt
 
-Let's examine `example_01_translate.ipynb`:
+Let's examine `example_translate_basic.ipynb`:
 
 ```python
 from agentic_patterns.core.agents import get_agent, run_agent
@@ -48,7 +48,7 @@ The instruction "Translate to French:" is repeated in every prompt, and the stru
 
 ## Example 2: Separating System and User Prompts
 
-Now let's examine `example_02_translate.ipynb`:
+Now let's examine `example_translate_system_prompt.ipynb`:
 
 ```python
 from agentic_patterns.core.agents import get_agent, run_agent

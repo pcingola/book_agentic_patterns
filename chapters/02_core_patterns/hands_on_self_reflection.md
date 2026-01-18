@@ -1,6 +1,6 @@
 # Hands-On: Self-Reflection Pattern
 
-Self-reflection is a reasoning pattern where an agent explicitly examines and critiques its own output before revising it. This hands-on explores the self-reflection cycle using `example_02_self_reflection.ipynb`, demonstrating how agents can improve their solutions through iterative self-critique.
+Self-reflection is a reasoning pattern where an agent explicitly examines and critiques its own output before revising it. This hands-on explores the self-reflection cycle using `example_self_reflection.ipynb`, demonstrating how agents can improve their solutions through iterative self-critique.
 
 ## The Three-Turn Reflection Cycle
 
