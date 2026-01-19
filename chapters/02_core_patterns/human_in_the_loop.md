@@ -6,7 +6,7 @@ In agentic tool use, human-in-the-loop is not simply “asking the user a questi
 
 At a high level, the pattern consists of three steps:
 
-1. **Detection of a handoff condition**
+1. **Detection of a hand-off condition**
    The agent decides that human involvement is required. This may be triggered by uncertainty, policy constraints, permission boundaries, or explicit rules such as “all write actions require approval.”
 
 2. **State serialization and presentation**

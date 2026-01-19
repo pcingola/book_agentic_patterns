@@ -20,6 +20,6 @@
 
 [Hands-On: Agent Delegation](./hands_on_delegation.md)
 
-[Hands-On: Agent Hand-Off](./hands_on_handoff.md)
+[Hands-On: Agent Hand-Off](./hands_on_hand_off.md)
 
 [References](./references.md)
