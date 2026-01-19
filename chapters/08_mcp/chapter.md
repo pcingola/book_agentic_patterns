@@ -9,3 +9,5 @@
 [Achitecture](./architecture.md)
 
 [Code snuppets](./snippets.md)
+
+[Hands-On: MCP STDIO Transport](./hands_on_mcp_stdio.md)
