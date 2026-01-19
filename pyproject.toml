@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.12.2"
 dependencies = [
     "dotenv>=0.9.9",
+    "fasta2a>=0.6.0",
     "fastmcp>=2.14.2",
     "ipykernel>=7.1.0",
     "openai>=2.14.0",

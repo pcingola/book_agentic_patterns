@@ -1,21 +1,19 @@
-
 """
-A simple example of an A2A (Agent to Agent) server
+A2A server that exposes an agent with arithmetic tools.
 """
 
-from aixtools.agents import get_agent
+from agentic_patterns.core.agents import get_agent
+
 
 def add(a: int, b: int) -> int:
     """Add two numbers"""
-    print(f"Adding {a} + {b}")
     return a + b
 
+
 def sub(a: int, b: int) -> int:
-    """Substract two numbers"""
-    print(f"Substracting {a} - {b}")
+    """Subtract two numbers"""
     return a - b
 
 
 agent = get_agent(tools=[add, sub])
-
 app = agent.to_a2a()
