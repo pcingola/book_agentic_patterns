@@ -90,10 +90,3 @@ This separation enables safer composition of agents, easier audits, and incremen
 
 Tool permissions therefore act as the practical bridge between abstract agent autonomy and real-world operational constraints.
 
-### References
-
-1. Lampson, B. *Protection*. ACM SIGOPS Operating Systems Review, 1971.
-2. Dennis, J. B., Van Horn, E. C. *Programming Semantics for Multiprogrammed Computations*. Communications of the ACM, 1966.
-3. Miller, M. S. *Capability-Based Security*. PhD Thesis, Johns Hopkins University, 2006.
-4. Lewis, P. et al. *Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks*. NeurIPS, 2020.
-5. OWASP Foundation. *Top 10 for Large Language Model Applications*. 2023. URL (optional)

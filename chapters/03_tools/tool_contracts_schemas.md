@@ -109,9 +109,3 @@ Tool contracts and schemas transform tool use from an informal convention into a
 
 More importantly, they define clear capability boundaries. The model can act only through interfaces that are precisely specified, making agent behavior predictable, debuggable, and scalable. In practice, this pattern is what allows tool use to serve as the foundation of reliable agentic systems rather than an ad hoc extension of prompting.
 
-### References
-
-1. Andreas, J., et al. *Semantic Parsing as Machine Translation*. ACL, 2013.
-2. Liang, P., et al. *Neural Symbolic Machines*. ACL, 2017.
-3. OpenAI. *Function Calling and Structured Outputs in Large Language Models*. Technical blog, 2023.
-4. Yao, S., et al. *ReAct: Synergizing Reasoning and Acting in Language Models*. ICLR, 2023.

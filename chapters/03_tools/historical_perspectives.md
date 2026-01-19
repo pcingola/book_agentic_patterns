@@ -18,23 +18,3 @@ With the emergence of large language models capable of reliably producing struct
 
 As tool-using agents moved from research prototypes to production deployments, the need for stable interaction protocols became apparent. Early desktop and IDE-style agent deployments around 2023-2024 initially relied on embedding tool descriptions directly into prompts and parsing structured outputs. While workable for short-lived interactions, this approach showed its limits as sessions became longer, tools more numerous, and state more complex. The architectural inspiration for protocols like MCP came largely from the Language Server Protocol (LSP), introduced in 2016, which demonstrated that a clean separation between a client and a capability provider could be achieved using a small set of protocol primitives. This generalized the idea from editor-language tooling interaction to model-environment interaction, providing the infrastructural layer required to make agentic behavior robust over time.
 
-### References
-
-1. Russell, S., Norvig, P. *Artificial Intelligence: A Modern Approach*. Prentice Hall, 1995.
-2. McIlraith, S., Son, T. C., Zeng, H. *Semantic Web Services*. IEEE Intelligent Systems, 2001.
-3. Lampson, B. *Protection*. ACM SIGOPS Operating Systems Review, 1971.
-4. Dennis, J. B., Van Horn, E. C. *Programming Semantics for Multiprogrammed Computations*. Communications of the ACM, 1966.
-5. Miller, M. S. *Capability-Based Security*. PhD Thesis, Johns Hopkins University, 2006.
-6. Eric Horvitz. *Principles of Mixed-Initiative User Interfaces*. CHI, 1999.
-7. Saleema Amershi, et al. *Power to the People: The Role of Humans in Interactive Machine Learning*. AI Magazine, 2014.
-8. Newell, A. *The Knowledge Level*. Artificial Intelligence, 1982.
-9. Engelmore, R., Morgan, A. *Blackboard Systems*. Addison-Wesley, 1988.
-10. Laird, J. *The Soar Cognitive Architecture*. MIT Press, 2012.
-11. Zettlemoyer, L., Collins, M. *Learning to Map Sentences to Logical Form*. UAI, 2005.
-12. Wong, Y. W., Mooney, R. J. *Learning for Semantic Parsing with Statistical Machine Translation*. NAACL, 2006.
-13. Yin, P., Neubig, G. *A Syntactic Neural Model for General-Purpose Code Generation*. ACL, 2017.
-14. Lewis, P. et al. *Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks*. NeurIPS, 2020.
-15. Schick, T. et al. *Toolformer: Language Models Can Teach Themselves to Use Tools*. NeurIPS, 2023.
-16. Yao, S. et al. *ReAct: Synergizing Reasoning and Acting in Language Models*. ICLR, 2023.
-17. Microsoft. *Language Server Protocol Specification*. 2016.
-18. Anthropic. *Model Context Protocol*. Technical documentation, 2024.

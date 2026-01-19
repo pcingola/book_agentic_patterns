@@ -20,10 +20,3 @@ Treating tool discovery and selection as a first-class pattern enables agentic s
 
 As agents evolve into long-running systems operating over large and dynamic tool ecosystems, this pattern becomes essential. Without explicit tool discovery and selection, tool use degrades into ad hoc prompting. With it, tool use becomes a deliberate, structured, and scalable component of agentic behavior.
 
-### References
-
-1. Russell, S., Norvig, P. *Artificial Intelligence: A Modern Approach*. Prentice Hall, 1995.
-2. McIlraith, S., Son, T. C., Zeng, H. *Semantic Web Services*. IEEE Intelligent Systems, 2001.
-3. Schick, T. et al. *Toolformer: Language Models Can Teach Themselves to Use Tools*. NeurIPS, 2023.
-4. OpenAI. *Function Calling and Tool-Augmented Language Models*. OpenAI documentation, 2023.
-5. Pydantic. *Structured Outputs and Tool Integration Concepts*. Pydantic AI documentation, 2024.

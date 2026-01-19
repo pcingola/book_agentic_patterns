@@ -70,10 +70,3 @@ Because tools communicate indirectly through files, the workspace enables flexib
 
 In practice, the workspace often doubles as a debugging and audit surface. Especially in enterprise or regulated environments, the ability to inspect what an agent produced at each step is as important as the final answer.
 
-### References
-
-1. Newell, A. *The Knowledge Level*. Artificial Intelligence, 1982.
-2. Engelmore, R., Morgan, A. *Blackboard Systems*. Addison-Wesley, 1988.
-3. Laird, J. *The Soar Cognitive Architecture*. MIT Press, 2012.
-4. Lewis, P. et al. *Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks*. NeurIPS, 2020.
-5. Pydantic-AI Documentation. *Tools and Output Concepts*. [https://ai.pydantic.dev/](https://ai.pydantic.dev/)

@@ -27,3 +27,6 @@
 [Hands-On: Tool Selection](./hands_on_tool_selection.md)
 
 [Hands-On: Tool Permissions](./hands_on_tool_permissions.md)
+
+[References](./references.md)
+
