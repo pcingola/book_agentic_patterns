@@ -40,7 +40,7 @@ The notebook uses the FastMCP `Client` class, which provides a programmatic inte
 ```python
 from fastmcp import Client
 
-client = Client("http://127.0.0.1:8000/mcp/")
+client = Client("http://127.0.0.1:8000/mcp")
 ```
 
 The client connects via HTTP to a running server. All operations happen within an async context manager that handles connection lifecycle:

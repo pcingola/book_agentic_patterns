@@ -8,9 +8,7 @@
 
 [Features](./features.md)
 
-[Achitecture](./architecture.md)
-
-[Code snuppets](./snippets.md)
+[Architecture](./architecture.md)
 
 [Hands-On: Introduction](./hands_on_intro.md)
 
