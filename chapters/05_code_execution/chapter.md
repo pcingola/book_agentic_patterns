@@ -10,3 +10,6 @@
 
 [Autonomous vs supervised execution](./autonomous_vs_supervised.md)
 
+## Hands-On
+
+[Hands-On: CodeAct](./hands_on_codeact.md)
