@@ -20,7 +20,7 @@ BEST PRACTICE: This is a label for best practices, it should be shown in a highl
 
 ## Section 1: Basics
 
-### Chapter 1: Foundations
+### Chapter: Foundations
 
 - [x] Book outline
 - [x] What is an Agent / Agentic System
@@ -32,7 +32,7 @@ BEST PRACTICE: This is a label for best practices, it should be shown in a highl
 - [x] Hands-on: Building Your First Agent
 - [x] Hands-on: Running Agents
 
-### Chapter 2: [Core Patterns](chapters/02_core_patterns/chapter.md)
+### Chapter: [Core Patterns](chapters/core_patterns/chapter.md)
 
 These are foundational reasoning patterns
 
@@ -46,7 +46,7 @@ These are foundational reasoning patterns
 - [x] Verification / critique
 - [x] Human in the loop
 
-### Chapter 3: [Tools](chapters/03_tools/chapter.md)
+### Chapter: [Tools](chapters/tools/chapter.md)
 
 "Tool Use" is the fundamental pattern
 
@@ -58,7 +58,7 @@ These are foundational reasoning patterns
 - [x] Tool permissions (read vs write)
 - [x] MCP: Introduction
 
-### Chapter 4: [Orchestration & Control Flow](chapters/04_orchestration/chapter.md)
+### Chapter: [Orchestration & Control Flow](chapters/orchestration/chapter.md)
 
 Structuring agent execution at a higher level.
 
@@ -68,7 +68,7 @@ Structuring agent execution at a higher level.
 - [x] Long-running tasks and async execution
 - [x] Event-driven agents
 
-### Chapter 5: [Code Execution Modes](chapters/05_code_execution/chapter.md)
+### Chapter: [Code Execution Modes](chapters/code_execution/chapter.md)
 
 These are agents that execute code in different ways
 
@@ -97,7 +97,7 @@ These are agents that execute code in different ways
   - [x] BEST PRACTICE: Access "on behalf" of users (use secrets manager to handle credentials)
 - [x] Autonomous vs supervised execution (Human-in-the-loop), Approval, rollback, and reversibility
 
-### Chapter 6: [RAG](chapters/06_rag/chapter.md)
+### Chapter: [RAG](chapters/rag/chapter.md)
 
 - [x] RAG: Introduction
   - [x] How a simple RAG works
@@ -118,7 +118,7 @@ These are agents that execute code in different ways
 - [x] References, Citation, attribution, provenance and truth maintenance
 - [ ] BEST PRACTICE: Doctors / reviewer
 
-### Chapter 7: Context & Memory
+### Chapter: Context & Memory
 
 These are all about how agents manage information over time.
 
@@ -150,7 +150,7 @@ These are all about how agents manage information over time.
 ## Section 2: Modularization & Composition
 All about building larger systems from smaller pieces.
 
-### Chapter 8: [MCP](chapters/08_mcp/chapter.md)
+### Chapter: [MCP](chapters/mcp/chapter.md)
 
 - [x] Intro
 - [x] Tools
@@ -158,14 +158,14 @@ All about building larger systems from smaller pieces.
 - [x] Achitecture
 - [x] Code snuppets
 
-### Chapter 9: [A2A](./chapters/09_a2a/chapter.md)
+### Chapter: [A2A](chapters/a2a/chapter.md)
 
 - [x] Intro
 - [x] Tassk: 
 - [x] A2A in Detail
 - [x] Security
 
-### Chapter: [Skills](./chapters/10_skills/chapter.md)
+### Chapter: [Skills](chapters/skills/chapter.md)
 
 - [x] Introduction
 - [x] Specification

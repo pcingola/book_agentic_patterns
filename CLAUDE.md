@@ -19,9 +19,9 @@ book_agentic_patterns/
 
 ## Conventions
 
-**Chapter directories**: All chapters under `chapters/` directory. Name them `XX_descriptive_name` where XX is zero-padded (01, 02, etc.). Each chapter directory contains a `chapter.md` index file that links to individual section markdown files.
+**Chapter directories**: All chapters under `chapters/` directory. Name them with descriptive names (e.g., `foundations`, `core_patterns`, `tools`). Each chapter directory contains a `chapter.md` index file that links to individual section markdown files.
 
-**Code organization**: All code in `agentic_patterns/`. Code examples are organized in numbered directories that loosely correspond to chapters. Code examples may be Python files (.py) or Jupyter notebooks (.ipynb). Core utilities shared across chapters go in `agentic_patterns/core/`. Follow global Python conventions (type hints, pathlib, etc.).
+**Code organization**: All code in `agentic_patterns/`. Code examples are organized in directories that correspond to chapters (e.g., `foundations`, `core_patterns`, `tools`). Code examples may be Python files (.py) or Jupyter notebooks (.ipynb). Core utilities shared across chapters go in `agentic_patterns/core/`. Follow global Python conventions (type hints, pathlib, etc.).
 
 ## Core Library (`agentic_patterns/core/`)
 
@@ -45,13 +45,11 @@ The library uses async-first design, Pydantic models for configuration, function
 
 **Images**: Stored within each chapter directory in an `img/` subdirectory. Reference from markdown using relative paths: `![Description](img/diagram.png)`. This keeps images co-located with their corresponding chapter content.
 
-**Tests**: In `tests/` directory at root. Name test files to match chapters (`test_01.py`, `test_02.py`). Use standard Python unittest framework. Run via `scripts/test.sh`.
+**Tests**: In `tests/` directory at root. Name test files to match chapters (e.g., `test_foundations.py`, `test_core_patterns.py`). Use standard Python unittest framework. Run via `scripts/test.sh`.
 
 **Dependencies**: Single `pyproject.toml` or `requirements.txt` at root for all code examples. All chapters share the same dependency environment.
 
-**Code imports**: When code in `agentic_patterns/XX/` imports from `agentic_patterns/core/`, ensure PYTHONPATH is set correctly or use relative imports. Consider adding `agentic_patterns/` to PYTHONPATH in scripts.
-
-**Chapter numbering**: Using sequential numbers (01, 02, 03) makes reordering hard. If you plan to insert chapters later, consider leaving gaps (01, 05, 10, etc.) or non-sequential numbering.
+**Code imports**: When code in `agentic_patterns/<chapter>/` imports from `agentic_patterns/core/`, ensure PYTHONPATH is set correctly or use relative imports. Consider adding `agentic_patterns/` to PYTHONPATH in scripts.
 
 **Image optimization**: Use compressed PNGs or SVGs for diagrams to keep repository size manageable. Large images bloat git history permanently.
 

@@ -43,10 +43,10 @@ Start both servers before running the notebook:
 
 ```bash
 # Terminal 1
-uvicorn agentic_patterns.09_a2a.example_a2a_server_1:app --host 0.0.0.0 --port 8000
+uvicorn agentic_patterns.a2a.example_a2a_server_1:app --host 0.0.0.0 --port 8000
 
 # Terminal 2
-uvicorn agentic_patterns.09_a2a.example_a2a_server_2:app --host 0.0.0.0 --port 8001
+uvicorn agentic_patterns.a2a.example_a2a_server_2:app --host 0.0.0.0 --port 8001
 ```
 
 ## Discovering Agent Capabilities

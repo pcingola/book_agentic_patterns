@@ -4,7 +4,7 @@
 
 Run the MCP server:
 ```bash
-./scripts/example_07_mcp_server.sh
+./scripts/example_mcp_server.sh
 ```
 
 ### 1. Initialize request

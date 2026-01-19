@@ -45,7 +45,7 @@ def renumber_references(file_path: Path, offset: int) -> None:
 
 
 def main() -> None:
-    chapters_dir = Path(__file__).parent.parent / "chapters" / "01_foundations"
+    chapters_dir = Path(__file__).parent.parent / "chapters" / "foundations"
 
     # Files and their offsets
     files_to_fix = [
