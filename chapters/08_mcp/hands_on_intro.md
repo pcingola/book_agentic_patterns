@@ -1,0 +1,9 @@
+# Hands-On: Introduction
+
+The hands-on sections that follow demonstrate MCP from the protocol level up to practical agent integration. Starting with raw message exchange, the exercises progressively build toward real-world usage patterns where agent frameworks abstract the protocol entirely. This bottom-up approach makes visible what higher-level libraries hide, helping readers debug issues and understand the boundaries of MCP's capabilities.
+
+The first exercise strips away all abstractions to show MCP as it actually operates: newline-delimited JSON-RPC messages flowing through subprocess pipes. By manually constructing initialization requests, tool listings, and tool calls, readers see the exact message format and lifecycle that underlies every MCP interaction. This protocol-level understanding becomes valuable when debugging connection failures or implementing custom transports.
+
+The second exercise reconnects this protocol knowledge to practical agent development. Using PydanticAI's MCP integration, agents gain tool access through MCP servers while the framework handles all protocol mechanics transparently. The exercise covers both STDIO transport for local development and HTTP transport for remote deployments, showing how the same server can be reached through different connection methods without changing client code.
+
+The final exercise expands beyond tools to cover MCP's full capability model: resources and prompts. Resources provide URI-addressable data endpoints that enable workspace-style workflows where artifacts are produced and retrieved across interactions. Prompts centralize instruction templates on the server side, separating behavioral definitions from client code. Together with tools, these features demonstrate how MCP structures the complete interface between agents and external capabilities.

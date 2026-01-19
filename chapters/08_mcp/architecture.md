@@ -79,13 +79,3 @@ Isolation is equally important. Sessions are isolated from one another, and cont
 
 Finally, defensive validation is pervasive. Messages are schema-validated, lifecycle transitions are enforced, and unexpected inputs are rejected early. These practices are critical when MCP clients may be driven by partially autonomous agents.
 
-### References
-
-1. Model Context Protocol Working Group. *MCP Lifecycle Specification*. 2025. [https://modelcontextprotocol.io/specification/2025-06-18/basic/lifecycle](https://modelcontextprotocol.io/specification/2025-06-18/basic/lifecycle)
-2. Model Context Protocol Working Group. *Server Concepts*. 2025. [https://modelcontextprotocol.io/docs/learn/server-concepts](https://modelcontextprotocol.io/docs/learn/server-concepts)
-3. Model Context Protocol Working Group. *Client Concepts*. 2025. [https://modelcontextprotocol.io/docs/learn/client-concepts](https://modelcontextprotocol.io/docs/learn/client-concepts)
-4. Model Context Protocol Working Group. *Transports*. 2025. [https://modelcontextprotocol.io/specification/2025-06-18/basic/transports](https://modelcontextprotocol.io/specification/2025-06-18/basic/transports)
-5. Model Context Protocol Working Group. *Authorization*. 2025. [https://modelcontextprotocol.io/specification/2025-06-18/basic/authorization](https://modelcontextprotocol.io/specification/2025-06-18/basic/authorization)
-6. Model Context Protocol Working Group. *Security Best Practices*. 2025. [https://modelcontextprotocol.io/specification/2025-06-18/basic/security_best_practices](https://modelcontextprotocol.io/specification/2025-06-18/basic/security_best_practices)
-7. FastMCP Contributors. *FastMCP Documentation*. 2024–2025. [https://gofastmcp.com](https://gofastmcp.com)
-8. Pydantic-AI Contributors. *MCP Overview and Integration Patterns*. 2024–2025. [https://ai.pydantic.dev/mcp/overview/](https://ai.pydantic.dev/mcp/overview/)

@@ -4,14 +4,6 @@
 
 **Model Context Protocol (MCP)** is an open protocol that standardizes how AI models discover, describe, and interact with external tools, resources, and structured context across long-running sessions.
 
-### Historical perspective
-
-The emergence of MCP is best understood as the convergence of several research and engineering threads that matured between roughly 2018 and 2024. Early neural language models were largely *stateless* and *closed*: prompts were short, tools were hard-coded, and any notion of “context” was manually injected. As models became more capable, this led to brittle integrations where each application defined its own ad-hoc conventions for tool calling, prompt templates, file access, and memory.
-
-In parallel, earlier software ecosystems had already faced a similar problem. Language Server Protocol (LSP), introduced in the mid-2010s, demonstrated that a clean, transport-agnostic protocol could decouple editors from language tooling. Around the same time, work on agent architectures, tool-augmented language models, and function-calling APIs highlighted the need for a more principled interface between models and their environment. Research on tool use, planning, and long-horizon interaction made it clear that context could no longer be treated as a flat text prompt, but instead as a structured, evolving state.
-
-MCP emerged from this backdrop as a unifying abstraction: rather than embedding tool logic and context management inside each application or model runtime, MCP defines a shared protocol that externalizes these concerns. The result is a system where models can operate over rich, inspectable context without being tightly coupled to any specific framework, transport, or vendor.
-
 ### Conceptual overview
 
 At its core, MCP defines a **contract** between a *client* (typically an AI runtime or agent host) and one or more *servers* that expose capabilities. These capabilities are not limited to executable tools; they also include prompts, static or dynamic resources, and interaction patterns that guide how models request information or actions.
@@ -56,9 +48,3 @@ MCP addresses a structural problem that becomes unavoidable as systems scale: wi
 
 Equally important, MCP shifts responsibility to the right layer. Models focus on reasoning and decision-making; servers focus on exposing well-defined capabilities; clients enforce policy, security, and orchestration. This separation mirrors successful patterns in distributed systems and is a prerequisite for building robust, enterprise-grade agent platforms.
 
-### References
-
-1. OpenAI et al. *Language Server Protocol*. Microsoft, 2016. [https://microsoft.github.io/language-server-protocol/](https://microsoft.github.io/language-server-protocol/)
-2. Schick et al. *Toolformer: Language Models Can Teach Themselves to Use Tools*. NeurIPS, 2023.
-3. Yao et al. *ReAct: Synergizing Reasoning and Acting in Language Models*. ICLR, 2023.
-4. Model Context Protocol. *Getting Started: Introduction*. Model Context Protocol Documentation, 2024. [https://modelcontextprotocol.io/docs/getting-started/intro](https://modelcontextprotocol.io/docs/getting-started/intro)

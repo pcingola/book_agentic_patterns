@@ -1,4 +1,3 @@
-
 """
 A simple example of using FastMCP to create a server with tools and resources
 """

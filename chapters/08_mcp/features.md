@@ -174,10 +174,3 @@ A typical flow combining these features might look as follows:
 None of these steps require embedding large instructions or data blobs directly into prompts. The protocol enforces structure while remaining agnostic to storage, UI, or orchestration frameworks.
 
 
-## References
-
-1. Model Context Protocol. *Server Prompts Specification*. MCP, 2025. [https://modelcontextprotocol.io/specification/2025-06-18/server/prompts](https://modelcontextprotocol.io/specification/2025-06-18/server/prompts)
-2. Model Context Protocol. *Server Resources Specification*. MCP, 2025. [https://modelcontextprotocol.io/specification/2025-06-18/server/resources](https://modelcontextprotocol.io/specification/2025-06-18/server/resources)
-3. Model Context Protocol. *Client Sampling Specification*. MCP, 2025. [https://modelcontextprotocol.io/specification/2025-06-18/client/sampling](https://modelcontextprotocol.io/specification/2025-06-18/client/sampling)
-4. Model Context Protocol. *Client Elicitation Specification*. MCP, 2025. [https://modelcontextprotocol.io/specification/2025-06-18/client/elicitation](https://modelcontextprotocol.io/specification/2025-06-18/client/elicitation)
-5. GoFastMCP. *Examples and Server Patterns*. GoFastMCP, 2024. [https://gofastmcp.com](https://gofastmcp.com)

@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 """
 A simple example of using FastMCP to create a server with only one tool.
 """

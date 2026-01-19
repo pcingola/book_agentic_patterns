@@ -154,8 +154,3 @@ MCP’s tool model addresses this by treating tool invocation as a first-class, 
 In practice, this is what allows MCP-based systems to move beyond demos and into production-grade agentic platforms.
 
 
-## References
-
-1. Anthropic. *Model Context Protocol: Server Tools Specification*. MCP Documentation, 2025. [https://modelcontextprotocol.io/specification/2025-06-18/server/tools](https://modelcontextprotocol.io/specification/2025-06-18/server/tools)
-2. FastMCP Contributors. *FastMCP Tool Servers*. FastMCP Documentation, 2025. [https://gofastmcp.com/servers/tools](https://gofastmcp.com/servers/tools)
-3. OpenAI. *Structured Outputs and Function Calling*. OpenAI Technical Documentation, 2023.
