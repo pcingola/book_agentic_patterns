@@ -11,12 +11,7 @@ import asyncio
 from pathlib import Path, PurePosixPath
 from typing import Any
 
-from agentic_patterns.core.config.config import WORKSPACE_DIR
-
-
-SANDBOX_PREFIX = "/workspace"
-DEFAULT_USER_ID = "default_user"
-DEFAULT_SESSION_ID = "default_session"
+from agentic_patterns.core.config.config import DEFAULT_SESSION_ID, DEFAULT_USER_ID, SANDBOX_PREFIX, WORKSPACE_DIR
 
 
 class WorkspaceError(Exception):
@@ -24,26 +19,32 @@ class WorkspaceError(Exception):
     pass
 
 
-def _extract_identity(ctx: Any) -> tuple[str, str]:
-    """Extract user_id and session_id from context or use defaults."""
-    user_id = DEFAULT_USER_ID
-    session_id = DEFAULT_SESSION_ID
+def get_session_id_from_request(ctx: Any = None) -> str:
+    """Extract session_id from request context or return default."""
+    if ctx is None:
+        return DEFAULT_SESSION_ID
+    if hasattr(ctx, "session_id"):
+        return ctx.session_id
+    if isinstance(ctx, dict):
+        return ctx.get("session_id", DEFAULT_SESSION_ID)
+    return DEFAULT_SESSION_ID
 
-    if ctx is not None:
-        if hasattr(ctx, "user_id"):
-            user_id = ctx.user_id
-        if hasattr(ctx, "session_id"):
-            session_id = ctx.session_id
-        if isinstance(ctx, dict):
-            user_id = ctx.get("user_id", user_id)
-            session_id = ctx.get("session_id", session_id)
 
-    return user_id, session_id
+def get_user_id_from_request(ctx: Any = None) -> str:
+    """Extract user_id from request context or return default."""
+    if ctx is None:
+        return DEFAULT_USER_ID
+    if hasattr(ctx, "user_id"):
+        return ctx.user_id
+    if isinstance(ctx, dict):
+        return ctx.get("user_id", DEFAULT_USER_ID)
+    return DEFAULT_USER_ID
 
 
 def _get_host_root(ctx: Any) -> Path:
     """Get the host root directory for the current user/session. Does not create directories."""
-    user_id, session_id = _extract_identity(ctx)
+    user_id = get_user_id_from_request(ctx)
+    session_id = get_session_id_from_request(ctx)
     return WORKSPACE_DIR / user_id / session_id
 
 
