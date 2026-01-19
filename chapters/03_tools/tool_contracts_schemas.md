@@ -2,12 +2,6 @@
 
 Tool contracts and schemas define the precise, machine-verifiable interface through which a language model reasons about, invokes, composes, and recovers from interactions with external tools.
 
-### Historical perspective
-
-Early approaches to tool use in language systems relied on informal conventions. Models produced natural-language descriptions of intended actions, and downstream code attempted to infer meaning using heuristics or pattern matching. These systems were brittle, opaque, and difficult to debug, echoing long-standing limitations of natural-language interfaces.
-
-Two research threads gradually converged to address these issues. Work on semantic parsing and program induction explored mapping language to executable structures with explicit meaning, while advances in typed data validation emphasized schemas and contracts as a foundation for reliability. With the emergence of large language models capable of reliably producing structured outputs, these ideas became operational. Around 2022–2023, agent systems began to replace textual “action descriptions” with structured tool calls validated against explicit schemas, enabling deterministic execution, retries, and composition. Tool use shifted from a prompting convention to an architectural pattern.
-
 ### Tools as explicit contracts
 
 A tool is defined not by its implementation, but by its *contract*. This contract specifies the tool’s name, intent, inputs, outputs, and operational constraints. In Python-centric systems, contracts are naturally derived from function signatures, type annotations, and docstrings.

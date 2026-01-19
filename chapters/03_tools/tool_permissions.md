@@ -2,12 +2,6 @@
 
 Tool permissions define the explicit authority boundaries that govern what an agent is allowed to observe, query, or mutate when interacting with external systems.
 
-### Historical perspective
-
-The notion of permissions in agentic systems inherits directly from two earlier research lines. The first is **capability-based security**, developed in the 1970s and 1980s, where authority is represented as an explicit, unforgeable capability rather than an implicit global right. The second is **sandboxing and access control** in operating systems, which formalized read/write/execute distinctions to contain damage from faulty or malicious programs.
-
-When early autonomous agents emerged in planning and robotics research, permissions were mostly implicit: agents were assumed to operate in closed worlds with trusted sensors and actuators. As agents began to interact with external APIs, databases, and eventually the open internet, this assumption broke down. By the late 2010s, research on **tool-augmented language models** and **LLM-based agents** highlighted new failure modes: unintended side effects, prompt injection, and data exfiltration through tools. This led to renewed emphasis on explicit permission models, especially in enterprise and safety-critical contexts.
-
 ### Tool permissions in agentic systems
 
 In an agentic system, tools are not neutral utilities. Each tool represents a channel through which the agent can affect or learn about the world. Tool permissions therefore serve three closely related goals:

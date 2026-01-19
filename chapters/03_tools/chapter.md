@@ -1,5 +1,7 @@
 # Tools
 
+[Historical Perspectives](./historical_perspectives.md)
+
 [Tool Use](./core_pattern.md)
 
 [Structured output](./structured_output.md)
