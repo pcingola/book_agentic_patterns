@@ -42,6 +42,7 @@ These are foundational reasoning patterns
 - [x] Chain-of-Thought (CoT)
 - [x] Tree of Thought (ToT)
 - [x] ReAct
+- [x] CodeAct
 - [x] Planning and decomposition
 - [x] Verification / critique
 - [x] Human in the loop
@@ -67,35 +68,6 @@ Structuring agent execution at a higher level.
 - [x] A2A: Introduction
 - [x] Long-running tasks and async execution
 - [x] Event-driven agents
-
-### Chapter: [Code Execution Modes](chapters/code_execution/chapter.md)
-
-These are agents that execute code in different ways
-
-- [x] CodeAct
-- [x] MCP-Sandbox
-  - [x] BEST PRACTICE: Sandboxed using containers
-  - [x] BEST PRACTICE: Limit execution time (timeout)
-  - [x] BEST PRACTICE: Limit resource usage (CPU, memory)
-  - [x] BEST PRACTICE: Container only has access to data in workspace
-  - [x] BEST PRACTICE: Validate code before execution (linting, static analysis)
-  - [x] BEST PRACTICE: Log code execution (code, stdout, stderr, exit code)
-  - [x] BEST PRACTICE: Use non-root user in container
-  - [x] BEST PRACTICE: Limit result size (back to agent), save STDOUT, STDERR to files in workspace
-- [x] REPL
-- [x] NL2SQL
-  - [x] BEST PRACTICE: Create table definitions (off-line)
-  - [x] BEST PRACTICE: Use commments to explain fields
-  - [x] BEST PRACTICE: Add 'Enums' in table definitions comments
-  - [x] BEST PRACTICE: Add "sample data" (as CSV) in table definitions comments
-  - [x] BEST PRACTICE: Add example queries for complex queries
-  - [x] BEST PRACTICE: Validate SQL queries before execution
-  - [x] BEST PRACTICE: Query timeout
-  - [x] BEST PRACTICE: Limit result size
-  - [x] BEST PRACTICE: Write results to file (csv), show back sample + file path (in workspace)
-  - [x] BEST PRACTICE: Read only access
-  - [x] BEST PRACTICE: Access "on behalf" of users (use secrets manager to handle credentials)
-- [x] Autonomous vs supervised execution (Human-in-the-loop), Approval, rollback, and reversibility
 
 ### Chapter: [RAG](chapters/rag/chapter.md)
 
@@ -171,10 +143,21 @@ All about building larger systems from smaller pieces.
 - [x] Specification
 - [x] Engineering: Skills with A2A, and MCPs.
 
-### Chapter: Connectors
+### Chapter: [Connectors](chapters/connectors/chapter.md)
 - [ ] Introduction
 - [ ] Connector patterns
-- [ ] SQL databases
+- [x] NL2SQL
+  - [x] BEST PRACTICE: Create table definitions (off-line)
+  - [x] BEST PRACTICE: Use comments to explain fields
+  - [x] BEST PRACTICE: Add 'Enums' in table definitions comments
+  - [x] BEST PRACTICE: Add "sample data" (as CSV) in table definitions comments
+  - [x] BEST PRACTICE: Add example queries for complex queries
+  - [x] BEST PRACTICE: Validate SQL queries before execution
+  - [x] BEST PRACTICE: Query timeout
+  - [x] BEST PRACTICE: Limit result size
+  - [x] BEST PRACTICE: Write results to file (csv), show back sample + file path (in workspace)
+  - [x] BEST PRACTICE: Read only access
+  - [x] BEST PRACTICE: Access "on behalf" of users (use secrets manager to handle credentials)
 - [ ] OpenApi / REST APIs
 - [ ] File based connectors (CSV, Excel, JSON, XML, etc)
 - [ ] SaaS connectors (e.g. Google Sheets, Salesforce, etc)
@@ -188,7 +171,6 @@ All about building larger systems from smaller pieces.
 - [ ] MCP-based composition
 - [ ] A2A communication patterns
 
-
 ### Section 3: Production, Scaling & Enterprise
 
 ### Chapter: UI
@@ -199,6 +181,22 @@ All about building larger systems from smaller pieces.
 - [ ] Session ID -> MCP / A2A tracking
 - [ ] File uploads
 - [ ] Error propagation
+
+### Chapter: [Execution Infrastructure](chapters/execution_infrastructure/chapter.md)
+
+Production infrastructure for running agent-generated code safely.
+
+- [x] MCP-Sandbox
+  - [x] BEST PRACTICE: Sandboxed using containers
+  - [x] BEST PRACTICE: Limit execution time (timeout)
+  - [x] BEST PRACTICE: Limit resource usage (CPU, memory)
+  - [x] BEST PRACTICE: Container only has access to data in workspace
+  - [x] BEST PRACTICE: Validate code before execution (linting, static analysis)
+  - [x] BEST PRACTICE: Log code execution (code, stdout, stderr, exit code)
+  - [x] BEST PRACTICE: Use non-root user in container
+  - [x] BEST PRACTICE: Limit result size (back to agent), save STDOUT, STDERR to files in workspace
+- [x] REPL
+- [x] Autonomous vs supervised execution (Human-in-the-loop), Approval, rollback, and reversibility
 
 ### Chapter: Controlled vocabularies
 
@@ -253,6 +251,13 @@ Corporate security
 - [ ] Logging and tracing
 - [ ] Incident response
 - [ ] Model, prompt, and tool version management
+
+
+
+
+
+
+------- Optional Chapters -------
 
 ### Section 4: Advanced Topics
 

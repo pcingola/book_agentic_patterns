@@ -3,16 +3,6 @@
 ## Text
 
 
-- Move ReAct to Core Patterns chapter
-
-- Move code execution chapter to Data chapter
-
-
-
-
-
-
-
 - ADD Chapter 1: Hands_on setting up the environment
   - VS-Code
   - extensions: Jupyter, Python, Pylance, ...

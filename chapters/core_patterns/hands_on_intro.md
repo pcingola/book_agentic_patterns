@@ -1,6 +1,6 @@
 # Hands-On: Introduction
 
-The hands-on sections that follow provide practical implementations of the patterns introduced in this chapter: zero-shot and few-shot prompting, self-reflection, chain-of-thought, tree-of-thought, ReAct, planning and decomposition, and verification loops. Each section includes runnable code that makes the pattern's mechanics visible, showing how prompts are structured, how conversation state flows across turns, and how the pattern improves on naive approaches.
+The hands-on sections that follow provide practical implementations of the patterns introduced in this chapter: zero-shot and few-shot prompting, self-reflection, chain-of-thought, tree-of-thought, ReAct, CodeAct, planning and decomposition, and verification loops. Each section includes runnable code that makes the pattern's mechanics visible, showing how prompts are structured, how conversation state flows across turns, and how the pattern improves on naive approaches.
 
 These patterns are historical precursors to capabilities now built into modern frontier models. Chain-of-thought prompting was a breakthrough in 2022; today's models perform similar reasoning internally through extended thinking. ReAct introduced interleaved reasoning and tool calls through careful prompt engineering; modern APIs provide native tool calling that handles this automatically. Planning and decomposition, once requiring explicit multi-turn orchestration, now emerges naturally when frontier models allocate thinking time to complex problems.
 

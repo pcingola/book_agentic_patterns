@@ -28,6 +28,14 @@ ReAct appeared in the 2022 wave of "reasoning by prompting." The immediate precu
 
 In parallel, multiple lines of research were converging on "LLMs as agents" that act via external interfaces. WebGPT (late 2021) trained a model to browse the web in a text environment, explicitly collecting citations during interaction. MRKL systems (mid 2022) articulated a modular neuro-symbolic architecture: keep the LLM as a language/coordination layer, and route specialized subproblems to tools/knowledge modules. Around the same time, grounding work like "Do As I Can, Not As I Say" (SayCan) explored selecting feasible actions via an affordance model while using an LLM for high-level planning. ReAct (first posted October 2022) crystallized these threads into a simple, general prompt format: interleave reasoning traces with actions so that the model's "thoughts" can request information or execute steps, then immediately incorporate the resulting observations into the next reasoning step.
 
+### CodeAct
+
+CodeAct emerged from the convergence of program synthesis research and tool-augmented language models in the early 2020s. Early agent systems treated code execution as an auxiliary tool: a way to call an API, run a calculation, or fetch data. This view began to shift with work on neural program induction and reinforcement learning with executable environments, where the boundary between "reasoning" and "acting" blurred.
+
+The key insight that crystallized CodeAct was that many complex tasks, particularly in data analysis, environment control, and system configuration, are more reliably solved by letting the model *think in code*, observe runtime effects, and adapt. Rather than planning entirely in natural language and then calling predefined tools, the agent incrementally constructs small programs, runs them, inspects results, and revises its approach. This lineage connects earlier ideas such as tool-augmented language models and ReAct-style loops, but places executable code at the center rather than at the periphery.
+
+The pattern was formalized in 2023 with work showing that code-centric agents could outperform text-based agents on a range of tasks, particularly those requiring flexible computation or interaction with file systems and APIs. CodeAct represents a shift from "agents that occasionally run code" to "agents whose primary mode of thought is executable."
+
 ### Self-Reflection
 
 The idea of self-reflection in artificial intelligence has deep roots in metacognition research from cognitive science, where human problem solvers were studied as agents capable of monitoring and correcting their own reasoning. In classical AI, related ideas appeared in work on planning systems with execution monitoring, belief revision, and meta-level control, but these mechanisms were usually rule-based and external to the reasoning process itself.

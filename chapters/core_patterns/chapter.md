@@ -12,6 +12,8 @@
 
 [ReAct](./react.md)
 
+[CodeAct](./codeact.md)
+
 [Self reflection](./self_reflection.md)
 
 [Verification / critique](./verification_critique.md)
@@ -29,6 +31,8 @@
 [Hands-On: Tree of Thought](./hands_on_tot.md)
 
 [Hands-On: ReAct](./hands_on_react.md)
+
+[Hands-On: CodeAct](./hands_on_codeact.md)
 
 [Hands-On: Self reflection](./hands_on_self_reflection.md)
 
