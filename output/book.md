@@ -498,7 +498,7 @@ This mirrors classes/modules: each component has its own invariants and dependen
 
 When the number of components grows, the primary complexity shifts from “what does each part do?” to “who calls whom, and when?” That’s a control-flow modularity problem.
 
-Workflows (pipelines, supervisor/worker, handoffs) keep control flow mostly linear and are often sufficient. Graphs (DAGs, state machines) make branching, retries, and long-lived state explicit and inspectable—useful when execution paths are numerous or must be audited. ([Pydantic AI][21])
+Workflows (pipelines, supervisor/worker, hand-offs) keep control flow mostly linear and are often sufficient. Graphs (DAGs, state machines) make branching, retries, and long-lived state explicit and inspectable—useful when execution paths are numerous or must be audited. ([Pydantic AI][21])
 
 A simple graph-shaped interface looks like this:
 
@@ -2272,7 +2272,7 @@ In agentic tool use, human-in-the-loop is not simply “asking the user a questi
 
 At a high level, the pattern consists of three steps:
 
-1. **Detection of a handoff condition**
+1. **Detection of a hand-off condition**
    The agent decides that human involvement is required. This may be triggered by uncertainty, policy constraints, permission boundaries, or explicit rules such as “all write actions require approval.”
 
 2. **State serialization and presentation**
@@ -3901,15 +3901,31 @@ Human-in-the-loop creates structured checkpoints where agents pause for human au
 
 # Tools
 
+## Historical Perspectives
+
+Tool use in agentic systems draws from several distinct research traditions that converged with the emergence of large language models. Understanding these roots clarifies why modern tool-use patterns take the forms they do.
+
+The separation between reasoning and acting is foundational to artificial intelligence. Early symbolic agents modeled actions as operators with preconditions and effects, enabling systems to plan sequences of steps before execution. These systems assumed agents could invoke well-defined procedures to change or query the environment, then continue reasoning based on results. The agent's "tools" were operators in a known, fixed action space. As systems grew more complex, research in the 1990s and early 2000s expanded toward automated service composition and semantic web services, where agents dynamically selected services based on declarative descriptions rather than hard-coded logic.
+
+This need to manage state across reasoning steps led to architectural innovations. In the 1980s, blackboard architectures made the separation between transient reasoning and persistent state explicit: multiple specialized components cooperated indirectly by reading from and writing to a shared data store, rather than communicating through tightly coupled message passing. Cognitive architectures such as Soar and ACT-R reinforced this distinction between short-term working memory and longer-lived declarative or procedural memory, demonstrating that sophisticated agents required mechanisms for externalizing state beyond what could be held in immediate reasoning.
+
+Parallel to these developments in agent architecture, security research was establishing foundational concepts that would later become essential for tool-using agents. Capability-based security, developed in the 1970s and 1980s, represented authority as explicit, unforgeable capabilities rather than implicit global rights. Sandboxing and access control in operating systems formalized read/write/execute distinctions to contain damage from faulty or malicious programs. When early autonomous agents emerged in planning and robotics research, permissions were mostly implicit because agents operated in closed worlds with trusted sensors and actuators. This assumption would break down as agents began interacting with external APIs, databases, and the open internet.
+
+The question of when agents should act autonomously versus when they should defer to humans also has deep roots. Research on mixed-initiative interfaces in the late 1990s studied interruptibility, uncertainty-aware escalation, and keeping the human in control. Interactive machine learning formalized feedback loops where people correct, guide, or approve model behavior during operation rather than only at training time. These ideas map directly onto modern tool-using agents: the model proposes an external action, and a human can confirm, deny, or revise it before any irreversible side-effect occurs.
+
+The shift to neural sequence models in the 2010s disrupted the balance between fluency and structure. Models became exceptionally good at producing fluent text, but the explicit structure that software systems depend on largely disappeared. For a time, this was acceptable because models were mostly used as assistants or interfaces for humans. As soon as models began to act as components inside larger systems—calling APIs, producing plans, or controlling workflows—the lack of structure became a liability. Early approaches relied on informal conventions where models produced natural-language descriptions of intended actions, and downstream code attempted to infer meaning using heuristics or pattern matching. These systems were brittle, opaque, and difficult to debug.
+
+Two research threads gradually converged to address this structure gap. Work on semantic parsing and program induction explored mapping language to executable structures with explicit meaning, while advances in typed data validation emphasized schemas and contracts as a foundation for reliability. Research on retrieval-augmented generation, program synthesis, and constrained decoding showed that neural models could be guided to produce well-formed logical forms, programs, and data structures. Practical engineering converged on schemas and typed interfaces as the robust way to integrate probabilistic models into deterministic systems.
+
+With the emergence of large language models capable of reliably producing structured outputs, these ideas became operational. Around 2022-2023, agent systems began replacing textual "action descriptions" with structured tool calls validated against explicit schemas, and tool use shifted from a prompting convention to an architectural pattern. The decisive shift came with models that could reliably emit structured outputs and conditionally decide to use them: a model that can reason, decide to act, observe the result, and iterate is qualitatively different from one that only generates text. This transition also highlighted new failure modes—unintended side effects, prompt injection, and data exfiltration through tools—leading to renewed emphasis on explicit permission models, especially in enterprise and safety-critical contexts.
+
+As tool-using agents moved from research prototypes to production deployments, the need for stable interaction protocols became apparent. Early desktop and IDE-style agent deployments around 2023-2024 initially relied on embedding tool descriptions directly into prompts and parsing structured outputs. While workable for short-lived interactions, this approach showed its limits as sessions became longer, tools more numerous, and state more complex. The architectural inspiration for protocols like MCP came largely from the Language Server Protocol (LSP), introduced in 2016, which demonstrated that a clean separation between a client and a capability provider could be achieved using a small set of protocol primitives. This generalized the idea from editor-language tooling interaction to model-environment interaction, providing the infrastructural layer required to make agentic behavior robust over time.
+
+
+
 ## Tool Use
 
 Tool use is the core of AI agents and agentic behavior: it is the pattern by which a model reasons about the world and then deliberately acts on it through external capabilities, closing the loop between cognition and execution.
-
-### Historical perspective
-
-As with other agentic patterns, tool use has deep roots in classical AI. Early symbolic agents already separated reasoning from acting, modeling actions as operators with preconditions and effects. These systems assumed that an agent could invoke well-defined procedures to change the environment or query it, and then continue reasoning based on the results.
-
-With statistical and neural approaches, this separation weakened for a time, as models focused on end-to-end prediction. The reintroduction of explicit tool use emerged gradually through retrieval-based systems, program synthesis, and semantic parsing, where models produced structured artifacts—queries, code, or commands—that were executed externally. The decisive shift came with large language models that could reliably emit structured outputs and conditionally decide to use them. At this point, tool use stopped being an implementation detail and became a conceptual foundation of agentic systems: a model that can reason, decide to act, observe the result, and iterate is qualitatively different from one that only generates text.
 
 ### The pattern in detail
 
@@ -3923,26 +3939,11 @@ Advanced tool use also emphasizes separation of concerns. The model does not nee
 
 Finally, tool use generalizes beyond simple function calls. It applies equally to querying knowledge, performing computations, invoking long-running tasks, or interacting with external systems. What unifies these cases is not the nature of the tool, but the pattern: the agent reasons up to the point where action is required, delegates that action through a constrained interface, and then resumes reasoning with the outcome. This loop is what turns a language model into an agent.
 
-### References
-
-1. Russell, S., Norvig, P. *Artificial Intelligence: A Modern Approach*. Prentice Hall, 1995.
-2. Zettlemoyer, L., Collins, M. *Learning to Map Sentences to Logical Form*. UAI, 2005.
-3. Lewis, P. et al. *Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks*. NeurIPS, 2020.
-4. Schick, T. et al. *Toolformer: Language Models Can Teach Themselves to Use Tools*. arXiv, 2023.
-5. Yao, S. et al. *ReAct: Synergizing Reasoning and Acting in Language Models*. ICLR, 2023.
 
 
 ## Structured Output
 
-Structured output is the pattern of treating a model’s response not as free-form text, but as a value that must conform to an explicitly defined, machine-readable shape.
-
-### Historical perspective
-
-Long before large language models, systems that generated or interpreted language were already constrained by structure. Early dialogue systems and natural language generators relied on templates, grammars, and frame-based representations to ensure that what the system produced could be consumed by databases or procedural code. The output of these systems was “language-like,” but its primary purpose was functional rather than conversational.
-
-The shift to neural sequence models in the 2010s changed this balance. Models became exceptionally good at producing fluent text, but the explicit structure that software systems depend on largely disappeared. For a time, this was acceptable because models were mostly used as assistants or interfaces for humans. As soon as they began to act as components inside larger systems—calling APIs, producing plans, or controlling workflows—the lack of structure became a liability.
-
-Research on semantic parsing, program synthesis, and constrained decoding showed that neural models could, in fact, be guided to produce well-formed logical forms, programs, and data structures. At the same time, practical engineering converged on schemas and typed interfaces as the most robust way to integrate probabilistic models into deterministic systems. Structured output emerged from this convergence as a necessary pattern for reliable, agentic behavior.
+Structured output is the pattern of treating a model's response not as free-form text, but as a value that must conform to an explicitly defined, machine-readable shape.
 
 ### Pattern explanation
 
@@ -3960,24 +3961,11 @@ Finally, structured output clarifies agent lifecycles. Some structured responses
 
 In this sense, structured output is not an optional refinement but a foundational pattern. It is what allows tool use to be reliable, state to be explicit, and agentic systems to scale beyond demonstrations into robust software.
 
-### References
-
-1. Zettlemoyer, L., Collins, M. *Learning to Map Sentences to Logical Form: Structured Classification with Probabilistic Categorial Grammars*. UAI, 2005.
-2. Wong, Y. W., Mooney, R. J. *Learning for Semantic Parsing with Statistical Machine Translation*. NAACL, 2006.
-3. Yin, P., Neubig, G. *A Syntactic Neural Model for General-Purpose Code Generation*. ACL, 2017.
-4. OpenAI. *Function Calling and Structured Outputs*. Technical documentation, 2023.
-5. PydanticAI. *Structured Output Concepts*. Documentation, 2024–2025. [https://ai.pydantic.dev/output/](https://ai.pydantic.dev/output/)
 
 
 ## Tool Discovery and Selection
 
 Tool discovery and selection is the pattern by which an agent determines which external capabilities are relevant to a task and decides which of them to invoke in order to make progress toward its goal.
-
-### Historical perspective
-
-The roots of tool discovery and selection lie in classical AI research on planning, action selection, and multi-agent systems. In early symbolic AI, agents operated over explicitly defined action sets, where each action had preconditions and effects. Selecting a “tool” meant choosing an operator from a known and fixed action space. As systems grew more complex, research in the 1990s and early 2000s expanded toward automated service composition and semantic web services, where agents dynamically selected services based on declarative descriptions rather than hard-coded logic.
-
-With the advent of large language models, tool discovery and selection re-emerged as a central problem in a new form. Instead of symbolic operators, agents were now expected to choose among APIs, databases, search systems, or code execution environments, often described in natural language. Early approaches relied on prompt engineering and manual rules to guide tool use, but these quickly proved brittle as the number of tools increased. This led to structured tool descriptions and explicit reasoning steps that allow models to decide *when* a tool is needed and *which* one is appropriate, forming the basis of modern tool-augmented and agentic systems.
 
 ### The pattern explained
 
@@ -3997,24 +3985,11 @@ Treating tool discovery and selection as a first-class pattern enables agentic s
 
 As agents evolve into long-running systems operating over large and dynamic tool ecosystems, this pattern becomes essential. Without explicit tool discovery and selection, tool use degrades into ad hoc prompting. With it, tool use becomes a deliberate, structured, and scalable component of agentic behavior.
 
-### References
-
-1. Russell, S., Norvig, P. *Artificial Intelligence: A Modern Approach*. Prentice Hall, 1995.
-2. McIlraith, S., Son, T. C., Zeng, H. *Semantic Web Services*. IEEE Intelligent Systems, 2001.
-3. Schick, T. et al. *Toolformer: Language Models Can Teach Themselves to Use Tools*. NeurIPS, 2023.
-4. OpenAI. *Function Calling and Tool-Augmented Language Models*. OpenAI documentation, 2023.
-5. Pydantic. *Structured Outputs and Tool Integration Concepts*. Pydantic AI documentation, 2024.
 
 
 ## Tool Contracts and Schemas
 
 Tool contracts and schemas define the precise, machine-verifiable interface through which a language model reasons about, invokes, composes, and recovers from interactions with external tools.
-
-### Historical perspective
-
-Early approaches to tool use in language systems relied on informal conventions. Models produced natural-language descriptions of intended actions, and downstream code attempted to infer meaning using heuristics or pattern matching. These systems were brittle, opaque, and difficult to debug, echoing long-standing limitations of natural-language interfaces.
-
-Two research threads gradually converged to address these issues. Work on semantic parsing and program induction explored mapping language to executable structures with explicit meaning, while advances in typed data validation emphasized schemas and contracts as a foundation for reliability. With the emergence of large language models capable of reliably producing structured outputs, these ideas became operational. Around 2022–2023, agent systems began to replace textual “action descriptions” with structured tool calls validated against explicit schemas, enabling deterministic execution, retries, and composition. Tool use shifted from a prompting convention to an architectural pattern.
 
 ### Tools as explicit contracts
 
@@ -4123,23 +4098,11 @@ Tool contracts and schemas transform tool use from an informal convention into a
 
 More importantly, they define clear capability boundaries. The model can act only through interfaces that are precisely specified, making agent behavior predictable, debuggable, and scalable. In practice, this pattern is what allows tool use to serve as the foundation of reliable agentic systems rather than an ad hoc extension of prompting.
 
-### References
-
-1. Andreas, J., et al. *Semantic Parsing as Machine Translation*. ACL, 2013.
-2. Liang, P., et al. *Neural Symbolic Machines*. ACL, 2017.
-3. OpenAI. *Function Calling and Structured Outputs in Large Language Models*. Technical blog, 2023.
-4. Yao, S., et al. *ReAct: Synergizing Reasoning and Acting in Language Models*. ICLR, 2023.
 
 
 ## Tool Permissions
 
 Tool permissions define the explicit authority boundaries that govern what an agent is allowed to observe, query, or mutate when interacting with external systems.
-
-### Historical perspective
-
-The notion of permissions in agentic systems inherits directly from two earlier research lines. The first is **capability-based security**, developed in the 1970s and 1980s, where authority is represented as an explicit, unforgeable capability rather than an implicit global right. The second is **sandboxing and access control** in operating systems, which formalized read/write/execute distinctions to contain damage from faulty or malicious programs.
-
-When early autonomous agents emerged in planning and robotics research, permissions were mostly implicit: agents were assumed to operate in closed worlds with trusted sensors and actuators. As agents began to interact with external APIs, databases, and eventually the open internet, this assumption broke down. By the late 2010s, research on **tool-augmented language models** and **LLM-based agents** highlighted new failure modes: unintended side effects, prompt injection, and data exfiltration through tools. This led to renewed emphasis on explicit permission models, especially in enterprise and safety-critical contexts.
 
 ### Tool permissions in agentic systems
 
@@ -4229,26 +4192,11 @@ This separation enables safer composition of agents, easier audits, and incremen
 
 Tool permissions therefore act as the practical bridge between abstract agent autonomy and real-world operational constraints.
 
-### References
-
-1. Lampson, B. *Protection*. ACM SIGOPS Operating Systems Review, 1971.
-2. Dennis, J. B., Van Horn, E. C. *Programming Semantics for Multiprogrammed Computations*. Communications of the ACM, 1966.
-3. Miller, M. S. *Capability-Based Security*. PhD Thesis, Johns Hopkins University, 2006.
-4. Lewis, P. et al. *Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks*. NeurIPS, 2020.
-5. OWASP Foundation. *Top 10 for Large Language Model Applications*. 2023. URL (optional)
 
 
 ## The Workspace
 
-The workspace pattern introduces a shared, persistent file system that agents and tools use to externalize intermediate artifacts, manage context, and coordinate work beyond the limits of the model’s prompt.
-
-### Historical perspective
-
-The workspace pattern has deep roots in earlier AI research, long before language models imposed explicit context window constraints. Classical symbolic AI systems already separated transient reasoning from persistent state. Planning systems of the 1970s represented world states and intermediate plans in external data structures that survived individual inference steps. This separation made it possible to reason incrementally without recomputing everything from scratch.
-
-In the 1980s, blackboard architectures made this idea explicit. Multiple specialized components cooperated indirectly by reading from and writing to a shared data store, rather than communicating through tightly coupled message passing. Cognitive architectures such as Soar and ACT-R later reinforced this distinction between short-term working memory and longer-lived declarative or procedural memory.
-
-Modern agentic systems rediscover the same need under new constraints. Large language models are stateless and bounded by a finite context window, while real-world tasks often produce artifacts that are large, multi-modal, and persistent. The workspace re-emerges as the natural solution: a place outside the model where results, evidence, and intermediate state can accumulate over time.
+The workspace pattern introduces a shared, persistent file system that agents and tools use to externalize intermediate artifacts, manage context, and coordinate work beyond the limits of the model's prompt.
 
 ### The workspace as a concrete abstraction
 
@@ -4318,24 +4266,11 @@ Because tools communicate indirectly through files, the workspace enables flexib
 
 In practice, the workspace often doubles as a debugging and audit surface. Especially in enterprise or regulated environments, the ability to inspect what an agent produced at each step is as important as the final answer.
 
-### References
-
-1. Newell, A. *The Knowledge Level*. Artificial Intelligence, 1982.
-2. Engelmore, R., Morgan, A. *Blackboard Systems*. Addison-Wesley, 1988.
-3. Laird, J. *The Soar Cognitive Architecture*. MIT Press, 2012.
-4. Lewis, P. et al. *Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks*. NeurIPS, 2020.
-5. Pydantic-AI Documentation. *Tools and Output Concepts*. [https://ai.pydantic.dev/](https://ai.pydantic.dev/)
 
 
 ## Advanced topics
 
-Advanced tool use is where an agent stops being a “function caller” and becomes a supervised, adaptive system: it can ask for approval, reshape its toolset at runtime, defer execution across boundaries, and diagnose or repair its own tool interface.
-
-### Historical perspective
-
-Many of the “advanced” mechanisms in modern tool-using agents are re-appearances of older ideas from human–computer interaction and interactive AI. Mixed-initiative interfaces studied when and how a system should act autonomously versus when it should ask the user, emphasizing principles for interruptibility, uncertainty-aware escalation, and keeping the human in control (late 1990s). ([Eric Horvitz][1])
-
-In parallel, interactive machine learning formalized feedback loops where people correct, guide, or approve model behavior during operation rather than only at training time. These ideas map cleanly onto tool-using agents: the “model” proposes an external action (a tool call), and a human can confirm, deny, or revise it before any irreversible side-effect occurs. ([Microsoft][2])
+Advanced tool use is where an agent stops being a "function caller" and becomes a supervised, adaptive system: it can ask for approval, reshape its toolset at runtime, defer execution across boundaries, and diagnose or repair its own tool interface.
 
 ### Human in the loop for tools
 
@@ -4450,7 +4385,7 @@ for r in recommendations:
         apply_fix(r)
 ```
 
-Your provided implementation follows this pattern closely. It batches tools to stay within context limits, ignores well-defined or irrelevant tools, and focuses on non-trivial improvements. This batching is not an optimization detail but a design constraint: tool doctors are meant to be run repeatedly during development, and they must scale to tool libraries with hundreds or thousands of entries.
+A well-designed tool doctor batches tools to stay within context limits, ignores well-defined or irrelevant tools, and focuses on non-trivial improvements. This batching is not an optimization detail but a design constraint: tool doctors are meant to be run repeatedly during development, and they must scale to tool libraries with hundreds or thousands of entries.
 
 A key design choice is that recommendations are *structured*, not free-form text. By emitting typed findings—tool name, issue category, severity, and suggested changes—the tool doctor enables downstream automation. Recommendations can be surfaced in CI pipelines, turned into pull request comments, or even applied semi-automatically to regenerate improved tool schemas.
 
@@ -4480,38 +4415,15 @@ Advanced tool use is best understood as a *control architecture* around the basi
 
 This combination preserves autonomy where it is safe and cheap, while providing strong guarantees—reviewability, auditability, and controllable side effects—where it matters.
 
-### References
+[41]: https://langchain-ai.github.io/langgraph/concepts/human_in_the_loop/
+[42]: https://ai.pydantic.dev/tools-advanced/
+[43]: https://ai.pydantic.dev/deferred-tools/
 
-1. Eric Horvitz. *Principles of Mixed-Initiative User Interfaces*. CHI, 1999. ([ACM Digital Library][45])
-2. Saleema Amershi, et al. *Power to the People: The Role of Humans in Interactive Machine Learning*. AI Magazine, 2014. ([Microsoft][40])
-3. Shunyu Yao, et al. *ReAct: Synergizing Reasoning and Acting in Language Models*. 2022 (ICLR 2023). ([arXiv][46])
-4. PydanticAI Documentation. *Advanced Tool Features (Dynamic Tools)*. ([Pydantic AI][42])
-5. PydanticAI Documentation. *Deferred Tools*. ([Pydantic AI][43])
-6. Ilyes Bouzenia, et al. *An Autonomous, LLM-Based Agent for Program Repair (RepairAgent)*. arXiv, 2024. ([arXiv][44])
-7. W. Takerngsaksiri, et al. *Human-In-the-Loop Software Development Agents*. arXiv, 2024. ([arXiv][47])
-
-[39]: https://erichorvitz.com/chi99horvitz.pdf?utm_source=chatgpt.com "Principles of Mixed-Initiative User Interfaces - of Eric Horvitz"
-[40]: https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/amershi_AIMagazine2014.pdf?utm_source=chatgpt.com "The Role of Humans in Interactive Machine Learning"
-[41]: https://github.com/pydantic/pydantic-ai?utm_source=chatgpt.com "GenAI Agent Framework, the Pydantic way"
-[42]: https://ai.pydantic.dev/tools-advanced/?utm_source=chatgpt.com "Advanced Tool Features"
-[43]: https://ai.pydantic.dev/deferred-tools/?utm_source=chatgpt.com "Deferred Tools"
-[44]: https://arxiv.org/abs/2403.17134?utm_source=chatgpt.com "An Autonomous, LLM-Based Agent for Program Repair"
-[45]: https://dl.acm.org/doi/10.1145/302979.303030?utm_source=chatgpt.com "Principles of mixed-initiative user interfaces"
-[46]: https://arxiv.org/abs/2210.03629?utm_source=chatgpt.com "ReAct: Synergizing Reasoning and Acting in Language Models"
-[47]: https://arxiv.org/abs/2411.12924?utm_source=chatgpt.com "Human-In-the-Loop Software Development Agents"
 
 
 ## MCP — Model Context Protocol
 
 The Model Context Protocol (MCP) defines a standardized, long-lived interface through which models interact with external capabilities—tools, resources, and stateful services—using structured messages over well-defined transports.
-
-### Historical perspective
-
-The emergence of MCP is closely tied to the practical challenges encountered in early desktop and IDE-style agent deployments around 2023–2024. Systems such as Claude Desktop exposed local capabilities—files, shells, search indices, and custom utilities—to language models. Initially, these integrations relied on embedding tool descriptions directly into prompts and parsing structured outputs. While workable for short-lived interactions, this approach quickly showed its limits as sessions became longer, tools more numerous, and state more complex.
-
-The architectural inspiration for MCP comes largely from the Language Server Protocol (LSP), introduced in 2016. LSP demonstrated that a clean separation between a client (the editor) and a capability provider (the language server) could be achieved using a small set of protocol primitives: JSON-RPC messaging, capability discovery, and long-running server processes. MCP generalizes this idea from *editor <-> language tooling* to *model <-> external environment*.
-
-From a research perspective, MCP builds on earlier work in tool-augmented language models, program synthesis with external oracles, and agent architectures that distinguish reasoning from acting. As agents evolved from single-turn planners into systems expected to operate continuously—maintaining memory, monitoring processes, and reacting to external events—the lack of a stable interaction protocol became a bottleneck. MCP arises not as a new reasoning paradigm, but as the infrastructural layer required to make agentic behavior robust over time.
 
 ### From embedded tools to protocolized capabilities
 
@@ -4585,30 +4497,684 @@ MCP provides the connective tissue that allows all prior tool-use patterns to sc
 
 For modern agentic systems—especially those operating over long horizons, with many tools or multiple agents—MCP is less an optimization than a prerequisite for maintainable design.
 
-### References
 
-1. Microsoft. *Language Server Protocol Specification*. Microsoft, 2016–. [https://microsoft.github.io/language-server-protocol/](https://microsoft.github.io/language-server-protocol/)
-2. Anthropic. *Model Context Protocol*. Technical documentation, 2024. [https://modelcontextprotocol.io/](https://modelcontextprotocol.io/)
-3. Pydantic AI Team. *Model Context Protocol Overview*. Technical documentation, 2024. [https://ai.pydantic.dev/mcp/overview/](https://ai.pydantic.dev/mcp/overview/)
-4. Schick et al. *Toolformer: Language Models Can Teach Themselves to Use Tools*. NeurIPS, 2023.
-5. Yao et al. *ReAct: Synergizing Reasoning and Acting in Language Models*. ICLR, 2023.
+
+# Hands-On: Introduction
+
+The hands-on sections that follow demonstrate the practical implementation of tool use and its surrounding concerns: basic tool calling, structured outputs, tool selection, tool permissions, and the workspace pattern. Each section includes runnable notebooks that show how these mechanisms work in practice, from defining tools as Python functions to managing authority boundaries in production systems.
+
+Tool use marks the transition from language models that generate text to agents that take action. The first exercise introduces this fundamental loop: the model proposes a tool call, the framework executes it, and the result feeds back into the conversation. Structured outputs extend this by constraining the model to return data conforming to a schema rather than free-form text, enabling direct integration with typed code. These two capabilities form the foundation upon which the remaining exercises build.
+
+The later exercises address concerns that emerge when tool-based agents operate in production. Tool selection tackles the problem of large tool catalogs, where presenting dozens of options in every request dilutes the model's attention and increases errors. Tool permissions introduce explicit authority boundaries that distinguish between observation and mutation, between internal operations and external connections. The workspace pattern provides a mechanism for agents to externalize artifacts too large for the context window while maintaining user isolation and path security. Together, these exercises move from the mechanics of tool calling to the architectural patterns that make tool-based agents reliable and safe at scale.
+
+MCP (Model Context Protocol) is introduced conceptually in this chapter but has its own dedicated chapter with hands-on exercises.
+
+
+# Hands-On: Tool Use
+
+Tool use is the mechanism by which language models cross the boundary between reasoning and action. Instead of generating text that describes what should happen, the model invokes external functions that actually make it happen. This transforms a language model from a text generator into an agent capable of interacting with the world.
+
+This hands-on explores tool use through `example_tools.ipynb`, demonstrating how models decide when to use tools and how tool results flow back into the reasoning process.
+
+## Why Tools Matter
+
+Language models excel at pattern matching and text generation, but they have fundamental limitations. They cannot reliably perform precise arithmetic, access real-time data, or interact with external systems. Consider asking a model to add two large numbers:
+
+```
+What is 40123456789 + 2123456789?
+```
+
+A model might attempt to compute this mentally, but large number arithmetic is error-prone when done through token prediction. The model wasn't trained to be a calculator; it was trained to predict text. Even if it produces the correct answer sometimes, it's unreliable.
+
+Tools solve this by delegating specific operations to external code. Instead of predicting what the sum might be, the model calls an `add` function that computes it exactly. The model's job becomes deciding when to use a tool and constructing the correct arguments, not performing the computation itself.
+
+## Defining Tools
+
+In `example_tools.ipynb`, tools are defined as Python functions:
+
+```python
+def add(a: int, b: int) -> int:
+    """Add two numbers"""
+    print(f"Adding {a} + {b}")
+    return a + b
+
+def sub(a: int, b: int) -> int:
+    """Subtract two numbers"""
+    print(f"Subtracting {a} - {b}")
+    return a - b
+```
+
+Three elements matter here. First, the function name tells the model what the tool does. Second, the type hints (`a: int, b: int`) define what arguments the tool accepts. Third, the docstring provides a natural language description that helps the model understand when to use the tool.
+
+The framework converts these Python functions into JSON schemas that are sent to the model alongside the conversation. The model sees something like:
+
+```json
+{
+  "name": "add",
+  "description": "Add two numbers",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "a": {"type": "integer"},
+      "b": {"type": "integer"}
+    },
+    "required": ["a", "b"]
+  }
+}
+```
+
+This schema is part of the model's context. When the model decides a tool is needed, it generates a structured output specifying which tool to call and with what arguments.
+
+## The Tool Use Loop
+
+When we create an agent with tools and run it:
+
+```python
+agent = get_agent(tools=[add, sub])
+
+prompt = "What is the sum of 40123456789 and 2123456789?"
+agent_run, nodes = await run_agent(agent, prompt, verbose=True)
+```
+
+The following sequence occurs:
+
+1. The model receives the prompt along with the tool schemas.
+2. The model reasons that this is an addition problem and that the `add` tool is appropriate.
+3. Instead of generating a text answer, the model outputs a tool call: `add(a=40123456789, b=2123456789)`.
+4. The framework intercepts this, executes the Python function, and captures the result: `42247245578`.
+5. The result is sent back to the model as a new message in the conversation.
+6. The model generates its final response incorporating the tool result.
+
+This loop is the foundation of agentic behavior. The model doesn't just predict text; it takes actions and observes their results. Each tool call is a deliberate decision, and each result feeds back into the model's reasoning.
+
+## Tool Selection
+
+The model must decide which tool to use, if any. Given our two tools (`add` and `sub`), the model selects based on the task. If the prompt asks for a sum, it calls `add`. If it asks for a difference, it calls `sub`. If the task doesn't require either operation, the model responds without using tools.
+
+This selection happens through the model's understanding of the tool descriptions and the current context. Good tool names and docstrings make selection more reliable. A tool named `add` with description "Add two numbers" is unambiguous. A tool named `process` with description "Do something with numbers" would be harder for the model to use correctly.
+
+## Why This Example Uses Arithmetic
+
+Arithmetic might seem trivial, but it illustrates tool use precisely because models are unreliable at it. When a model adds small numbers like 2 + 3, it's essentially recalling memorized patterns from training data. When numbers grow large or unusual, the model's accuracy drops because it's pattern matching, not computing.
+
+By using the `add` tool, the model delegates to code that performs exact arithmetic. The print statement in the tool (`print(f"Adding {a} + {b}")`) makes the tool call visible, showing that the computation happened in Python, not in the model's weights.
+
+This principle extends to any operation where precision matters: database queries, API calls, file operations, scientific calculations. The model reasons about what to do; the tool does it correctly.
+
+## The Feedback Loop
+
+Tool use creates a feedback loop between the model and external systems. The model proposes an action, the system executes it, the result becomes new context, and the model continues reasoning. This loop can repeat multiple times in a single conversation.
+
+For example, a more complex task might require the model to call `add` multiple times, or to call `add` and then `sub` on the result. Each tool call extends the conversation with new information that the model incorporates into its next step. This is how agents accomplish multi-step tasks: not by predicting all steps at once, but by taking one action, observing the result, and deciding what to do next.
+
+## Connection to Other Patterns
+
+Tool use is foundational to other agentic patterns. ReAct interleaves reasoning with tool calls in an explicit text format. Planning patterns use tools to execute steps of a plan. Verification patterns use tools to check results. In each case, the core mechanism is the same: the model decides to act, the tool executes, and the result informs further reasoning.
+
+Understanding tool use at this basic level makes the more complex patterns easier to follow. They all build on this same loop of decision, execution, and observation.
+
+## Key Takeaways
+
+Tools enable models to perform actions they cannot do through text generation alone. A model that can call tools is qualitatively different from one that only generates text.
+
+Tools are defined as functions with clear signatures and descriptions. The framework converts these into schemas that the model uses to understand when and how to call each tool.
+
+The tool use loop consists of the model proposing a tool call, the system executing it, and the result being fed back as new context. This loop can repeat multiple times to accomplish complex tasks.
+
+Tool selection depends on good naming and descriptions. The model chooses tools based on its understanding of what each tool does and what the current task requires.
+
+
+# Hands-On: Structured Outputs
+
+Structured output is the pattern of constraining a model's response to conform to a predefined schema rather than allowing free-form text. This transforms the model from a text generator into a data producer, enabling direct integration with typed code and automated validation.
+
+This hands-on explores structured output through `example_structured_outputs.ipynb`, demonstrating how to define schemas and receive typed Python objects from the model.
+
+## The Problem with Free-Form Text
+
+When a model returns plain text, your code must parse that text to extract useful information. Consider asking a model about programming languages. A free-form response might look like:
+
+```
+Python is a dynamically typed language that supports multiple paradigms including
+object-oriented and functional programming. JavaScript is also dynamically typed
+and is primarily used for web development...
+```
+
+Extracting structured data from this response requires parsing natural language, which is error-prone and brittle. The model might phrase things differently each time, use unexpected formatting, or include information you didn't ask for.
+
+Structured output eliminates this problem by making the model return data in a predefined format that your code can consume directly.
+
+## Defining a Schema
+
+In `example_structured_outputs.ipynb`, we define a schema using Pydantic:
+
+```python
+class ProgrammingLanguage(BaseModel):
+    name: str
+    paradigm: str = Field(description="Primary paradigm: functional, object-oriented, procedural, etc.")
+    typed: bool = Field(description="Whether the language is statically typed")
+```
+
+This schema specifies exactly what data we want. Each field has a type (`str`, `bool`) and optional descriptions that help the model understand what values to provide. The model cannot return anything that doesn't fit this structure.
+
+The `Field` descriptions serve as documentation for the model. When the schema is sent to the API, these descriptions become part of the JSON schema that guides the model's output. Clear descriptions improve the quality and consistency of the returned data.
+
+## Configuring the Agent
+
+The agent is configured with an `output_type` parameter:
+
+```python
+agent = get_agent(output_type=list[ProgrammingLanguage])
+```
+
+This tells the framework that the model must return a list of `ProgrammingLanguage` objects. The framework converts the Pydantic model into a JSON schema and includes it in the API request. The model's response is then validated against this schema and converted back into Python objects.
+
+Using `list[ProgrammingLanguage]` rather than a single object demonstrates that structured output works with complex types. You can use lists, nested objects, optional fields, and other type constructs that Pydantic supports.
+
+## Running the Agent
+
+When we run the agent with a prompt:
+
+```python
+prompt = "List 3 popular programming languages with their characteristics."
+agent_run, nodes = await run_agent(agent, prompt, verbose=True)
+```
+
+The model receives both the prompt and the schema. It must produce output that validates against the schema. If it tries to return malformed data, the framework will catch the error.
+
+## Working with the Result
+
+The result is not a string but a typed Python object:
+
+```python
+result = agent_run.result.output
+print(f"Type: {type(result)}")  # <class 'list'>
+
+for lang in result:
+    print(f"{lang.name}: {lang.paradigm}, typed={lang.typed}")
+```
+
+Each element in the list is a `ProgrammingLanguage` instance with properly typed attributes. You can access `lang.name`, `lang.paradigm`, and `lang.typed` directly without any parsing. Your IDE provides autocomplete, and type checkers can verify your code.
+
+This is the key benefit: the boundary between the model's probabilistic output and your deterministic code becomes a well-defined contract. The model produces data, the schema validates it, and your code receives typed objects.
+
+## When to Use Structured Output
+
+Structured output is appropriate when you need to process the model's response programmatically. This includes extracting entities from text, generating configuration data, producing API responses, or any situation where the output feeds into downstream code rather than being displayed directly to users.
+
+Structured output is less appropriate when you want the model to explain, discuss, or generate content for human consumption. In those cases, free-form text is the natural choice.
+
+## Key Takeaways
+
+Structured output constrains the model to return data matching a predefined schema. This eliminates the need to parse free-form text and ensures type safety at the boundary between model and code.
+
+Schemas are defined using Pydantic models. Field descriptions help the model understand what values to produce and improve output quality.
+
+The result is a typed Python object, not a string. You can work with it directly using normal attribute access, with full IDE support and type checking.
+
+Structured output transforms the model from a text generator into a data producer, enabling reliable integration with typed codebases.
+
+
+# Hands-On: Tool Discovery and Selection
+
+When an agent has access to many tools, presenting all of them in every request becomes inefficient. Context length grows, the model's attention is diluted across irrelevant options, and the likelihood of incorrect tool selection increases. Tool discovery and selection addresses this by using a separate step to identify which tools are relevant before the main agent executes.
+
+This hands-on explores tool selection through `example_tool_selection.ipynb`, demonstrating both a manual approach and the use of `ToolSelector` to automate the process.
+
+## The Scaling Problem
+
+Consider an agent with two tools: `add` and `sub`. The model easily selects the right one for any arithmetic task. Now imagine an agent with fifty tools covering file operations, database queries, API calls, text processing, and more. For a simple addition task, forty-nine of those tools are noise. The model must scan all descriptions, reason about relevance, and avoid being distracted by superficially similar but incorrect options.
+
+Tool selection solves this by adding a preliminary step: before the task-execution agent runs, a tool-selection agent examines the task and filters the tool set down to only relevant capabilities.
+
+## Manual Approach
+
+The notebook begins with a manual implementation to show the mechanics. First, we define tools as Python functions:
+
+```python
+def add(a: int, b: int) -> int:
+    """Add two numbers"""
+    return a + b
+
+def sub(a: int, b: int) -> int:
+    """Subtract two numbers"""
+    return a - b
+```
+
+To present these tools to a selection agent, we need text descriptions. The `func2descr` function extracts this from the function metadata:
+
+```python
+def func2descr(f):
+    out = f'Tool: {f.__name__}({", ".join(f.__code__.co_varnames[:f.__code__.co_argcount])})\n'
+    if f.__doc__:
+        out += f'Description: {f.__doc__}\n'
+    if f.__annotations__ and 'return' in f.__annotations__:
+        out += f'Return type: {f.__annotations__["return"]}\n'
+    return out
+```
+
+This produces descriptions like:
+
+```
+Tool: add(a, b)
+Description: Add two numbers
+Return type: <class 'int'>
+```
+
+The selection agent receives the user query and tool descriptions, then outputs a list of tool names:
+
+```python
+agent = get_agent(output_type=list[str])
+
+prompt = f"""
+Given the user query, select the tools to use
+
+User query: {user_query}
+
+Tools available:
+{tools_descriptions_str}
+
+Answer only using the tool names
+"""
+result, _ = await run_agent(agent, prompt)
+tool_names = result.result.output
+```
+
+The structured output (`list[str]`) ensures we get a clean list of names rather than prose. We then filter the original tools to only those selected:
+
+```python
+tools_agent = [tools_by_name[name] for name in tool_names if name in tools_by_name]
+```
+
+Finally, the task-execution agent runs with just the filtered tools:
+
+```python
+agent = get_agent(tools=tools_agent)
+result, _ = await run_agent(agent, user_query)
+```
+
+This two-stage process means the execution agent never sees irrelevant tools. Its context is focused, and tool selection is more reliable.
+
+## Using ToolSelector
+
+The manual approach works but requires boilerplate. The `ToolSelector` class encapsulates this pattern:
+
+```python
+from agentic_patterns.core.tools import ToolSelector
+
+selector = ToolSelector([add, sub])
+selected_tools = await selector.select(user_query)
+```
+
+Internally, `ToolSelector` uses `func_to_description` to generate richer tool descriptions that include full type signatures:
+
+```
+Tool: add(a: int, b: int) -> int
+Description: Add two numbers
+```
+
+The improved descriptions help the selection agent understand not just what each tool does, but what types of arguments it expects. This matters when tools have similar names but different signatures.
+
+After selection, using the tools is straightforward:
+
+```python
+agent = get_agent(tools=selected_tools)
+result, _ = await run_agent(agent, user_query)
+```
+
+## When Tool Selection Matters
+
+With two or three tools, tool selection adds overhead without much benefit. The model can easily reason over a small set. The pattern becomes valuable when:
+
+The tool catalog is large. Tens or hundreds of tools overwhelm the model's context and attention. Selection reduces the working set to a manageable size.
+
+Tools have overlapping purposes. Multiple tools might handle similar tasks in different ways. A dedicated selection step can apply more careful reasoning about which variant is appropriate.
+
+Safety constraints apply. Some tools should only be available for certain types of tasks. The selection agent can enforce these policies before the execution agent ever sees restricted tools.
+
+Context length is constrained. Each tool description consumes tokens. With many tools, descriptions alone might exceed context limits. Selection keeps the execution agent's context focused on what matters.
+
+## The Two-Agent Architecture
+
+This pattern exemplifies a broader architectural principle: separating planning from execution. The selection agent plans which capabilities are needed. The execution agent carries out the task using only those capabilities.
+
+This separation has several benefits. The selection agent can use different prompting strategies optimized for capability matching. The execution agent operates with a cleaner context. Policies and constraints can be applied at the selection boundary. And the selection result can potentially be cached or reused across similar tasks.
+
+## Key Takeaways
+
+Tool selection is a two-stage process: first identify relevant tools, then execute with only those tools. This keeps the execution agent focused and reduces errors from irrelevant options.
+
+The selection agent uses structured output to return tool names, which are then used to filter the available tools before execution.
+
+`ToolSelector` encapsulates this pattern, handling tool description generation and the selection prompt internally.
+
+Tool selection becomes increasingly valuable as tool catalogs grow, providing a scalable approach to managing large capability sets.
+
+
+# Hands-On: Tool Permissions
+
+Tool permissions define explicit authority boundaries that govern what an agent can observe, query, or mutate. Without permissions, an agent with access to both a read-balance function and a transfer-funds function has equal authority to use both. Permissions create the distinction between reading data and modifying it, between internal operations and external connections.
+
+This hands-on explores tool permissions through `example_tool_permissions.ipynb`, demonstrating how to annotate tools with required permissions and enforce those permissions either at agent construction time or at runtime.
+
+## The Permission Model
+
+The example defines three permission levels as an enumeration:
+
+```python
+class ToolPermission(str, Enum):
+    READ = "read"
+    WRITE = "write"
+    CONNECT = "connect"
+```
+
+READ covers operations that observe state without modifying it. WRITE covers operations that mutate state. CONNECT covers operations that reach external systems like the internet or third-party APIs. A tool can require multiple permissions; sending an email might require both WRITE (recording that a message was sent) and CONNECT (reaching the mail server).
+
+## Annotating Tools with Permissions
+
+Tools are annotated using the `@tool_permission` decorator:
+
+```python
+@tool_permission(ToolPermission.READ)
+def get_balance(account_id: str) -> float:
+    """Get the current balance of an account."""
+    return 1500.00
+
+@tool_permission(ToolPermission.WRITE)
+def transfer_funds(from_account: str, to_account: str, amount: float) -> bool:
+    """Transfer funds between accounts."""
+    return True
+
+@tool_permission(ToolPermission.WRITE, ToolPermission.CONNECT)
+def send_payment_notification(email: str, amount: float) -> bool:
+    """Send payment notification to external email."""
+    return True
+```
+
+The decorator attaches permission metadata to the function. `get_balance` requires only READ permission. `transfer_funds` requires WRITE because it modifies account state. `send_payment_notification` requires both WRITE and CONNECT because it both records an action and reaches an external email service.
+
+Tools without the decorator default to READ permission, reflecting the principle that observation is the baseline capability and mutation requires explicit authorization.
+
+## Construction-Time Filtering
+
+The first enforcement approach filters tools before creating the agent. The agent only sees tools it has permission to use:
+
+```python
+read_only_tools = filter_tools_by_permission(ALL_TOOLS, granted={ToolPermission.READ})
+agent = get_agent(tools=read_only_tools)
+```
+
+With this configuration, the agent receives only `get_balance` and `get_transactions`. It cannot call `transfer_funds` because that tool is not in its tool set. If asked to transfer money, the agent must respond that it cannot perform that action.
+
+This approach has a clear security benefit: the agent cannot even attempt unauthorized operations because it has no knowledge of the restricted tools. The permission boundary is enforced before the agent begins reasoning.
+
+The downside is that the agent cannot explain why a capability is unavailable. From its perspective, the transfer tool simply does not exist. It might say "I don't have a tool for that" rather than "I'm not authorized to transfer funds."
+
+## Granting Additional Permissions
+
+Expanding the granted permissions expands the available tools:
+
+```python
+write_tools = filter_tools_by_permission(
+    ALL_TOOLS,
+    granted={ToolPermission.READ, ToolPermission.WRITE}
+)
+```
+
+Now the agent can use `get_balance`, `get_transactions`, and `transfer_funds`. It still cannot use `send_payment_notification` because that tool requires CONNECT permission, which was not granted.
+
+Granting all three permissions gives the agent access to all tools:
+
+```python
+full_tools = filter_tools_by_permission(
+    ALL_TOOLS,
+    granted={ToolPermission.READ, ToolPermission.WRITE, ToolPermission.CONNECT}
+)
+```
+
+This graduated permission model lets you configure agents for different trust levels. A customer-facing agent might have only READ. An internal operations agent might have READ and WRITE. A fully autonomous agent might have all three.
+
+## Runtime Enforcement
+
+The second approach lets the agent see all tools but enforces permissions when tools are actually called:
+
+```python
+enforced_tools = enforce_tools_permissions(ALL_TOOLS, granted={ToolPermission.READ})
+agent = get_agent(tools=enforced_tools)
+```
+
+The agent now has `transfer_funds` in its tool set and can reason about using it. But when the agent actually calls `transfer_funds`, the wrapper function checks permissions and raises `ToolPermissionError` because WRITE permission was not granted.
+
+The agent receives this error as a tool result and must handle it. Typically, the agent will explain to the user that it attempted the action but was denied permission. This provides more transparency than construction-time filtering: the user learns that the capability exists but is restricted, rather than being told it does not exist.
+
+Runtime enforcement is useful when you want agents to be aware of their limitations. It also enables patterns where an agent might request elevated permissions from a human supervisor before proceeding with a restricted operation.
+
+## Choosing an Approach
+
+Construction-time filtering is simpler and more secure. The agent cannot attempt unauthorized actions because it does not know about them. This is appropriate when you want a clear, hard boundary and when explaining permission limitations is not important.
+
+Runtime enforcement is more flexible. The agent can reason about restricted tools, explain why it cannot use them, and potentially request permission escalation. This is appropriate when transparency matters or when permissions might be granted dynamically during a conversation.
+
+Both approaches use the same underlying permission model. The difference is where the check happens: before the agent is created, or when the tool is invoked.
+
+## Key Takeaways
+
+Tool permissions create explicit authority boundaries between different types of operations. The READ/WRITE/CONNECT model captures the fundamental distinctions between observation, mutation, and external access.
+
+Permissions are attached to tools using decorators and can be combined when a tool requires multiple capabilities.
+
+Construction-time filtering removes unauthorized tools from the agent's view entirely. The agent cannot attempt restricted operations but also cannot explain why they are unavailable.
+
+Runtime enforcement lets the agent see all tools but raises errors for unauthorized calls. The agent can reason about restricted capabilities and explain its limitations to users.
+
+The choice between approaches depends on whether you prioritize strict containment or transparent communication about capability boundaries.
+
+
+# Hands-On: The Workspace
+
+The workspace pattern addresses a fundamental tension in agentic systems: models have limited context windows, but real tasks often produce large intermediate artifacts. A data analysis might return thousands of rows. A code generator might produce hundreds of lines. A search might yield dozens of documents. Stuffing all of this into the prompt is wasteful and eventually impossible.
+
+The workspace solves this by providing a shared, persistent file system where tools externalize large outputs. Instead of returning a full dataset, a tool writes it to disk and returns a concise summary with the file path. The agent's context stays small and focused on reasoning, while the workspace holds the unbounded material.
+
+This hands-on explores the workspace pattern through `example_workspace.ipynb`, demonstrating path translation, the write-and-summarize pattern, context capture in tools, user isolation, and security boundaries.
+
+## The Dual Path System
+
+Agents operate in a sandbox. They see paths like `/workspace/reports/analysis.json`, but the actual file lives somewhere else entirely on the host filesystem. This indirection serves two purposes: it presents a clean, predictable interface to the agent, and it enables user isolation behind the scenes.
+
+The workspace module provides functions to translate between these two views:
+
+```python
+sandbox_path = "/workspace/reports/analysis.json"
+host_path = container_to_host_path(PurePosixPath(sandbox_path), ctx)
+
+print(f"Agent sees:    {sandbox_path}")
+print(f"Actual file:   {host_path}")
+```
+
+The `ctx` parameter carries identity information extracted from the request. In production, this comes from JWT claims or session cookies. For the notebook, we simulate it with a dictionary:
+
+```python
+ctx = {"user_id": "alice", "session_id": "session_001"}
+```
+
+The translation function uses this context to route the file to the correct user's directory. Alice's `/workspace/report.json` and Bob's `/workspace/report.json` resolve to completely different host paths.
+
+## Write Large Output, Return Summary
+
+The core pattern is straightforward: when a tool produces output too large to return directly, it writes the full result to the workspace and returns only a summary with the file path.
+
+```python
+def analyze_dataset(query: str, ctx) -> str:
+    """Analyze data and save results to workspace."""
+    result = {
+        "query": query,
+        "row_count": 50000,
+        "statistics": {"mean": 42.5, "std": 12.3, "min": 0.1, "max": 99.8},
+        "data": [{"id": i, "value": i * 0.1} for i in range(1000)],
+    }
+
+    output_path = "/workspace/analysis/result.json"
+    write_to_workspace(output_path, json.dumps(result, indent=2), ctx)
+
+    return f"""Analysis complete. Rows: {result['row_count']}, Mean: {result['statistics']['mean']}
+Full results: {output_path}"""
+```
+
+The tool generates a result with 1000 data points, but returns only the row count, key statistics, and a path. The agent can reason about the summary and, if needed, use another tool to read specific portions of the full result.
+
+This pattern keeps the agent's context efficient. A conversation that processes multiple datasets doesn't accumulate megabytes of raw data in its prompt history.
+
+## Capturing Context in Agent Tools
+
+When tools run inside an agent loop, the agent framework calls them with only the parameters the model specifies. The model doesn't know about `ctx` - it only sees the tool's public interface. We need a way to inject the context without exposing it as a tool parameter.
+
+The solution is closures. A factory function captures `ctx` and returns tool functions that close over it:
+
+```python
+def make_workspace_tools(ctx):
+    """Create workspace tools with captured context."""
+
+    def search_data(query: str) -> str:
+        """Search dataset and save results to workspace."""
+        matches = [{"id": i, "name": f"item_{i}", "score": 0.9 - i*0.01} for i in range(500)]
+
+        output_path = "/workspace/search_results.json"
+        write_to_workspace(output_path, json.dumps(matches), ctx)
+
+        return f"Found {len(matches)} matches. Top 3: {matches[:3]}. Full results: {output_path}"
+
+    def read_file(path: str) -> str:
+        """Read a file from the workspace."""
+        return read_from_workspace(path, ctx)
+
+    return [search_data, read_file]
+```
+
+The model sees `search_data(query: str)` and `read_file(path: str)`. It doesn't see `ctx`. But when the tools execute, they have access to the context through the closure. This is a common pattern for injecting runtime dependencies into tools without polluting their public signatures.
+
+The agent can then use these tools naturally:
+
+```python
+tools = make_workspace_tools(ctx)
+agent = get_agent(tools=tools)
+
+prompt = "Search for sensor data and tell me how many results were found."
+agent_run, nodes = await run_agent(agent, prompt, verbose=True)
+```
+
+## User Isolation
+
+Each user and session gets an isolated directory. Two users writing to the same sandbox path produce files in different locations:
+
+```python
+bob_ctx = {"user_id": "bob", "session_id": "session_001"}
+
+write_to_workspace("/workspace/secret.txt", "Bob's private data", bob_ctx)
+
+bob_path = container_to_host_path(PurePosixPath("/workspace/secret.txt"), bob_ctx)
+alice_path = container_to_host_path(PurePosixPath("/workspace/secret.txt"), ctx)
+
+print(f"Bob's file:   {bob_path}")
+print(f"Alice's file: {alice_path}")
+```
+
+The sandbox path is identical, but the host paths diverge based on the user ID. This isolation is invisible to the agent and to the tools themselves. They simply write to `/workspace/...` and the translation layer handles the rest.
+
+## Security Boundaries
+
+The workspace enforces security boundaries through path validation. Attempts to escape the sandbox are blocked:
+
+```python
+try:
+    container_to_host_path(PurePosixPath("/workspace/../../../etc/passwd"), ctx)
+except WorkspaceError as e:
+    print(f"Blocked: {e}")
+```
+
+Path traversal attacks using `..` sequences are detected and rejected. Paths that don't start with the sandbox prefix are also rejected. The agent can only access files within its designated workspace, regardless of what paths it attempts to construct.
+
+## Connection to Other Patterns
+
+The workspace pattern intersects with several other concerns in agentic systems.
+
+Context management becomes tractable because large artifacts live outside the prompt. The agent reasons over summaries and references, not raw data.
+
+Tool composition becomes flexible because tools communicate through files rather than direct parameter passing. One tool writes an artifact; another tool reads it later. They don't need to know about each other.
+
+Retrieval-augmented generation can treat the workspace as a document store. Files written during a session can be indexed, embedded, and retrieved in subsequent turns.
+
+Debugging and auditing become possible because intermediate artifacts persist on disk. When something goes wrong, you can examine what each tool produced.
+
+## Key Takeaways
+
+The workspace provides a shared file system for externalizing large artifacts. Agents see sandbox paths while actual files are stored in isolated directories per user and session.
+
+Tools should write large outputs to the workspace and return concise summaries with file paths. This keeps the agent's context small and focused.
+
+Closures capture context for tools running inside agents. The factory pattern creates tools that close over `ctx` without exposing it as a parameter.
+
+User isolation happens at the path translation layer. Different users writing to the same sandbox path produce files in different host directories.
+
+Security boundaries prevent path traversal. The translation function validates all paths and rejects attempts to escape the sandbox.
+
+
+## References
+
+1. Dennis, J. B., Van Horn, E. C. *Programming Semantics for Multiprogrammed Computations*. Communications of the ACM, 1966.
+2. Lampson, B. *Protection*. ACM SIGOPS Operating Systems Review, 1971.
+3. Newell, A. *The Knowledge Level*. Artificial Intelligence, 1982.
+4. Engelmore, R., Morgan, A. *Blackboard Systems*. Addison-Wesley, 1988.
+5. Russell, S., Norvig, P. *Artificial Intelligence: A Modern Approach*. Prentice Hall, 1995.
+6. Horvitz, E. *Principles of Mixed-Initiative User Interfaces*. CHI, 1999.
+7. McIlraith, S., Son, T. C., Zeng, H. *Semantic Web Services*. IEEE Intelligent Systems, 2001.
+8. Zettlemoyer, L., Collins, M. *Learning to Map Sentences to Logical Form: Structured Classification with Probabilistic Categorial Grammars*. UAI, 2005.
+9. Miller, M. S. *Capability-Based Security*. PhD Thesis, Johns Hopkins University, 2006.
+10. Wong, Y. W., Mooney, R. J. *Learning for Semantic Parsing with Statistical Machine Translation*. NAACL, 2006.
+11. Laird, J. *The Soar Cognitive Architecture*. MIT Press, 2012.
+12. Andreas, J., et al. *Semantic Parsing as Machine Translation*. ACL, 2013.
+13. Amershi, S., et al. *Power to the People: The Role of Humans in Interactive Machine Learning*. AI Magazine, 2014.
+14. Microsoft. *Language Server Protocol Specification*. 2016. https://microsoft.github.io/language-server-protocol/
+15. Liang, P., et al. *Neural Symbolic Machines*. ACL, 2017.
+16. Yin, P., Neubig, G. *A Syntactic Neural Model for General-Purpose Code Generation*. ACL, 2017.
+17. Lewis, P., et al. *Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks*. NeurIPS, 2020.
+18. OpenAI. *Function Calling and Structured Outputs*. Technical documentation, 2023.
+19. Schick, T., et al. *Toolformer: Language Models Can Teach Themselves to Use Tools*. NeurIPS, 2023.
+20. Yao, S., et al. *ReAct: Synergizing Reasoning and Acting in Language Models*. ICLR, 2023.
+21. OWASP Foundation. *Top 10 for Large Language Model Applications*. 2023.
+22. Anthropic. *Model Context Protocol*. Technical documentation, 2024. https://modelcontextprotocol.io/
+23. Bouzenia, I., et al. *An Autonomous, LLM-Based Agent for Program Repair (RepairAgent)*. arXiv, 2024.
+24. Takerngsaksiri, W., et al. *Human-In-the-Loop Software Development Agents*. arXiv, 2024.
+25. PydanticAI. *Structured Output Concepts*. Documentation, 2024. https://ai.pydantic.dev/output/
+26. PydanticAI. *Advanced Tool Features (Dynamic Tools)*. Documentation, 2024. https://ai.pydantic.dev/tools-advanced/
+27. PydanticAI. *Deferred Tools*. Documentation, 2024. https://ai.pydantic.dev/deferred-tools/
+28. PydanticAI. *Model Context Protocol Overview*. Documentation, 2024. https://ai.pydantic.dev/mcp/overview/
+
 
 
 \newpage
 
 # Orchestration & Control Flow
 
+## Historical Perspective
+
+The orchestration patterns examined in this chapter draw on intellectual traditions that span several decades. Understanding this history clarifies why certain abstractions recur and why modern agentic systems, despite relying on large language models, continue to employ architectural ideas first developed long before deep learning existed.
+
+The computational foundations emerged in the 1960s and 1970s. Petri nets and finite state machines established that complex system behavior could be represented as explicit states connected by transitions governed by formal rules. Around the same time, the actor model introduced the idea of autonomous computational entities that communicate exclusively through asynchronous message passing, eliminating shared state and global control flow. These early formalisms captured two complementary intuitions: that behavior can be modeled as traversal through a well-defined structure, and that independent agents can coordinate without centralized control. Both ideas remain central to contemporary orchestration.
+
+The 1980s and 1990s saw the rise of multi-agent systems as a distinct research area. Researchers recognized that complex problem solving often could not be reduced to a single reasoning entity, but instead emerged from cooperation, negotiation, and coordination among multiple agents. This period produced foundational work on task allocation, delegation, and contract nets, which formalized how agents could divide labor and exchange commitments. In parallel, agent communication languages such as KQML and later FIPA-ACL standardized the structure and semantics of inter-agent messages, making coordination explicit and interoperable. The Belief-Desire-Intention architecture introduced persistent goals and plans that unfold over time, can be suspended, and are revised as new information arrives, providing a cognitive model for agents that operate beyond a single interaction. Reactive systems research further refined the idea that computation could be organized around ongoing interaction with an external environment rather than producing a single output.
+
+During this same period, workflow management systems and business process modeling became prominent in enterprise computing. Explicit graphs and state transitions were used to coordinate long-running, multi-step processes across organizational boundaries. In artificial intelligence, classical planners represented world states and actions as nodes connected by transitions, while Hierarchical Task Networks provided a way to encode reusable procedural knowledge. Markov Decision Processes framed sequential decision-making as movement through a state-transition graph under uncertainty. Compiler research contributed control flow graphs as a way to reason about all possible execution paths, enabling static analysis and verification. These developments, though originating in different communities, converged on a shared insight: that making control flow explicit enables reasoning, debugging, and reliability at scale.
+
+The 2000s extended these ideas into distributed infrastructure. Publish-subscribe systems decoupled event producers from consumers, enabling scalable and loosely coupled architectures. Complex event processing and event-driven middleware addressed environments with high event volumes and asynchronous interactions. Cloud orchestration frameworks tackled long-running jobs, partial failure recovery, and coordination of independent workers. Operating systems and workflow engines refined patterns for checkpointing, resumption, and state persistence that would later become essential for agentic systems operating over extended periods.
+
+Modern LLM-based agents inherit all of these traditions. While the internal reasoning mechanisms have changed dramatically, the architectural pressures remain the same: as soon as systems involve multiple components with different responsibilities, lifecycles, or ownership boundaries, coordination must be explicit, structured, and observable. From around 2023 onward, workflows, graphs, agent communication protocols, and event-driven patterns re-emerged as first-class abstractions in agent frameworks. This shift was driven by practical constraints: increasing system complexity, the need for observability and recovery, and the recognition that purely autonomous agents benefit from explicit control structures. The patterns examined in this chapter represent this convergence, combining LLM-driven reasoning with orchestration layers whose conceptual roots extend back decades.
+
+
+
 ## Workflows
 
 Workflows define a structured, repeatable control flow that coordinates multiple agent steps—often across roles, tools, and time—into a coherent execution pipeline.
-
-### Historical perspective
-
-The idea of workflows predates modern AI by decades. Early inspirations come from **workflow management systems** and **business process modeling** in the 1990s, where explicit graphs and state transitions were used to coordinate long-running, multi-step processes. In parallel, **multi-agent systems (MAS)** research explored coordination mechanisms such as task allocation, delegation, and contract nets, formalized in the late 1980s and 1990s.
-
-In AI planning, classical planners introduced the notion of decomposing goals into ordered or partially ordered actions. Later, **Hierarchical Task Networks (HTNs)** provided a way to encode reusable procedural knowledge. As large language models emerged, early agent designs reused these ideas implicitly: chains of prompts, hand-written controllers, and role-based agents passing messages.
-
-From around 2023 onward, workflows re-emerged as a first-class abstraction in agent frameworks. This shift was driven by practical constraints: increasing system complexity, the need for observability and recovery, and the realization that purely autonomous agents benefit from explicit control structures. Modern workflow-based agents combine LLM-driven reasoning with deterministic orchestration layers, reconnecting contemporary agent systems with earlier ideas from workflow engines and MAS coordination.
 
 ### The workflow pattern
 
@@ -4687,24 +5253,11 @@ Workflows provide a bridge between autonomous reasoning and engineered reliabili
 
 In orchestration-heavy systems, workflows are often the backbone on which more advanced patterns—graphs, replanning, and agent-to-agent protocols—are built.
 
-### References
-
-1. Smith, R. G. *The Contract Net Protocol*. IEEE Transactions on Computers, 1980.
-2. Erol, K., Hendler, J., Nau, D. *Hierarchical Task Network Planning*. Artificial Intelligence, 1994.
-3. Wooldridge, M. *An Introduction to MultiAgent Systems*. Wiley, 2002.
-4. LangChain Team. *Workflows and Agents in LangGraph*. LangChain Documentation, 2024. [https://docs.langchain.com/](https://docs.langchain.com/)
-5. LangChain Team. *Multi-Agent Workflows with LangGraph*. LangChain Blog, 2024. [https://blog.langchain.com/](https://blog.langchain.com/)
 
 
 ## Graphs
 
 The graph pattern models agent execution as a directed graph of states and transitions, enabling explicit, inspectable, and controllable flows beyond linear or workflow-based orchestration.
-
-### Historical perspective
-
-The use of graphs to represent computation predates modern agentic systems by several decades. Early work on finite state machines and Petri nets in the 1960s established that complex behavior could be described as transitions between explicit states governed by formal rules. In parallel, compiler research introduced control flow graphs as a way to reason about all possible execution paths of a program, enabling static analysis, optimization, and verification.
-
-In artificial intelligence, graph-based representations became central through planning and decision-making research. Classical planners represented world states and actions as nodes connected by transitions, while later work on Markov Decision Processes framed sequential decision-making as movement through a state-transition graph under uncertainty. As large language models began to be used as reasoning components rather than static predictors, these ideas resurfaced in a practical form: explicit graphs provided a way to structure multi-step, branching, and iterative behaviors that were otherwise fragile when encoded implicitly in prompts.
 
 ### The graph pattern in agentic systems
 
@@ -4746,26 +5299,11 @@ From an operational standpoint, graph-based orchestration aligns naturally with 
 
 Although graphs introduce more upfront structure than simple chaining, this structure is what enables scale, robustness, and controlled evolution. As agentic systems grow in complexity, explicit graphs shift orchestration from an emergent property of prompts to a designed and verifiable component of the system.
 
-### References
-
-1. C. A. Petri. *Kommunikation mit Automaten*. PhD thesis, University of Bonn, 1962.
-2. R. Bellman. *Dynamic Programming*. Princeton University Press, 1957.
-3. S. Russell, P. Norvig. *Artificial Intelligence: A Modern Approach*. Pearson, 1995.
-4. Pydantic documentation. *Graphs*. 2024. [https://ai.pydantic.dev/graph/](https://ai.pydantic.dev/graph/)
-5. LangChain. *Introduction to LangGraph*. LangChain Academy, 2023. [https://academy.langchain.com/courses/intro-to-langgraph](https://academy.langchain.com/courses/intro-to-langgraph)
 
 
 ## A2A: Agent-to-Agent
 
 Agent-to-Agent (A2A) communication is a coordination pattern in which autonomous agents interact through a shared protocol to delegate work, exchange state, and compose system-level behavior.
-
-### Historical perspective
-
-The intellectual roots of A2A go back to early work on distributed artificial intelligence and multi-agent systems in the late 1980s and 1990s. At that time, researchers observed that complex problem solving could not be reduced to a single reasoning entity, but instead emerged from cooperation, negotiation, and coordination between multiple agents. This led to the first explicit agent communication languages, such as KQML, and later to standardized specifications like FIPA-ACL, which formalized the structure and semantics of messages exchanged between agents.
-
-In parallel, research in distributed systems and software architecture shaped how independent components should interact. Message passing, remote procedure calls, and event-driven systems emphasized loose coupling, explicit interfaces, and failure isolation. The actor model reinforced the idea that independent computational entities should communicate only through messages, never by shared mutable state.
-
-Modern LLM-based agents inherit all of these traditions. While the internal reasoning mechanisms have changed dramatically, the architectural pressures remain the same: as soon as systems involve multiple agents with different responsibilities, lifecycles, or ownership boundaries, communication must be explicit, structured, and observable. The A2A Protocol emerges in this context as a contemporary formalization of agent communication, designed for long-running, heterogeneous, and production-grade agentic systems.
 
 ### The A2A pattern
 
@@ -4823,23 +5361,11 @@ As agentic systems scale, purely centralized orchestration becomes increasingly 
 
 This section intentionally remains shallow. The goal is to position A2A as a first-class orchestration pattern rather than to exhaustively specify the protocol. Later chapters will examine transports, schemas, security models, and advanced coordination strategies built on top of A2A.
 
-### References
-
-1. Wooldridge, M. *An Introduction to MultiAgent Systems*. Wiley, 2002.
-2. Finin, T. et al. *KQML as an Agent Communication Language*. International Conference on Information and Knowledge Management, 1994.
-3. FIPA. *FIPA ACL Message Structure Specification*. FIPA, 2002.
-4. A2A Protocol Working Group. *A2A Protocol Specification*. 2024. [https://a2a-protocol.org/latest/](https://a2a-protocol.org/latest/)
 
 
 ## Long-running tasks and async execution
 
 Long-running tasks and asynchronous execution allow agents to pursue goals that extend beyond a single interaction by persisting state, delegating work, and resuming execution in response to events.
-
-### Historical perspective
-
-The roots of long-running and asynchronous agent behavior lie in early research on autonomous agents and distributed systems. In the late 1970s and 1980s, the actor model and message-passing systems established the idea that computation could be expressed as independent entities communicating asynchronously, without shared control flow. During the 1990s, agent-oriented research—most notably Belief–Desire–Intention (BDI) architectures—formalized the notion of persistent goals and plans that unfold over time, can be suspended, and are revised as new information arrives.
-
-Parallel developments in workflow systems, operating systems, and later cloud orchestration frameworks addressed similar problems from a systems perspective: how to manage long-running jobs, recover from partial failure, and coordinate independent workers. Modern agentic systems combine these traditions. Large language models provide flexible planning and reasoning, but must be embedded in orchestration layers that explicitly model time, state, and asynchronous coordination. Recent work on deep agents, sub-agents, and agent-to-agent protocols reflects this convergence between classical distributed systems and contemporary LLM-based agents.
 
 ### Conceptual model
 
@@ -4904,27 +5430,11 @@ Within this pattern, long-running tasks can be understood as distributed convers
 
 Because long-running tasks operate over extended periods, failure is not exceptional but expected. The pattern therefore emphasizes retries, checkpoints, and escalation. Agents may automatically retry failed sub-tasks, switch strategies, or pause execution pending human review. Human-in-the-loop integration fits naturally at well-defined checkpoints, where the current task state can be inspected and adjusted without restarting the entire process.
 
-### References
-
-1. Hewitt, C. *Actor Model of Computation*. Artificial Intelligence, 1977.
-2. Rao, A. S., & Georgeff, M. P. *BDI Agents: From Theory to Practice*. Proceedings of the First International Conference on Multi-Agent Systems, 1995.
-3. Wooldridge, M. *An Introduction to Multi-Agent Systems*. John Wiley & Sons, 2002.
-4. LangChain Blog. *Multi-Agent Workflows and Long-Running Agents*, 2023.
-5. Pydantic AI Documentation. *Multi-agent applications and deep agents*. 2024. [https://ai.pydantic.dev/](https://ai.pydantic.dev/)
-6. Anthropic. *Sub-agents and task delegation*. Documentation, 2024. [https://code.claude.com/docs/en/sub-agents](https://code.claude.com/docs/en/sub-agents)
 
 
 ## Event-driven agents
 
 Event-driven agents organize their behavior around the reception and handling of events, reacting incrementally to changes in their environment rather than executing a predefined sequence of steps.
-
-### Historical perspective
-
-The foundations of event-driven agents can be traced back to early work in distributed systems and concurrency. In the 1970s, the actor model introduced the idea of autonomous entities that communicate exclusively through asynchronous message passing, eliminating shared state and global control flow. This model already embodied the core intuition behind event-driven agents: computation progresses as a reaction to incoming messages, not as a linear program.
-
-During the 1980s and 1990s, research on reactive systems further refined these ideas. Reactive systems were defined not by producing a single output, but by maintaining ongoing interaction with an external environment. This work influenced state machines, event loops, and later publish–subscribe systems, which became common in large-scale distributed software during the 2000s. Complex event processing and event-driven middleware extended these ideas to environments with high event volumes and loose coupling between producers and consumers.
-
-Modern agentic systems revive and generalize these concepts. Large language model–based agents frequently operate in open-ended, asynchronous environments: user messages arrive unpredictably, tools may take seconds or hours to respond, and other agents may emit signals at any time. Event-driven control flow provides a natural abstraction for these conditions, avoiding the rigidity of synchronous pipelines and enabling agents to remain responsive over long periods.
 
 ### Core idea
 
@@ -5016,13 +5526,550 @@ Event-driven agents trade explicit control flow for flexibility. This increases 
 
 Despite these challenges, event-driven agents are increasingly central to real-world agentic systems. They provide a scalable and resilient foundation for long-lived, interactive agents that must operate reliably in asynchronous, distributed environments.
 
-### References
 
-1. Hewitt, C. *Viewing Control Structures as Patterns of Passing Messages*. Artificial Intelligence, 1973.
-2. Harel, D., Pnueli, A. *On the Development of Reactive Systems*. Logics and Models of Concurrent Systems, 1985.
-3. Eugster, P. et al. *The Many Faces of Publish/Subscribe*. ACM Computing Surveys, 2003.
-4. Luckham, D. *The Power of Events: An Introduction to Complex Event Processing*. Addison-Wesley, 2002.
-5. [https://ai.pydantic.dev/](https://ai.pydantic.dev/)
+
+# Hands-On: Introduction
+
+The hands-on sections that follow demonstrate four orchestration patterns that structure how agents execute: sequential workflows, graph-based control flow, delegation, and hand-off. Each exercise builds a working system using PydanticAI that makes the pattern's mechanics visible, showing how control flows between agents, how typed outputs create contracts between stages, and how the choice of orchestration pattern shapes the system's behavior.
+
+Sequential workflows externalize control flow from the agent's reasoning. The first exercise implements a content generation pipeline where an orchestrator sequences three specialist agents: outliner, writer, and editor. Each stage produces typed output that flows into the next, demonstrating how workflows create predictable, auditable execution paths while keeping individual agents focused on narrow responsibilities.
+
+Graph-based orchestration represents execution as an explicit state machine with conditional transitions and cycles. The second exercise builds a document quality review loop where nodes represent work units and edges define possible transitions. Unlike linear workflows, this pattern supports branching and refinement loops with explicit termination conditions, showing how graphs make complex control flow inspectable and verifiable.
+
+The final two exercises explore agent-to-agent coordination through delegation and hand-off. Delegation wraps a specialist agent in a tool, letting a parent agent invoke it while retaining overall control. Hand-off transfers responsibility entirely from one agent to another, as in a triage system that routes requests to specialists. Understanding the distinction between these patterns is essential for designing multi-agent systems with clear ownership boundaries and appropriate control flow.
+
+
+# Hands-On: Sequential Workflows
+
+A workflow externalizes control flow from the agent's reasoning. Instead of a single agent deciding what to do next, the orchestrator defines explicit stages, each with a focused responsibility. The agent reasons within each stage; the workflow determines when and how stages connect.
+
+This hands-on explores a content generation pipeline through `example_workflow.ipynb`. The pipeline has three stages: outline, draft, and edit. Each stage produces typed output that feeds the next. The pattern demonstrates delegation, state passing, and how workflows create predictable, auditable execution paths.
+
+## Typed Stage Outputs
+
+Each stage in the workflow produces structured output defined by a Pydantic model. These models serve as contracts between stages, making the data flow explicit and type-checked.
+
+```python
+class Outline(BaseModel):
+    title: str = Field(description="Article title")
+    sections: list[str] = Field(description="Section headings in order")
+    key_points: list[str] = Field(description="Main points to cover")
+
+class Draft(BaseModel):
+    content: str = Field(description="Full article text")
+    word_count: int = Field(description="Approximate word count")
+
+class EditedArticle(BaseModel):
+    content: str = Field(description="Final edited article")
+    changes_made: list[str] = Field(description="Summary of edits applied")
+```
+
+The `Outline` model captures the structure an article needs. The `Draft` model holds the written content. The `EditedArticle` model includes both the final text and a record of what changed. Each model defines exactly what its stage produces, nothing more.
+
+When you configure an agent with `output_type=Outline`, PydanticAI ensures the response conforms to that schema. If the model's output doesn't match, the framework retries or raises an error. This enforcement means downstream stages can trust the shape of their inputs.
+
+## Shared State
+
+A simple container accumulates outputs as the workflow progresses:
+
+```python
+class WorkflowState(BaseModel):
+    topic: str
+    outline: Outline | None = None
+    draft: Draft | None = None
+    final: EditedArticle | None = None
+
+state = WorkflowState(topic="The benefits of morning exercise routines")
+```
+
+The state starts with only the topic. As each stage completes, its output is stored in the corresponding field. This accumulation pattern lets later stages access earlier results. The editor can reference both the original outline and the draft when making improvements.
+
+State could be a simple dictionary, but using a typed model provides the same benefits as typed outputs: clarity about what exists at each point in the workflow, and errors if something is accessed before it's populated.
+
+## Stage Execution
+
+Each stage follows the same pattern: create a specialized agent, construct a prompt using available state, run the agent, and store the result.
+
+```python
+outline_agent = get_agent(
+    output_type=Outline,
+    system_prompt="You are an outline specialist. Create clear, logical article structures."
+)
+
+outline_prompt = f"Create an outline for a short article about: {state.topic}"
+
+agent_run, _ = await run_agent(outline_agent, outline_prompt)
+state.outline = agent_run.result.output
+```
+
+The agent is configured with two key parameters: `output_type` constrains the response format, and `system_prompt` establishes the agent's role. The prompt incorporates state (in this case, just the topic). After execution, the typed output is stored in the shared state.
+
+The draft stage follows the same structure but pulls more from state:
+
+```python
+draft_prompt = f"""Write a short article (~300 words) based on this outline:
+
+Title: {state.outline.title}
+Sections: {', '.join(state.outline.sections)}
+Key points to cover: {', '.join(state.outline.key_points)}"""
+```
+
+The outline's fields flow directly into the prompt. The draft agent doesn't need to know how the outline was created; it just receives structured input and produces structured output.
+
+## Delegation Without Autonomy
+
+This workflow demonstrates delegation in its simplest form. The orchestrator (the code running the notebook) assigns tasks to specialist agents. Each agent handles a focused subtask and returns. Control never transfers between agents directly; it always flows back through the orchestrator.
+
+This is different from autonomous agents that decide their own next steps. Here, the sequence is fixed: outline, then draft, then edit. The agents have no say in this order. They reason about their specific task, not about what task to do.
+
+The tradeoff is flexibility versus predictability. An autonomous agent might decide the outline needs revision after seeing the draft. This workflow won't. But this workflow is easier to debug, test, and explain. When something goes wrong, you know exactly which stage failed and what inputs it received.
+
+## The Pipeline as a Function
+
+Encapsulating the workflow makes it reusable:
+
+```python
+async def content_pipeline(topic: str) -> WorkflowState:
+    """Run the complete content generation workflow."""
+    state = WorkflowState(topic=topic)
+
+    # Stage 1: Outline
+    outline_agent = get_agent(output_type=Outline, system_prompt="Create clear article outlines.")
+    agent_run, _ = await run_agent(outline_agent, f"Create an outline for: {topic}")
+    state.outline = agent_run.result.output
+
+    # Stage 2: Draft
+    draft_agent = get_agent(output_type=Draft, system_prompt="Write engaging articles from outlines.")
+    agent_run, _ = await run_agent(draft_agent, f"Write ~300 words based on: {state.outline.model_dump_json()}")
+    state.draft = agent_run.result.output
+
+    # Stage 3: Edit
+    editor_agent = get_agent(output_type=EditedArticle, system_prompt="Edit for clarity and engagement.")
+    agent_run, _ = await run_agent(editor_agent, f"Edit this article: {state.draft.content}")
+    state.final = agent_run.result.output
+
+    return state
+```
+
+The function takes a topic and returns a fully populated state. Callers don't need to know about the internal stages. They get a final article along with the intermediate artifacts (outline, draft) if needed for inspection or logging.
+
+This encapsulation also makes the workflow testable. You can mock individual agent calls to verify the orchestration logic, or run the full pipeline against test topics to check end-to-end behavior.
+
+## Why Workflows Matter
+
+Workflows provide structure that pure agent autonomy lacks. By defining explicit stages with typed interfaces, they create checkpoints where you can observe, validate, and intervene. The content pipeline could log each stage's output, retry failed stages with different prompts, or insert human review between draft and edit.
+
+The pattern scales to more complex scenarios. Stages can run conditionally based on earlier results. Branches can handle different content types. Loops can refine output until quality thresholds are met. The key insight remains: externalize control flow from the agent's reasoning.
+
+## Key Takeaways
+
+Workflows define explicit sequences of agent calls with typed interfaces between stages. Each stage is a focused specialist; the orchestrator controls when and how they execute.
+
+Typed outputs using Pydantic models create contracts between stages. Downstream stages can trust the shape of their inputs because the framework enforces schema compliance.
+
+Shared state accumulates outputs as the workflow progresses. Later stages access earlier results through this state, enabling information flow across the pipeline.
+
+Delegation returns control to the orchestrator after each stage. This differs from hand-offs where responsibility transfers between agents. The distinction matters for reasoning about control flow and failure handling.
+
+Encapsulating workflows as functions makes them reusable and testable. The implementation details stay hidden; callers interact with a clean interface.
+
+
+# Hands-On: Graph-Based Orchestration
+
+Graphs model agent execution as explicit state machines where nodes represent work units and edges define transitions. Unlike linear chains or simple workflows, graphs support branching, cycles, and conditional transitions that are inspectable and verifiable.
+
+This hands-on explores graph-based orchestration through `example_graph.ipynb`, building a document quality review loop that demonstrates typed state, conditional edges, and refinement cycles.
+
+## The Problem with Implicit Control Flow
+
+When control logic is embedded in prompts or scattered across code, reasoning about system behavior becomes difficult. Questions like "what happens if the quality check fails?" or "how many times can the system retry?" require tracing through prompts and conditionals. Bugs hide in implicit assumptions.
+
+Graphs externalize this control flow. Each possible path through the system is visible in the graph structure. Transitions are explicit, exit conditions are auditable, and the entire execution flow can be visualized before running.
+
+## Typed State as Contract
+
+The example defines state as a dataclass:
+
+```python
+@dataclass
+class DocumentState:
+    topic: str
+    draft: str = ""
+    score: int = 0
+    feedback: str = ""
+    revision_count: int = 0
+    max_revisions: int = 3
+```
+
+This state flows through the graph, accumulating results from each node. The typed structure serves as a contract between nodes: each node knows exactly what data it receives and what it must provide. Invalid or missing data fails early with clear errors rather than propagating silently.
+
+The state also captures operational metadata like `revision_count` and `max_revisions`. This makes termination conditions explicit in the data structure itself, not hidden in scattered conditionals.
+
+## Nodes as Units of Work
+
+Each node is a dataclass with a `run` method. The return type annotation determines which nodes can follow:
+
+```python
+@dataclass
+class GenerateDraft(BaseNode[DocumentState]):
+    async def run(self, ctx: GraphRunContext[DocumentState]) -> "EvaluateQuality":
+        # Generate draft, update state
+        return EvaluateQuality()
+```
+
+`GenerateDraft` can only transition to `EvaluateQuality`. This constraint is enforced by the type system. The graph framework uses these annotations to build the edge structure automatically.
+
+Nodes access and modify state through `ctx.state`. The context provides a consistent interface regardless of where the node sits in the graph.
+
+## Conditional Edges
+
+The `EvaluateQuality` node demonstrates conditional transitions through union return types:
+
+```python
+async def run(self, ctx: GraphRunContext[DocumentState]) -> "Revise | End[str]":
+    # Evaluate quality...
+
+    if ctx.state.score >= QUALITY_THRESHOLD:
+        return End(ctx.state.draft)
+
+    if ctx.state.revision_count >= ctx.state.max_revisions:
+        return End(ctx.state.draft)
+
+    return Revise()
+```
+
+The return type `Revise | End[str]` declares that this node can transition to either `Revise` or terminate with a string result. The actual transition depends on runtime conditions evaluated against the state.
+
+This pattern separates the decision logic (what to do) from the graph structure (what's possible). The graph defines the space of valid behaviors; the node logic navigates within that space.
+
+## Refinement Loops
+
+The cycle between `EvaluateQuality` and `Revise` implements a refinement loop:
+
+1. `EvaluateQuality` scores the current draft
+2. If below threshold, transition to `Revise`
+3. `Revise` improves the draft based on feedback
+4. Return to `EvaluateQuality` for another check
+
+Because this cycle is explicit in the graph, termination conditions are also explicit. The `max_revisions` check prevents unbounded loops. Both exit paths (quality met, max revisions reached) are visible in the code and in the graph visualization.
+
+## Graph Visualization
+
+pydantic-graph generates mermaid diagrams from the graph structure:
+
+```python
+display(Image(graph.mermaid_image(start_node=GenerateDraft)))
+```
+
+The visualization shows all nodes and their possible transitions, making the control flow immediately apparent. This is valuable for understanding complex graphs, debugging unexpected behavior, and communicating system design to others.
+
+## Execution
+
+Running the graph requires an initial node and state:
+
+```python
+graph = Graph(nodes=[GenerateDraft, EvaluateQuality, Revise])
+state = DocumentState(topic="The importance of code reviews")
+result = await graph.run(GenerateDraft(), state=state)
+```
+
+Execution proceeds by calling each node's `run` method, following transitions until reaching an `End` node. The final result contains the output value passed to `End`.
+
+## Why Graphs Matter
+
+Graphs shift orchestration from implicit to explicit. The structure is inspectable before execution, paths can be enumerated, and termination is verifiable. When something goes wrong, the execution trace maps directly to the graph, simplifying debugging.
+
+For complex agentic systems with conditional logic, retries, and multiple paths, graphs provide the foundation for reliable, production-grade orchestration.
+
+
+# Hands-On: Agent Delegation
+
+Delegation is a pattern where one agent invokes another through a tool while retaining control of the overall task. Unlike workflows, where an external orchestrator sequences agent calls, delegation keeps decision-making inside the parent agent. The parent reasons about when to delegate, calls the specialist, and incorporates the result into its own response.
+
+This hands-on explores delegation through `example_delegation.ipynb`. A research assistant delegates fact-checking to a specialist agent. The pattern demonstrates how to compose agents while maintaining clear control flow and unified resource tracking.
+
+## Delegation vs. Direct Tool Calls
+
+A regular tool is a function that performs some action: a calculation, an API call, or a database query. A delegation tool is a function that runs another agent. From the parent agent's perspective, both look the same: call a function, get a result. The difference is internal: delegation tools contain an entire reasoning process.
+
+This distinction matters for system design. When you delegate to an agent, you're invoking something that can reason, adapt, and handle ambiguity. A fact-checker agent can evaluate nuanced claims that a simple lookup function cannot. But this power comes with cost: more tokens, more latency, and more complexity to debug.
+
+The decision to delegate should be intentional. Use delegation when the subtask requires reasoning. Use regular tools when a deterministic function suffices.
+
+## The Specialist Agent
+
+The fact-checker is a focused agent with a single responsibility:
+
+```python
+class FactCheckResult(BaseModel):
+    claim: str = Field(description="The claim that was checked")
+    verdict: str = Field(description="accurate, inaccurate, or partially accurate")
+    explanation: str = Field(description="Brief explanation of the verdict")
+
+fact_checker = get_agent(
+    output_type=FactCheckResult,
+    system_prompt="""You are a fact-checker. Evaluate claims for accuracy.
+Be precise and cite your reasoning. Focus only on verifiable facts."""
+)
+```
+
+The structured output enforces a contract. The parent agent knows exactly what shape to expect: a verdict and an explanation. This predictability makes integration straightforward. The specialist's system prompt is narrow and focused, which tends to produce more reliable results than asking a general-purpose agent to fact-check as one of many responsibilities.
+
+## The Delegation Tool
+
+The tool wraps the specialist agent and exposes it to the parent:
+
+```python
+async def fact_check(ctx: RunContext[None], claim: str) -> str:
+    """Verify a factual claim by delegating to a fact-checking specialist."""
+    print(f"[Delegating to fact-checker] Claim: {claim}")
+
+    agent_run, _ = await run_agent(
+        fact_checker,
+        f"Fact-check this claim: {claim}"
+    )
+    result = agent_run.result.output
+
+    ctx.usage.incr(agent_run.result.usage())
+
+    print(f"[Fact-checker result] {result.verdict}: {result.explanation}")
+    return f"Verdict: {result.verdict}. {result.explanation}"
+```
+
+The function signature follows PydanticAI's tool convention. The `RunContext` parameter provides access to the parent agent's execution context, including usage tracking. The `claim` parameter is what the parent agent will provide when it calls the tool.
+
+Inside the function, we run the specialist agent with `run_agent()`. This is a full agent execution: the specialist receives a prompt, reasons about it, and produces structured output. The result is then formatted as a string to return to the parent.
+
+The line `ctx.usage.incr(agent_run.result.usage())` is critical for accounting. It takes the token usage from the delegated agent and adds it to the parent's usage counters. Without this, you would undercount total resource consumption.
+
+## The Parent Agent
+
+The research assistant receives the delegation tool like any other tool:
+
+```python
+research_agent = get_agent(
+    tools=[fact_check],
+    system_prompt="""You are a research assistant. Help users explore topics accurately.
+When you make specific factual claims that could be verified, use the fact_check tool.
+After fact-checking, incorporate the results into your response."""
+)
+```
+
+The parent agent doesn't know that `fact_check` runs another agent internally. It sees a tool that takes a claim and returns a verification result. This encapsulation is intentional: the parent reasons about what to verify, not how verification works.
+
+The system prompt guides when to delegate. In this case, the instruction is to verify "specific factual claims that could be verified." This gives the agent discretion. It might verify one claim but not another based on its assessment of which claims are verifiable and worth checking.
+
+## Control Flow
+
+When the research agent runs, the control flow looks like this:
+
+1. Parent agent receives the user's question
+2. Parent agent reasons and generates a response, deciding to verify certain claims
+3. Parent agent calls `fact_check("the speed of light is 299,792,458 m/s")`
+4. The tool runs the specialist agent
+5. Specialist agent reasons about the claim and produces a verdict
+6. Tool returns the formatted result to the parent
+7. Parent agent incorporates the result and continues its response
+8. Parent agent may call `fact_check` again for other claims
+9. Parent agent produces final output
+
+Control always returns to the parent after each delegation. The parent decides what to do with the result. This is different from a hand-off, where one agent would pass responsibility to another and exit.
+
+## Unified Usage Tracking
+
+After running the research agent, you can inspect total token usage:
+
+```python
+usage = agent_run.result.usage()
+print(f"Total tokens (including delegated calls): {usage.total_tokens}")
+```
+
+Because the delegation tool called `ctx.usage.incr()`, this total includes tokens from both the parent and all delegated agents. This unified accounting is essential for cost management and quota enforcement. If you have multiple levels of delegation (agent A delegates to B, which delegates to C), each level should propagate usage upward.
+
+## When to Use Delegation
+
+Delegation is appropriate when:
+
+- The subtask requires reasoning that a simple function cannot provide
+- You want the parent agent to retain control over the overall task
+- The specialist has a focused responsibility that benefits from a tailored prompt
+- You need to compose capabilities while maintaining a single conversation flow
+
+Delegation is less appropriate when:
+
+- The subtask is deterministic and doesn't need reasoning
+- You want true autonomy where agents hand off responsibility
+- The workflow is better expressed as explicit stages controlled externally
+
+## Key Takeaways
+
+Delegation wraps an agent in a tool, letting a parent agent invoke it while maintaining control. The parent decides when to delegate based on its own reasoning.
+
+The delegation tool is a regular function that internally runs another agent. The parent doesn't need to know this; it just calls a tool and gets a result.
+
+Usage tracking requires explicit propagation. Call `ctx.usage.incr()` in the delegation tool to include the specialist's token consumption in the parent's totals.
+
+Specialists benefit from focused prompts and structured outputs. Narrow responsibilities tend to produce more reliable results than asking a general agent to handle everything.
+
+Control always returns to the parent after delegation. This distinguishes delegation from hand-offs, where responsibility would transfer permanently.
+
+
+# Hands-On: Agent Hand-Off
+
+Hand-off is a pattern where one agent transfers control entirely to another. Unlike delegation, where the parent agent retains control and incorporates results, hand-off means the original agent's job is done once it decides who should take over. The receiving agent handles the request completely and independently.
+
+This hands-on explores hand-off through `example_hand_off.ipynb`. A customer support triage agent classifies incoming requests and routes them to specialists. The routing happens in application code, not through tool calls, making the control transfer explicit and visible.
+
+## Hand-Off vs. Delegation
+
+In delegation, the parent agent calls a specialist through a tool, waits for the result, and continues processing. The parent decides what to do with the result and may call additional tools or produce a final response that incorporates the specialist's output.
+
+In hand-off, the first agent's only job is to decide who handles the request. Once that decision is made, the first agent exits. The specialist receives the original request and handles it from start to finish. There is no return path, no incorporation of results, and no further involvement from the routing agent.
+
+This distinction matters architecturally. Delegation creates a hierarchy where the parent owns the conversation. Hand-off creates a routing layer where specialists own their domains independently. Hand-off is appropriate when the routing decision is the only value the first agent provides, and when specialists are capable of handling requests end-to-end.
+
+## The Classification Output
+
+The triage agent produces a structured classification that drives routing:
+
+```python
+class RequestCategory(str, Enum):
+    BILLING = "billing"
+    TECHNICAL = "technical"
+
+
+class TriageResult(BaseModel):
+    category: RequestCategory = Field(description="The category of the request")
+    summary: str = Field(description="Brief summary of the customer's issue")
+```
+
+The enum constrains the category to known values. This is important for hand-off because the routing logic must map classifications to specialists. If the agent could return arbitrary strings, the routing code would need fuzzy matching or error handling for unknown categories. With an enum, the mapping is exhaustive and type-safe.
+
+The summary field captures the agent's understanding of the issue. While not strictly necessary for routing, it provides observability into the triage decision and could be logged for quality monitoring.
+
+## The Triage Agent
+
+The triage agent has a narrow responsibility:
+
+```python
+triage_agent = get_agent(
+    output_type=TriageResult,
+    system_prompt="""You are a customer support triage agent.
+Classify incoming requests as either billing or technical.
+Billing: payments, invoices, subscriptions, refunds, pricing.
+Technical: bugs, errors, how-to questions, feature requests, integrations."""
+)
+```
+
+The system prompt defines the classification criteria explicitly. This specificity reduces ambiguity and makes the agent's behavior more predictable. The agent does not attempt to solve the customer's problem; it only categorizes.
+
+This separation of concerns is intentional. Triage agents should be fast and reliable. Keeping them focused on classification, without the complexity of actually handling requests, makes them easier to test and tune.
+
+## The Specialist Agents
+
+Each specialist handles a specific category:
+
+```python
+billing_agent = get_agent(
+    system_prompt="""You are a billing support specialist.
+Help customers with payments, invoices, subscriptions, and refunds.
+Be helpful and provide clear next steps."""
+)
+
+technical_agent = get_agent(
+    system_prompt="""You are a technical support specialist.
+Help customers with bugs, errors, how-to questions, and integrations.
+Provide clear explanations and actionable solutions."""
+)
+```
+
+Specialists have domain-specific prompts that guide their responses. They receive the original customer message directly, not a transformed version from the triage agent. This preserves the full context and avoids information loss during routing.
+
+## The Hand-Off Logic
+
+The routing function makes the hand-off explicit:
+
+```python
+async def handle_support_request(customer_message: str) -> str:
+    """Route a customer request to the appropriate specialist."""
+
+    # Step 1: Triage classifies the request
+    triage_run, _ = await run_agent(triage_agent, customer_message)
+    classification = triage_run.result.output
+
+    print(f"Triage: {classification.category.value} - {classification.summary}")
+
+    # Step 2: Hand off to specialist (triage is done)
+    match classification.category:
+        case RequestCategory.BILLING:
+            specialist = billing_agent
+        case RequestCategory.TECHNICAL:
+            specialist = technical_agent
+
+    # The specialist handles the request completely
+    specialist_run, _ = await run_agent(specialist, customer_message)
+    return specialist_run.result.output
+```
+
+The control flow is sequential but ownership transfers. After the triage agent runs, the function extracts the classification and selects a specialist using a match statement. The triage agent is not involved in any subsequent processing.
+
+The match statement maps categories to agents. Because the category is an enum, the match is exhaustive: every possible value has a corresponding case. This eliminates the need for a default case or error handling for unknown categories.
+
+The specialist receives `customer_message` directly, the same input the triage agent received. This is a design choice. Alternatively, you could pass the triage summary or a transformed prompt. Passing the original message ensures the specialist sees exactly what the customer wrote, which often matters for tone and context.
+
+## Control Flow Comparison
+
+Consider the difference between delegation and hand-off in terms of what each agent sees:
+
+In delegation, the parent agent might process a request like this: receive message, reason about it, call fact-check tool, receive result, incorporate result, continue reasoning, produce final response. The parent sees everything and makes all final decisions.
+
+In hand-off, the flow is: triage receives message, produces classification, exits. Specialist receives message, produces response. The triage agent never sees the specialist's response. The specialist never sees the triage classification (unless explicitly passed).
+
+This separation is both a constraint and a feature. It constrains because you cannot have the triage agent refine or validate the specialist's response. It is a feature because each agent's responsibility is clearly bounded, making the system easier to reason about and modify.
+
+## When to Use Hand-Off
+
+Hand-off is appropriate when the routing decision is valuable on its own and when specialists can handle requests independently. Common scenarios include customer support routing, document classification pipelines, and intent-based dispatchers.
+
+Hand-off is less appropriate when you need the routing agent to validate or refine the specialist's work, when the conversation requires back-and-forth between multiple agents, or when the routing decision depends on information that only emerges during specialist processing.
+
+## Key Takeaways
+
+Hand-off transfers control entirely from one agent to another. The routing agent classifies or decides, then exits. The specialist handles the request end-to-end.
+
+Routing logic lives in application code, not in agent tools. This makes control flow explicit and testable. The match statement maps classifications to agents with type safety.
+
+Structured output with enums ensures routing decisions map to known specialists. This eliminates ambiguity and error handling for unknown categories.
+
+Specialists receive the original input directly. This preserves context and avoids information loss during routing.
+
+Hand-off creates clear ownership boundaries. Each agent is responsible for its domain, and the routing layer simply connects them.
+
+
+## References
+
+1. Bellman, R. *Dynamic Programming*. Princeton University Press, 1957.
+2. Petri, C. A. *Kommunikation mit Automaten*. PhD thesis, University of Bonn, 1962.
+3. Hewitt, C. *Viewing Control Structures as Patterns of Passing Messages*. Artificial Intelligence, 1973.
+4. Hewitt, C. *Actor Model of Computation*. Artificial Intelligence, 1977.
+5. Smith, R. G. *The Contract Net Protocol*. IEEE Transactions on Computers, 1980.
+6. Harel, D., Pnueli, A. *On the Development of Reactive Systems*. Logics and Models of Concurrent Systems, 1985.
+7. Erol, K., Hendler, J., Nau, D. *Hierarchical Task Network Planning*. Artificial Intelligence, 1994.
+8. Finin, T. et al. *KQML as an Agent Communication Language*. International Conference on Information and Knowledge Management, 1994.
+9. Rao, A. S., Georgeff, M. P. *BDI Agents: From Theory to Practice*. Proceedings of the First International Conference on Multi-Agent Systems, 1995.
+10. Russell, S., Norvig, P. *Artificial Intelligence: A Modern Approach*. Pearson, 1995.
+11. FIPA. *FIPA ACL Message Structure Specification*. 2002.
+12. Luckham, D. *The Power of Events: An Introduction to Complex Event Processing*. Addison-Wesley, 2002.
+13. Wooldridge, M. *An Introduction to MultiAgent Systems*. Wiley, 2002.
+14. Eugster, P. et al. *The Many Faces of Publish/Subscribe*. ACM Computing Surveys, 2003.
+15. LangChain. *Introduction to LangGraph*. LangChain Academy, 2023. https://academy.langchain.com/courses/intro-to-langgraph
+16. LangChain Blog. *Multi-Agent Workflows and Long-Running Agents*. 2023.
+17. A2A Protocol Working Group. *A2A Protocol Specification*. 2024. https://a2a-protocol.org/latest/
+18. Anthropic. *Sub-agents and task delegation*. Documentation, 2024. https://code.claude.com/docs/en/sub-agents
+19. LangChain Team. *Workflows and Agents in LangGraph*. LangChain Documentation, 2024. https://docs.langchain.com/
+20. LangChain Team. *Multi-Agent Workflows with LangGraph*. LangChain Blog, 2024. https://blog.langchain.com/
+21. Pydantic AI Documentation. *Graphs*. 2024. https://ai.pydantic.dev/graph/
+22. Pydantic AI Documentation. *Multi-agent applications and deep agents*. 2024. https://ai.pydantic.dev/
 
 
 \newpage
@@ -6928,7 +7975,6 @@ In practical MCP systems, tools are not an auxiliary feature; they are the core 
 
 This section focuses on how tools work *in practice*, with concrete examples drawn from common MCP server implementations such as FastMCP, and how errors and failures propagate back into an agent loop typically implemented with frameworks like Pydantic-AI.
 
----
 
 ## From functions to tools: contracts, not code
 
@@ -6953,7 +7999,6 @@ When exposed via an MCP server, this function is translated into a tool definiti
 
 At this point, the function body becomes irrelevant to the protocol. The model reasons entirely over the contract. This separation allows the server to validate inputs, enforce permissions, and reject invalid requests before execution.
 
----
 
 ## Tool invocation as structured output
 
@@ -6974,7 +8019,6 @@ The MCP server validates this payload against the schema derived from the functi
 
 This is the first and most important safety boundary in MCP. Tool calls are not “best effort”. They are either valid or they do not run.
 
----
 
 ## Validation failures and early rejection
 
@@ -6996,7 +8040,6 @@ For example, if the model omits a required field, the server might return:
 
 This error is returned to the client and injected back into the agent’s context. The agent can now reason over the failure deterministically, rather than guessing what went wrong from an unstructured error string.
 
----
 
 ## Domain errors inside tool execution
 
@@ -7018,7 +8061,6 @@ Returning to the file-writing example, suppose the file already exists and `over
 
 This distinction matters. The model provided valid inputs, but the requested action is not permissible under current conditions. A well-designed agent can respond by retrying with `overwrite=true`, choosing a different path, or asking the user for confirmation.
 
----
 
 ## How tool errors propagate into the agent loop
 
@@ -7041,7 +8083,6 @@ The critical point is that tool failures are *observations*, not exceptions that
 
 This is where MCP’s design aligns naturally with typed agent frameworks. Errors are values. They can be inspected, classified, and acted upon using ordinary control logic.
 
----
 
 ## Retry and recovery as explicit policy
 
@@ -7063,7 +8104,6 @@ The tool implementation does not decide whether to retry. It merely reports what
 
 This separation prevents hidden retries, duplicated side effects, and uncontrolled loops—failure modes that are common in naïve tool-calling systems.
 
----
 
 ## Transient vs terminal failures
 
@@ -7071,7 +8111,6 @@ A crucial practical concern is distinguishing transient failures from terminal o
 
 By standardizing error codes and propagating them explicitly, MCP enables agents to make this distinction reliably. Over time, this allows agent behavior to evolve from brittle heuristics into deliberate recovery strategies.
 
----
 
 ## Why this level of rigor matters
 
@@ -7081,7 +8120,6 @@ MCP’s tool model addresses this by treating tool invocation as a first-class, 
 
 In practice, this is what allows MCP-based systems to move beyond demos and into production-grade agentic platforms.
 
----
 
 ## References
 
@@ -7096,7 +8134,6 @@ MCP features beyond tools define how instructions, data, generation control, and
 
 This section omits tools and focuses on the remaining server- and client-side features that structure *context* and *control flow* around model execution.
 
----
 
 ## Prompts (server feature)
 
@@ -7135,7 +8172,6 @@ response = client.run(
 
 The client never embeds the instruction text itself. This makes prompt changes transparent to clients and easier to review and test centrally.
 
----
 
 ## Resources (server feature)
 
@@ -7182,7 +8218,6 @@ analysis = client.run(
 
 This pattern avoids copying large documents into every prompt and supports workspace-style workflows where artifacts are produced, stored, and revisited across turns.
 
----
 
 ## Sampling (client feature)
 
@@ -7222,7 +8257,6 @@ final_report = client.run(
 
 Sampling becomes an explicit part of orchestration logic rather than a hidden global setting.
 
----
 
 ## Elicitation (client feature)
 
@@ -7256,7 +8290,6 @@ deployment = client.run(
 
 This makes human-in-the-loop interaction explicit, auditable, and composable with automated steps.
 
----
 
 ## How these features work together
 
@@ -7270,7 +8303,6 @@ A typical flow combining these features might look as follows:
 
 None of these steps require embedding large instructions or data blobs directly into prompts. The protocol enforces structure while remaining agnostic to storage, UI, or orchestration frameworks.
 
----
 
 ## References
 
@@ -8163,7 +9195,6 @@ A minimal task invocation at the wire level (illustrative, independent of any sp
 
 The important point is not the method name per se, but the design: JSON-RPC provides the envelope; A2A defines the task/message/artifact semantics; and implementations can remain diverse behind the boundary.
 
----
 
 ## References
 
@@ -8183,7 +9214,6 @@ The important point is not the method name per se, but the design: JSON-RPC prov
 
 In A2A systems, a task is a durable, observable unit of work whose lifecycle is decoupled from synchronous execution through streaming, polling, notifications, and explicit coordination components.
 
----
 
 ### Asynchronous Execution as a First-Class Concept
 
@@ -8191,7 +9221,6 @@ A2A tasks are explicitly designed to be asynchronous. Once a task is created, th
 
 Asynchrony in A2A is not an implementation detail but a protocol-level guarantee: every task can be observed, resumed, or completed independently of the original request–response channel.
 
----
 
 ### Streaming Task Updates
 
@@ -8211,7 +9240,6 @@ event = {
 
 This model aligns with modern server-sent events and async streaming patterns. In practice, agent runtimes inspired by Pydantic AI expose streaming as an optional observation channel, allowing clients to switch seamlessly between synchronous completion and live progress reporting.
 
----
 
 ### Polling as a Baseline Observation Mechanism
 
@@ -8230,7 +9258,6 @@ status = {
 
 From a design perspective, streaming and polling are complementary rather than competing approaches. Streaming optimizes for latency and responsiveness, while polling guarantees durability and simplicity.
 
----
 
 ### Push Notifications and External Callbacks
 
@@ -8248,7 +9275,6 @@ notification = {
 
 This pattern is especially relevant in enterprise environments, where tasks may need to trigger downstream workflows, update dashboards, or notify humans without tight coupling to the agent runtime.
 
----
 
 ### Task Storage and Persistence
 
@@ -8258,7 +9284,6 @@ Persistent storage enables several critical behaviors: recovery after failure, r
 
 Agent runtimes built around A2A concepts treat storage as an explicit abstraction rather than an internal cache, ensuring that task state can be shared, inspected, or migrated if needed.
 
----
 
 ### Workers as Task Executors
 
@@ -8276,7 +9301,6 @@ while True:
 
 This separation mirrors established distributed systems patterns and is directly reflected in FastMCP-style agent servers, where execution logic is isolated from task persistence and coordination.
 
----
 
 ### The Task Broker and Coordination
 
@@ -8286,13 +9310,11 @@ In multi-agent systems, the broker becomes essential for preventing overload and
 
 Conceptually, the broker decouples *who wants work done* from *who is currently able to do it*, enabling flexible deployment and scaling strategies.
 
----
 
 ### Putting It All Together
 
 Streaming, polling, push notifications, storage, workers, and brokers form a coherent execution model around the A2A task abstraction. Tasks are created once, stored durably, executed by interchangeable workers, coordinated by a broker, and observed through multiple complementary channels. This design allows A2A systems to support deep agent collaboration, long-running workflows, and enterprise-grade reliability without sacrificing transparency or control.
 
----
 
 ## References
 
@@ -8315,7 +9337,6 @@ The specification then defines how those operations and objects map onto concret
 
 A key design point is that the same *logical* operations are intended to be functionally equivalent across bindings; the binding decides *how* parameters and service-wide headers/metadata are carried, but not what they mean. ([A2A Protocol][60])
 
----
 
 ### Operation surface and execution semantics
 
@@ -8341,7 +9362,6 @@ The `blocking` flag is normative and affects correctness expectations:
 
 This matters because it pushes queueing/execution details out of band: even if the server’s internal worker system is distributed, the *observable* behavior must match these semantics.
 
----
 
 ### The protocol data model: the “shape” constraints that make interoperability work
 
@@ -8382,7 +9402,6 @@ Tasks have states; the spec enumerates states including working, input-required,
 
 A task’s status container includes the current state, optional associated message, and timestamp. ([A2A Protocol][60])
 
----
 
 ### Streaming updates: the `StreamResponse` envelope and event types
 
@@ -8405,7 +9424,6 @@ Artifact updates are deltas. Each update carries the artifact plus two key boole
 
 This is the protocol’s answer to “how do I stream a large file/structured output?”: the artifact is the stable identity, and the parts are chunked. A client must reconstruct by `(taskId, artifactId)` and apply append semantics to parts.
 
----
 
 ### Push notifications: webhook delivery that reuses the same envelope
 
@@ -8418,7 +9436,6 @@ The push payload section is unusually explicit about responsibilities:
 
 This means production-grade push is *not* “fire and forget”: both sides are expected to implement retry/idempotency logic.
 
----
 
 ### Service parameters, versioning, and extensions: the “horizontal” control plane
 
@@ -8431,7 +9448,6 @@ Two standard service parameters are called out:
 
 This is the practical mechanism for incremental evolution: extensions let you strongly-type metadata for specific use cases, while the core stays stable. ([A2A Protocol][60])
 
----
 
 ### Protocol bindings and interface negotiation
 
@@ -8441,7 +9457,6 @@ The ordering of interfaces is meaningful: clients should prefer earlier entries 
 
 This makes interoperability practical in heterogeneous environments: a client can pick JSON-RPC for browser-like integrations, gRPC for intra-datacenter low-latency, or HTTP+JSON for simple REST stacks—while preserving the same logical semantics.
 
----
 
 ### Implementation patterns extracted from real server stacks: broker, worker, storage
 
@@ -8463,7 +9478,6 @@ The key protocol-driven reason to build it this way is that A2A requires coheren
 
 You only get correct semantics if task state and artifact state are stored durably enough to be re-served and re-streamed.
 
----
 
 ## Concrete pseudocode: “correct-by-construction” client and server logic
 
@@ -8677,7 +9691,6 @@ function webhook_handler(http_request):
 
 This matches the spec’s client responsibilities (ACK with 2xx; process idempotently; validate task IDs). ([A2A Protocol][60])
 
----
 
 ## References
 
