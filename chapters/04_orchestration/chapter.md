@@ -13,3 +13,5 @@
 [Hands-On: Sequential Workflows](./hands_on_workflow.md)
 
 [Hands-On: Graph-Based Orchestration](./hands_on_graph.md)
+
+[Hands-On: Agent Delegation](./hands_on_delegation.md)
