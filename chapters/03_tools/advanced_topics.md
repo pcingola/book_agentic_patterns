@@ -145,3 +145,7 @@ Advanced tool use is best understood as a *control architecture* around the basi
 
 This combination preserves autonomy where it is safe and cheap, while providing strong guarantees—reviewability, auditability, and controllable side effects—where it matters.
 
+[41]: https://langchain-ai.github.io/langgraph/concepts/human_in_the_loop/
+[42]: https://ai.pydantic.dev/tools-advanced/
+[43]: https://ai.pydantic.dev/deferred-tools/
+

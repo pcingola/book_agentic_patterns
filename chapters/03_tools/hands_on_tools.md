@@ -27,8 +27,8 @@ def add(a: int, b: int) -> int:
     return a + b
 
 def sub(a: int, b: int) -> int:
-    """Substract two numbers"""
-    print(f"Substracting {a} - {b}")
+    """Subtract two numbers"""
+    print(f"Subtracting {a} - {b}")
     return a - b
 ```
 
