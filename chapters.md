@@ -20,7 +20,7 @@ BEST PRACTICE: This is a label for best practices, it should be shown in a highl
 
 ## Section 1: Basics
 
-### Chapter: Foundations
+### Chapter: [Foundations](chapters/foundations/chapter.md)
 
 - [x] Book outline
 - [x] What is an Agent / Agentic System
@@ -51,7 +51,7 @@ These are foundational reasoning patterns
 
 "Tool Use" is the fundamental pattern
 
-- [x] Tool Use (from Core Patterns)
+- [x] Tool Use
 - [x] Tool discovery and selection
 - [x] Tool contracts and schemas
 - [x] "The workspace"
@@ -118,7 +118,6 @@ These are all about how agents manage information over time.
 - [ ] Regression testing across model and prompt versions
 - [ ] Eval creators (Agent that creates evals)
 
-
 ## Section 2: Modularization & Composition
 All about building larger systems from smaller pieces.
 
@@ -143,9 +142,22 @@ All about building larger systems from smaller pieces.
 - [x] Specification
 - [x] Engineering: Skills with A2A, and MCPs.
 
+### Chapter: Modularity & Composition
+
+- [ ] AGENTS.md and coding-agent conventions
+- [ ] Subagents
+- [ ] Agent hierarchies
+- [ ] Agent swarms
+- [ ] MCP-based composition
+- [ ] A2A communication patterns
+
 ### Chapter: [Connectors](chapters/connectors/chapter.md)
+
 - [ ] Introduction
 - [ ] Connector patterns
+- [ ] OpenApi / REST APIs
+- [ ] File based connectors (CSV, Excel, JSON, XML, etc)
+- [ ] SaaS connectors (e.g. Google Sheets, Salesforce, etc)
 - [x] NL2SQL
   - [x] BEST PRACTICE: Create table definitions (off-line)
   - [x] BEST PRACTICE: Use comments to explain fields
@@ -158,18 +170,13 @@ All about building larger systems from smaller pieces.
   - [x] BEST PRACTICE: Write results to file (csv), show back sample + file path (in workspace)
   - [x] BEST PRACTICE: Read only access
   - [x] BEST PRACTICE: Access "on behalf" of users (use secrets manager to handle credentials)
-- [ ] OpenApi / REST APIs
-- [ ] File based connectors (CSV, Excel, JSON, XML, etc)
-- [ ] SaaS connectors (e.g. Google Sheets, Salesforce, etc)
-
-### Chapter: Modularity & Composition
-
-- [ ] AGENTS.md and coding-agent conventions
-- [ ] Subagents
-- [ ] Agent hierarchies
-- [ ] Agent swarms
-- [ ] MCP-based composition
-- [ ] A2A communication patterns
+  - [ ] BEST PRACTICE: Data source selection (which database should I use for this quesiton / user request?)
+- [ ] Controlled vocabularies
+  - [ ] Enums: Small controlled vocabularies
+  - [ ] Ontologies: RAG / Tree search / Beam search
+- [ ] CodeIndex
+- [ ] Document consistency
+- [ ] Knowledge updating and reconciliation
 
 ### Section 3: Production, Scaling & Enterprise
 
@@ -198,39 +205,23 @@ Production infrastructure for running agent-generated code safely.
 - [x] REPL
 - [x] Autonomous vs supervised execution (Human-in-the-loop), Approval, rollback, and reversibility
 
-### Chapter: Controlled vocabularies
-
-- [ ] Intro to controlled vocabularies
-- [ ] Enums: Small controlled vocabularies
-- [ ] Ontologies: RAG / Tree search / Beam search
-
-### Chapter: Data
-
-- [ ] Data source selection
-- [ ] CodeIndex
-- [ ] Document consistency
-- [ ] Knowledge updating and reconciliation
-
 ### Chapter: Research & Science Agents
 
-- [ ] Biomni
+- [ ] A2A: Data analysis
 - [ ] Deep research
+- [ ] Biomni
 - [ ] ....
-- [ ]
-
 
 ### Chapter: Privacy & Governance
 
 Corporate security
 
+- [ ] Kill switch: Blocking ALL outgoing connections (whitelist)
 - [ ] Security vs privacy boundaries
 - [ ] Private vs public agents
 - [ ] Data tainting and lineage
 - [ ] Kill switches and containment
 - [ ] Compliance and auditability
-
-### Chapter: Security & Compliance for Agentic Systems
-
 - [ ] Threat model for tool-using agents
 - [ ] Prompt injection and retrieval attacks
 - [ ] Tool sandboxing and network/file isolation

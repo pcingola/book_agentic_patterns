@@ -2,14 +2,6 @@
 
 CodeAct is a code-centric execution pattern in which an agent reasons primarily by iteratively writing, executing, and refining code, using program execution itself as the main feedback loop.
 
-### Historical perspective
-
-Early agent systems treated code execution as an auxiliary tool: a way to call an API, run a calculation, or fetch data. This view began to shift with work on program synthesis, neural program induction, and reinforcement learning with executable environments, where the boundary between “reasoning” and “acting” blurred. In these settings, programs were not merely outputs but intermediate artifacts used to explore a solution space.
-
-The CodeAct approach crystallized this shift by explicitly framing agent behavior as alternating between natural language reasoning and concrete code execution. The key insight was that many complex tasks—data analysis, environment control, system configuration—are more reliably solved by letting the model *think in code*, observe runtime effects, and adapt. This lineage connects earlier ideas such as tool-augmented language models and ReAct-style loops, but places executable code at the center rather than at the periphery.
-
-### The CodeAct pattern
-
 At its core, CodeAct treats code execution as the agent’s primary action modality. Instead of planning entirely in natural language and then calling tools, the agent incrementally constructs small programs, runs them, inspects results, and revises its approach. Reasoning emerges from the interaction between generated code and observed execution outcomes.
 
 A typical CodeAct loop has four conceptual phases:
@@ -85,10 +77,3 @@ This separation of concerns simplifies agent design. The model focuses on proble
 CodeAct represents a shift from “agents that occasionally run code” to “agents whose primary mode of thought is executable”. This shift has practical consequences: more reliable iteration, clearer grounding in observable behavior, and a tighter feedback loop between intention and outcome. In practice, CodeAct often reduces prompt complexity, because correctness is enforced by execution rather than by exhaustive natural language reasoning.
 
 As agents increasingly operate in technical domains—data engineering, infrastructure management, scientific computing—CodeAct provides a natural and scalable execution model.
-
-### References
-
-1. Wang et al. *CodeAct: Autonomous Code-Centric Agents*. arXiv, 2023.
-2. Yao et al. *ReAct: Synergizing Reasoning and Acting in Language Models*. arXiv, 2022.
-3. Chen et al. *Evaluating Large Language Models Trained on Code*. arXiv, 2021.
-4. MCP documentation and design notes. *Model Context Protocol*. 2024.
