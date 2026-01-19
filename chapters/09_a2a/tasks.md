@@ -102,12 +102,3 @@ Conceptually, the broker decouples *who wants work done* from *who is currently 
 ### Putting It All Together
 
 Streaming, polling, push notifications, storage, workers, and brokers form a coherent execution model around the A2A task abstraction. Tasks are created once, stored durably, executed by interchangeable workers, coordinated by a broker, and observed through multiple complementary channels. This design allows A2A systems to support deep agent collaboration, long-running workflows, and enterprise-grade reliability without sacrificing transparency or control.
-
-
-## References
-
-1. A2A Protocol Authors. *Streaming and Async Execution*. A2A Protocol Documentation, 2024. [https://a2a-protocol.org/latest/topics/streaming-and-async/](https://a2a-protocol.org/latest/topics/streaming-and-async/)
-2. A2A Protocol Authors. *Life of a Task*. A2A Protocol Documentation, 2024. [https://a2a-protocol.org/latest/topics/life-of-a-task/](https://a2a-protocol.org/latest/topics/life-of-a-task/)
-3. Pydantic AI Team. *A2A Concepts and APIs*. Pydantic-AI Documentation, 2024. [https://ai.pydantic.dev/a2a/](https://ai.pydantic.dev/a2a/)
-4. Pydantic AI Team. *Push Notifications, Storage, Workers, and Brokers*. Pydantic-AI API Reference, 2024. [https://ai.pydantic.dev/api/fasta2a/](https://ai.pydantic.dev/api/fasta2a/)
-5. FastMCP Contributors. *Asynchronous Agents and Long-Running Tasks*. FastMCP Documentation, 2024. [https://gofastmcp.com/](https://gofastmcp.com/)

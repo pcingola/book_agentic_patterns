@@ -363,16 +363,3 @@ function webhook_handler(http_request):
 ```
 
 This matches the spec’s client responsibilities (ACK with 2xx; process idempotently; validate task IDs). ([A2A Protocol][60])
-
-
-## References
-
-1. A2A Project. *Agent2Agent (A2A) Protocol Specification (DRAFT v1.0)*. a2a-protocol.org, 2025–2026. ([A2A Protocol][60])
-2. A2A Project. *Protocol Definition (A2A schema; normative source of truth)*. a2a-protocol.org, 2025–2026. ([A2A Protocol][61])
-3. A2A Project. *Streaming & Asynchronous Operations*. a2a-protocol.org, 2025–2026. ([A2A Protocol][62])
-4. Pydantic AI Docs. *fasta2a: broker/worker scheduling abstractions for A2A servers*. ai.pydantic.dev, 2025–2026. ([Pydantic AI][63])
-
-[60]: https://a2a-protocol.org/latest/specification/ "Overview - A2A Protocol"
-[61]: https://a2a-protocol.org/latest/definitions/ "Protocol Definition - A2A Protocol"
-[62]: https://a2a-protocol.org/latest/topics/streaming-and-async/ "Streaming & Asynchronous Operations - A2A Protocol"
-[63]: https://ai.pydantic.dev/api/fasta2a/ "fasta2a - Pydantic AI"

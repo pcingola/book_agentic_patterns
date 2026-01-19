@@ -117,10 +117,3 @@ This auditability enables forensic analysis, compliance verification, and operat
 ### Interaction with MCP Security
 
 When A2A is composed with Model Context Protocol, the security boundary remains explicit. A2A governs agent identity, task lifecycle, and delegation, while MCP governs tool invocation and context access. Credentials are not implicitly shared across protocols, preventing cross-protocol privilege leakage while preserving composability.
-
-### References
-
-1. A2A Protocol Authors. *Enterprise-Ready Security*. A2A Protocol Documentation, 2024. [https://a2a-protocol.org/latest/topics/enterprise-ready/](https://a2a-protocol.org/latest/topics/enterprise-ready/)
-2. A2A Protocol Authors. *A2A Specification*. A2A Protocol Documentation, 2024. [https://a2a-protocol.org/latest/specification/](https://a2a-protocol.org/latest/specification/)
-3. Hardt, D. *The OAuth 2.0 Authorization Framework*. IETF RFC 6749, 2012. [https://datatracker.ietf.org/doc/html/rfc6749](https://datatracker.ietf.org/doc/html/rfc6749)
-4. Rescorla, E. *The Transport Layer Security (TLS) Protocol*. IETF RFC 8446, 2018. [https://datatracker.ietf.org/doc/html/rfc8446](https://datatracker.ietf.org/doc/html/rfc8446)
