@@ -1,0 +1,7 @@
+# Hands-On: Introduction
+
+The hands-on sections that follow demonstrate A2A from basic client-server communication to multi-agent coordination. Starting with a single agent exposed over HTTP, the exercises progressively build toward a coordinator pattern where agents discover and delegate work to specialists. This bottom-up approach clarifies the protocol mechanics before introducing the architectural patterns that make A2A valuable in practice.
+
+The first exercise implements the simplest possible A2A interaction: one server, one client, one task. The server wraps a PydanticAI agent with arithmetic tools and exposes it via the A2A protocol. The client discovers the agent through its Agent Card, sends a computation request, polls for completion, and extracts the result. This exercise makes visible the full task lifecycle that underlies all A2A interactions: message construction, asynchronous execution, state transitions, and artifact retrieval.
+
+The second exercise builds on this foundation to demonstrate the coordinator pattern. A local agent acts as a router, fetching Agent Cards from multiple specialists to understand their capabilities, then delegating user requests to the appropriate specialist through A2A. The coordinator maintains conversation history across interactions, allowing multi-turn workflows that span different agents. This pattern shows how A2A enables multi-agent systems where specialists can be developed, deployed, and scaled independently while a coordinator provides a unified interface.

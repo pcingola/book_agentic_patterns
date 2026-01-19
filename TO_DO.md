@@ -2,6 +2,24 @@
 
 ## Text
 
+REFACTOR CHAPTERS:
+
+- Remove chapter numbers
+  - chapters.md
+  - chapters: remove the chapters/NN_* from dir names
+  - hands-on examples: remove the agentic_patterns/NN_* from dir names
+  - update all refrerences to them
+
+- Move ReAct to Core Patterns chapter
+
+- Move code execution chapter to Data chapter
+
+
+
+
+
+
+
 - ADD Chapter 1: Hands_on setting up the environment
   - VS-Code
   - extensions: Jupyter, Python, Pylance, ...

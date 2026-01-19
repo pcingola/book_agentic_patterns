@@ -1,20 +1,24 @@
 # Agentic Patterns
 
 ## Background
+
 We are writing a book "Agentic Patterns", which explores design patterns and best practices for building agentic systems using AI technologies. 
 
 Audience: The audience is peopl with some experience in AI/ML and software engineering, looking to build agentic systems using LLMs and related technologies.
 
 Book Approach: This book is supposed to have a strong theoretical background, yet be "hands on" so people can actually learn and apply the concepts. 
 
+Goal: Build a full Enterprise grade agentit platform using best practices.
+
 ## Chapters
 
 Here are the propoed chapters (divided in to sections for clarity):
 
 TIPS: This is a lable for tips, it should be shown in a highlighted box
+
 BEST PRACTICE: This is a label for best practices, it should be shown in a highlighted box
 
-### Section 1: Basics
+## Section 1: Basics
 
 ### Chapter 1: Foundations
 
@@ -131,7 +135,19 @@ These are all about how agents manage information over time.
 - [ ] Write-back patterns
 - [ ] Knowledge bases and consistency (Batch conversion of memory to knowledge)
 
-### Section 2: Modularization & Composition
+### Chapter: Testing, Debugging, Evals, and Benchmarks
+
+- [ ] Prompt and tool unit tests
+- [ ] Contract tests for tools
+- [ ] Deterministic replays and trace storage
+- [ ] Scenario simulation and adversarial testing
+- [ ] Offline evals and benchmarks
+- [ ] Online evals and A/B testing
+- [ ] Regression testing across model and prompt versions
+- [ ] Eval creators (Agent that creates evals)
+
+
+## Section 2: Modularization & Composition
 All about building larger systems from smaller pieces.
 
 ### Chapter 8: [MCP](chapters/08_mcp/chapter.md)
@@ -155,12 +171,6 @@ All about building larger systems from smaller pieces.
 - [x] Specification
 - [x] Engineering: Skills with A2A, and MCPs.
 
-### Chapter: Controlled vocabularies
-
-- [ ] Intro to controlled vocabularies
-- [ ] Enums: Small controlled vocabularies
-- [ ] Ontologies: RAG / Tree search / Beam search
-
 ### Chapter: Connectors
 - [ ] Introduction
 - [ ] Connector patterns
@@ -168,17 +178,6 @@ All about building larger systems from smaller pieces.
 - [ ] OpenApi / REST APIs
 - [ ] File based connectors (CSV, Excel, JSON, XML, etc)
 - [ ] SaaS connectors (e.g. Google Sheets, Salesforce, etc)
-
-### Chapter: Testing, Debugging, Evals, and Benchmarks
-
-- [ ] Prompt and tool unit tests
-- [ ] Contract tests for tools
-- [ ] Deterministic replays and trace storage
-- [ ] Scenario simulation and adversarial testing
-- [ ] Offline evals and benchmarks
-- [ ] Online evals and A/B testing
-- [ ] Regression testing across model and prompt versions
-- [ ] Eval creators (Agent that creates evals)
 
 ### Chapter: Modularity & Composition
 
@@ -189,6 +188,9 @@ All about building larger systems from smaller pieces.
 - [ ] MCP-based composition
 - [ ] A2A communication patterns
 
+
+### Section 3: Production, Scaling & Enterprise
+
 ### Chapter: UI
 
 - [ ] Chainlit
@@ -197,6 +199,12 @@ All about building larger systems from smaller pieces.
 - [ ] Session ID -> MCP / A2A tracking
 - [ ] File uploads
 - [ ] Error propagation
+
+### Chapter: Controlled vocabularies
+
+- [ ] Intro to controlled vocabularies
+- [ ] Enums: Small controlled vocabularies
+- [ ] Ontologies: RAG / Tree search / Beam search
 
 ### Chapter: Data
 
@@ -212,7 +220,6 @@ All about building larger systems from smaller pieces.
 - [ ] ....
 - [ ]
 
-### Section 3: Production, Scaling & Enterprise
 
 ### Chapter: Privacy & Governance
 
