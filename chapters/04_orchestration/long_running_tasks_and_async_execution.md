@@ -2,12 +2,6 @@
 
 Long-running tasks and asynchronous execution allow agents to pursue goals that extend beyond a single interaction by persisting state, delegating work, and resuming execution in response to events.
 
-### Historical perspective
-
-The roots of long-running and asynchronous agent behavior lie in early research on autonomous agents and distributed systems. In the late 1970s and 1980s, the actor model and message-passing systems established the idea that computation could be expressed as independent entities communicating asynchronously, without shared control flow. During the 1990s, agent-oriented research—most notably Belief–Desire–Intention (BDI) architectures—formalized the notion of persistent goals and plans that unfold over time, can be suspended, and are revised as new information arrives.
-
-Parallel developments in workflow systems, operating systems, and later cloud orchestration frameworks addressed similar problems from a systems perspective: how to manage long-running jobs, recover from partial failure, and coordinate independent workers. Modern agentic systems combine these traditions. Large language models provide flexible planning and reasoning, but must be embedded in orchestration layers that explicitly model time, state, and asynchronous coordination. Recent work on deep agents, sub-agents, and agent-to-agent protocols reflects this convergence between classical distributed systems and contemporary LLM-based agents.
-
 ### Conceptual model
 
 In synchronous agent designs, reasoning and execution are tightly coupled: the agent plans, acts, and responds in a single linear flow. This breaks down when tasks take a long time, depend on slow external systems, or require parallel effort. The long-running and async execution pattern introduces a clear separation between intention, execution, and coordination.
@@ -71,11 +65,3 @@ Within this pattern, long-running tasks can be understood as distributed convers
 
 Because long-running tasks operate over extended periods, failure is not exceptional but expected. The pattern therefore emphasizes retries, checkpoints, and escalation. Agents may automatically retry failed sub-tasks, switch strategies, or pause execution pending human review. Human-in-the-loop integration fits naturally at well-defined checkpoints, where the current task state can be inspected and adjusted without restarting the entire process.
 
-### References
-
-1. Hewitt, C. *Actor Model of Computation*. Artificial Intelligence, 1977.
-2. Rao, A. S., & Georgeff, M. P. *BDI Agents: From Theory to Practice*. Proceedings of the First International Conference on Multi-Agent Systems, 1995.
-3. Wooldridge, M. *An Introduction to Multi-Agent Systems*. John Wiley & Sons, 2002.
-4. LangChain Blog. *Multi-Agent Workflows and Long-Running Agents*, 2023.
-5. Pydantic AI Documentation. *Multi-agent applications and deep agents*. 2024. [https://ai.pydantic.dev/](https://ai.pydantic.dev/)
-6. Anthropic. *Sub-agents and task delegation*. Documentation, 2024. [https://code.claude.com/docs/en/sub-agents](https://code.claude.com/docs/en/sub-agents)

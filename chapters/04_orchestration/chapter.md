@@ -1,5 +1,7 @@
 # Orchestration & Control Flow
 
+[Historical Perspective](./historical_perspective.md)
+
 [Workflows](./workflows.md)
 
 [Graphs](./graphs.md)
@@ -10,8 +12,14 @@
 
 [Event-driven agents](./event_driven_agents.md)
 
+[Hands-On: Introduction](./hands_on_intro.md)
+
 [Hands-On: Sequential Workflows](./hands_on_workflow.md)
 
 [Hands-On: Graph-Based Orchestration](./hands_on_graph.md)
 
 [Hands-On: Agent Delegation](./hands_on_delegation.md)
+
+[Hands-On: Agent Hand-Off](./hands_on_handoff.md)
+
+[References](./references.md)

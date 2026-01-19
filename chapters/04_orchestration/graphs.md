@@ -2,12 +2,6 @@
 
 The graph pattern models agent execution as a directed graph of states and transitions, enabling explicit, inspectable, and controllable flows beyond linear or workflow-based orchestration.
 
-### Historical perspective
-
-The use of graphs to represent computation predates modern agentic systems by several decades. Early work on finite state machines and Petri nets in the 1960s established that complex behavior could be described as transitions between explicit states governed by formal rules. In parallel, compiler research introduced control flow graphs as a way to reason about all possible execution paths of a program, enabling static analysis, optimization, and verification.
-
-In artificial intelligence, graph-based representations became central through planning and decision-making research. Classical planners represented world states and actions as nodes connected by transitions, while later work on Markov Decision Processes framed sequential decision-making as movement through a state-transition graph under uncertainty. As large language models began to be used as reasoning components rather than static predictors, these ideas resurfaced in a practical form: explicit graphs provided a way to structure multi-step, branching, and iterative behaviors that were otherwise fragile when encoded implicitly in prompts.
-
 ### The graph pattern in agentic systems
 
 In agentic systems, a graph is composed of nodes, edges, and shared state, with execution defined as traversal through this structure. A node represents a semantically meaningful unit of work, such as invoking a model, calling a tool, validating an intermediate result, or coordinating with another agent. Nodes are deliberately coarse-grained, reflecting conceptual steps in reasoning or action rather than low-level operations.
@@ -48,10 +42,3 @@ From an operational standpoint, graph-based orchestration aligns naturally with 
 
 Although graphs introduce more upfront structure than simple chaining, this structure is what enables scale, robustness, and controlled evolution. As agentic systems grow in complexity, explicit graphs shift orchestration from an emergent property of prompts to a designed and verifiable component of the system.
 
-### References
-
-1. C. A. Petri. *Kommunikation mit Automaten*. PhD thesis, University of Bonn, 1962.
-2. R. Bellman. *Dynamic Programming*. Princeton University Press, 1957.
-3. S. Russell, P. Norvig. *Artificial Intelligence: A Modern Approach*. Pearson, 1995.
-4. Pydantic documentation. *Graphs*. 2024. [https://ai.pydantic.dev/graph/](https://ai.pydantic.dev/graph/)
-5. LangChain. *Introduction to LangGraph*. LangChain Academy, 2023. [https://academy.langchain.com/courses/intro-to-langgraph](https://academy.langchain.com/courses/intro-to-langgraph)

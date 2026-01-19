@@ -1,0 +1,9 @@
+# Hands-On: Introduction
+
+The hands-on sections that follow demonstrate four orchestration patterns that structure how agents execute: sequential workflows, graph-based control flow, delegation, and hand-off. Each exercise builds a working system using PydanticAI that makes the pattern's mechanics visible, showing how control flows between agents, how typed outputs create contracts between stages, and how the choice of orchestration pattern shapes the system's behavior.
+
+Sequential workflows externalize control flow from the agent's reasoning. The first exercise implements a content generation pipeline where an orchestrator sequences three specialist agents: outliner, writer, and editor. Each stage produces typed output that flows into the next, demonstrating how workflows create predictable, auditable execution paths while keeping individual agents focused on narrow responsibilities.
+
+Graph-based orchestration represents execution as an explicit state machine with conditional transitions and cycles. The second exercise builds a document quality review loop where nodes represent work units and edges define possible transitions. Unlike linear workflows, this pattern supports branching and refinement loops with explicit termination conditions, showing how graphs make complex control flow inspectable and verifiable.
+
+The final two exercises explore agent-to-agent coordination through delegation and hand-off. Delegation wraps a specialist agent in a tool, letting a parent agent invoke it while retaining overall control. Hand-off transfers responsibility entirely from one agent to another, as in a triage system that routes requests to specialists. Understanding the distinction between these patterns is essential for designing multi-agent systems with clear ownership boundaries and appropriate control flow.

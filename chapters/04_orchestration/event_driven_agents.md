@@ -2,14 +2,6 @@
 
 Event-driven agents organize their behavior around the reception and handling of events, reacting incrementally to changes in their environment rather than executing a predefined sequence of steps.
 
-### Historical perspective
-
-The foundations of event-driven agents can be traced back to early work in distributed systems and concurrency. In the 1970s, the actor model introduced the idea of autonomous entities that communicate exclusively through asynchronous message passing, eliminating shared state and global control flow. This model already embodied the core intuition behind event-driven agents: computation progresses as a reaction to incoming messages, not as a linear program.
-
-During the 1980s and 1990s, research on reactive systems further refined these ideas. Reactive systems were defined not by producing a single output, but by maintaining ongoing interaction with an external environment. This work influenced state machines, event loops, and later publish–subscribe systems, which became common in large-scale distributed software during the 2000s. Complex event processing and event-driven middleware extended these ideas to environments with high event volumes and loose coupling between producers and consumers.
-
-Modern agentic systems revive and generalize these concepts. Large language model–based agents frequently operate in open-ended, asynchronous environments: user messages arrive unpredictably, tools may take seconds or hours to respond, and other agents may emit signals at any time. Event-driven control flow provides a natural abstraction for these conditions, avoiding the rigidity of synchronous pipelines and enabling agents to remain responsive over long periods.
-
 ### Core idea
 
 In an event-driven agent architecture, execution is initiated by events rather than by a single entry point. An event represents a meaningful occurrence: a user request, a message from another agent, the completion of a long-running task, a timer firing, or a change in external state. The agent listens for such events and reacts by updating its internal state, invoking reasoning or tools, and potentially emitting new events.
@@ -100,10 +92,3 @@ Event-driven agents trade explicit control flow for flexibility. This increases 
 
 Despite these challenges, event-driven agents are increasingly central to real-world agentic systems. They provide a scalable and resilient foundation for long-lived, interactive agents that must operate reliably in asynchronous, distributed environments.
 
-### References
-
-1. Hewitt, C. *Viewing Control Structures as Patterns of Passing Messages*. Artificial Intelligence, 1973.
-2. Harel, D., Pnueli, A. *On the Development of Reactive Systems*. Logics and Models of Concurrent Systems, 1985.
-3. Eugster, P. et al. *The Many Faces of Publish/Subscribe*. ACM Computing Surveys, 2003.
-4. Luckham, D. *The Power of Events: An Introduction to Complex Event Processing*. Addison-Wesley, 2002.
-5. [https://ai.pydantic.dev/](https://ai.pydantic.dev/)

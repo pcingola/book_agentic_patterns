@@ -2,14 +2,6 @@
 
 Agent-to-Agent (A2A) communication is a coordination pattern in which autonomous agents interact through a shared protocol to delegate work, exchange state, and compose system-level behavior.
 
-### Historical perspective
-
-The intellectual roots of A2A go back to early work on distributed artificial intelligence and multi-agent systems in the late 1980s and 1990s. At that time, researchers observed that complex problem solving could not be reduced to a single reasoning entity, but instead emerged from cooperation, negotiation, and coordination between multiple agents. This led to the first explicit agent communication languages, such as KQML, and later to standardized specifications like FIPA-ACL, which formalized the structure and semantics of messages exchanged between agents.
-
-In parallel, research in distributed systems and software architecture shaped how independent components should interact. Message passing, remote procedure calls, and event-driven systems emphasized loose coupling, explicit interfaces, and failure isolation. The actor model reinforced the idea that independent computational entities should communicate only through messages, never by shared mutable state.
-
-Modern LLM-based agents inherit all of these traditions. While the internal reasoning mechanisms have changed dramatically, the architectural pressures remain the same: as soon as systems involve multiple agents with different responsibilities, lifecycles, or ownership boundaries, communication must be explicit, structured, and observable. The A2A Protocol emerges in this context as a contemporary formalization of agent communication, designed for long-running, heterogeneous, and production-grade agentic systems.
-
 ### The A2A pattern
 
 At its core, A2A treats each agent as an independent, network-addressable entity with a well-defined boundary. An agent exposes what it can do, accepts requests from other agents, and produces responses or follow-up messages, all without revealing its internal implementation. Coordination is achieved through message exchange rather than shared control flow or shared memory.
@@ -66,9 +58,3 @@ As agentic systems scale, purely centralized orchestration becomes increasingly 
 
 This section intentionally remains shallow. The goal is to position A2A as a first-class orchestration pattern rather than to exhaustively specify the protocol. Later chapters will examine transports, schemas, security models, and advanced coordination strategies built on top of A2A.
 
-### References
-
-1. Wooldridge, M. *An Introduction to MultiAgent Systems*. Wiley, 2002.
-2. Finin, T. et al. *KQML as an Agent Communication Language*. International Conference on Information and Knowledge Management, 1994.
-3. FIPA. *FIPA ACL Message Structure Specification*. FIPA, 2002.
-4. A2A Protocol Working Group. *A2A Protocol Specification*. 2024. [https://a2a-protocol.org/latest/](https://a2a-protocol.org/latest/)
