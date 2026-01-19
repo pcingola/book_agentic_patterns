@@ -4,11 +4,11 @@
 
 REFACTOR CHAPTERS:
 
-- Remove chapter numbers
-  - chapters.md
-  - chapters: remove the chapters/NN_* from dir names
+- Remove chapter numbers form file/dir names:
+  - Referenced in chapters.md
+  - Chapters: remove the chapters/NN_* from dir names
   - hands-on examples: remove the agentic_patterns/NN_* from dir names
-  - update all refrerences to them
+  - update all refrerences to these files / dirs
 
 - Move ReAct to Core Patterns chapter
 

@@ -1,8 +1,8 @@
-# A2A: Model
+# A2A Protocol
+
+[Introduction](./introduction.md)
 
 [Historical Perspectives](./historical_perspective.md)
-
-[Intro](./introduction.md)
 
 [Tasks](./tasks.md)
 
