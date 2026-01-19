@@ -1,5 +1,7 @@
 # A2A: Model
 
+[Historical Perspectives](./historical_perspective.md)
+
 [Intro](./introduction.md)
 
 [Tasks](./tasks.md)

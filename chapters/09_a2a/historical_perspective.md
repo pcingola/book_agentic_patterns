@@ -1,0 +1,14 @@
+## Historical Perspectives
+
+The idea of agents communicating through standardized messages predates LLM-based systems by decades. In the early 1990s, distributed AI research emphasized interoperability among heterogeneous agents via explicit communication "performatives" rather than bespoke point-to-point integrations. KQML (Knowledge Query and Manipulation Language) is a canonical artifact of this period: a message language and protocol intended to let independent systems query, inform, and coordinate knowledge exchange without requiring shared internals. By the late 1990s, efforts such as FIPA ACL (Foundation for Intelligent Physical Agents - Agent Communication Language) pushed further toward standardizing agent communication semantics and interaction patterns, aiming to make "agent societies" feasible across implementations and organizations.
+
+Many of these early standards were conceptually influential but operationally heavy. They assumed relatively structured symbolic agents operating in research environments, and they predated the ubiquitous web stack that now underlies virtually all networked software. The 2020s reintroduced the need for inter-agent interoperability under fundamentally different constraints. LLM-based agents are often deployed as services behind HTTP endpoints. They must cooperate across vendor and organizational boundaries. They increasingly manage long-running tasks that produce artifacts worth persisting, forwarding, and auditing. Modern web primitives (HTTPS for transport, JSON for serialization, JSON-RPC 2.0 for request framing) make it practical to standardize inter-agent communication without requiring a shared runtime or cognitive architecture.
+
+A2A is best understood as a pragmatic continuation of this decades-long line of work. Rather than attempting to standardize internal reasoning or cognitive semantics, as earlier protocols often did, A2A standardizes the external contract: how agents discover each other, how they initiate and track units of work, how they exchange messages during execution, and how they deliver outputs in a predictable format. This narrower scope makes A2A implementable across diverse agent frameworks while preserving the interoperability vision that motivated KQML and FIPA ACL a generation earlier.
+
+
+## References
+
+1. Tim Finin, Rich Fritzson, Don McKay, Robin McEntire. *KQML - A Language and Protocol for Knowledge and Information Exchange*. AAAI Workshop, 1994. [https://www.aaai.org/Papers/Workshops/1994/WS-94-03/WS94-03-003.pdf](https://www.aaai.org/Papers/Workshops/1994/WS-94-03/WS94-03-003.pdf)
+2. KQML Advisory Group. *An Overview of KQML: A Knowledge Query and Manipulation Language*. Technical report, 1992.
+3. FIPA. *FIPA ACL Message Structure Specification*. FIPA, 2002. [https://www.fipa.org/specs/fipa00061/SC00061G.html](https://www.fipa.org/specs/fipa00061/SC00061G.html)

@@ -2,14 +2,6 @@
 
 A2A (Agent2Agent) is an application-layer protocol that standardizes how autonomous agents discover each other, exchange messages, and coordinate work as tasks over HTTP(S), enabling cross-framework and cross-organization interoperability.
 
-### Historical perspective
-
-The idea of agents communicating through standardized messages predates LLM-based systems by decades. In the early 1990s, distributed AI research emphasized interoperability among heterogeneous agents via explicit communication “performatives” rather than bespoke point-to-point integrations. KQML is a canonical artifact of this period: a message language/protocol intended to let independent systems query, inform, and coordinate knowledge exchange. In the late 1990s, efforts such as FIPA ACL pushed further toward standardizing agent communication semantics and interaction patterns, aiming to make “agent societies” feasible across implementations.
-
-Many of these early standards were conceptually influential but operationally heavy: they assumed relatively structured symbolic agents, and they predated today’s ubiquitous web stack. The 2020s reintroduced the need for inter-agent interoperability under different constraints: LLM agents are often deployed as services, they must cooperate across vendor boundaries, and they increasingly manage long-running tasks and artifacts. Modern web primitives (HTTP(S), JSON serialization) and lightweight RPC framing (JSON-RPC 2.0) make it practical to standardize inter-agent communication without requiring a shared runtime.
-
-A2A is best read as a pragmatic continuation of this line of work: instead of attempting to standardize internal reasoning or cognitive semantics, it standardizes the *external contract* for discovery, task-oriented interaction, and delivery of results.
-
 ### What is A2A
 
 A2A defines how one agent (a “client agent”) communicates with another agent (a “remote agent”) over HTTP(S), using JSON-RPC 2.0 envelopes. The remote agent is intentionally treated as opaque: A2A does not prescribe how the remote agent plans, calls tools, or maintains internal state. What it *does* prescribe is how the client creates and advances work, and how the remote agent reports progress and returns outputs in a predictable, interoperable format.
@@ -86,13 +78,10 @@ The important point is not the method name per se, but the design: JSON-RPC prov
 
 ## References
 
-1. Tim Finin, Rich Fritzson, Don McKay, Robin McEntire. *KQML – A Language and Protocol for Knowledge and Information Exchange*. AAAI Workshop, 1994. [https://www.aaai.org/Papers/Workshops/1994/WS-94-03/WS94-03-003.pdf](https://www.aaai.org/Papers/Workshops/1994/WS-94-03/WS94-03-003.pdf)
-2. KQML Advisory Group. *An Overview of KQML: A Knowledge Query and Manipulation Language*. Technical report, 1992. (Commonly circulated via early KQML/UMBC technical report archives.)
-3. FIPA. *FIPA ACL Message Structure Specification*. FIPA, 2002. [https://www.fipa.org/specs/fipa00061/SC00061G.html](https://www.fipa.org/specs/fipa00061/SC00061G.html)
-4. JSON-RPC Working Group. *JSON-RPC 2.0 Specification*. jsonrpc.org, 2010. [https://www.jsonrpc.org/specification](https://www.jsonrpc.org/specification)
-5. Pydantic. *A2A (Agent2Agent)*. ai.pydantic.dev, (latest). [https://ai.pydantic.dev/a2a/](https://ai.pydantic.dev/a2a/)
-6. A2A Protocol. *What is A2A?* a2a-protocol.org, (latest). [https://a2a-protocol.org/latest/topics/what-is-a2a/](https://a2a-protocol.org/latest/topics/what-is-a2a/)
-7. A2A Protocol. *Key Concepts*. a2a-protocol.org, (latest). [https://a2a-protocol.org/latest/topics/key-concepts/](https://a2a-protocol.org/latest/topics/key-concepts/)
-8. A2A Protocol. *Agent Discovery*. a2a-protocol.org, (latest). [https://a2a-protocol.org/latest/topics/agent-discovery/](https://a2a-protocol.org/latest/topics/agent-discovery/)
-9. A2A Protocol. *A2A and MCP*. a2a-protocol.org, (latest). [https://a2a-protocol.org/latest/topics/a2a-and-mcp/](https://a2a-protocol.org/latest/topics/a2a-and-mcp/)
+1. JSON-RPC Working Group. *JSON-RPC 2.0 Specification*. jsonrpc.org, 2010. [https://www.jsonrpc.org/specification](https://www.jsonrpc.org/specification)
+2. Pydantic. *A2A (Agent2Agent)*. ai.pydantic.dev, (latest). [https://ai.pydantic.dev/a2a/](https://ai.pydantic.dev/a2a/)
+3. A2A Protocol. *What is A2A?* a2a-protocol.org, (latest). [https://a2a-protocol.org/latest/topics/what-is-a2a/](https://a2a-protocol.org/latest/topics/what-is-a2a/)
+4. A2A Protocol. *Key Concepts*. a2a-protocol.org, (latest). [https://a2a-protocol.org/latest/topics/key-concepts/](https://a2a-protocol.org/latest/topics/key-concepts/)
+5. A2A Protocol. *Agent Discovery*. a2a-protocol.org, (latest). [https://a2a-protocol.org/latest/topics/agent-discovery/](https://a2a-protocol.org/latest/topics/agent-discovery/)
+6. A2A Protocol. *A2A and MCP*. a2a-protocol.org, (latest). [https://a2a-protocol.org/latest/topics/a2a-and-mcp/](https://a2a-protocol.org/latest/topics/a2a-and-mcp/)
 
