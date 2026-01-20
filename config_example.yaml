@@ -48,3 +48,42 @@ models:
     api_key: your-openrouter-api-key-here
     api_url: https://openrouter.ai/api/v1
     timeout: 120
+
+embeddings:
+  default:
+    provider: openrouter
+    model_name: openai/text-embedding-3-small
+    api_key: your-openrouter-api-key-here
+    api_url: https://openrouter.ai/api/v1
+    dimensions: 1536
+
+  openai:
+    provider: openai
+    model_name: text-embedding-3-small
+    api_key: your-openai-api-key-here
+    dimensions: 1536
+
+  openai_large:
+    provider: openai
+    model_name: text-embedding-3-large
+    api_key: your-openai-api-key-here
+    dimensions: 3072
+
+  ollama_local:
+    provider: ollama
+    model_name: nomic-embed-text
+    url: http://localhost:11434
+
+  sentence_transformers:
+    provider: sentence_transformers
+    model_name: all-MiniLM-L6-v2
+    device: cpu
+
+vectordb:
+  default:
+    backend: chroma
+    persist_directory: data/db/chroma
+
+  postgres:
+    backend: pgvector
+    connection_string: postgresql://user:password@localhost:5432/vectordb
