@@ -16,6 +16,7 @@ class AzureConfig(BaseModel):
     endpoint: str
     api_version: str
     timeout: int = Field(default=120)
+    parallel_tool_calls: bool | None = Field(default=None)
 
 
 class BedrockConfig(BaseModel):
@@ -29,6 +30,7 @@ class BedrockConfig(BaseModel):
     aws_session_token: str | None = None
     claude_sonnet_1m_tokens: bool = Field(default=False)
     timeout: int = Field(default=120)
+    parallel_tool_calls: bool | None = Field(default=None)
 
 
 class OllamaConfig(BaseModel):
@@ -37,6 +39,7 @@ class OllamaConfig(BaseModel):
     model_name: str
     url: str
     timeout: int = Field(default=120)
+    parallel_tool_calls: bool | None = Field(default=None)
 
 
 class OpenAIConfig(BaseModel):
@@ -45,6 +48,7 @@ class OpenAIConfig(BaseModel):
     model_name: str
     api_key: str
     timeout: int = Field(default=120)
+    parallel_tool_calls: bool | None = Field(default=None)
 
 
 class OpenRouterConfig(BaseModel):
@@ -54,6 +58,7 @@ class OpenRouterConfig(BaseModel):
     api_key: str
     api_url: str = Field(default="https://openrouter.ai/api/v1")
     timeout: int = Field(default=120)
+    parallel_tool_calls: bool | None = Field(default=None)
 
 
 AgentConfig = AzureConfig | BedrockConfig | OllamaConfig | OpenAIConfig | OpenRouterConfig

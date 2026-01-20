@@ -50,7 +50,10 @@ def get_agent(
         model = _get_model_from_config(config, http_client=http_client)
 
     if model_settings is None:
-        model_settings = ModelSettings(timeout=config.timeout, parallel_tool_calls=True)
+        settings_kwargs = {'timeout': config.timeout}
+        if config.parallel_tool_calls is not None:
+            settings_kwargs['parallel_tool_calls'] = config.parallel_tool_calls
+        model_settings = ModelSettings(**settings_kwargs)
 
     agent = Agent(
         model=model,
