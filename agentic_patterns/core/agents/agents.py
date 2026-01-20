@@ -27,6 +27,7 @@ def get_agent(
     config_path: Path | str | None = None,
     model_settings=None,
     http_client=None,
+    history_compactor=None,
     **kwargs
 ) -> Agent:
     """
@@ -38,8 +39,9 @@ def get_agent(
         config_path: Path to config.yaml file. If None, uses MAIN_PROJECT_DIR/config.yaml.
         model_settings: Model settings. If None, uses timeout from config.
         http_client: HTTP client for API calls.
+        history_compactor: Optional HistoryCompactor instance for automatic history compaction.
         **kwargs: Additional arguments passed to Agent (instructions, system_prompt, tools, toolsets,
-                  output_type, deps_type, retries, etc.).
+                  output_type, deps_type, retries, history_processor, etc.).
 
     Returns:
         Configured Agent instance.
@@ -54,6 +56,10 @@ def get_agent(
         if config.parallel_tool_calls is not None:
             settings_kwargs['parallel_tool_calls'] = config.parallel_tool_calls
         model_settings = ModelSettings(**settings_kwargs)
+
+    # If history_compactor provided and no history_processor in kwargs, create one
+    if history_compactor is not None and 'history_processor' not in kwargs:
+        kwargs['history_processor'] = history_compactor.create_history_processor()
 
     agent = Agent(
         model=model,

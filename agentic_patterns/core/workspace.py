@@ -116,3 +116,29 @@ def write_to_workspace(sandbox_path: str, content: str | bytes, ctx: Any = None)
 async def write_to_workspace_async(sandbox_path: str, content: str | bytes, ctx: Any = None) -> str:
     """Async write content to workspace, returns sandbox path."""
     return await asyncio.to_thread(write_to_workspace, sandbox_path, content, ctx)
+
+
+def store_result(content: str | bytes, content_type: str, ctx: Any = None) -> str:
+    """Store content in workspace and return sandbox path.
+
+    Args:
+        content: Content to store (string or bytes)
+        content_type: Type hint for file extension (e.g., "json", "csv", "txt")
+        ctx: Request context for user/session isolation
+
+    Returns:
+        Sandbox path where content was stored (e.g., /workspace/results/result_abc123.json)
+    """
+    from uuid import uuid4
+
+    extensions = {"json": ".json", "csv": ".csv", "txt": ".txt", "md": ".md", "xml": ".xml", "yaml": ".yaml"}
+    ext = extensions.get(content_type.lower(), ".txt")
+    filename = f"result_{uuid4().hex[:8]}{ext}"
+    path = f"/workspace/results/{filename}"
+    write_to_workspace(path, content, ctx)
+    return path
+
+
+async def store_result_async(content: str | bytes, content_type: str, ctx: Any = None) -> str:
+    """Async store content in workspace and return sandbox path."""
+    return await asyncio.to_thread(store_result, content, content_type, ctx)

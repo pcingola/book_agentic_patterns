@@ -126,18 +126,18 @@ Structuring agent execution at a higher level.
 
 These are all about how agents manage information over time.
 
-- [ ] Prompts: System, prompt, instructions
-- [ ] Prompt engineering
-- [ ] Conversation history
-- [ ] Short-term vs long-term memory
-- [ ] Memory and state management
-  - [ ] Storing conversations into database
+- [ ] Prompts
+  - [ ] System, prompt, instructions
+  - [ ] Conversation history
+  - [ ] Short-term vs long-term memory
+  - [ ] Memory and state management: Storing conversations into database
 - [ ] Context engineering / Context window engineering
+  - [ ] Prompt engineering
   - [ ] DEFINITION: "The dumb zone": When the context goes over ~ 40%
   - [ ] Context compression
-- [ ] Token budgeting
-- [ ] Write-back patterns
-- [ ] Knowledge bases and consistency (Batch conversion of memory to knowledge)
+  - [ ] Token budgeting
+  - [ ] Write-back patterns
+- [ ] Knowledge bases and consistency (Batch conversion of memory to knowledge, RAG)
 
 ### Chapter: Testing, Debugging, Evals, and Benchmarks
 
@@ -149,6 +149,11 @@ These are all about how agents manage information over time.
 - [ ] Online evals and A/B testing
 - [ ] Regression testing across model and prompt versions
 - [ ] Eval creators (Agent that creates evals)
+- [ ] Debugging:
+  - [ ] Prompt doctor
+  - [ ] Tool doctor
+  - [ ] MCP doctor
+  - [ ] A2A doctor
 
 ## Section 2: Modularization & Composition
 All about building larger systems from smaller pieces.
