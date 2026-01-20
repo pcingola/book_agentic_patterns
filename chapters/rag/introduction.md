@@ -7,11 +7,15 @@ At a high level, a RAG system treats external data as a first-class component of
 
 This separation introduces a clear information workflow with two main phases: **document ingestion** and **document retrieval**, followed by **generation**.
 
-![Image](img/rag_overview.jpg)
+![RAG system overview showing retrieval and generation components](img/rag_overview.jpg)
 
-![Image](img/rag_workflow.png)
+The workflow below illustrates the two main phases: document ingestion (offline) and retrieval-augmented generation (online).
 
-![Image](img/semantic_search.png)
+![Document ingestion and retrieval workflow](img/rag_workflow.png)
+
+Semantic search enables retrieval based on meaning rather than exact keyword matches. Queries and documents are embedded into a shared vector space where proximity indicates relevance.
+
+![Semantic search in embedding space](img/semantic_search.png)
 
 ### Information workflow in RAG systems
 

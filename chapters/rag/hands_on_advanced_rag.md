@@ -123,17 +123,22 @@ reformulated_queries = agent_run.result.output
 
 For a query like "Who is a man with two heads?", the LLM might generate variations like "character with multiple heads", "person with two heads description", and "dual-headed individual". Each reformulation captures a different lexical angle on the same semantic intent. Querying with all variations increases recall because documents matching any phrasing will be retrieved.
 
-### Multi-Query Retrieval
+### Multi-Query Retrieval with Metadata Filtering
 
-Each reformulated query runs against the vector database:
+Each reformulated query runs against the vector database with a metadata filter applied at query time:
 
 ```python
+book_name = 'hhgttg'
+metadata_filter = {'source': book_name}
+
 documents_with_scores = []
-for query in reformulated_queries:
-    documents_with_scores.extend(vdb_query(vdb, query=query))
+for q in reformulated_queries:
+    documents_with_scores.extend(vdb_query(vdb, query=q, filter=metadata_filter))
 ```
 
-This produces a combined result set that includes matches from all query variations. The same document might appear multiple times if it matches several reformulations. This duplication is expected and handled in the next stage.
+The `filter` parameter restricts results at the database level, which is more efficient than filtering after retrieval. This filter restricts results to a specific book. In production systems, metadata filtering handles access control (only documents the user is authorized to see), temporal constraints (only documents from a certain time period), or domain restrictions (only documents from a particular category).
+
+The same document might appear multiple times if it matches several reformulations. This duplication is handled in the next stage.
 
 ### Deduplication
 
@@ -141,41 +146,27 @@ The combined results need deduplication to remove repeated documents:
 
 ```python
 seen_ids = set()
-documents_with_scores_filtered = []
+documents_deduplicated = []
 for doc, meta, score in documents_with_scores:
     doc_id = f"{meta['source']}-{meta['chunk']}"
     if doc_id in seen_ids:
         continue
-    documents_with_scores_filtered.append((doc, meta, score, doc_id))
+    documents_deduplicated.append((doc, meta, score, doc_id))
     seen_ids.add(doc_id)
 ```
 
-The document ID constructed from source and chunk number provides a unique key. Documents that appear in multiple query results are kept only once. A more sophisticated approach might keep the highest-scoring occurrence, but simple deduplication already reduces noise significantly.
+The document ID constructed from source and chunk number provides a unique key. Documents that appear in multiple query results are kept only once.
 
-### Metadata Filtering
+### Sorting and Limiting
 
-Metadata captured during ingestion enables precise filtering:
-
-```python
-book_name = 'hhgttg'
-documents_with_scores_filtered_meta = []
-for doc, meta, score, doc_id in documents_with_scores_filtered:
-    if book_name in meta['source']:
-        documents_with_scores_filtered_meta.append((doc, meta, score, doc_id))
-```
-
-This filter restricts results to a specific book. In production systems, metadata filtering handles access control (only documents the user is authorized to see), temporal constraints (only documents from a certain time period), or domain restrictions (only documents from a particular category). Filtering can happen before or after vector search; post-search filtering as shown here is simpler but may discard many results if the filter is selective.
-
-### Re-Ranking
-
-The initial similarity scores from the vector database are approximations based on embedding geometry. Re-ranking refines these scores:
+The results are sorted by similarity score and limited to a manageable number:
 
 ```python
-documents_with_scores_reranked = sorted(documents_with_scores_filtered_meta, key=lambda x: x[2], reverse=True)
+documents_sorted = sorted(documents_deduplicated, key=lambda x: x[2], reverse=True)
 
 max_results = 10
-if len(documents_with_scores_reranked) > max_results:
-    documents_with_scores_reranked = documents_with_scores_reranked[:max_results]
+if len(documents_sorted) > max_results:
+    documents_sorted = documents_sorted[:max_results]
 ```
 
 This example uses a simple score-based sort. Production systems often use cross-encoder models that jointly encode the query and document to produce more accurate relevance scores. The computational cost of cross-encoders makes them impractical for the initial search over thousands of documents, but they work well for re-ranking a small candidate set.
@@ -184,11 +175,11 @@ The `max_results` limit caps how many documents enter the final prompt. More doc
 
 ### Building the Final Prompt
 
-The filtered, deduplicated, re-ranked documents become context for the LLM:
+The filtered, deduplicated, sorted documents become context for the LLM:
 
 ```python
 docs_str = ''
-for doc, meta, score, doc_id in documents_with_scores_reranked:
+for doc, meta, score, doc_id in documents_sorted:
     docs_str += f"Similarity Score: {score:.3f}\nDocument ID: {doc_id}\nDocument:\n{doc}\n\n"
 
 prompt = f"""

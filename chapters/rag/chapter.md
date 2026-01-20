@@ -1,8 +1,8 @@
 # RAG (Retrieval-Augmented Generation)
 
-[Historical Perspective](./historical_perspective.md)
-
 [Introduction](./introduction.md)
+
+[Historical Perspective](./historical_perspective.md)
 
 [Embeddings](./embeddings.md)
 
