@@ -1,5 +1,7 @@
 # RAG (Retrieval-Augmented Generation)
 
+[Historical Perspective](./historical_perspective.md)
+
 [Introduction](./introduction.md)
 
 [Embeddings](./embeddings.md)
@@ -19,3 +21,5 @@
 [Simple Document Ingestion and Retrieval](./hands_on_simple_rag.md)
 
 [Advanced Document Ingestion and Retrieval](./hands_on_advanced_rag.md)
+
+[References](./references.md)

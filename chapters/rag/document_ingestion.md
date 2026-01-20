@@ -2,14 +2,6 @@
 
 Document ingestion is the process that transforms raw, heterogeneous source material into a structured, searchable representation suitable for retrieval-augmented generation.
 
-### Historical perspective
-
-The roots of document ingestion predate modern RAG systems by several decades. Early information retrieval systems in the 1960s and 1970s, such as vector space models and probabilistic retrieval, already required a preprocessing pipeline that normalized documents, removed noise, and represented text in a machine-processable form. Tokenization, stop-word removal, and stemming emerged in this era as practical responses to limited storage and computation.
-
-In the 1990s and early 2000s, large-scale search engines pushed ingestion pipelines further. Web crawling, HTML parsing, boilerplate removal, and inverted index construction became standard. Research on passage retrieval and question answering in the late 1990s introduced the idea that documents should not always be treated as indivisible units, but rather decomposed into smaller spans to improve recall and precision.
-
-The modern RAG ingestion pipeline crystallized after the widespread adoption of neural embeddings around 2018–2020. Dense vector representations made it possible to retrieve semantically similar content, but also introduced new constraints: embedding models have context length limits, and retrieval quality degrades when vectors represent overly long or heterogeneous text. As a result, document chunking became a first-class design concern, tightly coupled with ingestion rather than an afterthought.
-
 ### The document ingestion pipeline
 
 At a conceptual level, document ingestion is a deterministic transformation pipeline. Its purpose is not to answer queries, but to prepare a stable corpus over which retrieval can operate efficiently and reproducibly.
@@ -167,11 +159,3 @@ LLM-based chunking has clear advantages, but it also introduces new trade-offs. 
 For these reasons, LLM-based chunking is often used selectively. Common patterns include applying it only to long or poorly structured documents, combining it with structure-aware pre-segmentation, or using it to refine coarse chunks produced by heuristic methods. In all cases, it should be treated as a configurable ingestion strategy rather than a default replacement for simpler approaches.
 
 From a systems perspective, LLM-based chunking reinforces a broader theme in modern RAG pipelines: ingestion is no longer a purely mechanical preprocessing step, but an opportunity to inject semantic understanding early in the lifecycle of the data.
-
-### References
-
-1. Salton, G., Wong, A., Yang, C. S. *A Vector Space Model for Automatic Indexing*. Communications of the ACM, 1975.
-2. Voorhees, E. M., Tice, D. M. *The TREC-8 Question Answering Track Evaluation*. TREC, 1999.
-3. Karpukhin, V. et al. *Dense Passage Retrieval for Open-Domain Question Answering*. EMNLP, 2020.
-4. Lewis, P. et al. *Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks*. NeurIPS, 2020.
-5. Izacard, G., Grave, E. *Leveraging Passage Retrieval with Generative Models for Open Domain Question Answering*. EACL, 2021.

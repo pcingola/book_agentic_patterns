@@ -22,52 +22,84 @@ BEST PRACTICE: This is a label for best practices, it should be shown in a highl
 
 ### Chapter: [Foundations](chapters/foundations/chapter.md)
 
-- [x] Book outline
-- [x] What is an Agent / Agentic System
-- [x] Determinism vs stochasticity
-- [x] Modularity: prompts, tools, MCP, A2A, Skills, sub-agents, workflows, graphs, etc.
+- [x] Outline
+- [x] Historical Perspectives
+- [x] Agent
+- [x] Stochasticity
+- [x] Agentic modularity
 - [x] Best practices
 - [x] Hands-on: Python Recap
 - [x] Hands-on: Understanding the OpenAI API
 - [x] Hands-on: Building Your First Agent
 - [x] Hands-on: Running Agents
+- [x] Hands-on: System Prompt vs User Prompt
+- [x] Hands-on: Multi-Turn Conversations
+- [x] References
 
 ### Chapter: [Core Patterns](chapters/core_patterns/chapter.md)
 
 These are foundational reasoning patterns
 
 - [x] Introduction
+- [x] Historical Perspectives
 - [x] Zero-shot & Few-shot
-- [x] Self reflection
 - [x] Chain-of-Thought (CoT)
 - [x] Tree of Thought (ToT)
 - [x] ReAct
 - [x] CodeAct
-- [x] Planning and decomposition
+- [x] Self reflection
 - [x] Verification / critique
+- [x] Planning and decomposition
 - [x] Human in the loop
+- [x] Hands-on: Intro
+- [x] Hands-on: Zero-shot & Few-shot
+- [x] Hands-on: Chain-of-Thought
+- [x] Hands-on: Tree of Thought
+- [x] Hands-on: ReAct
+- [x] Hands-on: CodeAct
+- [x] Hands-on: Self reflection
+- [x] Hands-on: Verification / Critique
+- [x] Hands-on: Planning and Decomposition
+- [x] Hands-on: Human in the Loop
+- [x] References
 
 ### Chapter: [Tools](chapters/tools/chapter.md)
 
 "Tool Use" is the fundamental pattern
 
+- [x] Historical Perspectives
 - [x] Tool Use
+- [x] Structured output
 - [x] Tool discovery and selection
 - [x] Tool contracts and schemas
-- [x] "The workspace"
+- [x] Tool permissions
+- [x] The workspace
 - [x] Advanced topics
-- [x] Tool permissions (read vs write)
 - [x] MCP: Introduction
+- [x] Hands-on: Introduction
+- [x] Hands-on: Tool Use
+- [x] Hands-on: Structured Outputs
+- [x] Hands-on: Tool Discovery and Selection
+- [x] Hands-on: Tool Permissions
+- [x] Hands-on: The Workspace
+- [x] References
 
 ### Chapter: [Orchestration & Control Flow](chapters/orchestration/chapter.md)
 
 Structuring agent execution at a higher level.
 
+- [x] Historical Perspective
 - [x] Workflows
 - [x] Graphs
 - [x] A2A: Introduction
 - [x] Long-running tasks and async execution
 - [x] Event-driven agents
+- [x] Hands-on: Introduction
+- [x] Hands-on: Sequential Workflows
+- [x] Hands-on: Graph-Based Orchestration
+- [x] Hands-on: Agent Delegation
+- [x] Hands-on: Agent Hand-Off
+- [x] References
 
 ### Chapter: [RAG](chapters/rag/chapter.md)
 
@@ -96,14 +128,14 @@ These are all about how agents manage information over time.
 
 - [ ] Prompts: System, prompt, instructions
 - [ ] Prompt engineering
-- [ ] Context engineering / Context window engineering
-  - [ ] DEFINITION: "The dumb zone"
-  - [ ] Context compression
-- [ ] Token budgeting
 - [ ] Conversation history
 - [ ] Short-term vs long-term memory
 - [ ] Memory and state management
   - [ ] Storing conversations into database
+- [ ] Context engineering / Context window engineering
+  - [ ] DEFINITION: "The dumb zone": When the context goes over ~ 40%
+  - [ ] Context compression
+- [ ] Token budgeting
 - [ ] Write-back patterns
 - [ ] Knowledge bases and consistency (Batch conversion of memory to knowledge)
 
@@ -123,18 +155,28 @@ All about building larger systems from smaller pieces.
 
 ### Chapter: [MCP](chapters/mcp/chapter.md)
 
+- [x] Historical Perspective
 - [x] Intro
 - [x] Tools
 - [x] Features
-- [x] Achitecture
-- [x] Code snuppets
+- [x] Architecture
+- [x] Hands-on: Introduction
+- [x] Hands-on: MCP STDIO Transport
+- [x] Hands-on: MCP Tools with Agents
+- [x] Hands-on: MCP Features
+- [x] References
 
 ### Chapter: [A2A](chapters/a2a/chapter.md)
 
-- [x] Intro
-- [x] Tassk: 
-- [x] A2A in Detail
+- [x] Introduction
+- [x] Historical Perspectives
+- [x] Tasks
+- [x] Details
 - [x] Security
+- [x] Hands-on: Introduction
+- [x] Hands-on: A2A Client-Server
+- [x] Hands-on: A2A Coordinator Agent
+- [x] References
 
 ### Chapter: [Skills](chapters/skills/chapter.md)
 
