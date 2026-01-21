@@ -7,3 +7,5 @@ This chapter covers the production infrastructure for running agent-generated co
 [REPL](./repl.md)
 
 [Autonomous vs Supervised Execution](./autonomous_vs_supervised.md)
+
+[Approval, Rollback, and Reversibility](./approval_rollback_reversibility.md)
