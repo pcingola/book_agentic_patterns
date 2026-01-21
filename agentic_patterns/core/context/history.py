@@ -3,6 +3,27 @@
 Provides functionality to automatically detect when the conversation history approaches
 the context window limit and compact/summarize older messages to allow the conversation
 to continue.
+
+Tool Call/Return Pairing Constraint:
+    When trimming message history, tool calls (ToolCallPart) and their corresponding
+    returns (ToolReturnPart) must remain paired. The OpenAI API returns an error if
+    a tool return message appears without its preceding tool call:
+    "Invalid parameter: messages with role 'tool' must be a response to a preceding
+    message with 'tool_calls'."
+
+    This implementation handles this by finding a "safe boundary" for compaction.
+    If the last message contains a ToolReturnPart, the preceding message with the
+    ToolCallPart is also preserved. If no safe boundary can be found, compaction
+    is skipped entirely (allowing the context to temporarily exceed the limit) and
+    will be retried on the next turn.
+
+References:
+    - PydanticAI message history: https://ai.pydantic.dev/message-history/
+    - Tool call pairing issue: https://github.com/pydantic/pydantic-ai/issues/2050
+
+PydanticAI Message Structure:
+    - ModelRequest: Contains UserPromptPart, SystemPromptPart, ToolReturnPart, RetryPromptPart
+    - ModelResponse: Contains TextPart, ToolCallPart, ThinkingPart
 """
 
 import json
@@ -20,6 +41,7 @@ from pydantic_ai.messages import (
     FilePart,
     ModelMessage,
     ModelRequest,
+    ModelResponse,
     RetryPromptPart,
     SystemPromptPart,
     TextPart,
@@ -81,7 +103,19 @@ class HistoryCompactor:
     """Manages conversation history compaction for pydantic-ai agents.
 
     Provides automatic detection of context window limits and compaction
-    of older messages through summarization using the same model as the agent.
+    of older messages through summarization. When token count exceeds max_tokens,
+    older messages are summarized into a single message while preserving recent
+    context.
+
+    Key behavior for tool call/return pairing:
+        When the last message contains ToolReturnPart, the corresponding ToolCallPart
+        message is also preserved to avoid API errors. If no safe compaction boundary
+        can be found, compaction is deferred to the next turn.
+
+    Usage:
+        compactor = HistoryCompactor(config=CompactionConfig(max_tokens=100000))
+        processor = compactor.create_history_processor()
+        agent = Agent(model=model, history_processors=[processor])
     """
 
     _tokenizer = tiktoken.get_encoding("cl100k_base")
@@ -116,16 +150,62 @@ class HistoryCompactor:
         self.model = model
         self.on_compaction = on_compaction
         self._summarizer_max_tokens = load_context_config().summarizer_max_tokens
-        self._last_processed_messages: list[ModelMessage] = []
 
         logger.info("Created compactor with config: %s", self.config)
 
-    def get_history_for_next_turn(self, new_messages: list[ModelMessage]) -> list[ModelMessage]:
-        """Combine last processed history with new messages for the next turn."""
-        return list(self._last_processed_messages) + list(new_messages)
-
     def _count_text_tokens(self, text: str) -> int:
         return len(self._tokenizer.encode(text))
+
+    def _has_tool_return_part(self, message: ModelMessage) -> bool:
+        """Check if a message contains a ToolReturnPart."""
+        return any(isinstance(part, (ToolReturnPart, BuiltinToolReturnPart)) for part in message.parts)
+
+    def _has_tool_call_part(self, message: ModelMessage) -> bool:
+        """Check if a message contains a ToolCallPart."""
+        return any(isinstance(part, (ToolCallPart, BuiltinToolCallPart)) for part in message.parts)
+
+    def _find_safe_compaction_boundary(self, messages: list[ModelMessage]) -> int:
+        """Find the index where we can safely split messages for compaction.
+
+        Tool calls and returns must remain paired per the OpenAI API constraint.
+        This method finds a safe split point that won't orphan tool returns.
+
+        The typical message pattern for tool usage is:
+            [0] ModelResponse with ToolCallPart(s)  <- Assistant calls tool(s)
+            [1] ModelRequest with ToolReturnPart(s) <- Tool execution results
+
+        If we're about to compact and the last message has ToolReturnPart, we must
+        also keep the preceding ToolCallPart message to maintain the pairing.
+
+        Args:
+            messages: List of messages to find boundary in.
+
+        Returns:
+            Index of the first message to KEEP (messages[:index] will be summarized).
+            Returns -1 if no safe boundary exists (nothing to summarize).
+        """
+        if len(messages) <= 1:
+            return -1
+
+        # Start from the last message and work backwards to find a safe boundary
+        # We want to keep at least the last message (typically the current user prompt)
+        keep_from = len(messages) - 1
+
+        # If the last message has ToolReturnPart, we must also keep the message
+        # with the corresponding ToolCallPart (typically the one right before it)
+        if self._has_tool_return_part(messages[keep_from]):
+            # Check if there's a preceding message with ToolCallPart
+            if keep_from > 0 and self._has_tool_call_part(messages[keep_from - 1]):
+                keep_from -= 1
+            else:
+                # Can't find the tool call, skip compaction to be safe
+                return -1
+
+        # Ensure we have at least one message to summarize
+        if keep_from <= 0:
+            return -1
+
+        return keep_from
 
     def _serialize_part_for_tokens(self, part) -> str:
         """Serialize a message part for accurate token counting."""
@@ -142,29 +222,30 @@ class HistoryCompactor:
         """Extract readable text from a message part for summarization."""
         result = None
 
-        if isinstance(part, (TextPart, UserPromptPart, SystemPromptPart, ThinkingPart)):
-            content = part.content
-            if isinstance(content, str):
-                result = content
-            elif isinstance(content, Sequence):
-                result = " ".join(str(item) for item in content if isinstance(item, str))
-        elif isinstance(part, (ToolCallPart, BuiltinToolCallPart)):
-            result = f"[Tool call: {part.tool_name}({part.args})]"
-        elif isinstance(part, (ToolReturnPart, BuiltinToolReturnPart)):
-            content = part.content
-            content_str = content if isinstance(content, str) else str(content)
-            if len(content_str) > TOOL_RESULT_PREVIEW_LENGTH:
-                result = f"[Tool result ({part.tool_name}): {content_str[:TOOL_RESULT_PREVIEW_LENGTH]}...]"
-            else:
-                result = f"[Tool result ({part.tool_name}): {content_str}]"
-        elif isinstance(part, RetryPromptPart):
-            content = part.content
-            content_str = content if isinstance(content, str) else str(content)
-            result = f"[Retry ({part.tool_name}): {content_str}]"
-        elif isinstance(part, FilePart):
-            file_id = part.id or "unknown"
-            file_size = len(part.content) if part.content else 0
-            result = f"[File ({file_id}): {file_size} bytes]"
+        match part:
+            case TextPart() | UserPromptPart() | SystemPromptPart() | ThinkingPart():
+                content = part.content
+                if isinstance(content, str):
+                    result = content
+                elif isinstance(content, Sequence):
+                    result = " ".join(str(item) for item in content if isinstance(item, str))
+            case ToolCallPart() | BuiltinToolCallPart():
+                result = f"[Tool call: {part.tool_name}({part.args})]"
+            case ToolReturnPart() | BuiltinToolReturnPart():
+                content = part.content
+                content_str = content if isinstance(content, str) else str(content)
+                if len(content_str) > TOOL_RESULT_PREVIEW_LENGTH:
+                    result = f"[Tool result ({part.tool_name}): {content_str[:TOOL_RESULT_PREVIEW_LENGTH]}...]"
+                else:
+                    result = f"[Tool result ({part.tool_name}): {content_str}]"
+            case RetryPromptPart():
+                content = part.content
+                content_str = content if isinstance(content, str) else str(content)
+                result = f"[Retry ({part.tool_name}): {content_str}]"
+            case FilePart():
+                file_id = part.id or "unknown"
+                file_size = len(part.content) if part.content else 0
+                result = f"[File ({file_id}): {file_size} bytes]"
 
         return result if result is not None else str(part)
 
@@ -190,15 +271,29 @@ class HistoryCompactor:
         return token_count > self.config.max_tokens
 
     async def compact(self, messages: list[ModelMessage]) -> list[ModelMessage]:
-        """Compact the message history by summarizing all messages."""
+        """Compact the message history by summarizing older messages.
+
+        Preserves recent messages and summarizes older ones into a single summary message.
+        Respects tool call/return pairing constraints to avoid API errors.
+
+        Compaction scenarios:
+            1. Normal case (last message is user prompt):
+               [old messages...] + [user prompt] -> [summary] + [user prompt]
+
+            2. Tool return case (last message has ToolReturnPart):
+               [old messages...] + [tool call] + [tool return] -> [summary] + [tool call] + [tool return]
+
+            3. No safe boundary (e.g., only tool call/return pair):
+               Returns messages unchanged, compaction deferred to next turn.
+
+        Args:
+            messages: List of messages to potentially compact.
+
+        Returns:
+            Compacted message list, or original if no compaction needed/possible.
+        """
         token_count = self.count_tokens(messages)
         total_messages = len(messages)
-
-        # Debug: show what history_processor receives
-        print(f"  [COMPACTOR RECEIVED] {total_messages} messages, {token_count} tokens:")
-        for i, msg in enumerate(messages):
-            parts = [type(p).__name__ for p in msg.parts]
-            print(f"    [{i}] {type(msg).__name__}: {parts}")
 
         logger.info(
             "Checking: %d messages, %d tokens (max=%d, target=%d)",
@@ -206,35 +301,33 @@ class HistoryCompactor:
         )
 
         if not self.needs_compaction(messages, current_tokens=token_count):
-            print(f"  [COMPACTOR] No compaction needed, returning unchanged")
-            # Store prior history only (exclude current request); new_messages() will include it
-            self._last_processed_messages = list(messages[:-1])
+            logger.debug("No compaction needed")
+            return messages
+
+        # Find safe compaction boundary (respecting tool call/return pairing)
+        keep_from = self._find_safe_compaction_boundary(messages)
+        if keep_from < 0:
+            logger.warning(
+                "Skipping compaction: cannot find safe boundary for tool call/return pairing. "
+                "Will compact on next turn when tool call/return pair can be included together."
+            )
             return messages
 
         logger.info("Starting compaction: %d messages, %d tokens", total_messages, token_count)
 
-        # Summarize all but the last message, preserve the last one (current user prompt)
-        messages_to_summarize = messages[:-1]
-        last_message = messages[-1:]
+        messages_to_summarize = messages[:keep_from]
+        messages_to_keep = messages[keep_from:]
 
         summary = await self._summarize_messages(messages_to_summarize)
         summary_content = SUMMARY_WRAPPED.format(summary=summary)
         summary_message = ModelRequest(parts=[UserPromptPart(content=summary_content)])
-        messages_after_summary = [summary_message] + list(last_message)
+        messages_after_summary = [summary_message] + list(messages_to_keep)
         token_count_after_summary = self.count_tokens(messages_after_summary)
+
         logger.info(
             "Compaction complete: %d -> %d messages, %d -> %d tokens",
             total_messages, len(messages_after_summary), token_count, token_count_after_summary
         )
-
-        # Store summary for next turn; new_messages() will provide current turn
-        self._last_processed_messages = [summary_message]
-
-        # Debug: show what we return
-        print(f"  [COMPACTOR RETURNS] {len(messages_after_summary)} messages, {token_count_after_summary} tokens:")
-        for i, msg in enumerate(messages_after_summary):
-            parts = [type(p).__name__ for p in msg.parts]
-            print(f"    [{i}] {type(msg).__name__}: {parts}")
 
         if self.on_compaction:
             result = CompactionResult(
