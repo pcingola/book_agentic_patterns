@@ -77,6 +77,73 @@ class TestContextDecorators(unittest.TestCase):
         result = _truncate_by_type(content, FileType.TEXT, config)
         self.assertEqual(result, content)
 
+    def test_truncate_json_array_preserves_structure(self):
+        """Test that JSON array truncation preserves valid JSON structure."""
+        import json
+        data = [{"id": i, "name": f"item{i}"} for i in range(50)]
+        content = json.dumps(data)
+        config = TruncationConfig(json_array_head=3, json_array_tail=2)
+        result = _truncate_by_type(content, FileType.JSON, config)
+        parsed = json.loads(result)
+        self.assertIsInstance(parsed, list)
+        self.assertEqual(parsed[0]["id"], 0)
+        self.assertEqual(parsed[2]["id"], 2)
+        self.assertIn("omitted", parsed[3])
+        self.assertEqual(parsed[-1]["id"], 49)
+
+    def test_truncate_json_object_limits_keys(self):
+        """Test that JSON object truncation limits number of keys."""
+        import json
+        data = {f"key{i}": f"value{i}" for i in range(50)}
+        content = json.dumps(data)
+        config = TruncationConfig(json_max_keys=5)
+        result = _truncate_by_type(content, FileType.JSON, config)
+        parsed = json.loads(result)
+        self.assertIsInstance(parsed, dict)
+        self.assertEqual(len(parsed), 6)  # 5 keys + 1 omitted indicator
+        self.assertIn("key0", parsed)
+        self.assertTrue(any("omitted" in k for k in parsed.keys()))
+
+    def test_truncate_json_nested_structure(self):
+        """Test that nested JSON structures are truncated recursively."""
+        import json
+        data = {"items": [{"id": i, "tags": list(range(20))} for i in range(30)]}
+        content = json.dumps(data)
+        config = TruncationConfig(json_array_head=2, json_array_tail=1)
+        result = _truncate_by_type(content, FileType.JSON, config)
+        parsed = json.loads(result)
+        self.assertEqual(len(parsed["items"]), 4)  # 2 head + 1 omitted + 1 tail
+        self.assertEqual(len(parsed["items"][0]["tags"]), 4)  # nested array also truncated
+
+    def test_truncate_json_small_array_unchanged(self):
+        """Test that small JSON arrays are not truncated."""
+        import json
+        data = [1, 2, 3]
+        content = json.dumps(data)
+        config = TruncationConfig(json_array_head=10, json_array_tail=5)
+        result = _truncate_by_type(content, FileType.JSON, config)
+        parsed = json.loads(result)
+        self.assertEqual(parsed, [1, 2, 3])
+
+    def test_truncate_json_invalid_falls_back_to_char_truncation(self):
+        """Test that invalid JSON falls back to character-based truncation."""
+        content = "{invalid json" + "x" * 5000
+        config = TruncationConfig(max_preview_tokens=100)
+        result = _truncate_by_type(content, FileType.JSON, config)
+        self.assertTrue(result.endswith("..."))
+        self.assertLess(len(result), len(content))
+
+    def test_truncate_json_deep_nesting_limited(self):
+        """Test that deeply nested JSON stops at depth limit."""
+        import json
+        data = {"a": {"b": {"c": {"d": {"e": {"f": {"g": "deep"}}}}}}}
+        content = json.dumps(data)
+        config = TruncationConfig()
+        result = _truncate_by_type(content, FileType.JSON, config)
+        parsed = json.loads(result)
+        # Should reach depth limit and return "..." for deepest levels
+        self.assertEqual(parsed["a"]["b"]["c"]["d"]["e"]["f"], "...")
+
 
 if __name__ == "__main__":
     unittest.main()

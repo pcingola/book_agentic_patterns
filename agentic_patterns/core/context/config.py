@@ -19,6 +19,9 @@ class TruncationConfig(BaseModel):
     rows_tail: int = 10
     lines_head: int = 50
     lines_tail: int = 20
+    json_array_head: int = 10
+    json_array_tail: int = 5
+    json_max_keys: int = 20
 
 
 class ContextConfig(BaseModel):

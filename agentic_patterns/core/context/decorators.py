@@ -5,6 +5,7 @@ When result exceeds threshold, saves full content to workspace and returns trunc
 """
 
 import asyncio
+import json
 import re
 from functools import wraps
 from typing import Any
@@ -53,8 +54,47 @@ def _get_extension_for_type(content_type: FileType) -> str:
     return extensions.get(content_type, ".txt")
 
 
+def _truncate_json_value(value: Any, config: TruncationConfig, depth: int = 0) -> Any:
+    """Recursively truncate JSON values at structural boundaries."""
+    if depth > 5:
+        return "..."
+
+    if isinstance(value, list):
+        if len(value) <= config.json_array_head + config.json_array_tail:
+            return [_truncate_json_value(item, config, depth + 1) for item in value]
+        head = [_truncate_json_value(item, config, depth + 1) for item in value[:config.json_array_head]]
+        tail = [_truncate_json_value(item, config, depth + 1) for item in value[-config.json_array_tail:]] if config.json_array_tail > 0 else []
+        omitted = len(value) - config.json_array_head - config.json_array_tail
+        return head + [f"... ({omitted} items omitted) ..."] + tail
+
+    if isinstance(value, dict):
+        keys = list(value.keys())
+        if len(keys) <= config.json_max_keys:
+            return {k: _truncate_json_value(v, config, depth + 1) for k, v in value.items()}
+        kept_keys = keys[:config.json_max_keys]
+        omitted = len(keys) - config.json_max_keys
+        result = {k: _truncate_json_value(value[k], config, depth + 1) for k in kept_keys}
+        result[f"... ({omitted} keys omitted) ..."] = "..."
+        return result
+
+    return value
+
+
+def _truncate_json(content: str, config: TruncationConfig) -> str:
+    """Truncate JSON content at structural boundaries."""
+    try:
+        data = json.loads(content)
+        truncated = _truncate_json_value(data, config)
+        return json.dumps(truncated, indent=2)
+    except json.JSONDecodeError:
+        return content[:config.max_preview_tokens * 4] + "..."
+
+
 def _truncate_by_type(content: str, content_type: FileType, config: TruncationConfig) -> str:
     """Truncate content based on detected type."""
+    if content_type == FileType.JSON:
+        return _truncate_json(content, config)
+
     if content_type == FileType.CSV:
         lines = content.split("\n")
         if len(lines) > config.rows_head + config.rows_tail + 1:
