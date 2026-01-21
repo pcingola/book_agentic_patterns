@@ -1,5 +1,6 @@
 """Tests for agentic_patterns.core.context.history module - history compaction with tool call/return pairing."""
 
+import logging
 import unittest
 
 from pydantic_ai.messages import (
@@ -21,6 +22,7 @@ class TestHistoryCompactor(unittest.IsolatedAsyncioTestCase):
 
     def setUp(self):
         self.config = CompactionConfig(max_tokens=100, target_tokens=50)
+        self.model = ModelMock(responses=["Summary."])
 
     def _make_user_message(self, text: str) -> ModelRequest:
         return ModelRequest(parts=[UserPromptPart(content=text)])
@@ -39,38 +41,38 @@ class TestHistoryCompactor(unittest.IsolatedAsyncioTestCase):
 
     def test_has_tool_return_part_true(self):
         """Test _has_tool_return_part returns True when message contains ToolReturnPart."""
-        compactor = HistoryCompactor(config=self.config, model=None)
+        compactor = HistoryCompactor(config=self.config, model=self.model)
         msg = self._make_tool_return_message()
         self.assertTrue(compactor._has_tool_return_part(msg))
 
     def test_has_tool_return_part_false(self):
         """Test _has_tool_return_part returns False for regular messages."""
-        compactor = HistoryCompactor(config=self.config, model=None)
+        compactor = HistoryCompactor(config=self.config, model=self.model)
         msg = self._make_user_message("hello")
         self.assertFalse(compactor._has_tool_return_part(msg))
 
     def test_has_tool_call_part_true(self):
         """Test _has_tool_call_part returns True when message contains ToolCallPart."""
-        compactor = HistoryCompactor(config=self.config, model=None)
+        compactor = HistoryCompactor(config=self.config, model=self.model)
         msg = self._make_tool_call_message()
         self.assertTrue(compactor._has_tool_call_part(msg))
 
     def test_has_tool_call_part_false(self):
         """Test _has_tool_call_part returns False for regular messages."""
-        compactor = HistoryCompactor(config=self.config, model=None)
+        compactor = HistoryCompactor(config=self.config, model=self.model)
         msg = self._make_assistant_message("hello")
         self.assertFalse(compactor._has_tool_call_part(msg))
 
     def test_find_boundary_single_message_returns_negative(self):
         """Test that single message returns -1 (cannot compact)."""
-        compactor = HistoryCompactor(config=self.config, model=None)
+        compactor = HistoryCompactor(config=self.config, model=self.model)
         messages = [self._make_user_message("hello")]
         boundary = compactor._find_safe_compaction_boundary(messages)
         self.assertEqual(boundary, -1)
 
     def test_find_boundary_normal_messages(self):
         """Test boundary finding with normal user/assistant messages."""
-        compactor = HistoryCompactor(config=self.config, model=None)
+        compactor = HistoryCompactor(config=self.config, model=self.model)
         messages = [
             self._make_user_message("hello"),
             self._make_assistant_message("hi"),
@@ -81,7 +83,7 @@ class TestHistoryCompactor(unittest.IsolatedAsyncioTestCase):
 
     def test_find_boundary_tool_return_keeps_tool_call(self):
         """Test that when last message is tool return, preceding tool call is also kept."""
-        compactor = HistoryCompactor(config=self.config, model=None)
+        compactor = HistoryCompactor(config=self.config, model=self.model)
         messages = [
             self._make_user_message("search for something"),
             self._make_tool_call_message("search", {"query": "test"}),
@@ -92,7 +94,7 @@ class TestHistoryCompactor(unittest.IsolatedAsyncioTestCase):
 
     def test_find_boundary_only_tool_pair_returns_negative(self):
         """Test that when only tool call/return pair exists, compaction is skipped."""
-        compactor = HistoryCompactor(config=self.config, model=None)
+        compactor = HistoryCompactor(config=self.config, model=self.model)
         messages = [
             self._make_tool_call_message("search", {"query": "test"}),
             self._make_tool_return_message("search", "found results"),
@@ -102,7 +104,7 @@ class TestHistoryCompactor(unittest.IsolatedAsyncioTestCase):
 
     def test_find_boundary_tool_return_without_call_returns_negative(self):
         """Test that orphaned tool return skips compaction."""
-        compactor = HistoryCompactor(config=self.config, model=None)
+        compactor = HistoryCompactor(config=self.config, model=self.model)
         messages = [
             self._make_user_message("hello"),
             self._make_tool_return_message("search", "found results"),
@@ -112,12 +114,12 @@ class TestHistoryCompactor(unittest.IsolatedAsyncioTestCase):
 
     def test_count_tokens_empty(self):
         """Test token counting for empty message list."""
-        compactor = HistoryCompactor(config=self.config, model=None)
+        compactor = HistoryCompactor(config=self.config, model=self.model)
         self.assertEqual(compactor.count_tokens([]), 0)
 
     def test_count_tokens_messages(self):
         """Test token counting returns positive value for messages."""
-        compactor = HistoryCompactor(config=self.config, model=None)
+        compactor = HistoryCompactor(config=self.config, model=self.model)
         messages = [self._make_user_message("hello world")]
         tokens = compactor.count_tokens(messages)
         self.assertGreater(tokens, 0)
@@ -125,21 +127,21 @@ class TestHistoryCompactor(unittest.IsolatedAsyncioTestCase):
     def test_needs_compaction_false_under_limit(self):
         """Test needs_compaction returns False when under token limit."""
         config = CompactionConfig(max_tokens=10000, target_tokens=5000)
-        compactor = HistoryCompactor(config=config, model=None)
+        compactor = HistoryCompactor(config=config, model=self.model)
         messages = [self._make_user_message("hello")]
         self.assertFalse(compactor.needs_compaction(messages))
 
     def test_needs_compaction_true_over_limit(self):
         """Test needs_compaction returns True when over token limit."""
         config = CompactionConfig(max_tokens=1, target_tokens=0)
-        compactor = HistoryCompactor(config=config, model=None)
+        compactor = HistoryCompactor(config=config, model=self.model)
         messages = [self._make_user_message("hello")]
         self.assertTrue(compactor.needs_compaction(messages))
 
     async def test_compact_no_compaction_needed(self):
         """Test compact() returns original messages when under limit."""
         config = CompactionConfig(max_tokens=10000, target_tokens=5000)
-        compactor = HistoryCompactor(config=config, model=None)
+        compactor = HistoryCompactor(config=config, model=self.model)
         messages = [self._make_user_message("hello")]
         result = await compactor.compact(messages)
         self.assertEqual(result, messages)
@@ -171,7 +173,8 @@ class TestHistoryCompactor(unittest.IsolatedAsyncioTestCase):
     async def test_compact_preserves_tool_call_return_pair(self):
         """Test that compaction preserves tool call/return pair at the end."""
         config = CompactionConfig(max_tokens=10, target_tokens=5)
-        compactor = HistoryCompactor(config=config, model=None)
+        model = ModelMock(responses=["Summary."])
+        compactor = HistoryCompactor(config=config, model=model)
         messages = [
             self._make_user_message("first message with content to exceed limit"),
             self._make_assistant_message("response with content to exceed limit"),
@@ -188,12 +191,14 @@ class TestHistoryCompactor(unittest.IsolatedAsyncioTestCase):
     async def test_compact_skips_when_only_tool_pair(self):
         """Test that compaction is skipped when only tool call/return pair exists."""
         config = CompactionConfig(max_tokens=1, target_tokens=0)
-        compactor = HistoryCompactor(config=config, model=None)
+        model = ModelMock(responses=["Summary."])
+        compactor = HistoryCompactor(config=config, model=model)
         messages = [
             self._make_tool_call_message("search", {"query": "test"}),
             self._make_tool_return_message("search", "results"),
         ]
-        result = await compactor.compact(messages)
+        with self.assertLogs("agentic_patterns.core.context.history", level=logging.WARNING):
+            result = await compactor.compact(messages)
         self.assertEqual(result, messages)
 
     async def test_compact_with_model_mock(self):
@@ -213,7 +218,8 @@ class TestHistoryCompactor(unittest.IsolatedAsyncioTestCase):
     async def test_compact_handles_system_prompt(self):
         """Test that compaction properly handles SystemPromptPart in history."""
         config = CompactionConfig(max_tokens=10, target_tokens=5)
-        compactor = HistoryCompactor(config=config, model=None)
+        model = ModelMock(responses=["Summary."])
+        compactor = HistoryCompactor(config=config, model=model)
         messages = [
             self._make_system_message("You are a helpful assistant"),
             self._make_user_message("first message with lots of text to exceed token limit"),
@@ -225,13 +231,13 @@ class TestHistoryCompactor(unittest.IsolatedAsyncioTestCase):
 
     def test_create_history_processor(self):
         """Test create_history_processor returns callable."""
-        compactor = HistoryCompactor(config=self.config, model=None)
+        compactor = HistoryCompactor(config=self.config, model=self.model)
         processor = compactor.create_history_processor()
         self.assertTrue(callable(processor))
 
     def test_create_context_aware_processor(self):
         """Test create_context_aware_processor returns callable."""
-        compactor = HistoryCompactor(config=self.config, model=None)
+        compactor = HistoryCompactor(config=self.config, model=self.model)
         processor = compactor.create_context_aware_processor()
         self.assertTrue(callable(processor))
 
@@ -243,7 +249,8 @@ class TestHistoryCompactor(unittest.IsolatedAsyncioTestCase):
             callback_results.append(result)
 
         config = CompactionConfig(max_tokens=10, target_tokens=5)
-        compactor = HistoryCompactor(config=config, model=None, on_compaction=on_compaction)
+        model = ModelMock(responses=["Summary."])
+        compactor = HistoryCompactor(config=config, model=model, on_compaction=on_compaction)
         messages = [
             self._make_user_message("first message with lots of text to exceed token limit"),
             self._make_assistant_message("response with lots of text to exceed token limit"),
