@@ -95,19 +95,16 @@ def context_result(config_name: str = "default"):
 
     Usage:
         @context_result()
-        async def some_tool() -> str:
+        def some_tool() -> str:
             ...
 
         @context_result("sql_query")
-        async def run_sql_query(sql: str, ctx=None) -> str:
+        def run_sql_query(sql: str) -> str:
             ...
     """
     def decorator(func):
-        @wraps(func)
-        async def async_wrapper(*args, ctx: Any = None, **kwargs):
+        def _process_result(result: str, ctx: Any) -> str:
             config = get_truncation_config(config_name)
-
-            result = await func(*args, ctx=ctx, **kwargs)
 
             if not isinstance(result, str) or len(result) <= config.threshold:
                 return result
@@ -117,42 +114,23 @@ def context_result(config_name: str = "default"):
             filename = f"result_{uuid4().hex[:8]}{ext}"
             path = f"/workspace/results/{filename}"
 
-            # Save to workspace if ctx is available
-            if ctx is not None:
-                try:
-                    from agentic_patterns.core.workspace import write_to_workspace
-                    write_to_workspace(path, result, ctx)
-                except Exception:
-                    pass  # Silently fail if workspace not available
+            from agentic_patterns.core.workspace import write_to_workspace
+            write_to_workspace(path, result, ctx)
 
             preview = _truncate_by_type(result, content_type, config)
-
             return f"Results saved to {path} ({len(result)} chars)\n\nPreview:\n{preview}"
 
         @wraps(func)
-        def sync_wrapper(*args, ctx: Any = None, **kwargs):
-            config = get_truncation_config(config_name)
+        async def async_wrapper(*args, **kwargs):
+            ctx = kwargs.get("ctx")
+            result = await func(*args, **kwargs)
+            return _process_result(result, ctx)
 
-            result = func(*args, ctx=ctx, **kwargs)
-
-            if not isinstance(result, str) or len(result) <= config.threshold:
-                return result
-
-            content_type = _detect_content_type(result)
-            ext = _get_extension_for_type(content_type)
-            filename = f"result_{uuid4().hex[:8]}{ext}"
-            path = f"/workspace/results/{filename}"
-
-            if ctx is not None:
-                try:
-                    from agentic_patterns.core.workspace import write_to_workspace
-                    write_to_workspace(path, result, ctx)
-                except Exception:
-                    pass
-
-            preview = _truncate_by_type(result, content_type, config)
-
-            return f"Results saved to {path} ({len(result)} chars)\n\nPreview:\n{preview}"
+        @wraps(func)
+        def sync_wrapper(*args, **kwargs):
+            ctx = kwargs.get("ctx")
+            result = func(*args, **kwargs)
+            return _process_result(result, ctx)
 
         if asyncio.iscoroutinefunction(func):
             return async_wrapper

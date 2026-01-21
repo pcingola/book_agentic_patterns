@@ -90,13 +90,15 @@ class HistoryCompactor:
         self,
         config: CompactionConfig | None = None,
         model: Model | None = None,
+        config_name: str = "default",
         on_compaction: Callable[[CompactionResult], Awaitable[None]] | None = None,
     ):
         """Initialize the HistoryCompactor.
 
         Args:
             config: Compaction configuration. If None, loads from config.yaml.
-            model: Model to use for summarization.
+            model: Model to use for summarization. If None, loads from config.yaml.
+            config_name: Name of model configuration to use (default: "default").
             on_compaction: Optional async callback called when compaction occurs.
         """
         if config is None:
@@ -106,12 +108,21 @@ class HistoryCompactor:
                 target_tokens=ctx_config.history_target_tokens,
             )
 
+        if model is None:
+            from agentic_patterns.core.agents.models import get_model
+            model = get_model(config_name)
+
         self.config = config
         self.model = model
         self.on_compaction = on_compaction
         self._summarizer_max_tokens = load_context_config().summarizer_max_tokens
+        self._last_processed_messages: list[ModelMessage] = []
 
         logger.info("Created compactor with config: %s", self.config)
+
+    def get_history_for_next_turn(self, new_messages: list[ModelMessage]) -> list[ModelMessage]:
+        """Combine last processed history with new messages for the next turn."""
+        return list(self._last_processed_messages) + list(new_messages)
 
     def _count_text_tokens(self, text: str) -> int:
         return len(self._tokenizer.encode(text))
@@ -182,25 +193,48 @@ class HistoryCompactor:
         """Compact the message history by summarizing all messages."""
         token_count = self.count_tokens(messages)
         total_messages = len(messages)
+
+        # Debug: show what history_processor receives
+        print(f"  [COMPACTOR RECEIVED] {total_messages} messages, {token_count} tokens:")
+        for i, msg in enumerate(messages):
+            parts = [type(p).__name__ for p in msg.parts]
+            print(f"    [{i}] {type(msg).__name__}: {parts}")
+
         logger.info(
             "Checking: %d messages, %d tokens (max=%d, target=%d)",
             total_messages, token_count, self.config.max_tokens, self.config.target_tokens
         )
 
         if not self.needs_compaction(messages, current_tokens=token_count):
-            logger.debug("No compaction needed")
+            print(f"  [COMPACTOR] No compaction needed, returning unchanged")
+            # Store prior history only (exclude current request); new_messages() will include it
+            self._last_processed_messages = list(messages[:-1])
             return messages
 
         logger.info("Starting compaction: %d messages, %d tokens", total_messages, token_count)
 
-        summary = await self._summarize_messages(messages)
+        # Summarize all but the last message, preserve the last one (current user prompt)
+        messages_to_summarize = messages[:-1]
+        last_message = messages[-1:]
+
+        summary = await self._summarize_messages(messages_to_summarize)
         summary_content = SUMMARY_WRAPPED.format(summary=summary)
-        messages_after_summary = [ModelRequest(parts=[UserPromptPart(content=summary_content)])]
+        summary_message = ModelRequest(parts=[UserPromptPart(content=summary_content)])
+        messages_after_summary = [summary_message] + list(last_message)
         token_count_after_summary = self.count_tokens(messages_after_summary)
         logger.info(
             "Compaction complete: %d -> %d messages, %d -> %d tokens",
             total_messages, len(messages_after_summary), token_count, token_count_after_summary
         )
+
+        # Store summary for next turn; new_messages() will provide current turn
+        self._last_processed_messages = [summary_message]
+
+        # Debug: show what we return
+        print(f"  [COMPACTOR RETURNS] {len(messages_after_summary)} messages, {token_count_after_summary} tokens:")
+        for i, msg in enumerate(messages_after_summary):
+            parts = [type(p).__name__ for p in msg.parts]
+            print(f"    [{i}] {type(msg).__name__}: {parts}")
 
         if self.on_compaction:
             result = CompactionResult(

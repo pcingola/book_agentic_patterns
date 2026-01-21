@@ -2,7 +2,7 @@
 
 This section walks through creating and running a simple agent. We use Pydantic-ai as our framework, but the underlying concepts apply universally to all agentic frameworks.
 
-We'll follow the example code in `agentic_patterns/foundations/example_translate_basic.ipynb`.
+We'll follow the example code in `agentic_patterns/examples/foundations/example_translate_basic.ipynb`.
 
 ## High-Level Overview
 
@@ -44,7 +44,7 @@ Our library supports multiple model families: Azure OpenAI, AWS Bedrock, Ollama 
 
 ## Simple Translation Agent
 
-Let's walk through our first example in `agentic_patterns/foundations/example_translate_basic.ipynb`.
+Let's walk through our first example in `agentic_patterns/examples/foundations/example_translate_basic.ipynb`.
 
 ### Step 1: Create the Agent
 
