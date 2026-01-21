@@ -1,10 +1,9 @@
-import asyncio
 import unittest
 
 from agentic_patterns.testing.tool_mock import tool_mock
 
 
-class TestToolMock(unittest.TestCase):
+class TestToolMock(unittest.IsolatedAsyncioTestCase):
     """Tests for agentic_patterns.testing.tool_mock module."""
 
     def test_sync_function_returns_values_in_order(self):
@@ -17,16 +16,16 @@ class TestToolMock(unittest.TestCase):
         self.assertEqual(mocked(2), 20)
         self.assertEqual(mocked(3), 30)
 
-    def test_async_function_returns_values_in_order(self):
+    async def test_async_function_returns_values_in_order(self):
         """Test that a mocked async function returns values sequentially."""
         async def original_async(x: int) -> str:
             return f"result_{x}"
 
         mocked = tool_mock(original_async, ["a", "b", "c"])
 
-        result1 = asyncio.get_event_loop().run_until_complete(mocked(1))
-        result2 = asyncio.get_event_loop().run_until_complete(mocked(2))
-        result3 = asyncio.get_event_loop().run_until_complete(mocked(3))
+        result1 = await mocked(1)
+        result2 = await mocked(2)
+        result3 = await mocked(3)
 
         self.assertEqual(result1, "a")
         self.assertEqual(result2, "b")
@@ -102,27 +101,27 @@ class TestToolMock(unittest.TestCase):
         self.assertEqual(mocked(), 1)
         self.assertEqual(mocked(), 2)
 
-    def test_async_call_count_tracks_invocations(self):
+    async def test_async_call_count_tracks_invocations(self):
         async def original_async(x: int) -> int:
             return x
 
         mocked = tool_mock(original_async, [1, 2, 3])
         self.assertEqual(mocked.call_count, 0)
 
-        asyncio.get_event_loop().run_until_complete(mocked(10))
+        await mocked(10)
         self.assertEqual(mocked.call_count, 1)
 
-        asyncio.get_event_loop().run_until_complete(mocked(20))
-        asyncio.get_event_loop().run_until_complete(mocked(30))
+        await mocked(20)
+        await mocked(30)
         self.assertEqual(mocked.call_count, 3)
 
-    def test_async_call_args_list_tracks_all_calls(self):
+    async def test_async_call_args_list_tracks_all_calls(self):
         async def original_async(x: int, name: str) -> None:
             pass
 
         mocked = tool_mock(original_async, [None, None])
-        asyncio.get_event_loop().run_until_complete(mocked(1, "first"))
-        asyncio.get_event_loop().run_until_complete(mocked(2, name="second"))
+        await mocked(1, "first")
+        await mocked(2, name="second")
 
         args_list = mocked.call_args_list
         self.assertEqual(len(args_list), 2)

@@ -1,4 +1,3 @@
-import asyncio
 import unittest
 
 from pydantic import BaseModel
@@ -8,7 +7,7 @@ from pydantic_ai.models import ModelRequestParameters
 from agentic_patterns.testing.model_mock import ModelMock, MockFinishReason, _convert_to_parts, final_result_tool
 
 
-class TestModelMock(unittest.TestCase):
+class TestModelMock(unittest.IsolatedAsyncioTestCase):
     """Tests for agentic_patterns.testing.model_mock module."""
 
     def test_convert_to_parts_strings(self):
@@ -48,38 +47,35 @@ class TestModelMock(unittest.TestCase):
         self.assertEqual(len(mfr.parts), 1)
         self.assertIsInstance(mfr.parts[0], TextPart)
 
-    def test_model_mock_returns_text_response(self):
+    async def test_model_mock_returns_text_response(self):
         """Test that ModelMock returns text responses in order."""
         model = ModelMock(responses=["first", "second"])
         params = ModelRequestParameters(function_tools=[], allow_text_output=True, output_mode="text")
 
-        loop = asyncio.get_event_loop()
-        response1 = loop.run_until_complete(model.request([], None, params))
-        response2 = loop.run_until_complete(model.request([], None, params))
+        response1 = await model.request([], None, params)
+        response2 = await model.request([], None, params)
 
         self.assertEqual(response1.parts[0].content, "first")
         self.assertEqual(response2.parts[0].content, "second")
 
-    def test_model_mock_returns_tool_call(self):
+    async def test_model_mock_returns_tool_call(self):
         """Test that ModelMock returns ToolCallPart responses."""
         tool_call = ToolCallPart(tool_name="search", args={"query": "test"})
         model = ModelMock(responses=[tool_call])
         params = ModelRequestParameters(function_tools=[], allow_text_output=True, output_mode="text")
 
-        loop = asyncio.get_event_loop()
-        response = loop.run_until_complete(model.request([], None, params))
+        response = await model.request([], None, params)
 
         self.assertIsInstance(response.parts[0], ToolCallPart)
         self.assertEqual(response.parts[0].tool_name, "search")
 
-    def test_model_mock_raises_exception(self):
+    async def test_model_mock_raises_exception(self):
         """Test that ModelMock raises exceptions when configured to do so."""
         model = ModelMock(responses=[ValueError("test error")])
         params = ModelRequestParameters(function_tools=[], allow_text_output=True, output_mode="text")
 
-        loop = asyncio.get_event_loop()
         with self.assertRaises(ValueError) as ctx:
-            loop.run_until_complete(model.request([], None, params))
+            await model.request([], None, params)
         self.assertEqual(str(ctx.exception), "test error")
 
 
