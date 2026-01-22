@@ -16,13 +16,15 @@ if [ -f "$PROJECT_DIR/title_page.md" ]; then
     cat "$PROJECT_DIR/title_page.md" > "$OUTPUT_DIR/book.md"
 fi
 
-find "$PROJECT_DIR/chapters" -maxdepth 1 -type d -name "[0-9]*" | sort | while read -r chapter_dir; do
-    chapter_name=$(basename "$chapter_dir")
+CHAPTERS="foundations core_patterns tools orchestration rag context_memory mcp a2a skills connectors execution_infrastructure"
+
+for chapter_name in $CHAPTERS; do
+    chapter_dir="$PROJECT_DIR/chapters/$chapter_name"
     chapter_file="$chapter_dir/chapter.md"
     output_file="$OUTPUT_DIR/${chapter_name}.md"
 
     if [ -f "$chapter_file" ]; then
-        echo "Processing chapter '$chapter_dir'"
+        echo "Processing chapter '$chapter_name'"
         "$PROJECT_DIR/scripts/make.py" "$chapter_file" > "$output_file"
         cat "$output_file" >> "$OUTPUT_DIR/book.md"
         echo "" >> "$OUTPUT_DIR/book.md"

@@ -13,7 +13,7 @@ from agentic_patterns.core.vectordb.config import (
     load_vectordb_settings,
 )
 
-TEST_DATA_DIR = Path(__file__).parent / "data" / "vectordb"
+TEST_DATA_DIR = Path(__file__).parent.parent / "data" / "vectordb"
 
 
 class TestVectorDBConfig(unittest.TestCase):

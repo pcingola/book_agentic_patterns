@@ -4,7 +4,7 @@ from pathlib import Path
 from agentic_patterns.core.prompt import load_prompt
 
 
-DATA_DIR = Path(__file__).parent / "data" / "prompts"
+DATA_DIR = Path(__file__).parent.parent / "data" / "prompts"
 
 
 class TestPrompt(unittest.TestCase):

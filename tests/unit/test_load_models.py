@@ -13,7 +13,7 @@ from agentic_patterns.core.agents.config import (
 )
 
 
-TEST_DATA_DIR = Path(__file__).parent / "data" / "agents"
+TEST_DATA_DIR = Path(__file__).parent.parent / "data" / "agents"
 
 
 class TestLoadModels(unittest.TestCase):

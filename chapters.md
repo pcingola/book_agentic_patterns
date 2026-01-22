@@ -122,34 +122,39 @@ Structuring agent execution at a higher level.
 - [x] References, Citation, attribution, provenance and truth maintenance
 - [ ] BEST PRACTICE: Doctors / reviewer
 
-### Chapter: Context & Memory
+### Chapter: [Context & Memory](chapters/context_memory/chapter.md)
 
 These are all about how agents manage information over time.
 
-- [ ] Prompts
-  - [ ] System, prompt, instructions
-  - [ ] Conversation history
-  - [ ] Short-term vs long-term memory
-  - [ ] Memory and state management: Storing conversations into database
-- [ ] Context engineering / Context window engineering
-  - [ ] Prompt engineering
-  - [ ] DEFINITION: "The dumb zone": When the context goes over ~ 40%
-  - [ ] Context compression
-  - [ ] Token budgeting
-  - [ ] Write-back patterns
-- [ ] Knowledge bases and consistency (Batch conversion of memory to knowledge, RAG)
+- [x] Prompts
+  - [x] System, prompt, instructions
+  - [x] Conversation history
+  - [x] Short-term vs long-term memory
+  - [x] Memory and state management: Storing conversations into database
+- [x] Context engineering / Context window engineering
+  - [x] Prompt engineering
+  - [x] DEFINITION: "The dumb zone": When the context goes over ~ 40%
+  - [x] Context compression
+  - [x] Token budgeting
+  - [x] Write-back patterns
+- [x] Knowledge bases and consistency (Batch conversion of memory to knowledge, RAG)
 
-### Chapter: Testing, Debugging, Evals, and Benchmarks
+### Chapter: Evals
 
-- [ ] Prompt and tool unit tests
-- [ ] Contract tests for tools
-- [ ] Deterministic replays and trace storage
-- [ ] Scenario simulation and adversarial testing
-- [ ] Offline evals and benchmarks
-- [ ] Online evals and A/B testing
-- [ ] Regression testing across model and prompt versions
-- [ ] Eval creators (Agent that creates evals)
-- [ ] Debugging:
+- [ ] Introducton
+  - [ ] Testing types: Concepts and simple guidelines
+  - [ ] Unit tests, integration tests (e.g. testing tools) 
+  - [ ] Testing deterministic vs non-deterministic systems
+  - [ ] Evals: Testing Agents, workflows, etc
+  - [ ] Benchmarks: Testing Model/Agent capabilities (i.e. testing the limits). Different from evals (testing correctness)
+- Evals:
+  - [ ] Evals: Testing Agents, workflows, etc
+  - [ ] Regression testing across model and prompt versions
+  - [ ] Eval creators (Agent that creates evals)
+- [ ] Debugging
+  - [ ] Observability
+  - [ ] Logging
+- [ ] Using Agents to deug Agents
   - [ ] Prompt doctor
   - [ ] Tool doctor
   - [ ] MCP doctor
@@ -251,6 +256,7 @@ Production infrastructure for running agent-generated code safely.
   - [x] BEST PRACTICE: Limit result size (back to agent), save STDOUT, STDERR to files in workspace
 - [x] REPL
 - [x] Autonomous vs supervised execution (Human-in-the-loop), Approval, rollback, and reversibility
+- [ ] Code Deployments, static and dynamic containers (Docker + Traefic)
 
 ### Chapter: Research & Science Agents
 

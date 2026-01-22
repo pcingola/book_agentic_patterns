@@ -140,7 +140,7 @@ A typical A2A server splits responsibilities into:
 * one or more workers that execute tasks and emit task operations/updates;
 * a storage layer that persists task state and artifacts for `GetTask`, resubscription, and recovery.
 
-This architecture is explicitly reflected in common A2A server implementations where the HTTP server schedules work via a broker abstraction intended to support both in-process and remote worker setups, and where workers receive task operations from that broker. ([Pydantic AI][17])
+This architecture is explicitly reflected in common A2A server implementations where the HTTP server schedules work via a broker abstraction intended to support both in-process and remote worker setups, and where workers receive task operations from that broker. ([Pydantic AI][40])
 
 The key protocol-driven reason to build it this way is that A2A requires coherent behavior across:
 
@@ -279,7 +279,7 @@ function validate_message(message):
 
 ### Server: `blocking` semantics implemented on top of a broker/worker pipeline
 
-In practice, servers implement A2A semantics by scheduling work and then either returning immediately (non-blocking) or awaiting terminal state (blocking). The scheduling abstraction (“broker”) exists precisely to decouple protocol ingress from task execution and allow multi-worker setups. ([Pydantic AI][17])
+In practice, servers implement A2A semantics by scheduling work and then either returning immediately (non-blocking) or awaiting terminal state (blocking). The scheduling abstraction (“broker”) exists precisely to decouple protocol ingress from task execution and allow multi-worker setups. ([Pydantic AI][40])
 
 ```python
 function handle_send_message(request, service_params):
@@ -366,4 +366,4 @@ This matches the spec's client responsibilities (ACK with 2xx; process idempoten
 
 [13]: https://a2a-protocol.org/latest/specification/
 [14]: https://a2a-protocol.org/latest/topics/streaming-and-async/
-[17]: https://ai.pydantic.dev/a2a/
+[40]: https://ai.pydantic.dev/a2a/

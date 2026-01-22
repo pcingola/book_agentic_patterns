@@ -6,7 +6,7 @@ from pathlib import Path
 from agentic_patterns.core.agents.config import BedrockConfig, load_models
 
 
-TEST_DATA_DIR = Path(__file__).parent / "data" / "agents"
+TEST_DATA_DIR = Path(__file__).parent.parent / "data" / "agents"
 
 
 class TestModelsGet(unittest.TestCase):

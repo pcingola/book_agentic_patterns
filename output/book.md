@@ -1409,7 +1409,7 @@ When building agents, you're ultimately orchestrating HTTP requests and response
 
 This section walks through creating and running a simple agent. We use Pydantic-ai as our framework, but the underlying concepts apply universally to all agentic frameworks.
 
-We'll follow the example code in `agentic_patterns/01_foundations/example_translate_basic.ipynb`.
+We'll follow the example code in `agentic_patterns/examples/foundations/example_translate_basic.ipynb`.
 
 ## High-Level Overview
 
@@ -1451,7 +1451,7 @@ Our library supports multiple model families: Azure OpenAI, AWS Bedrock, Ollama 
 
 ## Simple Translation Agent
 
-Let's walk through our first example in `agentic_patterns/01_foundations/example_translate_basic.ipynb`.
+Let's walk through our first example in `agentic_patterns/examples/foundations/example_translate_basic.ipynb`.
 
 ### Step 1: Create the Agent
 
@@ -2119,6 +2119,14 @@ ReAct appeared in the 2022 wave of "reasoning by prompting." The immediate precu
 
 In parallel, multiple lines of research were converging on "LLMs as agents" that act via external interfaces. WebGPT (late 2021) trained a model to browse the web in a text environment, explicitly collecting citations during interaction. MRKL systems (mid 2022) articulated a modular neuro-symbolic architecture: keep the LLM as a language/coordination layer, and route specialized subproblems to tools/knowledge modules. Around the same time, grounding work like "Do As I Can, Not As I Say" (SayCan) explored selecting feasible actions via an affordance model while using an LLM for high-level planning. ReAct (first posted October 2022) crystallized these threads into a simple, general prompt format: interleave reasoning traces with actions so that the model's "thoughts" can request information or execute steps, then immediately incorporate the resulting observations into the next reasoning step.
 
+### CodeAct
+
+CodeAct emerged from the convergence of program synthesis research and tool-augmented language models in the early 2020s. Early agent systems treated code execution as an auxiliary tool: a way to call an API, run a calculation, or fetch data. This view began to shift with work on neural program induction and reinforcement learning with executable environments, where the boundary between "reasoning" and "acting" blurred.
+
+The key insight that crystallized CodeAct was that many complex tasks, particularly in data analysis, environment control, and system configuration, are more reliably solved by letting the model *think in code*, observe runtime effects, and adapt. Rather than planning entirely in natural language and then calling predefined tools, the agent incrementally constructs small programs, runs them, inspects results, and revises its approach. This lineage connects earlier ideas such as tool-augmented language models and ReAct-style loops, but places executable code at the center rather than at the periphery.
+
+The pattern was formalized in 2023 with work showing that code-centric agents could outperform text-based agents on a range of tasks, particularly those requiring flexible computation or interaction with file systems and APIs. CodeAct represents a shift from "agents that occasionally run code" to "agents whose primary mode of thought is executable."
+
 ### Self-Reflection
 
 The idea of self-reflection in artificial intelligence has deep roots in metacognition research from cognitive science, where human problem solvers were studied as agents capable of monitoring and correcting their own reasoning. In classical AI, related ideas appeared in work on planning systems with execution monitoring, belief revision, and meta-level control, but these mechanisms were usually rule-based and external to the reasoning process itself.
@@ -2212,6 +2220,87 @@ A typical ReAct prompt provides 1–2 exemplars of full trajectories in a consis
 
 From a system-design perspective, ReAct also reinforces a clean separation of concerns. The language model is responsible for proposing reasoning and actions, while the surrounding runtime is responsible for enforcing action schemas, executing tools, handling failures, and maintaining state. This separation makes ReAct a natural foundation for more complex agentic systems and later patterns built on top of it.
 
+
+
+## CodeAct
+
+CodeAct is a code-centric execution pattern in which an agent reasons primarily by iteratively writing, executing, and refining code, using program execution itself as the main feedback loop.
+
+At its core, CodeAct treats code execution as the agent’s primary action modality. Instead of planning entirely in natural language and then calling tools, the agent incrementally constructs small programs, runs them, inspects results, and revises its approach. Reasoning emerges from the interaction between generated code and observed execution outcomes.
+
+A typical CodeAct loop has four conceptual phases:
+
+1. **Intent formation**: the agent translates a goal into a concrete computational step.
+2. **Code generation**: the agent emits a small, focused code fragment.
+3. **Execution and observation**: the code is executed in a controlled environment and produces outputs, side effects, or errors.
+4. **Reflection and refinement**: the agent incorporates the observed behavior into the next iteration.
+
+This loop continues until the goal is satisfied or the agent determines it cannot proceed further. Importantly, the unit of work is intentionally small: short scripts, single commands, or incremental state changes. This keeps failures local and feedback immediate.
+
+Conceptually, this can be sketched as:
+
+```python
+while not goal_satisfied:
+    step = agent.propose_code(context)
+    result = execute(step)
+    context = agent.observe_and_update(context, result)
+```
+
+The distinguishing feature is that *execution results are first-class signals*. Errors, stack traces, runtime values, and filesystem changes all become part of the agent’s working context.
+
+### Execution environments and isolation
+
+Effective CodeAct systems rely on a well-defined execution substrate. Code must run in an environment that is both expressive enough to be useful and constrained enough to be safe. The implementation summarized in the MCP Sandbox design illustrates several architectural consequences of this requirement.
+
+Each agent session executes code inside a dedicated, isolated environment with its own filesystem and process space. This isolation allows the agent to experiment freely—creating files, starting processes, modifying state—without risking cross-session interference. From the agent’s perspective, the environment behaves like a persistent workspace rather than a disposable tool call.
+
+A common pattern is to fix a canonical working directory inside the execution environment and treat it as the agent’s “world”:
+
+```python
+# inside the execution environment
+with open("results.txt", "w") as f:
+    f.write(str(computation_output))
+```
+
+The persistence of this workspace across executions is crucial. It allows CodeAct agents to build state incrementally, revisit previous artifacts, and recover transparently from execution failures by recreating the environment while preserving data.
+
+### Failure, feedback, and recovery
+
+Because CodeAct agents execute arbitrary code, failures are expected rather than exceptional. Syntax errors, runtime exceptions, timeouts, and resource exhaustion all serve as informative feedback. Robust systems therefore separate *failure detection* from *failure recovery*.
+
+Execution is typically wrapped with pre-flight validation and post-execution checks:
+
+```python
+status = check_environment()
+if not status.ok:
+    recreate_environment()
+
+result = run_code(snippet, timeout=5)
+```
+
+If execution fails, the agent does not crash the session. Instead, the failure is surfaced as structured feedback that informs the next reasoning step. Automatic environment recreation, combined with persistent workspaces, ensures that recovery is transparent and does not erase progress.
+
+This design aligns naturally with the CodeAct philosophy: errors are signals to reason over, not terminal conditions.
+
+### Concurrency and long-running behavior
+
+Unlike simple tool calls, CodeAct executions may involve long-running processes such as servers, simulations, or background jobs. Treating these as first-class entities requires explicit lifecycle management distinct from one-off commands.
+
+A common pattern is to separate *commands* from *services*. Commands are synchronous and produce immediate feedback; services are started, monitored, and stopped explicitly. The agent reasons about service state by inspecting process health and logs rather than assuming success.
+
+This distinction enables CodeAct agents to orchestrate complex computational setups while retaining control over resource usage and cleanup.
+
+### Security and control boundaries
+
+Placing code execution at the center of agent behavior raises obvious safety concerns. CodeAct systems therefore rely on layered defenses: execution time limits, resource quotas, non-privileged runtimes, and strict filesystem scoping. From a pattern perspective, the important point is that these controls are *environmental*, not prompt-based. The agent is allowed to generate powerful code precisely because the execution substrate enforces hard constraints.
+
+This separation of concerns simplifies agent design. The model focuses on problem solving, while the execution layer guarantees containment.
+
+### Why CodeAct matters
+
+CodeAct represents a shift from “agents that occasionally run code” to “agents whose primary mode of thought is executable”. This shift has practical consequences: more reliable iteration, clearer grounding in observable behavior, and a tighter feedback loop between intention and outcome. In practice, CodeAct often reduces prompt complexity, because correctness is enforced by execution rather than by exhaustive natural language reasoning.
+
+As agents increasingly operate in technical domains—data engineering, infrastructure management, scientific computing—CodeAct provides a natural and scalable execution model.
 
 
 ## Self-Reflection
@@ -2329,13 +2418,15 @@ When implemented correctly, HITL does not slow agents down unnecessarily. Instea
 
 # Hands-On: Introduction
 
-The hands-on sections that follow provide practical implementations of the patterns introduced in this chapter: zero-shot and few-shot prompting, self-reflection, chain-of-thought, tree-of-thought, ReAct, planning and decomposition, and verification loops. Each section includes runnable code that makes the pattern's mechanics visible, showing how prompts are structured, how conversation state flows across turns, and how the pattern improves on naive approaches.
+The hands-on sections that follow provide practical implementations of the patterns introduced in this chapter: zero-shot and few-shot prompting, self-reflection, chain-of-thought, tree-of-thought, ReAct, CodeAct, planning and decomposition, and verification loops. Each section includes runnable code that makes the pattern's mechanics visible, showing how prompts are structured, how conversation state flows across turns, and how the pattern improves on naive approaches.
 
 These patterns are historical precursors to capabilities now built into modern frontier models. Chain-of-thought prompting was a breakthrough in 2022; today's models perform similar reasoning internally through extended thinking. ReAct introduced interleaved reasoning and tool calls through careful prompt engineering; modern APIs provide native tool calling that handles this automatically. Planning and decomposition, once requiring explicit multi-turn orchestration, now emerges naturally when frontier models allocate thinking time to complex problems.
 
 Understanding these explicit patterns remains valuable for several reasons. They work with any model regardless of built-in capabilities, making them essential when cost, latency, or privacy constraints preclude frontier models. They reveal what modern systems do implicitly, demystifying the "magic" of extended thinking and native tools. And production agents often combine multiple patterns in ways that require understanding the individual building blocks. A robust system might use chain-of-thought for initial reasoning, tree-of-thought to explore alternatives, ReAct to gather external information, and verification to check the result before returning it.
 
 The examples deliberately use simpler, non-thinking models to make the contribution of each pattern visible. Using a frontier model with built-in reasoning would obscure the effect of explicit chain-of-thought prompting; using native tool calling would hide the ReAct loop structure. Once you understand the patterns with simple models, you can decide when to rely on a frontier model's built-in capabilities and when explicit orchestration gives you more control.
+
+Multi-turn examples use `nodes_to_message_history(nodes)` to convert agent execution nodes into conversation context for subsequent turns. This utility extracts the request/response messages from the agent run, allowing each turn to build on the previous one.
 
 
 # Hands-On: Zero-shot and Few-shot Prompting
@@ -3075,6 +3166,195 @@ The pattern enables models to access external information instead of hallucinati
 ReAct is a precursor to modern tool calling APIs. Understanding the pattern helps clarify what tool calling does under the hood: propose actions, execute them, observe results, and reason about next steps.
 
 The explicit reasoning traces provide transparency. We can see exactly what the model was thinking at each step, making it easier to debug problems and verify that the model is reasoning correctly.
+
+
+# Hands-On: CodeAct
+
+CodeAct is a pattern where an agent reasons primarily by writing and executing code, using program execution itself as the main feedback loop. Instead of text-based actions like ReAct's `LookupOrder[id]`, the agent generates actual Python code that runs in a sandboxed environment. Execution results, including errors, become first-class feedback that guides the next iteration.
+
+This hands-on explores CodeAct using `example_codeact.ipynb`, demonstrating how executable code becomes the agent's primary mode of thought.
+
+## Why Code as the Action Modality?
+
+ReAct and similar patterns use structured text commands that a parser converts into function calls. This works well for predefined actions, but becomes limiting when tasks require flexibility. Consider asking an agent to analyze a dataset: you would need to predefine every possible analysis operation as a discrete action.
+
+CodeAct sidesteps this limitation by letting the agent write arbitrary code. The agent can express any computation directly, observe the results, and adapt. This is particularly powerful for tasks involving data manipulation, numerical computation, or any domain where the solution space is too large to enumerate as discrete actions.
+
+## The Execution Sandbox
+
+The sandbox provides a controlled environment where the agent's code runs. Two properties are essential: isolation (the code cannot affect the host system) and persistence (variables survive across executions so the agent can build state incrementally).
+
+```python
+class CodeSandbox:
+    def __init__(self):
+        self.namespace = {"__builtins__": __builtins__}
+
+    def execute(self, code: str, timeout: float = 5.0) -> str:
+        stdout_capture = io.StringIO()
+        try:
+            with redirect_stdout(stdout_capture):
+                exec(code, self.namespace)
+            output = stdout_capture.getvalue()
+            return output if output else "(code executed successfully, no output)"
+        except Exception as e:
+            return f"Error: {type(e).__name__}: {e}"
+```
+
+The `namespace` dictionary persists across calls to `execute()`. When the agent writes `x = 42` in one execution, `x` remains available in subsequent executions. This allows the agent to work incrementally, defining data structures, computing intermediate results, and building toward a final answer across multiple steps.
+
+Errors are captured and returned as strings rather than raised. This is intentional: errors are informative feedback, not failures. A `NameError` tells the agent it referenced an undefined variable. A `TypeError` reveals a misunderstanding about data types. The agent incorporates this information and tries again.
+
+## The CodeAct Prompt
+
+The prompt establishes the code-centric interaction pattern:
+
+```python
+CODEACT_PROMPT = """You are a code-execution agent. Solve tasks by writing and executing Python code.
+
+Rules:
+1. Write code in ```python blocks. Each block will be executed and you'll see the output.
+2. Use print() to show results - this is how you see what's happening.
+3. Variables persist between executions, so you can build on previous code.
+4. If you get an error, analyze it and fix your code in the next iteration.
+5. When the task is complete, write DONE followed by a brief summary.
+...
+"""
+```
+
+The prompt explicitly tells the model that `print()` is how it observes results. Without this, the model might write code that computes correct values but never displays them, leaving it blind to its own progress. The persistence rule enables multi-step problem solving: the agent can define helper functions, store intermediate results, and reference them later.
+
+## The CodeAct Loop
+
+The loop orchestrates the interaction between the model and the sandbox:
+
+```python
+async def codeact_loop(task: str, max_steps: int = 6) -> str:
+    agent = get_agent(system_prompt=CODEACT_PROMPT)
+    sandbox = CodeSandbox()
+    trajectory = f"Task: {task}\n"
+
+    for step in range(max_steps):
+        agent_run, _ = await run_agent(agent, trajectory)
+        response = agent_run.result.output.strip()
+        trajectory += f"\nAssistant: {response}\n"
+
+        code_blocks = extract_code_blocks(response)
+        if code_blocks:
+            for code in code_blocks:
+                output = sandbox.execute(code.strip())
+                trajectory += f"\n[Execution output: {output}]\n"
+
+        if "DONE" in response.upper():
+            return response
+```
+
+The trajectory accumulates the entire interaction history. Each iteration, the model sees the original task, all previous code it wrote, and all execution outputs. This context allows the model to reason about what worked, what failed, and what to try next.
+
+Code blocks are extracted using a regex that matches markdown-style fenced code:
+
+```python
+def extract_code_blocks(text: str) -> list[str]:
+    pattern = r"```python\s*(.*?)```"
+    return re.findall(pattern, text, re.DOTALL)
+```
+
+## Example: Data Analysis
+
+The first example asks the agent to analyze sales data. The task requires computing totals, finding maximums, and calculating averages, all operations that benefit from direct code execution.
+
+```
+Task: Analyze this sales data and find total revenue, best selling product, average order value.
+Data: orders = [{"product": "Widget A", "quantity": 5, "price": 10.00}, ...]
+```
+
+The agent might respond:
+
+```
+I'll start by loading the data and calculating total revenue.
+
+```python
+orders = [
+    {"product": "Widget A", "quantity": 5, "price": 10.00},
+    {"product": "Widget B", "quantity": 3, "price": 25.00},
+    ...
+]
+total_revenue = sum(o["quantity"] * o["price"] for o in orders)
+print(f"Total revenue: ${total_revenue:.2f}")
+```
+
+[Execution output: Total revenue: $455.00]
+```
+
+The agent sees the output and continues:
+
+```
+Now I'll find the best selling product by quantity.
+
+```python
+from collections import defaultdict
+product_qty = defaultdict(int)
+for o in orders:
+    product_qty[o["product"]] += o["quantity"]
+best = max(product_qty.items(), key=lambda x: x[1])
+print(f"Best selling: {best[0]} with {best[1]} units")
+```
+
+[Execution output: Best selling: Widget A with 13 units]
+```
+
+Notice how the agent builds on the `orders` variable defined in the first execution. The persistent namespace enables this incremental approach.
+
+## Error Recovery
+
+The second example demonstrates error handling. When the agent makes a mistake, the error message becomes feedback:
+
+```
+Task: Calculate the mean and standard deviation of [4, 8, 15, 16, 23, 42].
+Do not import any libraries.
+```
+
+The agent might first attempt:
+
+```python
+numbers = [4, 8, 15, 16, 23, 42]
+mean = sum(numbers) / len(numbers)
+variance = sum((x - mean) ** 2 for x in numbers) / len(numbers)
+std_dev = sqrt(variance)
+print(f"Mean: {mean}, Std Dev: {std_dev}")
+```
+
+```
+[Execution output: Error: NameError: name 'sqrt' is not defined]
+```
+
+The agent observes the error and corrects:
+
+```python
+std_dev = variance ** 0.5
+print(f"Mean: {mean:.2f}, Std Dev: {std_dev:.2f}")
+```
+
+```
+[Execution output: Mean: 18.00, Std Dev: 12.17]
+```
+
+The error did not crash the session. Instead, it provided specific information (undefined `sqrt`) that guided the fix (use `** 0.5`). This is the core insight of CodeAct: execution failures are learning signals, not terminal conditions.
+
+## CodeAct vs ReAct
+
+ReAct uses text-based actions with predefined semantics: `LookupOrder[id]` always means the same thing. This makes ReAct suitable for systems with well-defined APIs and limited action spaces. CodeAct is more flexible but less constrained. The agent can write any valid Python, which is powerful for open-ended tasks but requires more careful sandboxing.
+
+In practice, many systems combine both approaches. Predefined tools handle common operations with guaranteed semantics, while a code execution capability handles edge cases and complex computations. The choice depends on the task domain and the acceptable tradeoff between flexibility and predictability.
+
+## Key Takeaways
+
+CodeAct treats executable code as the agent's primary action modality. The agent writes code, observes execution results, and iterates. This tight feedback loop grounds reasoning in actual program behavior rather than hypothetical outcomes.
+
+Persistent execution environments enable incremental problem solving. The agent can define variables, build data structures, and reference previous work across multiple iterations. This mirrors how humans use REPLs and notebooks for exploratory programming.
+
+Errors are informative feedback, not failures. A well-designed CodeAct system captures exceptions and returns them as observations. The agent learns from errors and corrects its approach, turning mistakes into progress.
+
+The pattern is particularly suited to data analysis, numerical computation, and tasks where the solution space is too large to enumerate as discrete actions. When the task requires flexibility and the domain supports programmatic solutions, CodeAct provides a natural and powerful execution model.
 
 
 # Hands-On: Self-Reflection Pattern
@@ -6074,103 +6354,4347 @@ Hand-off creates clear ownership boundaries. Each agent is responsible for its d
 
 \newpage
 
-# Execution Modes
+# RAG (Retrieval-Augmented Generation)
 
-## CodeAct
 
-CodeAct is a code-centric execution pattern in which an agent reasons primarily by iteratively writing, executing, and refining code, using program execution itself as the main feedback loop.
+**Retrieval-Augmented Generation (RAG)** is an architectural pattern that combines information retrieval systems with generative language models so that responses are grounded in external, up-to-date, and inspectable knowledge rather than relying solely on model parameters.
+
+### Conceptual overview of RAG
+
+At a high level, a RAG system treats external data as a first-class component of generation. Instead of asking a model to answer a question directly, the system first retrieves relevant information from a corpus, then conditions the model on that information when generating the final answer. The language model remains a reasoning and synthesis engine, while the retriever acts as a dynamic memory.
+
+This separation introduces a clear information workflow with two main phases: **document ingestion** and **document retrieval**, followed by **generation**.
+
+![RAG system overview showing retrieval and generation components](/Users/kqrw311/workspace/aixplore/book_agentic_patterns/chapters/rag/img/rag_overview.jpg)
+
+The workflow below illustrates the two main phases: document ingestion (offline) and retrieval-augmented generation (online).
+
+![Document ingestion and retrieval workflow](/Users/kqrw311/workspace/aixplore/book_agentic_patterns/chapters/rag/img/rag_workflow.png)
+
+Semantic search enables retrieval based on meaning rather than exact keyword matches. Queries and documents are embedded into a shared vector space where proximity indicates relevance.
+
+![Semantic search in embedding space](/Users/kqrw311/workspace/aixplore/book_agentic_patterns/chapters/rag/img/semantic_search.png)
+
+### Information workflow in RAG systems
+
+#### Document ingestion
+
+Document ingestion is the offline (or semi-offline) process that prepares raw data for efficient retrieval. It typically begins with collecting documents from sources such as filesystems, databases, APIs, or web crawls. These documents are then normalized into a common textual representation, which may involve parsing PDFs, stripping markup, or extracting structured fields.
+
+Because language models have limited context windows, documents are usually divided into smaller units called "chunks". This chunking step aims to balance semantic coherence with retrievability: chunks should be large enough to preserve meaning, but small enough to be selectively retrieved. Each chunk is then transformed into a numerical representation, typically via embeddings that capture semantic similarity. The resulting vectors, along with metadata such as source, timestamps, or access permissions, are stored in an index optimized for similarity search.
+
+Ingested data is therefore not just stored text, but a structured memory that supports efficient and meaningful retrieval.
+
+#### Document retrieval
+
+Document retrieval is the online phase, executed at query time. Given a user query or task description, the system first produces a query representation, often using the same embedding space as the documents. This representation is used to search the index and retrieve the most relevant chunks according to a similarity or scoring function.
+
+Retrieval rarely ends at a single step. Results may be filtered using metadata constraints, re-ranked using more expensive scoring models, or combined with other retrieval strategies such as keyword search or structured database queries. The outcome is a small set of contextually relevant passages that can fit within the model’s context window.
+
+These retrieved chunks form the factual grounding for the generation step, effectively acting as an external, query-specific memory.
+
+### How a simple RAG works
+
+In its simplest form, a RAG system can be described as a linear pipeline: ingest documents, retrieve relevant chunks, and generate an answer conditioned on them. The following pseudocode illustrates the core idea, omitting implementation details:
+
+```python
+# Offline ingestion
+chunks = chunk_documents(documents)
+vectors = embed(chunks)
+index.store(vectors, metadata=chunks.metadata)
+
+# Online query
+query_vector = embed(query)
+retrieved_chunks = index.search(query_vector, top_k=5)
+
+# Generation
+context = "\n".join(chunk.text for chunk in retrieved_chunks)
+answer = llm.generate(
+    prompt=f"Use the following context to answer the question:\n{context}\n\nQuestion: {query}"
+)
+```
+
+Despite its simplicity, this pattern already delivers most of the benefits associated with RAG. The model is guided by retrieved evidence, answers can be traced back to source documents, and updating knowledge only requires re-ingesting data rather than retraining the model.
+
+More advanced systems extend this basic flow with richer chunking strategies, hybrid retrieval, iterative querying, and explicit evaluation loops, but the foundational pattern remains the same: retrieval first, generation second, with a clear boundary between the two.
+
+
+## Historical Perspective
+
+The conceptual foundations of Retrieval-Augmented Generation trace back to the earliest days of information retrieval research. In the 1960s and 1970s, researchers developed the vector space model, which represented documents and queries as vectors in a high-dimensional space defined by term frequencies. This representation enabled mathematical operations on text, such as computing similarity via the cosine of the angle between vectors. The underlying insight, later formalized as the distributional hypothesis, was that words appearing in similar contexts tend to have similar meanings. Alongside these representational advances, practical preprocessing techniques emerged out of necessity: tokenization, stop-word removal, and stemming became standard ways to normalize text before indexing. These early systems already embodied the core tension that RAG would later inherit: how to transform unstructured language into a form amenable to efficient, meaningful retrieval.
+
+The 1980s and 1990s saw the field mature in several directions. Probabilistic information retrieval models provided a principled scoring framework grounded in relevance estimation rather than pure geometric similarity, culminating in BM25, which remains a strong baseline today. Researchers working on question answering recognized that documents should not always be treated as indivisible units; passage retrieval emerged as a way to improve recall and precision by decomposing documents into smaller spans. Meanwhile, computational geometry contributed algorithms for nearest-neighbor search, including KD-trees and ball trees, though these approaches struggled as dimensionality increased. Locality-sensitive hashing offered an alternative by trading exactness for speed. Evaluation also became formalized during this period, with test collections like Cranfield and the TREC benchmark establishing standards for measuring retrieval quality using relevance judgments and metrics such as precision, recall, and mean reciprocal rank.
+
+The rise of web-scale search engines in the 1990s and 2000s pushed these academic concepts into industrial infrastructure. Web crawling, HTML parsing, boilerplate removal, and inverted index construction became standard components of large-scale retrieval pipelines. Learning-to-rank methods reframed retrieval as a supervised ranking problem, combining many signals into a single scoring function rather than relying on a single similarity measure. Approximate nearest neighbor algorithms became practical necessities at scale, enabling sublinear search over massive corpora. This era demonstrated that effective retrieval required not just good representations and scoring functions, but also careful systems engineering to balance latency, throughput, and quality.
+
+The 2010s brought a decisive shift from sparse, count-based representations to dense, learned embeddings. Neural language models such as Word2Vec, GloVe, and FastText showed that low-dimensional continuous vectors could encode syntactic and semantic regularities far more effectively than sparse term-frequency vectors. Synonyms clustered together in embedding space, analogies corresponded to vector offsets, and semantic similarity became geometric proximity. Transformer architectures, exemplified by BERT, introduced contextual embeddings where a word's representation depends on its surrounding words, resolving long-standing ambiguities that plagued static embeddings. Dense retrieval became viable: queries and documents could be embedded into a shared semantic space and compared via efficient vector search. Systems like FAISS, released in 2017, formalized approximate nearest neighbor search into production-ready infrastructure, enabling similarity search over billions of vectors. During this same period, natural language generation developed its own evaluation practices, including metrics like BLEU and ROUGE, though these would later prove inadequate for measuring whether generated text was grounded in retrieved evidence.
+
+These threads converged around 2018 to 2020 into what is now recognized as Retrieval-Augmented Generation. Dense passage retrieval demonstrated that neural embeddings could match or exceed BM25 for open-domain question answering when paired with large-scale vector indexes. Explicit RAG formulations appeared, where retrieved documents were injected into a language model's context to guide generation. The motivation was twofold: reduce hallucinations by grounding outputs in real documents, and decouple knowledge updates from expensive model retraining. This convergence exposed new challenges that the separate research traditions had not anticipated. Chunking became a first-class design concern because embedding quality degrades when vectors must summarize overly long or heterogeneous text. Evaluating retrieval and generation separately proved insufficient because a system could retrieve highly relevant documents yet fail to use them correctly, or produce fluent answers that were weakly grounded. Modern RAG evaluation therefore emphasizes faithfulness, attribution, and robustness alongside traditional retrieval metrics. The contemporary RAG pipeline inherits all of this history, integrating symbolic query rewriting from classical information retrieval, sparse and dense retrieval models, multi-stage ranking pipelines, statistical and neural segmentation, vector database algorithms descended from decades of nearest-neighbor research, and evaluation frameworks that trace back to Cranfield and TREC. What is new is not the individual components, but their tight integration into a unified architecture optimized to serve downstream generative models.
+
+
+## Embeddings
+
+Embeddings are the mechanism that transforms raw data (text, images, audio, etc.) into numerical vectors such that semantic similarity becomes geometric proximity.
+
+### From word counts to vector spaces (intuition)
+
+A simple way to build intuition is to start with word-count vectors. Consider the sentence:
+
+> “The cat is under the table”
+
+If the vocabulary is `{the, cat, is, under, table}`, the sentence can be represented as a vector of counts:
+
+```
+[the: 2, cat: 1, is: 1, under: 1, table: 1]
+```
+
+This representation is easy to construct and works reasonably well for keyword matching. However, it has two fundamental limitations. First, it is *sparse* and high-dimensional, which makes storage and comparison inefficient. Second, it carries no notion of meaning: “cat” and “dog” are as unrelated as “cat” and “table” unless they literally co-occur.
+
+Modern embeddings keep the core idea—mapping language to vectors—but replace sparse counts with dense, learned representations where proximity reflects semantics rather than surface form.
+
+![Image](/Users/kqrw311/workspace/aixplore/book_agentic_patterns/chapters/rag/img/word_embedding_space.png)
+
+![Image](/Users/kqrw311/workspace/aixplore/book_agentic_patterns/chapters/rag/img/semantic_relevance.png)
+
+### Dense semantic embeddings
+
+Dense embeddings map words, sentences, or documents into a continuous vector space (often hundreds or thousands of dimensions). In this space, semantic relationships emerge naturally: synonyms cluster together, analogies correspond to vector offsets, and related concepts occupy nearby regions.
+
+Early influential methods include **Word2Vec**, which learns word vectors by predicting context words, **GloVe**, which combines local context with global co-occurrence statistics, and **FastText**, which incorporates character n-grams to better handle morphology and rare words. These models marked a decisive shift from symbolic counts to geometric meaning.
+
+Conceptually, these embeddings still rely on co-occurrence statistics, but they compress them into a dense space where distance metrics such as cosine similarity become meaningful signals for retrieval.
+
+### Transformer-based embeddings
+
+The next major step came with transformer architectures. Models such as **BERT** introduced *contextual embeddings*: a word’s vector depends on its surrounding words, so “bank” in “river bank” differs from “bank” in “investment bank”. This resolved a long-standing limitation of earlier static embeddings.
+
+Transformer-based embedding models typically operate at the sentence or document level for retrieval. They encode an entire passage into a single vector that captures its overall meaning. In a RAG system, these vectors are indexed in a vector database and compared against query embeddings to retrieve semantically relevant context, even when there is little lexical overlap.
+
+A minimal illustrative snippet for text embedding might look like:
+
+```python
+# Pseudocode: embed text into a dense vector
+text = "The cat is under the table"
+vector = embed(text)   # returns a dense float array
+```
+
+The key point is not the API, but the abstraction: text is projected into a semantic space where similarity search is efficient and meaningful.
+
+### Multimodal generalization
+
+The embedding concept generalizes naturally beyond text. Multimodal models learn a *shared* vector space for different data types, allowing cross-modal retrieval. A canonical example is **CLIP**, which aligns images and text descriptions so that an image of a “red chair” is close to the text “a red chair” in the same embedding space.
+
+This generalization is increasingly important in modern RAG systems, where documents may include text, diagrams, tables, or images. A single embedding space enables unified retrieval across modalities, simplifying system design while expanding capability.
+
+### Embeddings in the RAG pipeline
+
+Within a RAG architecture, embeddings serve as the semantic interface between raw data and retrieval. During ingestion, documents are converted into vectors and indexed. At query time, the user question is embedded into the same space, and nearest-neighbor search retrieves the most relevant chunks. The quality of the embeddings directly determines recall, precision, and ultimately the factual grounding of the generated answers.
+
+
+## Vector Databases
+
+Vector databases are specialized data systems designed to store high-dimensional vectors and efficiently retrieve the most similar vectors to a given query.
+
+### How vector databases work
+
+At a conceptual level, a vector database manages three tightly coupled concerns: storage, indexing, and similarity search. Each document, chunk, or entity is represented as a numerical vector produced by an embedding model. These vectors are stored alongside identifiers and optional metadata, but the primary operation is not key-value lookup—it is similarity search.
+
+When a query arrives, it is first embedded into the same vector space. The database then searches for vectors that are “close” to the query vector under a chosen similarity metric. Because naïvely comparing the query to every stored vector is prohibitively expensive at scale, vector databases rely on specialized indexes that dramatically reduce the search space while preserving good recall.
+
+In practice, a vector database behaves less like a traditional relational database and more like a search engine optimized for continuous spaces. Insertions update both raw storage and index structures; queries traverse those indexes to produce a ranked list of candidate vectors, often combined with metadata filtering before final results are returned.
+
+### Similarity metrics
+
+Similarity metrics define what it means for two vectors to be “close.” The choice of metric is not incidental; it encodes assumptions about how embeddings were trained and how magnitude and direction should be interpreted.
+
+Cosine similarity measures the angle between vectors and is invariant to vector length. It is commonly used when embeddings are normalized and direction encodes semantics. Dot product is closely related and often preferred in dense retrieval models trained with inner-product objectives. Euclidean distance measures absolute geometric distance and is natural when vector magnitudes are meaningful.
+
+Most vector databases treat the metric as a first-class configuration, because index structures and optimizations may depend on it. A mismatch between embedding model and similarity metric can significantly degrade retrieval quality, even if the infrastructure itself is functioning correctly.
+
+### Indexing strategies
+
+Indexing is the defining feature that distinguishes a vector database from a simple vector store. An index organizes vectors so that nearest-neighbor queries can be answered efficiently without exhaustive comparison.
+
+Tree-based structures, such as KD-trees or ball trees, recursively partition the space and work well in low to moderate dimensions, but they degrade rapidly as dimensionality increases. Hash-based methods, particularly locality-sensitive hashing, map nearby vectors to the same buckets with high probability, enabling fast candidate generation at the cost of approximate results.
+
+Graph-based indexes represent vectors as nodes in a graph, with edges connecting nearby neighbors. During search, the algorithm navigates the graph starting from an entry point and greedily moves toward vectors that are closer to the query. These structures scale well to high dimensions and large datasets and are widely used in modern systems.
+
+Quantization-based approaches compress vectors into more compact representations, reducing memory footprint and improving cache efficiency. While quantization introduces approximation error, it often yields favorable trade-offs for large-scale deployments.
+
+### Core vector database algorithms
+
+Most production vector databases rely on a small family of ANN algorithms, often combined or layered for better performance. Hierarchical Navigable Small World (HNSW) graphs build multi-layer proximity graphs that enable logarithmic-like search behavior in practice. Inverted file (IVF) indexes first cluster vectors and then search only within the most relevant clusters. Product quantization (PQ) decomposes vectors into subspaces and encodes them compactly, enabling fast distance estimation.
+
+These algorithms are rarely used in isolation. A common pattern is coarse partitioning (such as IVF) followed by graph-based or quantized search within partitions. The database exposes high-level configuration knobs—index type, efSearch, nprobe, recall targets—but internally orchestrates multiple algorithmic stages to balance latency, recall, and memory usage.
+
+### Vector databases in RAG systems
+
+In a RAG architecture, the vector database acts as the semantic memory layer. Document chunks are embedded and indexed once during ingestion, while user queries are embedded and searched at runtime. The quality of retrieval depends jointly on embedding quality, similarity metric, index choice, and search parameters. As a result, vector databases are not passive storage components but active participants in the behavior of the overall system.
+
+Tuning a RAG system often involves iterative adjustments to vector database configuration: choosing an index that matches data scale, increasing recall at the expense of latency, or combining vector search with metadata filters to enforce structural constraints. Understanding how vector databases work internally is therefore essential for diagnosing retrieval failures and for designing robust, scalable RAG pipelines.
+
+---
+
+The following sections provide a more formal treatment of the algorithms underlying vector databases. Readers primarily interested in practical usage may skip ahead; those seeking deeper understanding of the trade-offs between index types, approximation guarantees, and computational complexity will find the mathematical foundations useful for informed system design.
+
+## Core Vector Database Algorithms
+
+Vector databases are fundamentally concerned with solving the *nearest neighbor search* problem in high-dimensional continuous spaces. The practical design of these systems is best understood by starting from the formal problem definition and then examining how successive algorithmic relaxations make large-scale retrieval tractable.
+
+### Formal problem definition
+
+Let
+$$
+\mathcal{X} = \{x_1, x_2, \dots, x_n\}, \quad x_i \in \mathbb{R}^d
+$$
+be a collection of vectors embedded in a $d$-dimensional space, and let
+$$
+q \in \mathbb{R}^d
+$$
+be a query vector. Given a distance function $\delta(\cdot, \cdot)$, the *exact nearest neighbor* problem is defined as
+$$
+\operatorname{NN}(q) = \arg\min_{x_i \in \mathcal{X}} \delta(q, x_i)
+$$
+
+For cosine similarity, this becomes
+$$
+\operatorname{NN}(q) = \arg\max_{x_i \in \mathcal{X}} \frac{q \cdot x_i}{|q| |x_i|}
+$$
+
+A brute-force solution requires $O(nd)$ operations per query, which is computationally infeasible for large $n$. The central challenge addressed by vector database algorithms is to reduce this complexity while preserving ranking quality.
+
+### High-dimensional effects and approximation
+
+As dimensionality increases, distances between points concentrate. For many distributions, the ratio
+$$
+\frac{\min_i \delta(q, x_i)}{\max_i \delta(q, x_i)} \rightarrow 1 \quad \text{as } d \rightarrow \infty
+$$
+
+This phenomenon undermines exact pruning strategies and motivates *Approximate Nearest Neighbor (ANN)* search. ANN replaces the exact objective with a relaxed one:
+$$
+\delta(q, \hat{x}) \le (1 + \varepsilon) \cdot \delta(q, x^*)
+$$
+where $x^*$ is the true nearest neighbor.
+
+All modern vector database algorithms can be understood as structured approximations to this relaxed objective.
+
+## Partition-based search: Inverted File Index (IVF)
+
+The inverted file index reduces search complexity by introducing a *coarse quantization* of the vector space. Let
+$$
+C = \{c_1, \dots, c_k\}
+$$
+be a set of centroids obtained via k-means clustering:
+$$
+C = \arg\min_{C} \sum_{i=1}^{n} \min_{c_j \in C} |x_i - c_j|^2
+$$
+
+Each vector is assigned to its closest centroid:
+$$
+\text{bucket}(x_i) = \arg\min_{c_j \in C} |x_i - c_j|
+$$
+
+At query time, the search proceeds in two stages. First, the query is compared against all centroids:
+$$
+d_j = |q - c_j|
+$$
+Then, only the vectors stored in the $n_{\text{probe}}$ closest buckets are searched exhaustively.
+
+#### IVF query algorithm (pseudo-code)
+
+```
+function IVF_SEARCH(query q, centroids C, buckets B, n_probe):
+    distances = compute_distance(q, C)
+    selected = argmin_n(distances, n_probe)
+    candidates = union(B[c] for c in selected)
+    return top_k_by_distance(q, candidates)
+```
+
+This reduces query complexity to approximately
+$$
+O(kd + \frac{n}{k} \cdot n_{\text{probe}} \cdot d)
+$$
+which is sublinear in $n$ for reasonable values of $k$ and $n_{\text{probe}}$.
+
+## Vector compression: Product Quantization (PQ)
+
+Product Quantization further reduces computational and memory costs by compressing vectors. The original space $\mathbb{R}^d$ is decomposed into $m$ disjoint subspaces:
+$$
+x = (x^{(1)}, x^{(2)}, \dots, x^{(m)})
+$$
+
+Each subspace is quantized independently using a codebook:
+$$
+Q_j : \mathbb{R}^{d/m} \rightarrow \{1, \dots, k\}
+$$
+
+A vector is encoded as a sequence of discrete codes:
+$$
+\text{PQ}(x) = (Q_1(x^{(1)}), \dots, Q_m(x^{(m)}))
+$$
+
+Distance computation uses *asymmetric distance estimation*:
+$$
+\delta(q, x) \approx \sum_{j=1}^{m} | q^{(j)} - c_{Q_j(x)}^{(j)} |^2
+$$
+
+#### PQ distance computation (pseudo-code)
+
+```
+function PQ_DISTANCE(query q, codes c, lookup_tables T):
+    dist = 0
+    for j in 1..m:
+        dist += T[j][c[j]]
+    return dist
+```
+
+Theoretical justification comes from rate–distortion theory: PQ minimizes expected reconstruction error under constrained bit budgets. Empirically, it preserves relative ordering sufficiently well for ranking-based retrieval.
+
+## Hash-based search: Locality-Sensitive Hashing (LSH)
+
+Locality-Sensitive Hashing constructs hash functions $h \in \mathcal{H}$ such that
+$$
+\Pr[h(x) = h(y)] = f(\delta(x, y))
+$$
+where $f$ decreases monotonically with distance.
+
+For Euclidean distance, a common family is
+$$
+h_{a,b}(x) = \left\lfloor \frac{a \cdot x + b}{w} \right\rfloor
+$$
+with random $a \sim \mathcal{N}(0, I)$ and $b \sim U(0, w)$.
+
+By concatenating hashes and using multiple tables, LSH achieves expected query complexity
+$$
+O(n^\rho), \quad \rho < 1
+$$
+
+Despite strong theoretical guarantees, LSH often underperforms graph-based methods in dense embedding spaces typical of neural models.
+
+## Graph-based search: Navigable small-world graphs and HNSW
+
+Graph-based methods model the dataset as a proximity graph $G = (V, E)$, where each node corresponds to a vector. Search proceeds via greedy graph traversal:
+$$
+x_{t+1} = \arg\min_{y \in \mathcal{N}(x_t)} \delta(q, y)
+$$
+
+Hierarchical Navigable Small World (HNSW) graphs extend this idea by constructing multiple graph layers. Each vector is assigned a maximum level:
+$$
+\ell \sim \text{Geometric}(p)
+$$
+
+Upper layers are sparse and provide long-range connections, while lower layers are dense and preserve local neighborhoods.
+
+#### HNSW search algorithm (simplified)
+
+```
+function HNSW_SEARCH(query q, entry e, graph G):
+    current = e
+    for level from max_level down to 1:
+        current = greedy_search(q, current, G[level])
+    return best_neighbors(q, current, G[0])
+```
+
+Theoretical intuition comes from small-world graph theory: the presence of long-range links reduces graph diameter, while local edges enable precise refinement. Expected search complexity is close to $O(\log n)$, with high recall even in large, high-dimensional datasets.
+
+## Algorithmic composition in vector databases
+
+In practice, vector databases compose these algorithms hierarchically. A typical pipeline applies IVF to reduce the candidate set, PQ to compress vectors and accelerate distance computation, and graph-based search to refine nearest neighbors. Each stage introduces controlled approximation while drastically reducing computational cost.
+
+This layered structure mirrors the mathematical decomposition of the nearest neighbor problem: spatial restriction, metric approximation, and navigational optimization.
+
+## Implications for RAG systems
+
+In Retrieval-Augmented Generation, these algorithms define the semantic recall boundary of the system. Errors in retrieval are often consequences of approximation layers rather than embedding quality. Understanding the mathematical and algorithmic foundations of vector databases is therefore essential for diagnosing failure modes, tuning recall–latency trade-offs, and designing reliable RAG pipelines.
+
+Vector databases should thus be viewed not as storage engines, but as algorithmic systems grounded in decades of research on high-dimensional geometry, probabilistic approximation, and graph navigation.
+
+
+## Document Ingestion and Chunking
+
+Document ingestion is the process that transforms raw, heterogeneous source material into a structured, searchable representation suitable for retrieval-augmented generation.
+
+### The document ingestion pipeline
+
+At a conceptual level, document ingestion is a deterministic transformation pipeline. Its purpose is not to answer queries, but to prepare a stable corpus over which retrieval can operate efficiently and reproducibly.
+
+The pipeline typically begins with **source acquisition**. Documents may originate from files (PDFs, Word documents, Markdown), databases, web pages, APIs, or generated artifacts such as logs and reports. At this stage, ingestion systems focus on completeness and traceability: every ingested unit should retain a reference to its origin, version, and ingestion time.
+
+Next comes **parsing and normalization**. Raw formats are converted into a canonical internal representation, usually plain text plus structural annotations. For PDFs this may involve OCR; for HTML, DOM traversal and boilerplate removal; for code or structured data, language-aware parsers. Normalization also includes character encoding fixes, whitespace normalization, and the preservation of semantic boundaries such as headings, paragraphs, tables, or code blocks.
+
+Once text is normalized, the pipeline enriches it with **metadata**. Metadata may include document-level attributes (title, author, date, source, access control labels) and section-level attributes (heading hierarchy, page number, offsets). This metadata is critical later for filtering, ranking, and provenance tracking, even if it plays no role in embedding computation itself.
+
+Only after these steps does **chunking** occur. Chunking transforms a single normalized document into a sequence of smaller, partially overlapping or non-overlapping text segments. Each chunk becomes the atomic unit for embedding and storage in a vector database. Importantly, chunking is not merely a technical workaround for context limits; it encodes assumptions about how information should be retrieved and recombined at generation time.
+
+Finally, each chunk is **embedded and stored**, together with its metadata and a reference back to the source document. Although embedding and storage are sometimes discussed as part of retrieval infrastructure, from a systems perspective they conclude the ingestion phase: the corpus is now ready to be queried.
+
+### Document chunking: motivations and constraints
+
+Chunking addresses three fundamental constraints.
+
+First, embedding models have finite context windows. A single vector must summarize its input text, and beyond a certain length this summary becomes lossy. Chunking bounds this loss.
+
+Second, retrieval operates at the level of chunks, not documents. If a document contains multiple unrelated topics, a single embedding will conflate them. Chunking improves semantic locality, allowing retrieval to surface only the relevant parts.
+
+Third, generation benefits from focused context. Passing a handful of precise chunks to a language model is generally more effective than passing an entire document, even if the model could technically accept it.
+
+These constraints imply that chunking is an information-theoretic trade-off between context completeness and semantic specificity.
+
+### Chunking strategies
+
+The simplest strategy is **fixed-size chunking**, where text is split every *N* tokens or characters. This approach is easy to implement and model-agnostic, but it ignores document structure. Chunks may begin or end mid-sentence, which can reduce embedding quality.
+
+A small refinement is **fixed-size chunking with overlap**. Consecutive chunks share a window of tokens, reducing boundary effects and preserving continuity across chunks. Overlap improves recall at the cost of storage and compute.
+
+A more semantically informed approach is **structure-aware chunking**. Here, chunk boundaries align with natural units such as paragraphs, sections, or headings, subject to a maximum size constraint. This strategy preserves discourse coherence and is especially effective for technical documents, manuals, and academic papers.
+
+In domains where meaning depends on logical flow, **recursive or hierarchical chunking** is often used. Large sections are split into subsections, then paragraphs, and finally sentences until size constraints are satisfied. Each chunk retains metadata describing its position in the hierarchy, enabling later aggregation or re-ranking.
+
+Finally, **semantic chunking** attempts to split text based on topic shifts rather than explicit structure. This can be implemented using lightweight similarity checks between adjacent spans. While more computationally expensive, it can produce chunks that align closely with conceptual units.
+
+### Illustrative chunking logic
+
+The following pseudocode illustrates structure-aware chunking with a size constraint, without committing to a specific framework or library:
+
+```python
+def chunk_document(sections, max_tokens, overlap):
+    chunks = []
+    for section in sections:
+        buffer = []
+        token_count = 0
+
+        for paragraph in section.paragraphs:
+            p_tokens = count_tokens(paragraph)
+
+            if token_count + p_tokens > max_tokens:
+                chunks.append(join(buffer))
+                buffer = buffer[-overlap:] if overlap > 0 else []
+                token_count = count_tokens(buffer)
+
+            buffer.append(paragraph)
+            token_count += p_tokens
+
+        if buffer:
+            chunks.append(join(buffer))
+
+    return chunks
+```
+
+This pattern highlights two core ideas: chunking respects document structure, and size constraints are enforced incrementally rather than by naïve slicing.
+
+### Chunking as a design decision
+
+Chunk size, overlap, and boundary selection are not universal constants. They depend on embedding dimensionality, model context limits, expected query granularity, and downstream re-ranking strategies. In practice, ingestion pipelines often expose these parameters explicitly, treating chunking as a tunable component rather than a fixed preprocessing step.
+
+A well-designed ingestion pipeline therefore makes chunking reproducible, auditable, and revisable. Re-chunking a corpus with different parameters should be possible without re-ingesting raw sources, enabling systematic evaluation and iteration.
+
+### Statistical chunking (unsupervised segmentation)
+
+Statistical chunking refers to a family of methods that segment documents into coherent units using distributional signals derived directly from the text, without relying on predefined structure or large language models.
+
+The origins of statistical chunking can be traced to work on **text segmentation** and **topic boundary detection** in the 1990s. Early systems sought to divide long documents into topically coherent segments by exploiting lexical cohesion: the intuition that words related to the same topic tend to recur within a segment and change abruptly at topic boundaries. This line of research emerged in parallel with probabilistic language modeling and information retrieval, well before dense embeddings were available.
+
+A canonical example is the TextTiling algorithm, which introduced the idea of sliding a window over a document and measuring similarity between adjacent blocks of text. When similarity drops sharply, a topic boundary is inferred. Later work extended this idea using probabilistic models, such as Hidden Markov Models and Bayesian topic models, to infer latent segment structure.
+
+In a modern ingestion pipeline, statistical chunking is best understood as a **model-light, data-driven alternative** to both rule-based and LLM-based chunking. Instead of enforcing fixed sizes or asking a model to reason about discourse, the system observes how word distributions evolve across the document and places boundaries where the statistics change.
+
+The core mechanism typically follows a common pattern. The document is first divided into small, uniform units such as sentences or short paragraphs. Each unit is represented as a vector, often using term frequency–inverse document frequency (TF–IDF) or other bag-of-words–based representations. A similarity measure is then computed between adjacent windows of units. Low similarity indicates a potential topic shift and thus a candidate chunk boundary.
+
+Conceptually, this can be expressed as follows:
+
+```python
+units = split_into_sentences(document)
+vectors = tfidf_encode(units)
+
+boundaries = []
+for i in range(1, len(vectors)):
+    sim = cosine_similarity(vectors[i-1], vectors[i])
+    if sim < threshold:
+        boundaries.append(i)
+
+chunks = merge_units(units, boundaries)
+```
+
+Although simplified, this illustrates the essence of statistical chunking: segmentation emerges from local changes in distributional similarity rather than explicit semantic reasoning.
+
+Several variations exist. Some approaches smooth similarity scores over a wider window to avoid spurious boundaries. Others apply clustering algorithms, grouping adjacent units into segments that maximize intra-segment similarity. Topic-model–based approaches, such as Latent Dirichlet Allocation, infer a latent topic mixture for each unit and place boundaries where the dominant topic changes.
+
+Statistical chunking offers a number of practical advantages. It is deterministic, reproducible, and inexpensive compared to LLM-based methods. It also scales well to very large corpora and can be applied uniformly across domains without prompt engineering. For ingestion pipelines that prioritize stability and cost control, these properties are attractive.
+
+However, statistical methods have well-known limitations. Lexical variation can obscure topic continuity, especially when the same concept is expressed using different terminology. Conversely, shared vocabulary can mask genuine topic shifts. As a result, statistical chunking tends to perform best on expository or technical text with consistent terminology and degrades on narrative, conversational, or highly abstract material.
+
+In contemporary RAG systems, statistical chunking is often used as a **baseline or first-pass segmentation**. Its output may be refined by structure-aware heuristics or selectively reprocessed using LLM-based chunking. This layered approach preserves the efficiency and determinism of statistical methods while allowing higher-level semantic models to intervene where they add the most value.
+
+From an architectural perspective, statistical chunking reinforces the idea that document ingestion is a spectrum of techniques rather than a single algorithm, with different strategies occupying different points in the trade-off space between cost, interpretability, and semantic fidelity.
+
+
+### LLM-based chunking (topic-aware chunking)
+
+An increasingly common alternative to heuristic chunking is **LLM-based chunking**, where a language model is explicitly asked to segment a document into coherent topical units.
+
+The idea of using models to guide segmentation has roots in earlier work on text segmentation and discourse modeling, such as topic segmentation with probabilistic models or lexical cohesion methods in the late 1990s. However, these approaches were limited by shallow representations and required careful feature engineering. Large language models change the landscape by providing a strong prior over discourse structure, topic boundaries, and semantic coherence, making it possible to delegate chunking decisions to the model itself.
+
+In LLM-based chunking, the ingestion pipeline treats the document (or a large section of it) as input to a language model and asks the model to identify topical segments. Instead of enforcing a fixed token budget upfront, the model is instructed to split the text into chunks that each represent a single topic, concept, or subtask, optionally subject to soft size constraints. Each resulting chunk is then embedded and stored like any other ingestion unit.
+
+Conceptually, this approach reframes chunking from a syntactic operation into a semantic one. The model is no longer constrained to respect paragraph or sentence boundaries alone; it can merge multiple paragraphs into one chunk if they form a single idea, or split a long paragraph if it contains multiple distinct topics. This is particularly valuable for documents with weak or inconsistent structure, such as internal reports, design documents, meeting notes, or conversational transcripts.
+
+A typical prompt for LLM-based chunking specifies three elements. First, the **segmentation objective**, for example “split the document into self-contained topical sections suitable for retrieval.” Second, **constraints**, such as a maximum target length per chunk or a preference for fewer, larger chunks over many small ones. Third, the **output schema**, which usually requires the model to return a list of chunks with titles, summaries, or offsets to support traceability.
+
+The following pseudocode illustrates the pattern at a high level:
+
+```python
+prompt = """
+You are given a document.
+Split it into coherent topical chunks.
+Each chunk should cover a single topic and be self-contained.
+Prefer chunks under 300 tokens when possible.
+
+Return a JSON list of:
+- title
+- chunk_text
+"""
+
+chunks = llm(prompt, document_text)
+
+for chunk in chunks:
+    vector = embed(chunk["chunk_text"])
+    store(vector, metadata={
+        "title": chunk["title"],
+        "source_doc": doc_id
+    })
+```
+
+This pattern highlights a key difference from traditional chunking: the model produces **semantic boundaries**, not just text spans. Titles or summaries generated during chunking can later be reused for retrieval diagnostics, re-ranking, or citation.
+
+LLM-based chunking has clear advantages, but it also introduces new trade-offs. Because the model is non-deterministic, chunk boundaries may vary across runs unless temperature is tightly controlled. The process is also more expensive than rule-based chunking and may require batching or hierarchical application for very large documents. Additionally, errors at ingestion time can be harder to detect, since chunk boundaries are no longer derived from explicit document structure.
+
+For these reasons, LLM-based chunking is often used selectively. Common patterns include applying it only to long or poorly structured documents, combining it with structure-aware pre-segmentation, or using it to refine coarse chunks produced by heuristic methods. In all cases, it should be treated as a configurable ingestion strategy rather than a default replacement for simpler approaches.
+
+From a systems perspective, LLM-based chunking reinforces a broader theme in modern RAG pipelines: ingestion is no longer a purely mechanical preprocessing step, but an opportunity to inject semantic understanding early in the lifecycle of the data.
+
+
+## Document Retrieval
+
+Document retrieval is the stage in a RAG system that transforms a user query into a ranked, filtered set of candidate documents or passages that are most likely to support a correct answer.
+
+### Conceptual overview of document retrieval
+
+In a RAG system, document retrieval is not a single operation but a pipeline. A raw user query is progressively transformed, evaluated, and constrained until a small, high-quality context set is produced. Each stage trades recall for precision, with early stages favoring breadth and later stages favoring accuracy and relevance.
+
+At a high level, the retrieval process consists of query interpretation and rewriting, candidate generation, scoring, re-ranking, filtering, and combination with structured constraints. While these stages can be collapsed in small systems, large-scale RAG deployments almost always implement them explicitly to control cost, latency, and quality.
+
+### Query interpretation and rewriting
+
+User queries are often underspecified, ambiguous, or conversational. Before retrieval, the system may rewrite the query into one or more canonical forms that are better aligned with the indexed representation of documents. This includes expanding abbreviations, resolving coreferences, normalizing terminology, or decomposing a complex question into multiple sub-queries.
+
+In neural systems, query rewriting is frequently performed by a language model that produces a more retrieval-friendly query while preserving intent. Importantly, rewriting does not aim to answer the question, but to maximize the likelihood that relevant documents are retrieved.
+
+```python
+# Pseudocode for query rewriting
+rewritten_query = rewrite_model.generate(
+    original_query,
+    objective="maximize retrievability"
+)
+```
+
+Multiple rewritten queries may be generated to increase recall, with their results merged downstream.
+
+### Candidate generation
+
+Candidate generation is the first retrieval pass over the corpus. Its purpose is to retrieve a relatively large set of potentially relevant documents with high recall and low computational cost. This stage commonly uses either sparse retrieval (e.g., inverted indexes with BM25), dense vector search over embeddings, or both.
+
+Dense retrieval maps the rewritten query into the same embedding space as documents and retrieves nearest neighbors under a similarity metric. At this stage, approximate nearest neighbor algorithms are typically used to ensure scalability.
+
+```python
+# Dense candidate generation
+query_vector = embed(rewritten_query)
+candidates = vector_index.search(
+    query_vector,
+    top_k=K_large
+)
+```
+
+The output of this stage is intentionally noisy. Precision is improved later.
+
+### Scoring and initial ranking
+
+Each candidate document is assigned a relevance score with respect to the query. In simple systems, this score may be the similarity returned by the vector database or the BM25 score. In more advanced systems, multiple signals are combined, such as dense similarity, sparse similarity, document freshness, or domain-specific heuristics.
+
+Formally, scoring can be expressed as a function
+$s(d, q) \rightarrow \mathbb{R}$,
+where $d$ is a document and $q$ is the rewritten query. At this stage, the goal is to produce a reasonably ordered list, not a final ranking.
+
+### Re-ranking with cross-encoders or task-aware models
+
+Re-ranking refines the initial ranking using more expensive but more accurate models. Instead of independently embedding queries and documents, re-rankers jointly encode the query–document pair, allowing fine-grained interaction between their tokens. This substantially improves precision, especially at the top of the ranking.
+
+Because re-ranking is computationally expensive, it is applied only to a small subset of top candidates from the previous stage.
+
+```python
+# Re-ranking stage
+top_candidates = candidates[:K_small]
+reranked = reranker.score_pairs(
+    query=rewritten_query,
+    documents=top_candidates
+)
+```
+
+The result is a high-precision ordering optimized for downstream generation rather than generic relevance.
+
+### Filtering and constraints
+
+Filtering removes candidates that are irrelevant or invalid given explicit constraints. These constraints often come from metadata, such as document type, access permissions, time ranges, language, or domain tags. Filtering can be applied before retrieval to reduce the search space, after retrieval to prune results, or at both stages.
+
+In enterprise RAG systems, filtering is critical for correctness and safety. A highly relevant document that violates a constraint is worse than a less relevant but valid one.
+
+```python
+# Metadata-based filtering
+filtered = [
+    d for d in reranked
+    if d.metadata["access_level"] <= user_access
+]
+```
+
+### Combined strategies: metadata, SQL, and embeddings
+
+Modern retrieval pipelines frequently combine symbolic and vector-based approaches. A common pattern is to use structured queries (e.g., SQL or metadata filters) to narrow the candidate set, followed by dense similarity search within that subset. This hybrid approach exploits the strengths of both paradigms: exactness and interpretability from structured filters, and semantic generalization from embeddings.
+
+Conceptually, this corresponds to retrieving from a conditional distribution
+$p(d \mid q, m)$,
+where $m$ represents structured metadata constraints.
+
+This combination is especially powerful in domains with rich schemas, such as scientific literature, enterprise knowledge bases, or regulatory documents.
+
+### Retrieval as a system, not a single model
+
+A key insight in modern RAG is that retrieval quality emerges from the interaction of stages rather than from any single algorithm. Query rewriting increases recall, candidate generation ensures coverage, scoring and re-ranking enforce relevance, and filtering guarantees validity. Treating retrieval as a modular pipeline allows systematic evaluation, targeted optimization, and controlled trade-offs between cost and quality.
+
+
+## Evaluating RAG Systems
+
+Evaluating a Retrieval-Augmented Generation (RAG) system means measuring, in a principled way, how well retrieval and generation jointly support factual, relevant, and grounded answers.
+
+## Evaluation layers in RAG systems
+
+A modern RAG system is best evaluated as a pipeline with interacting components rather than a single black box. Each layer answers a different question: *are we retrieving the right things, are we selecting the right evidence, and does the final answer correctly use that evidence?*
+
+### Metrics for vector search
+
+Vector search evaluation focuses on the quality of nearest-neighbor retrieval in embedding space, independent of any downstream generation. The goal is to assess whether semantically relevant items are geometrically close to the query embedding.
+
+Typical metrics are based on ranked retrieval. Recall@k measures whether at least one relevant item appears in the top-k results, which is particularly important in RAG because downstream components only see a small retrieved set. Precision@k captures how many of the retrieved items are relevant, but is often secondary to recall in early retrieval stages. Mean Reciprocal Rank (MRR) emphasizes how early the first relevant item appears, reflecting latency-sensitive pipelines. Normalized Discounted Cumulative Gain (nDCG) generalizes these ideas when relevance is graded rather than binary.
+
+In practice, vector search evaluation requires a labeled dataset of queries paired with relevant documents or passages. These labels are often incomplete or noisy, which is why recall-oriented metrics are preferred: they are more robust to missing judgments.
+
+```python
+def recall_at_k(retrieved_ids, relevant_ids, k):
+    top_k = set(retrieved_ids[:k])
+    return int(len(top_k & relevant_ids) > 0)
+```
+
+This level of evaluation answers the question: *given a query embedding, does the vector index surface semantically relevant candidates?* It does not tell us whether these candidates are actually useful for answering the question.
+
+
+### Metrics for document retrieval
+
+Document retrieval metrics evaluate the effectiveness of the full retrieval stack, which may include query rewriting, filtering, hybrid search, and re-ranking. Unlike pure vector search, this level is concerned with the *final set of documents passed to the generator*.
+
+The same families of metrics—Recall@k, MRR, and nDCG—are commonly used, but the unit of relevance is often more task-specific. Relevance may be defined as containing sufficient evidence to answer the question, not merely semantic similarity. This distinction is critical: a document can be topically related yet useless for grounding an answer.
+
+Evaluation at this level often relies on human annotation or weak supervision, such as matching retrieved passages against known supporting facts. In enterprise systems, retrieval quality is frequently evaluated by measuring coverage over authoritative sources, policy documents, or curated knowledge bases.
+
+Conceptually, this layer answers: *does the system retrieve the right evidence, in the right form, for generation?*
+
+
+### End-to-end RAG metrics
+
+End-to-end evaluation treats the RAG system as a whole and measures the quality of the final answer. This is the most user-visible layer and the hardest to evaluate reliably.
+
+Traditional generation metrics such as exact match, F1, BLEU, or ROUGE are sometimes used when gold answers are available, but they are poorly aligned with the goals of RAG. A correct answer phrased differently may score poorly, while an answer that matches the gold text but is unsupported by retrieved evidence may score well.
+
+As a result, modern RAG evaluation increasingly emphasizes three complementary properties. **Answer correctness** measures whether the answer is factually correct with respect to a reference or authoritative source. **Groundedness or faithfulness** measures whether the answer can be directly supported by the retrieved documents. **Attribution quality** measures whether the system correctly cites or points to the evidence it used.
+
+LLM-based judges are often used to operationalize these criteria by comparing the answer against retrieved context and scoring dimensions such as correctness and support. While imperfect, this approach scales better than manual evaluation and aligns more closely with real-world usage.
+
+```python
+def judge_groundedness(answer, context):
+    prompt = f"""
+    Is the answer fully supported by the context?
+    Answer: {answer}
+    Context: {context}
+    """
+    return call_llm(prompt)
+```
+
+This level answers the question users actually care about: *does the system produce a correct, well-supported answer?*
+
+
+## Measuring improvements in RAG systems
+
+Evaluating a single snapshot of a RAG system is rarely sufficient. What matters in practice is measuring *improvement* as the system evolves.
+
+A common baseline is a non-RAG model that answers questions without retrieval. Comparing end-to-end performance against this baseline isolates the value added by retrieval. If RAG does not outperform a strong non-RAG baseline, retrieval may be unnecessary or poorly integrated.
+
+Ablation studies are equally important. By selectively disabling components—such as query rewriting, re-ranking, or metadata filtering—one can measure their marginal contribution. This helps avoid overfitting to complex pipelines whose benefits are not well understood.
+
+Offline metrics should be complemented with online or human-in-the-loop evaluation where possible. User feedback, answer acceptance rates, and error analysis often reveal failure modes that are invisible to automated metrics, such as subtle hallucinations or missing caveats.
+
+Taken together, these practices shift evaluation from a one-time score to a continuous measurement discipline, which is essential for maintaining reliable RAG systems in production.
+
+
+## Attribution, Citation, Provenance, and Truth Maintenance
+
+Attribution in RAG systems concerns the ability to explicitly link generated statements to the source documents, data items, and transformations that produced them.
 
 ### Historical perspective
 
-Early agent systems treated code execution as an auxiliary tool: a way to call an API, run a calculation, or fetch data. This view began to shift with work on program synthesis, neural program induction, and reinforcement learning with executable environments, where the boundary between “reasoning” and “acting” blurred. In these settings, programs were not merely outputs but intermediate artifacts used to explore a solution space.
+The roots of attribution and provenance long predate modern RAG systems. In database research of the late 1980s and 1990s, work on *data lineage* and *why-provenance* sought to explain how query results were derived from relational tables. This line of research matured in the early 2000s with formal models of provenance for SQL, XML, and workflow systems, motivated by scientific computing and data-intensive experiments where reproducibility was critical.
 
-The CodeAct approach crystallized this shift by explicitly framing agent behavior as alternating between natural language reasoning and concrete code execution. The key insight was that many complex tasks—data analysis, environment control, system configuration—are more reliably solved by letting the model *think in code*, observe runtime effects, and adapt. This lineage connects earlier ideas such as tool-augmented language models and ReAct-style loops, but places executable code at the center rather than at the periphery.
+In parallel, information retrieval and question answering research emphasized citation and evidence extraction. Early open-domain QA systems in the 2000s already attempted to return answer snippets together with document references, but attribution was heuristic and weakly coupled to generation. With the rise of neural language models in the late 2010s, attribution became a central concern again, now framed around *hallucinations* and unverifiable model outputs. Retrieval-augmented generation, introduced as a way to ground language models in external knowledge, naturally revived provenance, citation, and truth maintenance as first-class design goals. Recent work focuses on making attribution machine-readable, auditable, and robust across multi-step retrieval and generation pipelines.
 
-### The CodeAct pattern
+### Conceptual overview
 
-At its core, CodeAct treats code execution as the agent’s primary action modality. Instead of planning entirely in natural language and then calling tools, the agent incrementally constructs small programs, runs them, inspects results, and revises its approach. Reasoning emerges from the interaction between generated code and observed execution outcomes.
+In a RAG system, attribution spans the entire information flow. Documents are ingested, transformed, chunked, embedded, retrieved, possibly re-ranked, and finally used as conditioning context for generation. Each of these steps introduces opportunities to lose or blur the connection between an output token and its original source. Attribution mechanisms aim to preserve this connection explicitly.
 
-A typical CodeAct loop has four conceptual phases:
+Closely related but distinct concepts are often conflated. *Attribution* answers the question “which source supports this statement?”. *Citation* is the presentation layer, deciding how that source is exposed to users (for example, inline references or footnotes). *Provenance tracking* is the internal bookkeeping that records how data flowed through the system. *Truth maintenance* addresses how these links remain valid over time as documents, embeddings, or models change.
 
-1. **Intent formation**: the agent translates a goal into a concrete computational step.
-2. **Code generation**: the agent emits a small, focused code fragment.
-3. **Execution and observation**: the code is executed in a controlled environment and produces outputs, side effects, or errors.
-4. **Reflection and refinement**: the agent incorporates the observed behavior into the next iteration.
+A robust RAG system treats these as complementary layers rather than a single feature.
 
-This loop continues until the goal is satisfied or the agent determines it cannot proceed further. Importantly, the unit of work is intentionally small: short scripts, single commands, or incremental state changes. This keeps failures local and feedback immediate.
+### Attribution in RAG generation
 
-Conceptually, this can be sketched as:
+At generation time, attribution typically operates at the level of retrieved chunks rather than entire documents. Each chunk carries stable identifiers and metadata inherited from ingestion. During retrieval, these identifiers are preserved and propagated alongside the text content. The generator is then constrained or guided to associate generated statements with one or more of these chunk identifiers.
 
-```python
-while not goal_satisfied:
-    step = agent.propose_code(context)
-    result = execute(step)
-    context = agent.observe_and_update(context, result)
-```
-
-The distinguishing feature is that *execution results are first-class signals*. Errors, stack traces, runtime values, and filesystem changes all become part of the agent’s working context.
-
-### Execution environments and isolation
-
-Effective CodeAct systems rely on a well-defined execution substrate. Code must run in an environment that is both expressive enough to be useful and constrained enough to be safe. The implementation summarized in the MCP Sandbox design illustrates several architectural consequences of this requirement.
-
-Each agent session executes code inside a dedicated, isolated environment with its own filesystem and process space. This isolation allows the agent to experiment freely—creating files, starting processes, modifying state—without risking cross-session interference. From the agent’s perspective, the environment behaves like a persistent workspace rather than a disposable tool call.
-
-A common pattern is to fix a canonical working directory inside the execution environment and treat it as the agent’s “world”:
+A common pattern is to structure the model output so that answers and sources are produced together. This reduces ambiguity and allows downstream validation.
 
 ```python
-# inside the execution environment
-with open("results.txt", "w") as f:
-    f.write(str(computation_output))
+# Conceptual output schema used by the generator
+{
+    "answer": "The BRCA1 gene is involved in DNA repair.",
+    "sources": [
+        {"doc_id": "oncology_review_2019", "chunk_id": "p3_c2"},
+        {"doc_id": "genetics_textbook", "chunk_id": "ch5_c7"}
+    ]
+}
 ```
 
-The persistence of this workspace across executions is crucial. It allows CodeAct agents to build state incrementally, revisit previous artifacts, and recover transparently from execution failures by recreating the environment while preserving data.
+Even when the language model is free-form, the system can post-process token spans and align them with the retrieved chunks that were present in context. The key requirement is that attribution identifiers remain machine-readable and stable across the pipeline.
 
-### Failure, feedback, and recovery
+### References and citation strategies
 
-Because CodeAct agents execute arbitrary code, failures are expected rather than exceptional. Syntax errors, runtime exceptions, timeouts, and resource exhaustion all serve as informative feedback. Robust systems therefore separate *failure detection* from *failure recovery*.
+Citation is the user-facing expression of attribution. In RAG systems, citation strategies range from coarse to fine-grained. Some systems attach a single list of documents supporting the entire answer. More advanced designs provide sentence-level or clause-level citations, which improves trust and debuggability but requires tighter coupling between generation and retrieval.
 
-Execution is typically wrapped with pre-flight validation and post-execution checks:
+A critical design choice is whether citations are generated by the model or imposed by the system. Model-generated citations are flexible but error-prone, while system-enforced citations trade fluency for correctness. In practice, hybrid approaches are common: the system restricts the citation candidates to retrieved chunks, and the model selects among them.
+
+### Provenance tracking across the pipeline
+
+Provenance tracking is not limited to the final answer. It begins at ingestion and continues through retrieval and generation. Each transformation step should preserve or enrich provenance metadata rather than overwrite it.
+
+A minimal provenance record typically includes the original document identifier, version information, chunk boundaries, and timestamps. More advanced systems also track the embedding model version, retrieval parameters, and re-ranking decisions. This allows engineers to answer questions such as whether an incorrect answer was caused by stale data, poor retrieval, or model behavior.
 
 ```python
-status = check_environment()
-if not status.ok:
-    recreate_environment()
-
-result = run_code(snippet, timeout=5)
+# Example of a provenance record attached to a retrieved chunk
+provenance = {
+    "doc_id": "clinical_guidelines_v2",
+    "doc_version": "2024-06-15",
+    "chunk_id": "sec4_para1",
+    "embedding_model": "text-embedding-v3",
+    "retrieval_score": 0.87
+}
 ```
 
-If execution fails, the agent does not crash the session. Instead, the failure is surfaced as structured feedback that informs the next reasoning step. Automatic environment recreation, combined with persistent workspaces, ensures that recovery is transparent and does not erase progress.
+Such records are rarely exposed to end users, but they are essential for auditing, debugging, and offline evaluation.
 
-This design aligns naturally with the CodeAct philosophy: errors are signals to reason over, not terminal conditions.
+### Truth maintenance in evolving RAG systems
 
-### Concurrency and long-running behavior
+Truth maintenance addresses the fact that RAG systems are not static. Documents are updated, embeddings are recomputed, and models are replaced. Without explicit mechanisms, previously correct attributions can silently become invalid.
 
-Unlike simple tool calls, CodeAct executions may involve long-running processes such as servers, simulations, or background jobs. Treating these as first-class entities requires explicit lifecycle management distinct from one-off commands.
+One approach is versioned provenance. Every answer is associated not just with a document identifier, but with a specific document version and ingestion timestamp. When the underlying data changes, the system can detect that an answer depends on outdated sources and either invalidate it or trigger regeneration.
 
-A common pattern is to separate *commands* from *services*. Commands are synchronous and produce immediate feedback; services are started, monitored, and stopped explicitly. The agent reasons about service state by inspecting process health and logs rather than assuming success.
+Another approach borrows ideas from classical truth maintenance systems, where derived facts are linked to their supporting assumptions. When an assumption changes, all dependent conclusions are marked for review. In RAG, the “assumptions” correspond to retrieved chunks and their content. This framing is particularly useful in regulated or high-stakes domains, where stale answers are unacceptable.
 
-This distinction enables CodeAct agents to orchestrate complex computational setups while retaining control over resource usage and cleanup.
+### Practical implications
 
-### Security and control boundaries
+Attribution, provenance, and truth maintenance are often treated as optional add-ons in early RAG prototypes. In production systems, they quickly become essential. They enable explainability, support compliance requirements, and make systematic evaluation possible. More importantly, they turn RAG from a black-box augmentation trick into a transparent information system whose outputs can be inspected, trusted, and improved over time.
 
-Placing code execution at the center of agent behavior raises obvious safety concerns. CodeAct systems therefore rely on layered defenses: execution time limits, resource quotas, non-privileged runtimes, and strict filesystem scoping. From a pattern perspective, the important point is that these controls are *environmental*, not prompt-based. The agent is allowed to generate powerful code precisely because the execution substrate enforces hard constraints.
 
-This separation of concerns simplifies agent design. The model focuses on problem solving, while the execution layer guarantees containment.
+# Hands-On: Introduction
 
-### Why CodeAct matters
+The hands-on sections that follow demonstrate the complete RAG pipeline in two stages: a straightforward implementation using paragraph-based chunking and direct retrieval, followed by an advanced version that introduces LLM-based semantic chunking, query expansion, metadata filtering, and re-ranking. Each section includes runnable notebooks that show the ingestion and retrieval phases separately, making it clear how documents flow from raw text into a searchable vector database and how queries retrieve relevant context for generation.
 
-CodeAct represents a shift from “agents that occasionally run code” to “agents whose primary mode of thought is executable”. This shift has practical consequences: more reliable iteration, clearer grounding in observable behavior, and a tighter feedback loop between intention and outcome. In practice, CodeAct often reduces prompt complexity, because correctness is enforced by execution rather than by exhaustive natural language reasoning.
+The simple RAG exercise establishes the foundational pattern described in the chapter introduction. Documents are split at paragraph boundaries, each chunk is embedded and stored in a Chroma vector database with source metadata, and queries retrieve the most similar passages to augment LLM prompts. This implementation works well for many use cases and illustrates the core insight of RAG: separating knowledge storage from reasoning allows updates without retraining and grounds responses in verifiable sources.
 
-As agents increasingly operate in technical domains—data engineering, infrastructure management, scientific computing—CodeAct provides a natural and scalable execution model.
+The advanced RAG exercise addresses the limitations of naive chunking and single-query retrieval. Rather than splitting on paragraph boundaries, an LLM identifies semantic boundaries where topics or scenes change, producing chunks that preserve coherent units of meaning. Retrieval expands the user query into multiple reformulations to increase recall, then deduplicates, filters by metadata, and re-ranks the combined results for precision. These techniques correspond directly to the ingestion and retrieval concepts from the chapter: topic-aware segmentation, query expansion, multi-stage retrieval, and re-ranking.
+
+The progression from simple to advanced demonstrates a recurring theme in RAG systems: the basic pattern provides most of the value, while additional complexity should be justified by measured improvements for your specific domain and corpus.
+
+
+# Hands-On: Simple Document Ingestion and Retrieval
+
+This hands-on walks through the fundamental RAG pipeline: ingesting documents into a vector database and retrieving relevant passages to augment LLM prompts. The examples use `example_RAG_01_load.ipynb` for ingestion and `example_RAG_01_query.ipynb` for retrieval.
+
+## The RAG Pipeline
+
+RAG systems operate in two distinct phases. The ingestion phase transforms raw documents into searchable embeddings stored in a vector database. This happens once, or whenever the corpus changes. The retrieval phase takes a user query, finds semantically similar documents, and uses them to ground the LLM's response. This happens on every query.
+
+The separation matters because ingestion is expensive (embedding all documents) while retrieval is cheap (embedding one query and looking up neighbors). A well-designed RAG system invests heavily in ingestion quality because that investment pays off across all subsequent queries.
+
+## Part 1: Document Ingestion
+
+The ingestion notebook (`example_RAG_01_load.ipynb`) demonstrates the three core steps: loading documents, chunking them, and storing the chunks as embeddings.
+
+### Setting Up the Vector Database
+
+The notebook begins by creating a connection to a Chroma vector database:
+
+```python
+from agentic_patterns.core.vectordb import get_vector_db, vdb_add
+
+vdb = get_vector_db('books')
+```
+
+The `get_vector_db` function handles database initialization and configuration. The collection name `'books'` identifies this particular set of documents. Chroma persists the data to disk, so the database survives across notebook sessions.
+
+Before loading documents, the notebook checks whether the collection is empty:
+
+```python
+count = vdb.count()
+create_vdb = (count == 0)
+```
+
+This check prevents duplicate ingestion. If documents are already loaded, the notebook skips re-ingestion. This pattern is important in practice: you want ingestion to be idempotent so that rerunning the notebook doesn't create duplicate entries.
+
+### Chunking Strategy
+
+The chunking function splits documents into paragraphs:
+
+```python
+def chunks(file: Path, min_lines: int = 3):
+    """Chunk a book into paragraphs, returning (document, doc_id, metadata) tuples."""
+    text = file.read_text()
+    paragraphs = text.split('\n\n')
+    for paragraph_num, paragraph in enumerate(paragraphs):
+        doc = paragraph.strip()
+        if not doc or len(doc.strip().split('\n')) < min_lines:
+            continue
+        doc_id = f"{file.stem}-{paragraph_num}"
+        metadata = {'source': str(file.stem), 'paragraph': paragraph_num}
+        yield doc, doc_id, metadata
+```
+
+This is the simplest useful chunking strategy: split on double newlines (paragraph boundaries) and filter out chunks that are too short. Each chunk receives a unique ID and metadata tracking its source file and position. The metadata becomes important during retrieval for citation and filtering.
+
+The `min_lines` filter removes trivial chunks like chapter headings or blank sections. Without this filter, the vector database would fill with short, semantically weak chunks that add noise to retrieval results.
+
+### Loading Documents
+
+The loading loop processes each text file and adds its chunks to the database:
+
+```python
+for txt_file in DOCS_DIR.glob('*.txt'):
+    for doc, doc_id, meta in chunks(txt_file):
+        vdb_add(vdb, text=doc, doc_id=doc_id, meta=meta)
+```
+
+The `vdb_add` function handles embedding generation internally. Each chunk is converted to a dense vector and stored alongside its text and metadata. The document ID ensures that re-ingesting the same document updates rather than duplicates entries.
+
+## Part 2: Document Retrieval
+
+The retrieval notebook (`example_RAG_01_query.ipynb`) demonstrates querying the vector database and using retrieved documents to augment an LLM prompt.
+
+### Querying the Vector Database
+
+The query process starts by embedding the user's question and finding similar documents:
+
+```python
+from agentic_patterns.core.vectordb import get_vector_db, vdb_query
+
+vdb = get_vector_db('books')
+query = "Who is a man with two heads?"
+documents_with_scores = vdb_query(vdb, query=query)
+```
+
+The `vdb_query` function converts the query string to an embedding using the same model that embedded the documents. It then performs a similarity search, returning the closest matches along with their similarity scores and metadata.
+
+The returned list contains tuples of `(document_text, metadata, score)`. The score indicates semantic similarity: higher scores mean the document is more relevant to the query. These scores help in two ways: they order results by relevance, and they provide a signal for filtering out weak matches.
+
+### Building the Augmented Prompt
+
+The retrieved documents become part of the LLM prompt:
+
+```python
+docs_str = ''
+for doc, meta, score in documents_with_scores:
+    docs_str += f"Similarity Score: {score:.3f}\nDocument:\n{doc}\n\n"
+
+prompt = f"""
+Given the following documents, answer the question:
+
+{docs_str}
+
+Question:
+{query}
+"""
+```
+
+This prompt structure is the essence of RAG. Instead of asking the LLM to answer from its training data alone, we provide specific documents that should contain the answer. The LLM's job shifts from recall to comprehension: it reads the provided documents and synthesizes an answer.
+
+Including the similarity score in the prompt is optional but can help the LLM weight its confidence. A document with score 0.95 is a strong match; one with score 0.60 might be tangentially relevant.
+
+### Generating the Answer
+
+The augmented prompt goes to the LLM:
+
+```python
+from agentic_patterns.core.agents import get_agent, run_agent
+
+agent = get_agent()
+answer, nodes = await run_agent(agent, prompt=prompt, verbose=True)
+```
+
+The LLM now has access to relevant passages from the corpus. If the question asks about a character from a book, and the retrieved documents contain paragraphs describing that character, the LLM can answer accurately even if that information wasn't in its training data.
+
+## Why This Pattern Works
+
+The RAG pattern succeeds because it separates concerns. Embeddings capture semantic similarity without requiring exact keyword matches. Vector search scales to large corpora with sub-linear query time. LLMs excel at reading comprehension and synthesis but struggle with precise recall. By combining these components, RAG gets the best of each: broad semantic matching, efficient retrieval, and fluent answer generation.
+
+The simple paragraph-based chunking in this example works well for narrative text where paragraphs correspond to coherent units of meaning. For technical documentation, code, or structured data, more sophisticated chunking strategies (covered in later examples) may be needed.
+
+## Limitations of Simple RAG
+
+This basic implementation has several limitations that motivate the advanced techniques covered in subsequent examples.
+
+The paragraph chunking is naive. It doesn't consider semantic boundaries, so a topic that spans two paragraphs gets split into separate chunks. A query might retrieve only half of the relevant context.
+
+The retrieval uses a single query. If the user's question could be phrased multiple ways, the system might miss relevant documents that match an alternate phrasing. Query expansion addresses this.
+
+There's no re-ranking. The initial similarity scores from the vector database are approximate. A dedicated re-ranker that jointly considers query-document pairs can improve precision, especially at the top of the ranking.
+
+There's no metadata filtering. In a production system, you might want to restrict retrieval to documents from a specific time period, author, or category. The metadata is captured during ingestion but not used during retrieval in this basic example.
+
+These limitations don't diminish the value of the simple approach. For many use cases, paragraph chunking and direct retrieval work well. The advanced techniques add complexity that should be justified by measured improvements in retrieval quality for your specific domain.
+
+
+# Hands-On: Advanced Document Ingestion and Retrieval
+
+This hands-on explores techniques that improve upon the basic RAG pipeline: semantic chunking during ingestion and multi-stage retrieval with query expansion, filtering, and re-ranking. The examples use `example_RAG_02_load.ipynb` for LLM-based chunking and `example_RAG_02_query.ipynb` for advanced retrieval.
+
+## Why Go Beyond Simple RAG
+
+The simple paragraph-based chunking from the previous example works well when document structure aligns with semantic boundaries. But real documents often violate this assumption. A conversation might span multiple paragraphs. A technical explanation might flow continuously without clear breaks. Naive chunking splits these coherent units, forcing the retriever to find multiple partial chunks that together contain the answer.
+
+Similarly, simple retrieval assumes the user's query directly matches how information is expressed in the documents. In practice, users ask questions in many ways, and a single embedding might miss relevant passages that use different terminology. The advanced retrieval techniques address these limitations by expanding queries, filtering results, and re-ranking for precision.
+
+## Part 1: LLM-Based Semantic Chunking
+
+The ingestion notebook (`example_RAG_02_load.ipynb`) replaces naive paragraph splitting with an LLM that identifies semantic boundaries.
+
+### The Chunking Prompt
+
+The LLM receives explicit instructions about what makes a good chunk:
+
+```python
+CHUNKING_PROMPT = """
+You are a text chunking assistant. Your task is to divide the following text into coherent chunks based on topics or themes.
+
+Guidelines:
+- Each chunk should be self-contained and focus on a single topic, scene, or theme
+- Chunks should be substantial (at least a few sentences) but not too long
+- Preserve the original text exactly - do not summarize or modify the content
+- Return the chunks as a list of strings
+- IMPORTANT: If the text ends mid-topic (incomplete), include that partial content as the LAST chunk so it can be continued in the next batch
+
+TEXT TO CHUNK:
+{text}
+"""
+
+chunking_agent = get_agent(config_name="fast", output_type=list[str])
+```
+
+The prompt emphasizes self-containment and topic coherence. Unlike heuristic approaches that count characters or split on punctuation, the LLM understands when a scene changes or a new concept begins. The instruction to preserve text exactly prevents the LLM from summarizing, which would lose detail needed for retrieval.
+
+The `output_type=list[str]` ensures structured output. The LLM returns a list of strings rather than free-form text, making the result directly usable without parsing.
+
+### Batching for Large Documents
+
+Documents often exceed LLM context limits. The notebook addresses this with a batching strategy that splits at natural boundaries:
+
+```python
+BATCH_SIZE_CHARS = 15000
+
+def split_into_batches(text: str, batch_size: int) -> list[str]:
+    """Split text into batches by paragraphs, respecting batch_size limit."""
+    paragraphs = text.split('\n\n')
+    batches = []
+    current_batch = []
+    current_size = 0
+
+    for para in paragraphs:
+        para_size = len(para) + 2
+        if current_size + para_size > batch_size and current_batch:
+            batches.append('\n\n'.join(current_batch))
+            current_batch = [para]
+            current_size = para_size
+        else:
+            current_batch.append(para)
+            current_size += para_size
+
+    if current_batch:
+        batches.append('\n\n'.join(current_batch))
+
+    return batches
+```
+
+The function splits on paragraph boundaries rather than at arbitrary character positions. This prevents breaking mid-sentence and gives the LLM complete paragraphs to work with. Each batch stays under 15000 characters, roughly 3000-4000 tokens, leaving headroom for the prompt template and LLM response.
+
+### Handling Incomplete Chunks Across Batches
+
+When batch boundaries fall in the middle of a semantic unit, the last chunk from one batch might be incomplete. The notebook handles this with a "leftover" strategy:
+
+```python
+async def chunk_with_llm(file: Path) -> list[tuple[str, str, dict]]:
+    text = file.read_text()
+    batches = split_into_batches(text, BATCH_SIZE_CHARS)
+
+    all_chunks = []
+    leftover = ""
+
+    for batch_num, batch in enumerate(batches):
+        batch_text = leftover + batch if leftover else batch
+        leftover = ""
+
+        prompt = CHUNKING_PROMPT.format(text=batch_text)
+        agent_run, _ = await run_agent(chunking_agent, prompt, verbose=False)
+        chunks: list[str] = agent_run.result.output
+
+        if batch_num < len(batches) - 1 and chunks:
+            leftover = chunks.pop()
+
+        all_chunks.extend(chunks)
+
+    if leftover:
+        all_chunks.append(leftover)
+```
+
+The key insight is that the LLM is instructed to place potentially incomplete content in the last chunk. By removing that last chunk and prepending it to the next batch, the LLM sees the incomplete content with additional context and can properly determine where the semantic boundary falls. This approach maintains coherence across arbitrary batch boundaries without requiring the LLM to see the entire document at once.
+
+## Part 2: Advanced Retrieval
+
+The retrieval notebook (`example_RAG_02_query.ipynb`) demonstrates a multi-stage pipeline that improves upon direct similarity search.
+
+### Query Expansion
+
+A single query embedding might miss relevant documents that express the same concept differently. Query expansion generates multiple reformulations:
+
+```python
+prompt = f"""
+Given the following user query, reformulate the query in three to five different ways to retrieve relevant documents from the vector database.
+
+{query}
+"""
+
+agent = get_agent(output_type=list[str])
+agent_run, nodes = await run_agent(agent, prompt=prompt, verbose=True)
+reformulated_queries = agent_run.result.output
+```
+
+For a query like "Who is a man with two heads?", the LLM might generate variations like "character with multiple heads", "person with two heads description", and "dual-headed individual". Each reformulation captures a different lexical angle on the same semantic intent. Querying with all variations increases recall because documents matching any phrasing will be retrieved.
+
+### Multi-Query Retrieval with Metadata Filtering
+
+Each reformulated query runs against the vector database with a metadata filter applied at query time:
+
+```python
+book_name = 'hhgttg'
+metadata_filter = {'source': book_name}
+
+documents_with_scores = []
+for q in reformulated_queries:
+    documents_with_scores.extend(vdb_query(vdb, query=q, filter=metadata_filter))
+```
+
+The `filter` parameter restricts results at the database level, which is more efficient than filtering after retrieval. This filter restricts results to a specific book. In production systems, metadata filtering handles access control (only documents the user is authorized to see), temporal constraints (only documents from a certain time period), or domain restrictions (only documents from a particular category).
+
+The same document might appear multiple times if it matches several reformulations. This duplication is handled in the next stage.
+
+### Deduplication
+
+The combined results need deduplication to remove repeated documents:
+
+```python
+seen_ids = set()
+documents_deduplicated = []
+for doc, meta, score in documents_with_scores:
+    doc_id = f"{meta['source']}-{meta['chunk']}"
+    if doc_id in seen_ids:
+        continue
+    documents_deduplicated.append((doc, meta, score, doc_id))
+    seen_ids.add(doc_id)
+```
+
+The document ID constructed from source and chunk number provides a unique key. Documents that appear in multiple query results are kept only once.
+
+### Sorting and Limiting
+
+The results are sorted by similarity score and limited to a manageable number:
+
+```python
+documents_sorted = sorted(documents_deduplicated, key=lambda x: x[2], reverse=True)
+
+max_results = 10
+if len(documents_sorted) > max_results:
+    documents_sorted = documents_sorted[:max_results]
+```
+
+This example uses a simple score-based sort. Production systems often use cross-encoder models that jointly encode the query and document to produce more accurate relevance scores. The computational cost of cross-encoders makes them impractical for the initial search over thousands of documents, but they work well for re-ranking a small candidate set.
+
+The `max_results` limit caps how many documents enter the final prompt. More documents provide more context but increase token usage and may dilute the most relevant passages.
+
+### Building the Final Prompt
+
+The filtered, deduplicated, sorted documents become context for the LLM:
+
+```python
+docs_str = ''
+for doc, meta, score, doc_id in documents_sorted:
+    docs_str += f"Similarity Score: {score:.3f}\nDocument ID: {doc_id}\nDocument:\n{doc}\n\n"
+
+prompt = f"""
+Given the following documents, answer the user's question.
+Show used references (using document ids).
+
+## Documents
+
+{docs_str}
+
+## User's question
+
+{query}
+"""
+```
+
+Including document IDs enables citation. The LLM can reference specific documents in its answer, allowing users to trace claims back to sources. This transparency is valuable in applications where users need to verify the LLM's reasoning.
+
+## The Cost-Quality Tradeoff
+
+The advanced techniques in this hands-on improve retrieval quality but increase cost and latency. LLM-based chunking requires one or more LLM calls per document during ingestion. Query expansion adds an LLM call per query. These costs should be weighed against the improvement in retrieval quality for your specific use case.
+
+For small corpora with well-structured documents, simple paragraph chunking and direct retrieval may suffice. For large, heterogeneous corpora where retrieval precision matters, the investment in semantic chunking and multi-stage retrieval pays off in better answers.
+
+## Connection to the Chapter
+
+The techniques demonstrated here correspond to concepts from the chapter sections on document ingestion and retrieval. LLM-based chunking implements the topic-aware segmentation described in the ingestion section. Query expansion, filtering, and re-ranking implement stages of the retrieval pipeline described in the retrieval section. The code makes these abstract concepts concrete and runnable.
+
+
+## References
+
+1. Salton, G., Wong, A., Yang, C. S. *A Vector Space Model for Automatic Indexing*. Communications of the ACM, 1975.
+2. Indyk, P., Motwani, R. *Approximate Nearest Neighbors: Towards Removing the Curse of Dimensionality*. STOC, 1998.
+3. Voorhees, E. M., Tice, D. M. *The TREC-8 Question Answering Track Evaluation*. TREC, 1999.
+4. Buneman, P., Khanna, S., Tan, W.-C. *Why and Where: A Characterization of Data Provenance*. ICDT, 2001.
+5. Voorhees, E. M., Harman, D. *TREC: Experiment and Evaluation in Information Retrieval*. MIT Press, 2005.
+6. Andoni, A., Indyk, P. *Near-optimal hashing algorithms for approximate nearest neighbor in high dimensions*. FOCS, 2006.
+7. Cheney, J., Chiticariu, L., Tan, W.-C. *Provenance in Databases: Why, How, and Where*. Foundations and Trends in Databases, 2009.
+8. Robertson, S., Zaragoza, H. *The Probabilistic Relevance Framework: BM25 and Beyond*. Foundations and Trends in Information Retrieval, 2009.
+9. Jegou, H., Douze, M., Schmid, C. *Product Quantization for Nearest Neighbor Search*. IEEE TPAMI, 2011.
+10. Mikolov, T., Chen, K., Corrado, G., Dean, J. *Efficient Estimation of Word Representations in Vector Space*. arXiv, 2013.
+11. Pennington, J., Socher, R., Manning, C. *GloVe: Global Vectors for Word Representation*. EMNLP, 2014.
+12. Bojanowski, P., Grave, E., Joulin, A., Mikolov, T. *Enriching Word Vectors with Subword Information*. TACL, 2017.
+13. Chen, D. et al. *Reading Wikipedia to Answer Open-Domain Questions*. ACL, 2017. https://arxiv.org/abs/1704.00051
+14. Thorne, J., Vlachos, A. *Automated Fact Checking: Task Formulations, Methods and Future Directions*. COLING, 2018.
+15. Thorne, J. et al. *Evidence-based Fact Checking with Retrieval-Augmented Models*. EMNLP, 2018.
+16. Devlin, J., Chang, M.-W., Lee, K., Toutanova, K. *BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding*. NAACL, 2019.
+17. Nogueira, R., Cho, K. *Passage Re-ranking with BERT*. arXiv, 2019.
+18. Johnson, J., Douze, M., Jegou, H. *Billion-scale similarity search with GPUs*. IEEE Transactions on Big Data, 2019.
+19. Karpukhin, V. et al. *Dense Passage Retrieval for Open-Domain Question Answering*. EMNLP, 2020. https://arxiv.org/abs/2004.04906
+20. Lewis, P. et al. *Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks*. NeurIPS, 2020. https://arxiv.org/abs/2005.11401
+21. Khattab, O., Zaharia, M. *ColBERT: Efficient and Effective Passage Search via Contextualized Late Interaction*. SIGIR, 2020.
+22. Malkov, Y., Yashunin, D. *Efficient and robust approximate nearest neighbor search using Hierarchical Navigable Small World graphs*. IEEE TPAMI, 2020.
+23. Izacard, G., Grave, E. *Leveraging Passage Retrieval with Generative Models for Open Domain Question Answering*. EACL, 2021. https://arxiv.org/abs/2007.01282
+24. Radford, A. et al. *Learning Transferable Visual Models From Natural Language Supervision*. ICML, 2021.
+25. Rashkin, H. et al. *Increasing Faithfulness in Knowledge-Grounded Dialogue with Attributed Responses*. ACL, 2021.
+26. Gao, T. et al. *RARR: Researching and Revising What Language Models Say, Using Language Models*. ACL, 2023. https://arxiv.org/abs/2210.08726
+27. Litschko, R. et al. *Evaluating Hybrid Retrieval Approaches for Retrieval-Augmented Generation*. arXiv, 2023.
+
+
+\newpage
+
+# Context & Memory
+
+## Historical Perspective
+
+The modern understanding of context and memory in agentic systems emerged from the convergence of several research threads between 2018 and 2022. The most visible turning point was the discovery of in-context learning: large transformer-based language models, culminating in GPT-3 in 2020, demonstrated that they could perform new tasks simply by conditioning on examples and instructions embedded in the input text, without any gradient updates. This shifted attention away from fine-tuning as the primary adaptation mechanism and toward prompts as a programmable interface to a fixed model. Careful prompt construction—selecting examples, phrasing instructions, ordering information—could substitute for task-specific training in many cases, a style that came to be known as "prompting as programming."
+
+A second line of work refined this interface by making instructions explicit and reliable. Instruction tuning, exemplified by FLAN, and reinforcement learning from human feedback, exemplified by InstructGPT, reframed prompts from ad-hoc strings into a more structured contract: instructions that define what the model should do, separated from task input and conversational content. These advances made instruction adherence substantially more dependable, which in turn encouraged application developers to treat instructions as a first-class layer with clearer boundaries and evaluation strategies. Techniques such as chain-of-thought prompting further demonstrated that the structure of the input—not just its content—could significantly affect model reasoning, reinforcing the idea that prompts are engineering artifacts rather than casual requests.
+
+In parallel, dialogue and reasoning systems explored explicit memory as a mechanism to maintain state across turns. Memory Networks and related architectures used external or structured memory modules to retain and retrieve relevant facts during multi-step interactions; later work, such as recurrent entity-centric memories, focused on tracking evolving state as new text arrived. These ideas strongly influenced today's agent long-term memory patterns—store, retrieve, ground, update—even though most production systems now implement memory outside the model as databases and retrieval pipelines rather than as learned memory modules inside the network.
+
+As context windows grew from thousands to tens and eventually hundreds of thousands of tokens, a practical realization emerged: models do not use arbitrarily long contexts uniformly or reliably. Relevance, ordering, redundancy, and information density matter more than sheer length. Developers found that indiscriminately adding text often degraded performance rather than improving it. This broadened the scope from crafting individual prompts to managing the entire context window as a constrained, shared resource that must accommodate instructions, conversation history, retrieved documents, tool outputs, and intermediate reasoning. The discipline evolved from prompt engineering to context management and ultimately to context engineering as a runtime systems concern—one that encompasses not just what to say, but what to include, what to omit, how to structure information, and when to refresh it.
+
+
+## Prompts
+
+Prompts are the agent's control surface: they define intent, constraints, and operating procedure for each model call, and they are the primary way an agent carries "what matters" forward from one step to the next.
+
+### System prompts, developer instructions, and user prompts
+
+Most agent stacks benefit from splitting “what to do” from “what the user said,” and from being explicit about what persists across calls. One useful distinction is between (a) system prompts that may be preserved as part of the message history, and (b) developer-provided instructions that are applied for the current run but are not replayed from prior turns when you pass message history back into the model. Some frameworks make this distinction explicitly: they recommend using an “instructions” channel by default, and using “system prompt” only when you deliberately want earlier system messages preserved across subsequent calls that include message history. ([Pydantic AI][32])
+
+| Layer                  | Typical author                | Primary purpose                                                 | When evaluated                      | Included when you pass prior conversation back to the model                                                                            | What should be inside                                                                | Common failure mode                                                     |
+| ---------------------- | ----------------------------- | --------------------------------------------------------------- | ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------- |
+| System prompt          | Platform / application        | Establish global rules, safety boundaries, role, and invariants | Every call                          | Often yes (if system messages are part of the stored chat transcript you replay) ([Pydantic AI][32])                                    | Non-negotiables, policy, tool-use constraints, formatting contract                   | Overstuffing; becomes brittle and conflicts with task-specific behavior |
+| Developer instructions | Application / agent developer | Define task procedure and style for a specific agent or run     | Every call                          | Typically no for prior turns; only the current agent’s instructions are applied even if you include message history ([Pydantic AI][32]) | Step-by-step method, required checks, domain constraints, output schema expectations | Too verbose; competes with user content and reduces task grounding      |
+| User prompt            | End user                      | Provide the request and any user constraints                    | Every call                          | Yes (as part of conversation history)                                                                                                  | User goals, preferences, situational details                                         | Ambiguity; missing constraints; conflicts with system/developer rules   |
+| Conversation history   | System-generated              | Provide continuity and references to earlier turns              | Every call where continuity matters | Yes (selected subset) ([Pydantic AI][32])                                                                                               | Prior user messages, prior assistant outputs, tool results the agent must honor      | Unbounded growth; irrelevant history crowds out current task            |
+
+A practical mental model is that the “effective prompt” is the concatenation of these layers plus any tool outputs you feed back in. Because the model does not truly “remember,” everything you want it to condition on must be present in the tokens you send. That makes prompt boundaries an engineering problem: deciding what belongs in each layer, what is allowed to persist, and what must be summarized or externalized.
+
+A useful rule is to treat system prompts as a narrow compatibility layer (policies and invariants), and treat developer instructions as the primary control mechanism for agent behavior. This maps to the explicit recommendation some frameworks make: use “instructions” by default, and only use “system prompt persistence” when you have a concrete reason to keep earlier system messages in the replayed history. ([Pydantic AI][32])
+
+### Conversation history as working context
+
+Conversation history is the simplest form of short-term memory: you resend prior turns so the model can resolve references (“his,” “that issue,” “the second option”) and maintain continuity. Most agent frameworks represent this as an explicit `message_history` (or equivalent) argument, where you pass the subset of prior messages you want the model to see. ([Pydantic AI][32])
+
+In agentic systems, the key decision is not whether to keep history, but how to curate it. A robust approach is to treat history as a structured artifact rather than a raw transcript:
+
+1. Keep a minimal “interaction spine” (user intent, the agent’s commitments, and the latest state).
+2. Attach supporting evidence as references (tool outputs, retrieved documents, calculations).
+3. Summarize or drop turns that are no longer load-bearing.
+
+Even without a dedicated “context engineering” section, it is worth stating one operational implication here: replaying raw history scales linearly in tokens and cost, and it eventually degrades quality when irrelevant detail dominates. The prompt stack should therefore be designed so that history can be safely truncated without losing correctness: core constraints remain in system/developer layers, and durable state lives outside the transcript.
+
+### Short-term vs. long-term memory
+
+Short-term memory is whatever you include in the current context window: system messages, developer instructions, the user’s latest request, selected conversation history, and any tool outputs. It is fast, simple, and fragile: it disappears after the call unless you explicitly store it.
+
+Long-term memory is information that persists across calls and sessions, and that you retrieve on demand. Historically, research systems explored learned memory modules (for example, Memory Networks and entity-centric recurrent memories), but most production agents implement long-term memory as external storage plus retrieval and summarization policies. ([NeurIPS Proceedings][31])
+
+The practical boundary is not “how long ago did it happen,” but “how often must it be correct.” Examples:
+
+A user’s stable preferences (output format, coding style) are long-term memory candidates, but only if you can store them as normalized facts with provenance and an update policy.
+
+Intermediate reasoning traces or verbose transcripts are rarely good long-term memory because they are noisy, expensive to retrieve, and likely to conflict with newer information.
+
+The most reliable pattern is to convert episodic interactions into durable, typed records: preferences, decisions, tasks, entities, and constraints. Raw transcript can remain available for audit, but retrieval should preferentially use structured summaries.
+
+### Memory and state management with a database
+
+A database-backed memory system is best treated as two separable concerns:
+
+1. A write path that records events with enough structure to support later retrieval and reconciliation.
+2. A read path that returns a token-budgeted “memory view” tailored to the current task.
+
+The write path should store more than “messages.” It should store the agent’s evolving state: commitments, open tasks, decisions made, and the provenance of facts (user statement vs. tool output vs. retrieved document). The read path should not blindly replay; it should construct a task-specific brief.
+
+The following snippets illustrate an implementation shape that avoids coupling your storage format to any single agent framework.
+
+```python
+# Data model: store raw events, plus optional extracted "facts" with provenance.
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Literal, Optional
+
+Role = Literal["system", "developer", "user", "assistant", "tool"]
+
+@dataclass
+class MessageEvent:
+    conversation_id: str
+    ts: datetime
+    role: Role
+    content: str
+    tool_name: Optional[str] = None
+    request_id: Optional[str] = None  # correlate tool calls / retries
+
+@dataclass
+class MemoryFact:
+    conversation_id: str
+    ts: datetime
+    kind: str               # e.g. "preference", "decision", "entity", "task"
+    key: str                # e.g. "output_format"
+    value: str              # normalized text or JSON
+    source: Literal["user", "tool", "agent"]
+    confidence: float       # optional scoring
+```
+
+A common read-path pattern is “two-stage memory”: first retrieve candidates (by recency, lexical match, embeddings, or metadata), then compress into a brief that is explicitly scoped to the current request.
+
+```python
+def build_memory_view(conversation_id: str, user_request: str, token_budget: int) -> str:
+    # 1) Retrieve structured facts with high precision.
+    facts = fetch_facts(conversation_id, query=user_request, limit=50)
+
+    # 2) Retrieve a small slice of recent transcript for continuity.
+    recent = fetch_recent_messages(conversation_id, limit=12)
+
+    # 3) Produce a compact brief with strict budgeting.
+    brief = render_facts(facts) + "\n\n" + render_recent_messages(recent)
+
+    # 4) If too large, compress: drop low-value items and summarize the remainder.
+    if estimate_tokens(brief) > token_budget:
+        brief = compress(brief, target_tokens=token_budget)
+
+    return brief
+```
+
+This design supports an important separation: conversation continuity (recent transcript) and durable memory (facts) can be budgeted and degraded independently. It also makes it easier to enforce correctness policies, such as “prefer tool-sourced facts over user-sourced guesses,” or “expire preferences unless reaffirmed.”
+
+Finally, note the interaction between “instruction-like” content and message history. If your system treats developer instructions as ephemeral per-run control text, you can store them for observability without replaying them as prior messages in future calls. Conversely, if your system relies on replaying system prompts as part of the stored transcript, you must treat that as an explicit compatibility choice because it changes what the model sees when you continue a conversation with message history. ([Pydantic AI][32])
+
+[31]: https://proceedings.neurips.cc/paper/5846-end-to-end-memory-networks.pdf "End-To-End Memory Networks"
+[32]: https://ai.pydantic.dev/agents/ "Agents - Pydantic AI"
+
+
+## Context engineering
+
+Context engineering is the practice of deliberately shaping what information an agent sees at inference time—what is included, what is omitted, how it is structured, and when it is refreshed—so that the model can reason effectively under real-world constraints such as finite context windows, latency limits, and cost.
+
+### Prompt engineering
+
+Prompt engineering concerns the instruction layer of context engineering: how goals, constraints, and expected behaviors are communicated to the model. In agentic systems, prompts should be treated as *interfaces*, not as storage mechanisms.
+
+A robust pattern is to distinguish between stable instructions (role, policies, invariants), task-specific directives (what must be accomplished now), and supporting evidence. Blurring these layers leads to brittle prompts that are hard to evolve and difficult to reason about.
+
+As agents become long-lived, prompt engineering alone becomes insufficient. Attempting to preserve task state, decisions, or plans purely through accumulated conversational text tends to produce degradation over time. For this reason, modern agent architectures increasingly externalize memory and state, using prompts only as a projection of that state into the model at a given step.
+
+```python
+system = "You are an execution-focused agent. Follow policy and ask clarifying questions only when blocked."
+task = "Produce a merge-ready PR description with testing notes and rollback plan."
+evidence = retrieve_documents(query, k=5)
+
+prompt = render(system, task, evidence)
+response = llm(prompt)
+```
+
+The important property here is not syntax, but separation of concerns: prompts express intent and constraints, while state and knowledge live elsewhere.
+
+### A practical aside: “the dumb zone”
+
+In practice, many teams have adopted informal language to describe a familiar failure mode: when too much information is packed into the context window, model behavior becomes less reliable rather than more capable. Internally, this is sometimes jokingly referred to as *“the dumb zone.”*
+
+This is **not** a formal definition, a theoretical guarantee, or a permanent property of language models. It is shorthand for a set of *current, observed limitations* in how models attend to and utilize long inputs. Empirically, developers often notice that once prompts grow large—especially when they consist of raw transcripts, logs, or loosely organized documents—models are more likely to miss constraints, overlook relevant facts, or produce inconsistent reasoning.
+
+The commonly cited “~40% of the context window” threshold should be understood in the same spirit: a heuristic derived from experience, not a law of nature. It reflects the intuition that context saturation increases cognitive load on the model and raises the probability of failure modes such as positional bias, redundancy blindness, or misplaced emphasis. Future architectures, training methods, or retrieval mechanisms may substantially change this behavior.
+
+The engineering takeaway is modest and pragmatic: context should be treated as a scarce resource, and indiscriminately adding more text is rarely a reliable strategy.
+
+### Context compression
+
+Context compression refers to any technique that reduces token usage while preserving task-relevant information. Compression is not limited to summarization; it also includes transforming free-form text into structured representations and discarding information that no longer serves the current objective.
+
+A common first layer is conversational compression: periodically summarizing older dialogue into a compact narrative or set of facts while retaining recent turns verbatim. This preserves continuity without replaying the entire interaction.
+
+A second layer focuses on evidence. Retrieved documents, tool outputs, or logs are distilled into short excerpts with clear provenance and rationale for inclusion. The goal is not completeness but sufficiency.
+
+A third and often more powerful layer replaces narrative history with explicit state. Decisions, constraints, open questions, and progress markers are represented as data rather than prose.
+
+```python
+state = {
+  "goal": "Release billing export v1",
+  "constraints": ["no PII in logs", "p95 latency < 200ms"],
+  "decisions": ["async export with callback"],
+  "open_questions": ["refund schema details"]
+}
+
+prompt = render(instructions, state, evidence)
+```
+
+This shift—from text to state—is one of the most effective ways to keep agents stable as interactions grow longer.
+
+### Token budgeting
+
+Token budgeting makes context engineering explicit and enforceable. Instead of letting the context grow organically, the system allocates space for different categories of information and applies deterministic rules when limits are reached.
+
+At a high level, the context window is divided among instructions, short-term task state, long-term memory recalls, retrieved knowledge, and tool outputs. An occupancy target below the theoretical maximum leaves headroom for variability and prevents uncontrolled overflow.
+
+The key property of a budgeted system is *intentional loss*. When something must be dropped or compressed, the system chooses what to sacrifice based on priority rather than truncating arbitrarily.
+
+```python
+budget = {
+  "instructions": 1200,
+  "state": 1000,
+  "memory": 800,
+  "evidence": 2000,
+  "tool_output": 800,
+}
+
+prompt = assemble_with_budget(budget)
+```
+
+Token budgeting transforms context management from an emergent behavior into a predictable system component.
+
+### Write-back patterns
+
+Write-back patterns close the loop between context and memory. Instead of carrying all history forward, the agent periodically externalizes what it has learned or decided.
+
+Common write-back targets include rolling summaries of interactions, structured task state, and references to external knowledge sources. Once written back, these artifacts become the canonical source of truth and can be re-loaded selectively in future steps.
+
+A typical pattern is to checkpoint after meaningful milestones, storing a compact representation of progress and decisions.
+
+```python
+checkpoint = {
+  "task_id": task_id,
+  "summary": summarize(messages),
+  "state_update": {"decision": "include chargebacks in export"},
+  "references": ["RUNBOOK-42"]
+}
+
+memory_store.save(checkpoint)
+```
+
+Write-back reframes the model’s role. The language model is no longer the memory itself; it becomes a reasoning engine operating over explicitly managed state. This separation is essential for long-running agents, auditability, and system-level correctness.
+
+
+## References
+
+1. Tom B. Brown et al. *Language Models are Few-Shot Learners*. NeurIPS, 2020. https://proceedings.neurips.cc/paper/2020/file/1457c0d6bfcb4967418bfb8ac142f64a-Paper.pdf
+2. Jason Wei et al. *Finetuned Language Models Are Zero-Shot Learners*. ICLR, 2022. https://openreview.net/pdf?id=gEZrGCozdqR
+3. Long Ouyang et al. *Training language models to follow instructions with human feedback*. NeurIPS, 2022. https://proceedings.neurips.cc/paper_files/paper/2022/file/b1efde53be364a73914f58805a001731-Paper-Conference.pdf
+4. Ashish Vaswani et al. *Attention Is All You Need*. NeurIPS, 2017. https://papers.neurips.cc/paper/7181-attention-is-all-you-need.pdf
+5. Sainbayar Sukhbaatar et al. *End-To-End Memory Networks*. NeurIPS, 2015. https://proceedings.neurips.cc/paper/5846-end-to-end-memory-networks.pdf
+6. Mikael Henaff et al. *Tracking the World State with Recurrent Entity Networks*. ICLR, 2017. https://arxiv.org/pdf/1612.03969
+7. Pydantic AI Documentation. *Agents: System Prompts, Instructions, Runs vs. Conversations*. 2025. https://ai.pydantic.dev/agents/
+8. Ruirui Lou et al. *Large Language Model Instruction Following: A Survey of Progress and Challenges*. Computational Linguistics, 2024. https://direct.mit.edu/coli/article/50/3/1053/121669/Large-Language-Model-Instruction-Following-A
+
+
+# Hands-On: Introduction
+
+The preceding sections introduced the concepts that shape effective context management: prompt layers that separate identity from task control, compression techniques that bound token consumption, and the principle of intentional loss when context budgets are exceeded. The hands-on exercises that follow translate these concepts into working code using the `agentic_patterns` core library.
+
+The first exercise explores prompt layers through practical examples. You will configure agents with system prompts, developer instructions, and observe how each layer behaves across multi-turn conversations with message history. This demonstrates the separation between persistent identity and per-run control that production agents require.
+
+The second exercise addresses tool output management. Many tools return large results: database queries, log searches, API responses. The `@context_result` decorator truncates these outputs automatically, saving full results to the workspace while returning compact previews to the model. You will see how type-aware truncation preserves coherent previews for CSV, JSON, and log data without overwhelming the context window.
+
+The third exercise implements history compaction for long-running conversations. The `HistoryCompactor` monitors token usage and summarizes older exchanges when thresholds are exceeded, keeping the effective context bounded while conversation history grows unbounded. Together, these exercises demonstrate the layered approach to context engineering: control what enters through prompts, limit what tools contribute, and compress what accumulates over time.
+
+
+# Hands-On: Prompts
+
+The effective context an LLM sees is the concatenation of multiple layers: system prompts, developer instructions, and user prompts. Each layer serves a different purpose and has different persistence behavior. This hands-on explores these prompt layers using `example_prompts.ipynb`.
+
+## The Prompt Layers
+
+When you send a request to an LLM through an agent framework, the model receives a combined context built from several sources. Understanding these layers helps you design agents with predictable, controllable behavior.
+
+**System prompts** establish the agent's identity, invariant rules, and global policies. They define "who the agent is" and constraints that should apply regardless of the specific task. System prompts are typically preserved as part of the message history when continuing a conversation.
+
+**Instructions** (sometimes called developer instructions) provide task-specific guidance for the current run. They control how the agent should approach the immediate task without becoming part of the permanent conversation record. Instructions are re-applied by the agent on each call but are not replayed from prior turns in message history.
+
+**User prompts** contain the actual request from the end user, including their goals, preferences, and situational details.
+
+## System Prompts: Persistent Identity
+
+The notebook begins by creating an agent with only a system prompt:
+
+```python
+system_prompt = """You are a concise technical writer.
+Always respond in exactly 2 sentences.
+Never use bullet points."""
+
+agent_system = get_agent(system_prompt=system_prompt)
+```
+
+This system prompt defines three invariants: the agent's role (technical writer), a formatting constraint (exactly 2 sentences), and a prohibition (no bullet points). When we ask this agent to explain a REST API, it must comply with all three rules.
+
+The `get_agent` function accepts a `system_prompt` parameter that becomes part of the agent's configuration. Every request to this agent will include this system prompt in the context sent to the LLM.
+
+## Instructions: Per-Run Control
+
+Next, the notebook creates an agent with instructions instead:
+
+```python
+instructions = """Respond in a casual, friendly tone.
+Use simple analogies to explain technical concepts."""
+
+agent_instructions = get_agent(instructions=instructions)
+```
+
+Instructions serve a similar purpose to system prompts in shaping the agent's behavior, but with a key difference: they are designed for task-specific control rather than persistent identity. The distinction becomes important when managing multi-turn conversations with message history.
+
+Running the same prompt ("Explain what a REST API is") with this agent produces a different response style: casual, friendly, and using analogies rather than the concise technical writing style of the first agent.
+
+## Combining Both Layers
+
+In practice, you often want both persistent identity and task-specific control. The notebook demonstrates this combination:
+
+```python
+system_prompt = "You are an expert Python developer."
+instructions = "When explaining code, always include a brief example."
+
+agent_combined = get_agent(system_prompt=system_prompt, instructions=instructions)
+```
+
+The system prompt establishes the agent's expertise domain (Python development), while the instructions specify how to structure responses for the current session (include examples). This separation keeps identity concerns separate from task concerns.
+
+When asked "What is a list comprehension?", the agent responds as a Python expert (system prompt) and includes a code example (instructions). Both layers contribute to the final response.
+
+## Message History Interaction
+
+The final section demonstrates how these layers interact with conversation history. In multi-turn conversations, you pass message history to maintain context across turns:
+
+```python
+# Turn 1
+prompt_1 = "What is a generator in Python?"
+result_1, nodes_1 = await run_agent(agent_combined, prompt_1)
+
+# Turn 2 with history
+message_history = nodes_to_message_history(nodes_1)
+prompt_2 = "How does it differ from a list comprehension?"
+result_2, _ = await run_agent(agent_combined, prompt_2, message_history=message_history)
+```
+
+In Turn 2, the agent understands that "it" refers to generators because the message history provides that context. The agent can compare generators to list comprehensions because it has access to the previous exchange.
+
+The system prompt ("expert Python developer") is part of the stored context and persists across turns. The instructions ("include brief example") are applied fresh on each call by the agent framework. This distinction matters when designing agents that need consistent identity across a conversation while allowing task-specific behavior to evolve.
+
+## Practical Guidelines
+
+When designing prompt layers for your agents, consider these principles.
+
+Use system prompts for invariants that must hold across all interactions: safety policies, role definitions, output format constraints, and non-negotiable rules. Keep system prompts narrow to avoid conflicts with task-specific requirements.
+
+Use instructions for task-specific procedure: how to approach the current request, what checks to perform, domain constraints for this particular use case, and output schema expectations. Instructions can be longer and more detailed since they do not accumulate in message history.
+
+Keep user prompts focused on the actual request. Avoid embedding procedural guidance in user prompts; that belongs in instructions.
+
+The effective prompt is the concatenation of all layers. Because LLMs do not truly "remember" across calls, everything you want the model to condition on must be present in the tokens you send. Designing clear boundaries between prompt layers makes it easier to maintain, debug, and evolve your agents.
+
+## Key Takeaways
+
+Prompts in agentic systems have multiple layers serving different purposes. System prompts define persistent identity and invariants. Instructions provide per-run task control. User prompts carry the actual request. Understanding which content belongs in each layer, and how each layer interacts with message history, is essential for building predictable and maintainable agents.
+
+
+# Hands-On: Context Result Decorator
+
+Tools in agentic systems often return large amounts of data: database query results with thousands of rows, application logs spanning hours of activity, API responses with nested payloads. When this data flows directly into the model's context, it creates problems. The context window fills up with raw data, leaving less room for reasoning. Worse, models can enter what practitioners informally call "the dumb zone" where too much context degrades performance rather than improving it.
+
+The `@context_result` decorator addresses this by truncating large tool outputs before they reach the model. The full result is saved to the workspace for later access, while the model receives a compact preview sufficient for reasoning about the data's structure and content. This hands-on explores the pattern through `example_context_result.ipynb`.
+
+## The Problem: Tools That Produce Large Output
+
+Consider tools that query databases or search logs. A sales data query might return 500 rows of transaction records. A log search might yield hundreds of matching entries. The notebook simulates these scenarios with generator functions:
+
+```python
+def generate_sales_data(num_rows: int = 500) -> str:
+    """Generate sample sales CSV data."""
+    products = ["Widget A", "Widget B", "Gadget X", "Gadget Y", "Device Z"]
+    regions = ["North", "South", "East", "West"]
+
+    lines = ["date,product,region,quantity,price,total"]
+    # ... generates 500 rows of CSV data
+    return "\n".join(lines)
+```
+
+The `generate_log_data` function similarly produces timestamped log entries with varying severity levels and components. These generators simulate the kind of output real tools produce.
+
+Without any context management, a tool that returns this data passes it directly to the model:
+
+```python
+def query_sales_raw() -> str:
+    """Query sales data without context management."""
+    return generate_sales_data(500)
+
+raw_data = query_sales_raw()
+print(f"Raw data: {len(raw_data)} characters, {len(raw_data.split(chr(10)))} rows")
+```
+
+The output shows the scale of the problem: 500 rows of CSV data can easily exceed 30,000 characters. Every tool call that returns this much data consumes a significant portion of the context window. Chain a few such calls together, and you've exhausted your budget for reasoning.
+
+## The Solution: Automatic Truncation
+
+The `@context_result` decorator wraps tool functions to intercept large results. When the return value exceeds a configured threshold, it saves the full content to the workspace, truncates the result for the model, and returns a preview with the file path.
+
+```python
+from agentic_patterns.core.context.decorators import context_result
+
+@context_result()
+def query_sales(ctx=None) -> str:
+    """Query sales data with automatic truncation."""
+    return generate_sales_data(500)
+
+@context_result()
+def search_logs(keyword: str, ctx=None) -> str:
+    """Search application logs for a keyword."""
+    logs = generate_log_data(300)
+    matching = [line for line in logs.split("\n") if keyword.upper() in line.upper()]
+    return "\n".join(matching) if matching else "No matches found"
+```
+
+The tools themselves remain simple. They generate or retrieve data and return it as a string. The decorator handles the context management concerns.
+
+When `query_sales()` runs, the decorator:
+
+1. Executes the original function to get the full result
+2. Checks if the result exceeds the configured threshold
+3. Auto-detects the content type (CSV, JSON, plain text, etc.)
+4. Saves the full content to `/workspace/results/result_<id>.csv`
+5. Truncates according to content-type rules (head/tail rows for CSV, head/tail lines for text)
+6. Returns the path and a truncated preview
+
+The model sees something like:
+
+```
+Results saved to /workspace/results/result_a1b2c3d4.csv (32456 chars)
+
+Preview:
+date,product,region,quantity,price,total
+2024-01-01,Widget A,North,42,199.99,8399.58
+2024-01-02,Gadget X,South,17,89.50,1521.50
+...
+2024-12-30,Device Z,East,31,450.00,13950.00
+2024-12-31,Widget B,West,28,125.75,3521.00
+```
+
+This preview contains the CSV header, a few head rows, and a few tail rows. The model can understand the data structure, see the date range, and note the column types. If more detail is needed, another tool can read specific portions from the saved file.
+
+## Content-Type Aware Truncation
+
+The decorator auto-detects content type and applies appropriate truncation strategies. CSV data preserves the header row and shows head/tail data rows. JSON content truncates at structural boundaries, keeping the first N and last M array elements while preserving valid JSON syntax. Plain text and logs show head/tail lines. This type awareness ensures previews remain coherent and useful.
+
+The detection logic examines the content's structure:
+
+- Content starting with `{` or `[` is treated as JSON
+- Consistent comma counts across lines suggest CSV
+- Timestamp patterns indicate log files
+- Everything else defaults to plain text
+
+Each type has its own truncation configuration. CSV shows head/tail rows with the header preserved. JSON arrays keep head/tail items with an indicator showing how many were omitted. Large objects truncate to a maximum number of keys. These defaults can be overridden by passing a config name to the decorator.
+
+## Agent Integration
+
+The notebook demonstrates using these context-managed tools with an agent:
+
+```python
+system_prompt = """You are a data analyst assistant. When analyzing data:
+1. Summarize the structure and content from the preview
+2. Identify patterns or anomalies visible in the sample
+3. Note that full data is saved to the indicated path for detailed analysis"""
+
+agent = get_agent(system_prompt=system_prompt, tools=[query_sales, search_logs])
+```
+
+The system prompt guides the agent to work with previews rather than expecting complete data. When asked to query sales data, the agent calls the tool, receives the truncated preview, and summarizes what it observes.
+
+```python
+prompt = "Query the sales data and summarize what you see."
+result, _ = await run_agent(agent, prompt, verbose=True)
+```
+
+The verbose output shows the tool call returning the truncated preview. The agent's response describes the data structure (columns, date range, value ranges) based on the preview, and notes that full data is available at the workspace path.
+
+Similarly, when searching logs for ERROR entries:
+
+```python
+prompt = "Search the logs for ERROR entries and summarize the issues."
+result, _ = await run_agent(agent, prompt, verbose=True)
+```
+
+The agent calls `search_logs("ERROR")`, receives a preview of matching log lines, and summarizes the error patterns it observes. The preview shows enough context (timestamps, components, messages) for meaningful analysis without consuming excessive context.
+
+## The ctx Parameter
+
+The decorated functions include an optional `ctx` parameter. This carries context information (user ID, session ID) used by the workspace for file isolation. In the notebook examples, `ctx` defaults to `None`, which uses default workspace paths. In production, the agent framework passes context through this parameter, enabling multi-tenant isolation.
+
+The decorator extracts `ctx` from keyword arguments and passes it to the workspace functions when saving the full result. Tools don't need special handling; they simply declare the parameter with a default value.
+
+## Connection to Token Budgeting
+
+The context result pattern is one component of a broader token budgeting strategy. By limiting how much each tool contributes to the context, you create predictable space allocation. A conversation with multiple tool calls stays within budget because each tool's contribution is bounded.
+
+Combined with history compaction (summarizing old turns) and selective evidence retrieval, the context result decorator helps maintain the "intentional loss" principle described in context engineering: when something must be dropped, drop it deliberately based on priority rather than arbitrarily through truncation.
+
+## Key Takeaways
+
+Large tool outputs degrade agent performance by consuming context and overwhelming the model's attention. The `@context_result` decorator provides automatic truncation while preserving full data for later access.
+
+The pattern saves complete results to the workspace and returns previews with file paths. Type-aware truncation ensures previews remain coherent for CSV, JSON, logs, and other formats.
+
+Tools remain simple. They return full results as strings; the decorator handles context management. The `ctx` parameter enables workspace isolation without polluting the tool's public interface.
+
+Design system prompts to guide agents on working with previews. Agents should summarize visible patterns and note that full data is available for detailed analysis when needed.
+
+
+# Hands-On: History Compaction
+
+As conversations grow longer, the accumulated history consumes an increasing share of the context window. Eventually, the history alone can exceed the model's capacity, or fill so much of the window that the model enters "the dumb zone" where performance degrades. History compaction addresses this by summarizing older exchanges while preserving recent context, allowing conversations to continue indefinitely without context overflow.
+
+The `HistoryCompactor` class in `agentic_patterns.core.context.history` implements this pattern. It monitors token usage across conversation turns and, when a configurable threshold is exceeded, uses an LLM to summarize older messages into a compact narrative. This hands-on explores the pattern through `example_history_compaction.ipynb`.
+
+## The Problem: Unbounded History Growth
+
+In a multi-turn conversation, each exchange adds to the history. A simple question-and-answer might consume a few hundred tokens. But after dozens of turns, especially with detailed responses or tool outputs, the history can easily reach tens of thousands of tokens.
+
+Without management, this creates several problems. First, the history eventually exceeds the context window limit, causing API errors. Second, even before that hard limit, models struggle to attend to all the accumulated information effectively. Third, costs increase linearly with context size for many API pricing models.
+
+The notebook demonstrates this with a conversation about microservices architecture:
+
+```python
+prompts = [
+    "Explain what microservices architecture is.",
+    "What are the main benefits?",
+    "What are common challenges?",
+    "How does it compare to monolithic architecture?",
+]
+```
+
+Each prompt builds on the previous discussion. Without compaction, the full history must be carried forward. With compaction, older exchanges are summarized while maintaining conversation continuity.
+
+## Configuring the Compactor
+
+The `CompactionConfig` class defines when compaction triggers and what reduction target to aim for:
+
+```python
+from agentic_patterns.core.context.history import HistoryCompactor, CompactionConfig
+
+config = CompactionConfig(max_tokens=500, target_tokens=200)
+compactor = HistoryCompactor(config=config)
+```
+
+The `max_tokens` threshold determines when compaction activates. When the incoming message history exceeds this value, the compactor summarizes older messages. The `target_tokens` value guides how aggressively to compress. The notebook uses artificially low values (500 and 200) to trigger compaction early for demonstration purposes. Production values might be 120,000 and 40,000 for models with large context windows.
+
+The compactor uses tiktoken for accurate token counting rather than character-based estimates. This ensures compaction triggers at the right time regardless of message content.
+
+## History Processors in PydanticAI
+
+PydanticAI agents support history processors: functions that intercept and transform the message history before each agent call. The compactor integrates through this mechanism.
+
+**Production usage** is straightforward. Pass the compactor directly to `get_agent()`:
+
+```python
+compactor = HistoryCompactor(config=config)
+agent = get_agent(system_prompt="You are a helpful assistant.", history_compactor=compactor)
+```
+
+Or create the processor manually:
+
+```python
+agent = get_agent(system_prompt="...", history_processor=compactor.create_history_processor())
+```
+
+Both approaches wire up the compactor automatically. Compaction happens silently when thresholds are exceeded.
+
+**For this hands-on**, we use a custom wrapper to observe what's happening:
+
+```python
+async def capturing_processor(messages):
+    """Processor that captures the compacted history sent to agent."""
+    global sent_to_agent, compaction_result
+    original_tokens = compactor.count_tokens(messages)
+    compacted = await compactor.compact(messages)
+    compacted_tokens = compactor.count_tokens(compacted)
+
+    sent_to_agent = compacted
+    # ... capture compaction stats
+    return compacted
+
+agent_with_compaction = get_agent(
+    system_prompt="You are a helpful assistant.",
+    history_processors=[capturing_processor]
+)
+```
+
+Note that PydanticAI accepts both `history_processor` (singular, for a single function) and `history_processors` (plural, for a list of functions). The notebook uses the plural form since it passes a custom capturing processor rather than the compactor's built-in processor.
+
+This custom processor wraps `compactor.compact()` and captures before/after statistics for display. Without this instrumentation, you wouldn't see the token reduction happening. The key insight is that the processor receives the accumulated message history before each agent call. It can inspect, transform, or replace that history.
+
+## Observing Compaction in Action
+
+The notebook runs four conversation turns, displaying what happens at each step. The output distinguishes between three views of the history.
+
+**SENT TO AGENT** shows what the model actually receives after compaction. This is what matters for reasoning and context consumption.
+
+**NEW MESSAGES** shows the request/response pair from the current turn. These get appended to the accumulating history.
+
+**UNCOMPRESSED HISTORY** shows the full accumulated history without compaction. This grows unbounded and is kept for reference.
+
+On turn 1, no compaction occurs. The history contains just the initial exchange:
+
+```
+TURN 1: Explain what microservices architecture is.
+
+  SENT TO AGENT (1 messages, 94 tokens):
+    [0] ModelRequest: SystemPromptPart(...), UserPromptPart(...)
+
+  UNCOMPRESSED HISTORY (2 messages, 467 tokens):
+    [0] ModelRequest: SystemPromptPart(...), UserPromptPart(...)
+    [1] ModelResponse: TextPart(# Microservices Architecture...)
+```
+
+By turn 2, the accumulated history (467 tokens from turn 1 plus the new prompt) exceeds the 500-token threshold, triggering compaction:
+
+```
+TURN 2: What are the main benefits?
+
+  *** COMPACTION: 3 msgs (510 tokens) -> 2 msgs (267 tokens) ***
+
+  SENT TO AGENT (2 messages, 267 tokens):
+    [0] ModelRequest: UserPromptPart(This session is being continued from a previous co...)
+    [1] ModelRequest: UserPromptPart(What are the main benefits?...)
+```
+
+The compacted history replaces the original exchange with a summary message. This summary provides context for the model to continue the conversation without replaying the full dialogue.
+
+## The Compaction Summary
+
+When compaction occurs, older messages are summarized by an LLM into a concise narrative. This summary is wrapped in a continuation prompt:
+
+```python
+SUMMARY_WRAPPED = """This session is being continued from a previous conversation that ran out of context. \
+The conversation is summarized below:
+
+{summary}
+
+Please continue the conversation from where we left it off without asking the user any further questions. \
+Continue with the last task that you were asked to work on, if any, otherwise just wait for the user's next input.
+"""
+```
+
+The wrapper provides instruction to the model about how to interpret the summary and continue naturally. The model doesn't know that compaction occurred; it simply sees a summary of prior context followed by the current prompt.
+
+The summarization itself uses a separate LLM call:
+
+```python
+SUMMARIZATION_REQUEST_PROMPT = """Summarize the following conversation concisely, preserving key information,
+decisions made, and important context that would be needed to continue the conversation. Focus on facts
+and outcomes rather than the back-and-forth dialogue. Avoid adding a markdown header.
+
+Conversation:
+{conversation}
+
+Summary:"""
+```
+
+This prompt instructs the summarizer to preserve what matters for conversation continuity: key information, decisions, and context. The back-and-forth dialogue structure is collapsed into facts and outcomes.
+
+## Bounded vs Unbounded History
+
+The critical observation from the notebook output is the divergence between what the agent sees and what accumulates.
+
+After four turns, the uncompressed history has grown to 8 messages consuming 2,293 tokens. But what gets sent to the agent remains bounded at 2 messages (summary plus current prompt) consuming around 370 tokens.
+
+```
+TURN 4: How does it compare to monolithic architecture?
+
+  *** COMPACTION: 7 msgs (1350 tokens) -> 2 msgs (373 tokens) ***
+
+  SENT TO AGENT (2 messages, 373 tokens):
+    [0] ModelRequest: UserPromptPart(This session is being continued...)
+    [1] ModelRequest: UserPromptPart(How does it compare to monolithic architecture?...)
+
+  UNCOMPRESSED HISTORY (8 messages, 2293 tokens):
+    [0] ModelRequest: SystemPromptPart(...), UserPromptPart(...)
+    [1] ModelResponse: TextPart(# Microservices Architecture...)
+    ... (6 more messages)
+```
+
+The conversation can continue indefinitely. Each turn summarizes all prior context, keeping the sent history bounded while the logical conversation grows.
+
+## Tool Call Pairing
+
+The implementation handles a subtle constraint with tool calls. When a message contains a tool return, the preceding tool call must be preserved with it. The OpenAI API returns an error if tool returns appear without their corresponding calls.
+
+The `_find_safe_compaction_boundary` method ensures compaction never orphans tool returns:
+
+```python
+def _find_safe_compaction_boundary(self, messages: list[ModelMessage]) -> int:
+    # If the last message has ToolReturnPart, we must also keep the message
+    # with the corresponding ToolCallPart
+    if self._has_tool_return_part(messages[keep_from]):
+        if keep_from > 0 and self._has_tool_call_part(messages[keep_from - 1]):
+            keep_from -= 1
+        else:
+            return -1  # Skip compaction, will retry next turn
+```
+
+If no safe boundary exists, compaction is deferred to the next turn when the tool call/return pair can be included together.
+
+## Fallback Behavior
+
+When LLM summarization fails or isn't available, the compactor falls back to truncation. It preserves the head and tail of the conversation with a marker indicating removed content:
+
+```python
+def _truncate_for_fallback(self, text: str, max_tokens: int) -> str:
+    # Keep head and tail, note removed portion
+    truncated = f"{head}\n\n[... {removed_count} tokens removed ...]\n\n{tail}"
+    return f"[Previous conversation (truncated)]:\n{truncated}"
+```
+
+This ensures the system degrades gracefully. Truncation is less effective than summarization but maintains conversation continuity.
+
+## Key Takeaways
+
+History compaction separates what the conversation has accumulated from what the model sees. The full logical history grows unbounded while the effective context stays bounded through summarization.
+
+Configuration involves two parameters: `max_tokens` triggers compaction, `target_tokens` guides reduction. Set these based on your model's context window and the balance between context preservation and cost.
+
+In production, pass `history_compactor=compactor` to `get_agent()` for automatic integration. The custom processor in this hands-on exists only to observe what's happening; production code doesn't need it.
+
+Compaction uses LLM summarization to preserve semantic content. The summary captures key information and decisions rather than replaying dialogue structure. A fallback to truncation ensures graceful degradation.
+
+Tool call/return pairing is preserved automatically. The compactor finds safe boundaries that don't orphan tool returns, deferring compaction when necessary.
+
+
+\newpage
+
+# MCP: Model Context Protocol
+
+## Historical Perspective
+
+The emergence of MCP is best understood as the convergence of several research and engineering threads that matured between roughly 2018 and 2024. Early neural language models were largely stateless and closed: prompts were short, tools were hard-coded, and any notion of "context" was manually injected. As models became more capable, this led to brittle integrations where each application defined its own ad-hoc conventions for tool calling, prompt templates, file access, and memory. Developers building agent systems found themselves reinventing the same abstractions repeatedly, with no shared vocabulary for how models should discover, describe, or invoke external capabilities.
+
+Earlier software ecosystems had already faced a similar problem and solved it through protocol design. Language Server Protocol (LSP), introduced in the mid-2010s, demonstrated that a clean, transport-agnostic protocol could decouple editors from language tooling. Rather than each IDE implementing its own parser, completion engine, and diagnostics for every programming language, LSP established a contract that allowed any compliant editor to work with any compliant language server. This architectural insight, that interoperability emerges from shared protocols rather than shared implementations, proved remarkably successful. Around the same time, work on agent architectures, tool-augmented language models, and function-calling APIs highlighted the need for a more principled interface between models and their environment. Research on tool use, planning, and long-horizon interaction made it clear that context could no longer be treated as a flat text prompt, but instead as a structured, evolving state that models reason over across multiple turns.
+
+MCP emerged from this backdrop as a unifying abstraction. Rather than embedding tool logic and context management inside each application or model runtime, MCP defines a shared protocol that externalizes these concerns. The result is a system where models can operate over rich, inspectable context without being tightly coupled to any specific framework, transport, or vendor. Just as LSP decoupled editors from language services, MCP decouples agent runtimes from tool implementations, enabling composition, substitution, and evolution at the protocol boundary rather than inside monolithic codebases.
+
+
+# Chapter: Model Context Protocol (MCP)
+
+## Introduction
+
+**Model Context Protocol (MCP)** is an open protocol that standardizes how AI models discover, describe, and interact with external tools, resources, and structured context across long-running sessions.
+
+### Conceptual overview
+
+At its core, MCP defines a **contract** between a *client* (typically an AI runtime or agent host) and one or more *servers* that expose capabilities. These capabilities are not limited to executable tools; they also include prompts, static or dynamic resources, and interaction patterns that guide how models request information or actions.
+
+The key idea is that **context is first-class**. Instead of treating context as opaque text, MCP models it as a set of structured entities with explicit lifecycles. A client can discover what a server offers, reason about how to use it, and invoke those capabilities in a uniform way. This enables composition: multiple servers can be combined, swapped, or upgraded without changing the model’s internal logic.
+
+Unlike earlier tool-calling APIs, MCP is deliberately **transport-agnostic** and **model-agnostic**. Whether the underlying connection is local, remote, synchronous, or streaming is orthogonal to the semantics of the interaction. Similarly, MCP does not assume a particular model architecture; it only specifies how context and actions are represented and exchanged.
+
+### MCP in practice
+
+An MCP server advertises its capabilities declaratively. A client connects, inspects those capabilities, and then decides—often with model assistance—how to use them. The protocol distinguishes between different kinds of interaction:
+
+Tools represent callable operations with structured inputs and outputs. Prompts define reusable, parameterized instructions. Resources expose read-only or versioned data that can be incorporated into model reasoning. On the client side, additional mechanisms allow the model to request clarification, sampling decisions, or user input when uncertainty arises.
+
+The following simplified snippet illustrates the conceptual shape of a tool definition exposed by an MCP server:
+
+```json
+{
+  "name": "search_documents",
+  "description": "Search indexed documents using semantic and metadata filters",
+  "input_schema": {
+    "query": "string",
+    "filters": {
+      "type": "object",
+      "optional": true
+    }
+  }
+}
+```
+
+From the client’s perspective, this definition is not just documentation. It is machine-readable context that the model can reason over: when to call the tool, how to construct valid inputs, and how to interpret outputs. The client mediates execution, ensuring that permissions, transport, and lifecycle constraints are respected.
+
+Crucially, MCP encourages **long-lived sessions**. Context accumulates over time, resources can be updated or invalidated, and tools can be dynamically enabled or disabled. This aligns naturally with agentic systems that plan, revise, and reflect rather than producing a single response.
+
+### FastMCP as the reference implementation
+
+As MCP moved from a conceptual specification into real-world use, **FastMCP** emerged as the de-facto reference implementation of the protocol. Its significance was not driven by formal standardization, but by rapid adoption: FastMCP provided an early, complete, and idiomatic implementation of MCP server semantics that closely tracked the evolving specification while remaining practical for production use. By offering clear abstractions for tools, prompts, and resources—along with sensible defaults for lifecycle management, transport handling, and schema validation—it dramatically lowered the barrier to building MCP-compliant servers. As a result, many early MCP clients and examples were developed and tested against FastMCP, creating a positive feedback loop where compatibility with FastMCP effectively meant compatibility with MCP itself. Over time, this positioned FastMCP not merely as one implementation among many, but as the *behavioral reference* against which other implementations were implicitly validated, similar to how early language servers shaped expectations around LSP despite the protocol being formally independent of any single codebase.
+
+### Why MCP matters
+
+MCP addresses a structural problem that becomes unavoidable as systems scale: without a protocol, every agent framework reinvents its own notion of tools, memory, and context boundaries. This fragmentation makes systems harder to audit, secure, and evolve. By providing a shared vocabulary and lifecycle model, MCP enables interoperability across tools, agents, and runtimes.
+
+Equally important, MCP shifts responsibility to the right layer. Models focus on reasoning and decision-making; servers focus on exposing well-defined capabilities; clients enforce policy, security, and orchestration. This separation mirrors successful patterns in distributed systems and is a prerequisite for building robust, enterprise-grade agent platforms.
+
+
+
+# Chapter: MCP
+
+## Tools
+
+**Tools are the execution boundary of MCP: they are where model intent is turned into validated, observable, and recoverable actions.**
+
+In practical MCP systems, tools are not an auxiliary feature; they are the core mechanism through which an agent interacts with the world. Everything else in MCP—prompts, resources, sampling, elicitation—exists to support better decisions about *which tools to invoke and how*. A tool is therefore best understood not as a function exposed to a model, but as a carefully constrained execution contract enforced by the server.
+
+This section focuses on how tools work *in practice*, with concrete examples drawn from common MCP server implementations such as FastMCP, and how errors and failures propagate back into an agent loop typically implemented with frameworks like Pydantic-AI.
+
+
+## From functions to tools: contracts, not code
+
+Although tools are often implemented as ordinary functions, MCP deliberately erases that fact at the protocol boundary. What the model sees is never the function itself, only a declarative description derived from it.
+
+Consider a tool that writes a file into a sandboxed workspace:
+
+```python
+def write_file(path: str, content: str, overwrite: bool = False) -> None:
+    """
+    Write text content to a file in the agent workspace.
+
+    Args:
+        path: Relative path inside the workspace.
+        content: File contents.
+        overwrite: Whether to overwrite an existing file.
+    """
+    ...
+```
+
+When exposed via an MCP server, this function is translated into a tool definition consisting of a name, an input schema, and a description. The schema encodes type information, required fields, and defaults. The description is written *for the model*, not for the developer.
+
+At this point, the function body becomes irrelevant to the protocol. The model reasons entirely over the contract. This separation allows the server to validate inputs, enforce permissions, and reject invalid requests before execution.
+
+
+## Tool invocation as structured output
+
+From the model’s perspective, invoking a tool is an act of structured generation. The model emits a message that must conform exactly to the tool’s schema. Conceptually, the output looks like this:
+
+```json
+{
+  "tool": "write_file",
+  "arguments": {
+    "path": "notes/summary.txt",
+    "content": "Draft conclusions…",
+    "overwrite": false
+  }
+}
+```
+
+The MCP server validates this payload against the schema derived from the function signature. If validation fails—because a field is missing, a type is incorrect, or an unexpected argument appears—the call is rejected without executing any code.
+
+This is the first and most important safety boundary in MCP. Tool calls are not “best effort”. They are either valid or they do not run.
+
+
+## Validation failures and early rejection
+
+Validation errors are common, especially in early agent iterations. MCP makes these failures explicit and structured, rather than burying them in logs or free-form text.
+
+For example, if the model omits a required field, the server might return:
+
+```json
+{
+  "error": {
+    "code": "INVALID_ARGUMENTS",
+    "message": "Missing required field: path",
+    "details": {
+      "field": "path"
+    }
+  }
+}
+```
+
+This error is returned to the client and injected back into the agent’s context. The agent can now reason over the failure deterministically, rather than guessing what went wrong from an unstructured error string.
+
+
+## Domain errors inside tool execution
+
+Even when inputs are valid, execution may still fail. These failures belong to the *domain* of the tool, not to schema validation.
+
+Returning to the file-writing example, suppose the file already exists and `overwrite` is false. The implementation may raise a domain-specific error, which the MCP server translates into a structured response:
+
+```json
+{
+  "error": {
+    "code": "FILE_EXISTS",
+    "message": "File already exists and overwrite=false",
+    "details": {
+      "path": "notes/summary.txt"
+    }
+  }
+}
+```
+
+This distinction matters. The model provided valid inputs, but the requested action is not permissible under current conditions. A well-designed agent can respond by retrying with `overwrite=true`, choosing a different path, or asking the user for confirmation.
+
+
+## How tool errors propagate into the agent loop
+
+In agentic systems, tool execution is embedded in a reasoning–action loop. A simplified control flow looks like this:
+
+```python
+result = call_tool(tool_call)
+
+if result.is_error:
+    agent.observe_tool_error(
+        code=result.error.code,
+        message=result.error.message,
+        details=result.error.details,
+    )
+else:
+    agent.observe_tool_result(result.data)
+```
+
+The critical point is that tool failures are *observations*, not exceptions that crash the system. The agent receives structured data describing what happened and incorporates it into the next reasoning step.
+
+This is where MCP’s design aligns naturally with typed agent frameworks. Errors are values. They can be inspected, classified, and acted upon using ordinary control logic.
+
+
+## Retry and recovery as explicit policy
+
+MCP does not define retry semantics, and this is by design. Retries depend on context that only the agent or orchestrator can see: task intent, execution history, side effects already performed, and external constraints.
+
+Because errors are structured, retry logic can be written explicitly and safely:
+
+```python
+if error.code == "RATE_LIMITED":
+    sleep(backoff(attempt))
+    retry_same_call()
+elif error.code == "FILE_EXISTS":
+    retry_with_arguments(overwrite=True)
+else:
+    escalate_or_abort()
+```
+
+The tool implementation does not decide whether to retry. It merely reports what went wrong. The agent decides what to do next.
+
+This separation prevents hidden retries, duplicated side effects, and uncontrolled loops—failure modes that are common in naïve tool-calling systems.
+
+
+## Transient vs terminal failures
+
+A crucial practical concern is distinguishing transient failures from terminal ones. Network timeouts, temporary unavailability, or rate limits may warrant retries. Permission errors, unsupported operations, or invariant violations usually do not.
+
+By standardizing error codes and propagating them explicitly, MCP enables agents to make this distinction reliably. Over time, this allows agent behavior to evolve from brittle heuristics into deliberate recovery strategies.
+
+
+## Why this level of rigor matters
+
+In long-running or autonomous agents, tools may be invoked hundreds or thousands of times. Without strict contracts, structured validation, and explicit error propagation, failures accumulate silently and reasoning degrades. Debugging becomes guesswork, and safety boundaries erode.
+
+MCP’s tool model addresses this by treating tool invocation as a first-class, schema-governed interaction with clear failure semantics. When combined with typed agent frameworks and explicit retry policies, tools become a reliable execution substrate rather than a fragile extension of prompting.
+
+In practice, this is what allows MCP-based systems to move beyond demos and into production-grade agentic platforms.
+
+
+
+
+## Other Server and Client Features
+
+MCP features beyond tools define how instructions, data, generation control, and human input are modeled explicitly, making agent behavior inspectable, reproducible, and scalable.
+
+This section omits tools and focuses on the remaining server- and client-side features that structure *context* and *control flow* around model execution.
+
+
+## Prompts (server feature)
+
+Prompts are server-defined, named instruction templates that clients can invoke with parameters.
+
+### What prompts are in practice
+
+A prompt is a reusable instruction artifact owned by the server. It encapsulates task framing, tone, constraints, and best practices, while exposing only a small set of parameters to the client. The client selects *which* prompt to use and supplies arguments; the server controls the actual instruction text.
+
+### Server-side definition
+
+```python
+@mcp.prompt()
+def analyze_log_file(severity: str, audience: str) -> str:
+    return f"""
+    Analyze the provided log file.
+    Focus on issues with severity >= {severity}.
+    Explain findings for a {audience} audience.
+    Provide concrete remediation steps.
+    """
+```
+
+Multiple prompts can coexist on the same server, each representing a distinct behavioral contract.
+
+### Client-side usage
+
+```python
+response = client.run(
+    prompt="analyze_log_file",
+    arguments={
+        "severity": "ERROR",
+        "audience": "site reliability engineers"
+    }
+)
+```
+
+The client never embeds the instruction text itself. This makes prompt changes transparent to clients and easier to review and test centrally.
+
+
+## Resources (server feature)
+
+Resources expose data artifacts as addressable protocol objects rather than inline text.
+
+### What resources are in practice
+
+A resource is any piece of data an agent may need to consult: documents, configuration files, intermediate results, reports, or generated artifacts. Resources are identified by stable paths or URIs and fetched explicitly.
+
+### Server-side definition
+
+```python
+@mcp.resource("reports/{report_id}")
+def load_report(report_id: str) -> str:
+    path = f"/data/reports/{report_id}.md"
+    with open(path) as f:
+        return f.read()
+```
+
+Resources can also be dynamically generated:
+
+```python
+@mcp.resource("runs/{run_id}/summary")
+def run_summary(run_id: str) -> str:
+    return summarize_run_state(run_id)
+```
+
+### Client-side usage
+
+```python
+report_text = client.read_resource("reports/incident-2025-01")
+
+analysis = client.run(
+    prompt="analyze_log_file",
+    arguments={
+        "severity": "WARN",
+        "audience": "management"
+    },
+    context={
+        "report": report_text
+    }
+)
+```
+
+This pattern avoids copying large documents into every prompt and supports workspace-style workflows where artifacts are produced, stored, and revisited across turns.
+
+
+## Sampling (client feature)
+
+Sampling gives the client explicit control over generation behavior on a per-request basis.
+
+### What sampling controls
+
+Sampling parameters govern randomness, verbosity, and termination. By elevating these to the protocol level, MCP allows clients to adapt generation behavior to the current phase of an agent workflow.
+
+### Client-side examples
+
+Exploratory reasoning phase:
+
+```python
+draft = client.run(
+    prompt="brainstorm_hypotheses",
+    arguments={"topic": "database latency spikes"},
+    sampling={
+        "temperature": 0.8,
+        "max_tokens": 500
+    }
+)
+```
+
+Deterministic execution phase:
+
+```python
+final_report = client.run(
+    prompt="produce_incident_report",
+    arguments={"incident_id": "2025-01"},
+    sampling={
+        "temperature": 0.1,
+        "max_tokens": 800
+    }
+)
+```
+
+Sampling becomes an explicit part of orchestration logic rather than a hidden global setting.
+
+
+## Elicitation (client feature)
+
+Elicitation represents explicit requests for human input during agent execution.
+
+### What elicitation is in practice
+
+When an agent cannot proceed safely or correctly without additional information, it emits an elicitation request instead of continuing autonomously. This creates a well-defined pause point that external systems can handle reliably.
+
+### Client-side elicitation request
+
+```python
+client.elicit(
+    question="Which environment should this fix be deployed to?",
+    options=["staging", "production"]
+)
+```
+
+The agent’s execution is suspended until a response is provided.
+
+### Resuming after elicitation
+
+```python
+answer = client.wait_for_elicitation()
+
+deployment = client.run(
+    prompt="deploy_fix",
+    arguments={"environment": answer}
+)
+```
+
+This makes human-in-the-loop interaction explicit, auditable, and composable with automated steps.
+
+
+## How these features work together
+
+A typical flow combining these features might look as follows:
+
+1. The client retrieves a resource representing an existing artifact.
+2. The client invokes a server-defined prompt to analyze or transform that artifact.
+3. Sampling parameters are tuned to the task’s requirements.
+4. If ambiguity arises, the agent issues an elicitation request.
+5. Execution resumes once human input is provided, producing new resources or outputs.
+
+None of these steps require embedding large instructions or data blobs directly into prompts. The protocol enforces structure while remaining agnostic to storage, UI, or orchestration frameworks.
+
+
+
+
+## Architecture
+
+This section describes the architectural structure of the Model Context Protocol (MCP): how clients and servers coordinate over a well-defined lifecycle, how responsibilities are split across components, and how transport, authorization, and security concerns are handled in a principled way. The abstract architecture defined in the specification is concretely realized in implementations such as **FastMCP** and in the MCP integration patterns described by **Pydantic-AI**, which together provide practical guidance on how these concepts are applied in real systems.
+
+### Lifecycle
+
+The MCP lifecycle defines the ordered phases through which a client–server session progresses. Rather than treating connections as ad-hoc request/response exchanges, MCP makes lifecycle transitions explicit, enabling both sides to reason about capabilities, permissions, and state.
+
+The lifecycle begins with initialization. The client establishes a connection and negotiates protocol compatibility and supported features. FastMCP exposes this phase explicitly, ensuring that capability discovery and validation occur once per session. In Pydantic-AI’s MCP integration, this boundary cleanly separates agent reasoning from external interaction: no domain actions occur until initialization succeeds.
+
+Once initialized, the session enters the active phase. During this phase, the client may invoke prompts, access resources, request sampling, or engage in elicitation flows, strictly within the capabilities that were negotiated. Implementations emphasize that this phase is stateful. FastMCP maintains session-scoped context across multiple interactions, while Pydantic-AI reinjects MCP responses into the model context over successive turns, enabling iterative and reflective agent behavior.
+
+The lifecycle ends with shutdown. Either side may terminate the session, at which point in-flight operations are resolved, resources are released, and all session context is discarded. Both FastMCP and Pydantic-AI documentation stress that explicit teardown is essential for long-running or autonomous agents, where leaked state or lingering permissions would otherwise accumulate.
+
+### Server
+
+An MCP server is the authoritative boundary between models and external systems. Architecturally, it exposes structured capabilities while enforcing protocol rules, authorization, and isolation.
+
+FastMCP provides a reference server architecture that closely mirrors the MCP specification. The server is typically organized in layers: a transport layer for message delivery, a protocol layer that validates messages and enforces lifecycle constraints, and an application layer that implements domain-specific logic. This separation ensures that business logic is never directly exposed to unvalidated client input.
+
+A defining characteristic of MCP servers is declarative capability exposure. Instead of executing arbitrary instructions from a client, the server advertises what it can do, under which constraints, and with which inputs and outputs. Pydantic-AI adopts the same principle in its MCP guidance, framing the server as a controlled execution boundary rather than a general command interface.
+
+Conceptually, server request handling follows a pattern such as:
+
+```python
+def handle_message(message, session):
+    enforce_lifecycle(session)
+    validate_message_schema(message)
+    authorize(message, session)
+    dispatch(message, session)
+```
+
+The value of this structure lies in the invariant it enforces: all access to external systems is mediated by protocol rules and session state.
+
+### Client
+
+The MCP client orchestrates interactions on behalf of a model or agent. While the server defines what is possible, the client decides what to request, when to request it, and how to integrate the results back into the agent’s reasoning loop.
+
+Clients maintain session state, tracking negotiated capabilities, permissions, and accumulated context. In both FastMCP examples and Pydantic-AI integrations, the client acts as a policy and coordination layer, translating model intents into MCP requests and injecting structured responses back into the model context.
+
+This design keeps protocol mechanics out of the model itself. Pydantic-AI explicitly promotes this separation, treating MCP as the execution boundary where agent decisions are realized in the external world.
+
+A typical client flow is:
+
+```python
+session = connect_to_server()
+capabilities = session.initialize()
+
+if capabilities.supports_resources:
+    data = session.request_resource("example")
+    model_context.add(data)
+```
+
+The explicit capability check, emphasized in both FastMCP and Pydantic-AI documentation, is central to MCP’s robustness across heterogeneous servers.
+
+### Transport
+
+MCP deliberately decouples protocol semantics from transport mechanisms. The specification defines message structure and behavior independently of how messages are transmitted.
+
+FastMCP demonstrates this abstraction by supporting multiple transports, including standard input/output for local tool servers and HTTP-based transports for remote services. Pydantic-AI’s MCP documentation similarly treats transport as an implementation detail, allowing the same agent logic to operate unchanged across local development environments and production deployments.
+
+Architecturally, this means transport can evolve without affecting higher-level agent logic, as long as MCP message semantics are preserved.
+
+### Authorization
+
+Authorization in MCP is embedded directly into the protocol flow rather than being handled entirely out of band. Both the specification and FastMCP documentation emphasize fine-grained, capability-level authorization.
+
+During initialization, clients authenticate and establish identity. During the active phase, every request is checked against the permissions associated with the session. FastMCP enforces these checks as part of request dispatch, while Pydantic-AI highlights authorization as a first-class concern when integrating MCP into agent runtimes.
+
+This approach enables dynamic authorization. Permissions may depend on session context, negotiated features, or prior actions, supporting patterns such as staged access, scoped credentials, or human-approved escalation.
+
+### Security
+
+Security in MCP is an architectural property that emerges from explicit lifecycle management, declarative capabilities, and strict validation.
+
+A core principle is least privilege. Clients can only invoke capabilities that the server has explicitly advertised, and only within the bounds of the current session. FastMCP documentation frames MCP servers as containment boundaries, while Pydantic-AI recommends exposing narrowly scoped operations rather than general execution primitives.
+
+Isolation is equally important. Sessions are isolated from one another, and context is never shared across lifecycles. FastMCP treats session state as ephemeral, and Pydantic-AI guidance reinforces that MCP contexts should be discarded at the end of an interaction.
+
+Finally, defensive validation is pervasive. Messages are schema-validated, lifecycle transitions are enforced, and unexpected inputs are rejected early. These practices are critical when MCP clients may be driven by partially autonomous agents.
+
+
+
+# Hands-On: Introduction
+
+The hands-on sections that follow demonstrate MCP from the protocol level up to practical agent integration. Starting with raw message exchange, the exercises progressively build toward real-world usage patterns where agent frameworks abstract the protocol entirely. This bottom-up approach makes visible what higher-level libraries hide, helping readers debug issues and understand the boundaries of MCP's capabilities.
+
+The first exercise strips away all abstractions to show MCP as it actually operates: newline-delimited JSON-RPC messages flowing through subprocess pipes. By manually constructing initialization requests, tool listings, and tool calls, readers see the exact message format and lifecycle that underlies every MCP interaction. This protocol-level understanding becomes valuable when debugging connection failures or implementing custom transports.
+
+The second exercise reconnects this protocol knowledge to practical agent development. Using PydanticAI's MCP integration, agents gain tool access through MCP servers while the framework handles all protocol mechanics transparently. The exercise covers both STDIO transport for local development and HTTP transport for remote deployments, showing how the same server can be reached through different connection methods without changing client code.
+
+The final exercise expands beyond tools to cover MCP's full capability model: resources and prompts. Resources provide URI-addressable data endpoints that enable workspace-style workflows where artifacts are produced and retrieved across interactions. Prompts centralize instruction templates on the server side, separating behavioral definitions from client code. Together with tools, these features demonstrate how MCP structures the complete interface between agents and external capabilities.
+
+
+# Hands-On: MCP STDIO Transport
+
+The STDIO transport is MCP's simplest communication mechanism. The client spawns the server as a subprocess and exchanges JSON-RPC messages through standard input and output streams. This transport is ideal for local tool servers where the client and server run on the same machine.
+
+This hands-on explores the raw MCP protocol through `example_mcp_stdio.ipynb`, demonstrating the message format and lifecycle that underlies all MCP communication.
+
+## Why STDIO Matters
+
+Before examining high-level MCP client libraries, understanding the underlying protocol clarifies what those libraries abstract. STDIO transport strips away network complexity, authentication layers, and connection management. What remains is the essential exchange: newline-delimited JSON-RPC messages flowing between client and server.
+
+This simplicity makes STDIO the default choice for local development and testing. When you run `fastmcp run -t stdio server.py`, you get an MCP server that speaks the full protocol without requiring HTTP infrastructure, TLS certificates, or port management.
+
+## Starting the Server
+
+In `example_mcp_stdio.ipynb`, the server starts as a subprocess:
+
+```python
+proc = subprocess.Popen(
+    ['fastmcp', 'run', '-t', 'stdio', 'example_mcp_server.py'],
+    stdin=subprocess.PIPE,
+    stdout=subprocess.PIPE,
+    stderr=subprocess.PIPE,
+    text=True,
+    bufsize=1
+)
+```
+
+The `-t stdio` flag tells FastMCP to use STDIO transport rather than HTTP. The subprocess pipes capture stdin and stdout for bidirectional communication. Line buffering (`bufsize=1`) ensures messages are sent immediately rather than waiting for buffer fills.
+
+## Message Format
+
+MCP uses JSON-RPC 2.0 as its message format. Every message is a single line of JSON terminated by a newline. This constraint is critical: multi-line pretty-printed JSON will break the protocol.
+
+The helper function in the notebook handles this:
+
+```python
+def send_message(message: dict) -> dict | None:
+    line = json.dumps(message)
+    proc.stdin.write(line + '\n')
+    proc.stdin.flush()
+
+    if 'id' in message:
+        response = proc.stdout.readline()
+        return json.loads(response)
+```
+
+`json.dumps()` produces compact single-line JSON by default. The function distinguishes between requests (which have an `id` and expect a response) and notifications (which have no `id` and expect nothing back).
+
+## The MCP Lifecycle
+
+MCP sessions follow a defined lifecycle: initialization, active operation, and shutdown. The protocol enforces this order; attempting to call tools before initialization completes will fail.
+
+### Initialization
+
+The client initiates the session with an `initialize` request:
+
+```python
+init_request = {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "initialize",
+    "params": {
+        "protocolVersion": "2025-03-26",
+        "capabilities": {
+            "roots": {"listChanged": True},
+            "sampling": {}
+        },
+        "clientInfo": {
+            "name": "ExampleClient",
+            "version": "1.0.0"
+        }
+    }
+}
+```
+
+The request includes the protocol version for compatibility checking, the client's capabilities (what features it supports), and client identification. The server responds with its own capabilities, establishing what operations are available for this session.
+
+### Initialized Notification
+
+After receiving the initialization response, the client sends a notification to confirm readiness:
+
+```python
+initialized_notification = {
+    "jsonrpc": "2.0",
+    "method": "notifications/initialized"
+}
+```
+
+This is a notification, not a request. It has no `id` field and receives no response. The server uses this signal to transition the session into the active phase.
+
+### Active Phase
+
+Once initialized, the client can discover and invoke server capabilities. The `tools/list` method returns available tools:
+
+```python
+list_tools_request = {
+    "jsonrpc": "2.0",
+    "id": 3,
+    "method": "tools/list"
+}
+```
+
+The response includes tool names, descriptions, and JSON schemas for their inputs. This is the same information that agent frameworks use to present tools to language models.
+
+Tool invocation uses `tools/call`:
+
+```python
+call_tool_request = {
+    "jsonrpc": "2.0",
+    "id": 4,
+    "method": "tools/call",
+    "params": {
+        "name": "add",
+        "arguments": {
+            "a": 40,
+            "b": 2
+        }
+    }
+}
+```
+
+The server validates arguments against the tool's schema, executes the tool, and returns the result. If arguments are invalid or the tool fails, the response contains an error object instead of a result.
+
+## Error Handling
+
+The protocol distinguishes between transport errors and application errors. When the notebook sends invalid arguments:
+
+```python
+call_tool_error = {
+    "jsonrpc": "2.0",
+    "id": 5,
+    "method": "tools/call",
+    "params": {
+        "name": "add",
+        "arguments": {
+            "a": 40,
+            "z": "2"  # Invalid argument
+        }
+    }
+}
+```
+
+The server returns a structured error response rather than crashing. This allows clients to handle failures gracefully and potentially retry with corrected arguments.
+
+## Connection to Higher-Level Abstractions
+
+When you use `MCPServerStdio` from PydanticAI, it performs exactly this sequence internally. The agent framework handles initialization, capability discovery, and message formatting transparently. Understanding the raw protocol helps debug issues when they arise and clarifies what information flows between agents and tools.
+
+The same protocol semantics apply regardless of transport. Whether communicating over STDIO, HTTP, or WebSockets, the message structure and lifecycle remain identical. Only the delivery mechanism changes.
+
+## Key Takeaways
+
+STDIO transport provides the simplest MCP communication path: subprocess pipes carrying newline-delimited JSON-RPC messages.
+
+The MCP lifecycle is explicit: initialize, confirm initialization, operate, shutdown. Each phase has defined rules about what operations are permitted.
+
+Messages are either requests (with `id`, expecting response) or notifications (without `id`, fire-and-forget). This distinction matters for correct protocol implementation.
+
+Tool discovery through `tools/list` and invocation through `tools/call` form the foundation of MCP's tool integration. The protocol handles argument validation and error reporting in a structured way.
+
+
+# Hands-On: MCP Tools with Agents
+
+The previous hands-on explored the raw MCP protocol, showing the JSON-RPC messages that flow between client and server. In practice, agent frameworks handle this protocol transparently. This hands-on demonstrates how agents connect to MCP servers and use their tools through `example_agent_mcp_client_stdio.ipynb` and `example_agent_mcp_client_http.ipynb`.
+
+## The MCP Server
+
+Before connecting an agent, we need an MCP server that exposes tools. The file `example_mcp_server.py` defines a minimal server:
+
+```python
+from mcp.server.fastmcp import FastMCP
+
+mcp = FastMCP("Demo")
+
+@mcp.tool()
+def add(a: int, b: int) -> int:
+    """ Add two numbers """
+    return a + b
+```
+
+The `@mcp.tool()` decorator registers the function as an MCP tool. FastMCP extracts the function's type hints to generate a JSON schema and uses the docstring as the tool description. When an agent connects, it receives this schema and can invoke the tool by name with appropriate arguments.
+
+This is the same tool definition pattern used in Chapter 3, but now the tool lives in a separate process. The agent doesn't import the function directly; it communicates with it through the MCP protocol.
+
+## STDIO Transport
+
+The STDIO transport spawns the MCP server as a subprocess and communicates through pipes. This is the simplest approach for local development because everything runs in a single command.
+
+In `example_agent_mcp_client_stdio.ipynb`:
+
+```python
+from pydantic_ai.mcp import MCPServerStdio
+from agentic_patterns.core.agents import get_agent, run_agent
+
+server = MCPServerStdio(command='fastmcp', args=['run', '-t', 'stdio', 'example_mcp_server.py'])
+agent = get_agent(toolsets=[server])
+```
+
+`MCPServerStdio` encapsulates the subprocess management. When passed as a toolset to `get_agent`, the agent knows to connect to this server for tool discovery. The `-t stdio` flag tells FastMCP to use STDIO transport rather than starting an HTTP server.
+
+Running the agent establishes the connection:
+
+```python
+async with agent:
+    result, nodes = await run_agent(agent, "What is 40123456789 plus 2123456789?", verbose=True)
+```
+
+The `async with agent` context manager triggers the MCP handshake: initialization, capability exchange, and tool discovery. Inside this context, the agent has access to the `add` tool. When the model decides to use it, the framework sends a `tools/call` request through the subprocess pipes and returns the result to the model.
+
+The STDIO transport is self-contained. The notebook cell that creates `MCPServerStdio` is sufficient; no separate terminal or server startup is needed.
+
+## HTTP Transport
+
+For remote servers or when the MCP server needs to persist across multiple client sessions, HTTP transport is appropriate. Unlike STDIO, the server must be started separately before the client connects.
+
+Start the server in a separate terminal:
+
+```bash
+fastmcp run example_mcp_server.py
+```
+
+This launches an HTTP server (default port 8000) that accepts MCP connections. The server remains running until manually stopped.
+
+In `example_agent_mcp_client_http.ipynb`:
+
+```python
+from pydantic_ai.mcp import MCPServerStreamableHTTP
+from agentic_patterns.core.agents import get_agent, run_agent
+
+server = MCPServerStreamableHTTP(url='http://127.0.0.1:8000/mcp/')
+agent = get_agent(toolsets=[server])
+```
+
+`MCPServerStreamableHTTP` connects to an existing server rather than spawning one. The URL points to the MCP endpoint exposed by FastMCP. From this point, agent usage is identical to STDIO: enter the async context, run the agent, and tools work transparently.
+
+The HTTP transport adds a deployment step but enables scenarios that STDIO cannot: multiple clients sharing one server, servers running on remote machines, and servers that maintain state across sessions.
+
+## What the Agent Sees
+
+Regardless of transport, the agent framework performs the same operations:
+
+1. Connect to the MCP server and complete the initialization handshake
+2. Call `tools/list` to discover available tools
+3. Present tool schemas to the language model alongside the conversation
+4. When the model generates a tool call, send `tools/call` to the server
+5. Return the result to the model for incorporation into its response
+
+The model never knows whether tools come from MCP servers, local functions, or other sources. It sees tool schemas and decides when to call them based on the task. This abstraction is the point of MCP: tools become interchangeable components that can be developed, deployed, and composed independently.
+
+## Key Takeaways
+
+MCP servers expose tools through a standard protocol. The `@mcp.tool()` decorator in FastMCP handles schema generation and registration.
+
+STDIO transport is self-contained: the agent spawns the server as a subprocess. Use this for local development and testing.
+
+HTTP transport requires starting the server separately. Use this for remote servers, shared servers, or persistent deployments.
+
+Agent frameworks abstract the transport details. Once configured, tools from MCP servers work identically to local tools.
+
+
+# Hands-On: MCP Features
+
+The previous hands-on sections covered the raw MCP protocol and how agents use MCP tools. This hands-on explores the broader set of MCP server features through `example_mcp_features.ipynb`: tools, resources, and prompts. These features structure how context and capabilities are exposed to clients.
+
+## The MCP Server
+
+The server in `example_mcp_server_v2.py` demonstrates all three feature types:
+
+```python
+from mcp.server.fastmcp import FastMCP
+
+mcp = FastMCP("Demo")
+
+@mcp.tool()
+def add(a: int, b: int) -> int:
+    """ Add two numbers """
+    return a + b
+
+@mcp.resource("postgres://{database}/{table_name}/schema")
+def table_schema(database: str, table_name: str) -> str:
+    """Get a table's schema"""
+    return f"""
+        -- This is the schema for the {table_name} table
+        -- in the {database} database
+        CREATE TABLE {table_name} (id INT, name VARCHAR(255));
+        """
+
+@mcp.prompt()
+def hello_prompt(name: str) -> str:
+    """Get a personalized greeting"""
+    return f"Your name is {name} and you are a helpful assistant."
+```
+
+Each decorator registers a different type of capability. The `@mcp.tool()` decorator exposes a callable function. The `@mcp.resource()` decorator exposes data at a URI pattern. The `@mcp.prompt()` decorator exposes an instruction template.
+
+## The FastMCP Client
+
+The notebook uses the FastMCP `Client` class, which provides a programmatic interface for interacting with MCP servers. Unlike the agent integrations shown earlier, this client requires explicit calls and gives direct control over all MCP operations.
+
+```python
+from fastmcp import Client
+
+client = Client("http://127.0.0.1:8000/mcp")
+```
+
+The client connects via HTTP to a running server. All operations happen within an async context manager that handles connection lifecycle:
+
+```python
+async with client:
+    # MCP operations here
+```
+
+## Tools
+
+Tools are the most familiar MCP feature. They expose callable functions that clients can discover and invoke.
+
+Discovery returns metadata about each tool:
+
+```python
+async with client:
+    tools = await client.list_tools()
+    for tool in tools:
+        print(f"Tool: {tool.name}")
+        print(f"  Description: {tool.description}")
+        print(f"  Schema: {tool.inputSchema}")
+```
+
+The schema describes the expected arguments using JSON Schema. Agent frameworks use this schema to present tools to language models, which decide when and how to call them.
+
+Invocation passes arguments and returns the result:
+
+```python
+async with client:
+    result = await client.call_tool("add", {"a": 40, "b": 2})
+```
+
+The server validates arguments against the schema before execution.
+
+## Resources
+
+Resources expose data through URI-addressable endpoints. Unlike tools, which perform actions, resources provide read access to information.
+
+The server defines a resource template with parameters in the URI pattern:
+
+```python
+@mcp.resource("postgres://{database}/{table_name}/schema")
+def table_schema(database: str, table_name: str) -> str:
+    ...
+```
+
+The `{database}` and `{table_name}` placeholders become parameters. Clients discover these templates:
+
+```python
+async with client:
+    templates = await client.list_resource_templates()
+    for template in templates:
+        print(f"Template: {template.uriTemplate}")
+```
+
+Reading a resource requires filling in the template parameters:
+
+```python
+async with client:
+    content = await client.read_resource("postgres://mydb/users/schema")
+```
+
+The URI `postgres://mydb/users/schema` matches the template with `database=mydb` and `table_name=users`. The server executes the function with these values and returns the content.
+
+Resources enable workspace-style workflows where artifacts are produced, stored, and retrieved across multiple interactions. They avoid copying large documents into every prompt by making data addressable and fetchable on demand.
+
+## Prompts
+
+Prompts are server-defined instruction templates. They centralize behavioral contracts on the server side, allowing prompt engineering to evolve independently of client code.
+
+The server defines a prompt with parameters:
+
+```python
+@mcp.prompt()
+def hello_prompt(name: str) -> str:
+    """Get a personalized greeting"""
+    return f"Your name is {name} and you are a helpful assistant."
+```
+
+Clients discover available prompts:
+
+```python
+async with client:
+    prompts = await client.list_prompts()
+    for prompt in prompts:
+        print(f"Prompt: {prompt.name}")
+        print(f"  Arguments: {prompt.arguments}")
+```
+
+Retrieving a prompt renders it with the provided arguments:
+
+```python
+async with client:
+    result = await client.get_prompt("hello_prompt", {"name": "Alice"})
+    for msg in result.messages:
+        print(f"Content: {msg.content.text}")
+```
+
+The result contains messages ready to be used in a conversation. The client never embeds the instruction text directly; it requests the prompt by name and receives the rendered version. This separation means prompt changes can be deployed server-side without modifying clients.
+
+## How These Features Complement Each Other
+
+Tools, resources, and prompts serve different purposes in an MCP architecture:
+
+**Tools** perform actions. They execute logic, call APIs, modify state, or compute results. An agent decides when to call them based on the task.
+
+**Resources** provide data. They expose documents, configurations, or generated artifacts without requiring the client to know how to fetch or generate them.
+
+**Prompts** define behavior. They encapsulate instructions, constraints, and framing that shape how an agent approaches a task.
+
+A typical workflow might retrieve a resource containing relevant data, use a prompt to frame the analysis task, and invoke tools to perform specific operations. Each feature type has a clear role, and the MCP protocol makes them all discoverable and addressable through a uniform interface.
+
+## Key Takeaways
+
+MCP servers can expose three types of capabilities: tools for actions, resources for data, and prompts for instructions.
+
+The FastMCP `Client` provides programmatic access to all three. It handles connection management and exposes async methods for discovery and usage.
+
+Resources use URI templates with parameters, enabling addressable data endpoints that support workspace-style workflows.
+
+Prompts centralize instruction management on the server, separating behavioral definitions from client logic.
+
+
+## References
+
+1. Anthropic. *Model Context Protocol: Server Tools Specification*. MCP Documentation, 2025. https://modelcontextprotocol.io/specification/2025-06-18/server/tools
+2. FastMCP Contributors. *FastMCP Documentation*. 2024-2025. https://gofastmcp.com
+3. FastMCP Contributors. *FastMCP Tool Servers*. FastMCP Documentation, 2025. https://gofastmcp.com/servers/tools
+4. Microsoft. *Language Server Protocol*. 2016. https://microsoft.github.io/language-server-protocol/
+5. Model Context Protocol. *Client Elicitation Specification*. 2025. https://modelcontextprotocol.io/specification/2025-06-18/client/elicitation
+6. Model Context Protocol. *Client Sampling Specification*. 2025. https://modelcontextprotocol.io/specification/2025-06-18/client/sampling
+7. Model Context Protocol. *Getting Started: Introduction*. 2024. https://modelcontextprotocol.io/docs/getting-started/intro
+8. Model Context Protocol Working Group. *Authorization*. 2025. https://modelcontextprotocol.io/specification/2025-06-18/basic/authorization
+9. Model Context Protocol Working Group. *Client Concepts*. 2025. https://modelcontextprotocol.io/docs/learn/client-concepts
+10. Model Context Protocol Working Group. *MCP Lifecycle Specification*. 2025. https://modelcontextprotocol.io/specification/2025-06-18/basic/lifecycle
+11. Model Context Protocol Working Group. *Security Best Practices*. 2025. https://modelcontextprotocol.io/specification/2025-06-18/basic/security_best_practices
+12. Model Context Protocol Working Group. *Server Concepts*. 2025. https://modelcontextprotocol.io/docs/learn/server-concepts
+13. Model Context Protocol Working Group. *Server Prompts Specification*. 2025. https://modelcontextprotocol.io/specification/2025-06-18/server/prompts
+14. Model Context Protocol Working Group. *Server Resources Specification*. 2025. https://modelcontextprotocol.io/specification/2025-06-18/server/resources
+15. Model Context Protocol Working Group. *Transports*. 2025. https://modelcontextprotocol.io/specification/2025-06-18/basic/transports
+16. OpenAI. *Structured Outputs and Function Calling*. OpenAI Technical Documentation, 2023.
+17. Pydantic-AI Contributors. *MCP Overview and Integration Patterns*. 2024-2025. https://ai.pydantic.dev/mcp/overview/
+18. Schick et al. *Toolformer: Language Models Can Teach Themselves to Use Tools*. NeurIPS, 2023.
+19. Yao et al. *ReAct: Synergizing Reasoning and Acting in Language Models*. ICLR, 2023.
+
+\newpage
+
+# A2A Protocol
+
+## Introduction
+
+A2A (Agent2Agent) is an application-layer protocol that standardizes how autonomous agents discover each other, exchange messages, and coordinate work as tasks over HTTP(S), enabling cross-framework and cross-organization interoperability.
+
+### What is A2A
+
+A2A defines how one agent (a “client agent”) communicates with another agent (a “remote agent”) over HTTP(S), using JSON-RPC 2.0 envelopes. The remote agent is intentionally treated as opaque: A2A does not prescribe how the remote agent plans, calls tools, or maintains internal state. What it *does* prescribe is how the client creates and advances work, and how the remote agent reports progress and returns outputs in a predictable, interoperable format.
+
+This choice makes A2A suitable for delegation patterns that show up in real systems. A coordinator agent can discover specialized agents (for billing, travel planning, literature review, data cleaning), select one based on declared capabilities, and then initiate and track a task. The client doesn’t need a shared framework with the remote agent; it needs only the protocol contract.
+
+The protocol’s use of JSON-RPC is deliberately conservative. JSON-RPC provides the framing for request/response correlation (IDs), method invocation, and standardized error handling, while A2A defines the domain concepts on top: agent metadata, tasks, message structures, and artifacts.
+
+### Key concepts
+
+A2A’s main abstractions are designed to match how multi-agent work actually unfolds over time.
+
+An **Agent Card** is the discovery and capability surface: a machine-readable document published by a remote agent that describes who it is, where its endpoint is, which authentication schemes it supports, and what capabilities and skills it claims. This supports “metadata-first” routing and policy checks before any work begins.
+
+A **Task** is a stateful unit of work with its own identity and lifecycle. Tasks exist to support multi-turn collaboration and long-running operations, so an interaction does not have to fit into one synchronous request/response. Instead, the client can start a task, send additional messages, and retrieve updates or results later.
+
+**Messages** are how conversational turns are exchanged, and they are structured as **parts** so that text, structured data, and file references can be represented consistently. **Artifacts** are the concrete outputs attached to a task—documents, structured results, or other deliverables that can be stored, forwarded, audited, or fed into downstream workflows.
+
+A useful mental model is: **Agent Card** answers “who are you and what can you do?”, **Task** answers “what unit of work are we coordinating?”, **Messages** carry the interaction, and **Artifacts** are the outputs worth persisting.
+
+### Agent discovery
+
+A2A discovery is built around retrieving the Agent Card. A common mechanism is a well-known URL under the agent’s domain (aligned with established “well-known URI” conventions), allowing clients to probe domains deterministically. Discovery is intentionally explicit: clients can validate capabilities, authentication requirements, and declared skills before initiating a task, and systems can log discovery metadata for audit and governance.
+
+Conceptual snippet:
+
+```python
+import requests
+
+def discover_agent_card(domain: str) -> dict:
+    url = f"https://{domain}/.well-known/agent-card.json"
+    r = requests.get(url, timeout=5)
+    r.raise_for_status()
+    return r.json()
+
+card = discover_agent_card("billing.example.com")
+# Use: card["skills"], card["authentication"], card["capabilities"], card["url"]
+```
+
+This “metadata-first” approach matters operationally: it enables capability matching, policy gating (e.g., only delegate to agents with certain auth), and safer orchestration decisions *before* sending sensitive task content.
+
+### A2A and MCP
+
+A2A and MCP are complementary layers rather than competing protocols. MCP standardizes how agents interact with tools and resources (structured inputs/outputs, tool schemas, permission boundaries). A2A standardizes how agents interact with *other agents* as autonomous peers (discovery, task lifecycle, messaging, artifact delivery).
+
+A common composition is **A2A for delegation, MCP for tool-use**. A coordinator uses A2A to delegate a task to a specialist agent. The specialist agent, while executing the task, may rely on MCP internally to access databases, file systems, execution sandboxes, or enterprise services. When the specialist completes work (or makes partial progress), it returns results back to the coordinator as A2A messages and artifacts. This separation keeps each protocol focused: A2A doesn’t need to understand tool schemas, and MCP doesn’t need to standardize multi-agent collaboration.
+
+### Touchpoints from Pydantic-ai and FastMCP ecosystems
+
+The Pydantic ecosystem documents A2A as a practical interoperability layer and provides Python tooling to expose agents as A2A servers and to build clients that can discover agents, initiate tasks, and consume artifacts—without requiring the agent’s internal design to be rewritten around protocol internals. The emphasis is on preserving your existing agent architecture while making the boundary interoperable.
+
+FastMCP, meanwhile, is often used as a pragmatic deployment unit for MCP tool servers. In practice, this leads to a common layered architecture: A2A connects agents across boundaries; MCP connects agents to tools/resources; and FastMCP-style servers host the tool endpoints that agents call. Bridging components can translate between A2A and MCP where needed (for example, to let an A2A-facing agent expose or consume MCP-backed capabilities behind the scenes).
+
+A minimal task invocation at the wire level (illustrative, independent of any specific framework) looks like this:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "req_123",
+  "method": "tasks/send",
+  "params": {
+    "message": {
+      "role": "user",
+      "parts": [
+        { "kind": "text", "text": "Reconcile invoice #4812 and explain discrepancies." }
+      ]
+    }
+  }
+}
+```
+
+The important point is not the method name per se, but the design: JSON-RPC provides the envelope; A2A defines the task/message/artifact semantics; and implementations can remain diverse behind the boundary.
+
+
+## Historical Perspectives
+
+The idea of agents communicating through standardized messages predates LLM-based systems by decades. In the early 1990s, distributed AI research emphasized interoperability among heterogeneous agents via explicit communication "performatives" rather than bespoke point-to-point integrations. KQML (Knowledge Query and Manipulation Language) is a canonical artifact of this period: a message language and protocol intended to let independent systems query, inform, and coordinate knowledge exchange without requiring shared internals. By the late 1990s, efforts such as FIPA ACL (Foundation for Intelligent Physical Agents - Agent Communication Language) pushed further toward standardizing agent communication semantics and interaction patterns, aiming to make "agent societies" feasible across implementations and organizations.
+
+Many of these early standards were conceptually influential but operationally heavy. They assumed relatively structured symbolic agents operating in research environments, and they predated the ubiquitous web stack that now underlies virtually all networked software. The 2020s reintroduced the need for inter-agent interoperability under fundamentally different constraints. LLM-based agents are often deployed as services behind HTTP endpoints. They must cooperate across vendor and organizational boundaries. They increasingly manage long-running tasks that produce artifacts worth persisting, forwarding, and auditing. Modern web primitives (HTTPS for transport, JSON for serialization, JSON-RPC 2.0 for request framing) make it practical to standardize inter-agent communication without requiring a shared runtime or cognitive architecture.
+
+A2A is best understood as a pragmatic continuation of this decades-long line of work. Rather than attempting to standardize internal reasoning or cognitive semantics, as earlier protocols often did, A2A standardizes the external contract: how agents discover each other, how they initiate and track units of work, how they exchange messages during execution, and how they deliver outputs in a predictable format. This narrower scope makes A2A implementable across diverse agent frameworks while preserving the interoperability vision that motivated KQML and FIPA ACL a generation earlier.
+
+
+## Task Lifecycle in Agent-to-Agent (A2A) Systems
+
+In A2A systems, a task is a durable, observable unit of work whose lifecycle is decoupled from synchronous execution through streaming, polling, notifications, and explicit coordination components.
+
+
+### Asynchronous Execution as a First-Class Concept
+
+A2A tasks are explicitly designed to be asynchronous. Once a task is created, the initiating agent does not assume immediate completion. Instead, progress and results are exposed incrementally through well-defined observation mechanisms. This makes tasks suitable for long-running reasoning, external tool calls, delegation chains, and human approval steps.
+
+Asynchrony in A2A is not an implementation detail but a protocol-level guarantee: every task can be observed, resumed, or completed independently of the original request–response channel.
+
+
+### Streaming Task Updates
+
+Streaming provides a push-based mechanism for observing task progress as it happens. Rather than waiting for a task to complete, an agent may subscribe to a stream of events emitted by the executing agent. These events can include state transitions, partial outputs, logs, or structured intermediate results.
+
+Conceptually, streaming turns a task into an event source. Each emitted event is associated with the task identifier, preserving causal ordering and traceability across agents.
+
+```python
+# Conceptual structure of a streamed task update
+event = {
+    "task_id": "a2a-task-42",
+    "event_type": "progress",
+    "payload": {"stage": "analysis", "percent": 60},
+    "timestamp": now(),
+}
+```
+
+This model aligns with modern server-sent events and async streaming patterns. In practice, agent runtimes inspired by Pydantic AI expose streaming as an optional observation channel, allowing clients to switch seamlessly between synchronous completion and live progress reporting.
+
+
+### Polling as a Baseline Observation Mechanism
+
+Polling remains a core part of the A2A task model. Any agent can query the current state of a task at arbitrary times using its task identifier. Polling is intentionally simple and robust, making it suitable for environments where streaming connections are not feasible or reliable.
+
+Polling provides a consistent fallback mechanism that guarantees eventual visibility of task outcomes, even in the presence of network interruptions or restarts.
+
+```python
+# Conceptual polling response
+status = {
+    "task_id": "a2a-task-42",
+    "state": "running",
+    "last_update": "2026-01-10T10:15:00Z",
+}
+```
+
+From a design perspective, streaming and polling are complementary rather than competing approaches. Streaming optimizes for latency and responsiveness, while polling guarantees durability and simplicity.
+
+
+### Push Notifications and External Callbacks
+
+Push notifications extend the task model beyond agent-to-agent communication. Instead of requiring an agent to actively poll or maintain a stream, a task can be configured to notify external systems when specific conditions are met, such as completion or failure.
+
+These notifications are typically delivered via HTTP callbacks or messaging systems and are defined declaratively as part of task configuration.
+
+```python
+# Conceptual push notification configuration
+notification = {
+    "on": ["completed", "failed"],
+    "target": "https://example.com/task-callback",
+}
+```
+
+This pattern is especially relevant in enterprise environments, where tasks may need to trigger downstream workflows, update dashboards, or notify humans without tight coupling to the agent runtime.
+
+
+### Task Storage and Persistence
+
+Durability is a defining property of A2A tasks. Tasks are expected to outlive individual processes, network connections, and even agent restarts. To support this, task state is persisted in a storage layer that records inputs, state transitions, artifacts, and outputs.
+
+Persistent storage enables several critical behaviors: recovery after failure, replay of task history for auditing, and coordination across multiple workers. It also enforces the principle that a task identifier is the single source of truth for the unit of work.
+
+Agent runtimes built around A2A concepts treat storage as an explicit abstraction rather than an internal cache, ensuring that task state can be shared, inspected, or migrated if needed.
+
+
+### Workers as Task Executors
+
+A worker is the execution component responsible for advancing tasks through their lifecycle. Workers pick up tasks from storage or a coordination layer, perform the required reasoning or tool invocation, and emit updates as execution progresses.
+
+Importantly, workers are stateless with respect to task identity. All durable state is stored externally, which allows workers to scale horizontally, restart safely, and cooperate on large task volumes.
+
+```python
+# Conceptual worker loop
+while True:
+    task = next_runnable_task()
+    execute_step(task)
+    persist_update(task)
+```
+
+This separation mirrors established distributed systems patterns and is directly reflected in FastMCP-style agent servers, where execution logic is isolated from task persistence and coordination.
+
+
+### The Task Broker and Coordination
+
+The task broker acts as the coordination hub between task producers and workers. Its responsibilities include routing tasks to available workers, enforcing concurrency limits, and ensuring fair scheduling across agents or tenants.
+
+In multi-agent systems, the broker becomes essential for preventing overload and for managing large numbers of concurrent tasks. It also provides a natural integration point for policies such as prioritization, rate limiting, or isolation between independent workflows.
+
+Conceptually, the broker decouples *who wants work done* from *who is currently able to do it*, enabling flexible deployment and scaling strategies.
+
+
+### Putting It All Together
+
+Streaming, polling, push notifications, storage, workers, and brokers form a coherent execution model around the A2A task abstraction. Tasks are created once, stored durably, executed by interchangeable workers, coordinated by a broker, and observed through multiple complementary channels. This design allows A2A systems to support deep agent collaboration, long-running workflows, and enterprise-grade reliability without sacrificing transparency or control.
+
+
+## A2A in Detail
+
+A2A is a protocol-level contract for agent interoperability: a small set of operations plus a strict data model that lets independently-built agents exchange messages, manage long-running tasks, and deliver incremental updates over multiple delivery mechanisms. ([A2A Protocol][13])
+
+### What “the spec” really is: operations + data model + bindings
+
+At the lowest level, A2A is defined by (1) a core set of operations (send, stream, get/list/cancel tasks, subscribe, push-config management, extended agent card) and (2) a constrained object model (Task, Message, Part, Artifact, plus streaming event envelopes). ([A2A Protocol][13])
+
+The specification then defines how those operations and objects map onto concrete transports (“protocol bindings”), notably JSON-RPC over HTTP(S), gRPC, and an HTTP+JSON/REST-style mapping. ([A2A Protocol][13])
+
+A key design point is that the same *logical* operations are intended to be functionally equivalent across bindings; the binding decides *how* parameters and service-wide headers/metadata are carried, but not what they mean. ([A2A Protocol][13])
+
+
+### Operation surface and execution semantics
+
+The “A2AService” operation set is designed around a task-centric model. Even if you initiate interaction by sending a message, the server may respond by creating/continuing a task, and all subsequent status and artifacts hang off that task identity. The specification’s “SendMessageRequest” carries the client message plus an optional configuration block and optional metadata. ([A2A Protocol][13])
+
+#### `SendMessage` and the `SendMessageConfiguration` contract
+
+`SendMessageConfiguration` is where most of the “knobs” live:
+
+* `acceptedOutputModes`: a list of media types the client is willing to receive in response *parts* (for both messages and artifacts). Servers **should** tailor outputs to these modes. ([A2A Protocol][13])
+* `historyLength`: an optional upper bound on how many recent messages of task history should be returned. The semantics are shared across operations: unset means server default; `0` means omit history; `>0` means cap to N most recent. ([A2A Protocol][13])
+* `blocking`: when `true`, the server must wait until the task is terminal and return the final task state; when `false`, return immediately after task creation with an in-progress state, and the caller must obtain progress via polling/subscription/push. ([A2A Protocol][13])
+* `pushNotificationConfig`: requests server-initiated updates via webhook delivery (covered below). ([A2A Protocol][13])
+
+This configuration block is what makes A2A “async-first” without making simple request/response impossible: a client can force synchronous completion with `blocking: true`, but the spec treats streaming and async delivery as first-class rather than bolt-ons. ([A2A Protocol][13])
+
+#### Blocking vs non-blocking as a protocol-level contract (not an implementation detail)
+
+The `blocking` flag is normative and affects correctness expectations:
+
+* In blocking mode, the server **MUST** wait for terminal states (`completed`, `failed`, `cancelled`, `rejected`) and include the final task state with artifacts/status. ([A2A Protocol][13])
+* In non-blocking mode, the server **MUST** return right after task creation and expects the client to continue via `GetTask`, subscription, or push. ([A2A Protocol][13])
+
+This matters because it pushes queueing/execution details out of band: even if the server’s internal worker system is distributed, the *observable* behavior must match these semantics.
+
+
+### The protocol data model: the “shape” constraints that make interoperability work
+
+A2A’s objects include both “business” fields (task IDs, status) and structural invariants (“exactly one of these fields must be present”) that keep message parsing unambiguous across languages.
+
+#### Message identity and correlation
+
+A `Message` is a unit of communication between client and server. The spec requires `messageId` and makes it creator-generated. This is not cosmetic: the spec explicitly allows Send Message operations to be idempotent and calls out using `messageId` to detect duplicates. ([A2A Protocol][13])
+
+A message may include `contextId` and/or `taskId`:
+
+* For server messages: `contextId` must be present; `taskId` is present only if a task was created.
+* For client messages: both are optional, but if both are present they must match the task’s context; if only `taskId` is provided, the server infers `contextId`. ([A2A Protocol][13])
+
+This rule is critical for multi-turn clients: it allows clients to “anchor” continuation on a known task without re-sending full conversational context.
+
+#### Parts: a strict “oneof” content container
+
+A `Part` is the atom of content in both messages and artifacts, and it must contain exactly one of `text`, `file`, or `data`. ([A2A Protocol][13])
+
+That constraint enables predictable parsing and transformation pipelines:
+
+* text → display or feed into downstream LLM steps
+* file → fetch via URI or decode bytes, respecting `mediaType` and optional `name`
+* data → structured JSON object for machine-to-machine exchange
+
+File parts have their own “oneof”: exactly one of `fileWithUri` or `fileWithBytes`. The spec also frames the intended usage: prefer bytes for small payloads; prefer URI for large payloads. ([A2A Protocol][13])
+
+#### Artifacts: outputs as first-class objects
+
+Artifacts represent task outputs and include an `artifactId` that must be unique at least within a task, plus a list of parts (must contain at least one). ([A2A Protocol][13])
+
+Treating outputs as artifacts rather than “just text” is what allows A2A to cover large files, structured results, and incremental generation in a uniform way.
+
+#### Task states and task status updates
+
+Tasks have states; the spec enumerates states including working, input-required, cancelled (terminal), rejected (terminal), and auth-required (special: not terminal and not “interrupted” in the same way as input-required). ([A2A Protocol][13])
+
+A task’s status container includes the current state, optional associated message, and timestamp. ([A2A Protocol][13])
+
+
+### Streaming updates: the `StreamResponse` envelope and event types
+
+A2A streaming is not “stream arbitrary tokens” by default; it streams *typed updates* wrapped in a `StreamResponse` envelope. The spec is explicit: a `StreamResponse` must contain exactly one of `task`, `message`, `statusUpdate`, or `artifactUpdate`. ([A2A Protocol][13])
+
+That invariant matters because it defines how clients must implement event loops: you do not parse “some JSON”; you dispatch on which field is present, and you get strongly-typed behavior.
+
+#### `TaskStatusUpdateEvent`
+
+A status update event includes `taskId`, `contextId`, `status`, and a required boolean `final` that indicates whether this is the final event in the stream for the interaction. ([A2A Protocol][13])
+
+A practical implication is that clients should treat `final=true` as a state machine edge, not merely “stream ended”. The spec describes this as the signal for end-of-updates in the cycle and often subsequent stream close. ([A2A Protocol][14])
+
+#### `TaskArtifactUpdateEvent` and chunked artifact reconstruction
+
+Artifact updates are deltas. Each update carries the artifact plus two key booleans:
+
+* `append`: if true, append content to a previously sent artifact with the same ID
+* `lastChunk`: if true, this is the final chunk of the artifact ([A2A Protocol][13])
+
+This is the protocol’s answer to “how do I stream a large file/structured output?”: the artifact is the stable identity, and the parts are chunked. A client must reconstruct by `(taskId, artifactId)` and apply append semantics to parts.
+
+
+### Push notifications: webhook delivery that reuses the same envelope
+
+Push notifications are not a separate event schema: the spec states that webhook payloads use the same `StreamResponse` format as streaming operations, delivering exactly one of the same event types. ([A2A Protocol][13])
+
+The push payload section is unusually explicit about responsibilities:
+
+* Clients must ACK with 2xx, process idempotently (duplicates may occur), validate task ID, and verify source. ([A2A Protocol][13])
+* Agents must attempt delivery at least once per configured webhook and may retry with exponential backoff; recommended timeouts are 10–30 seconds. ([A2A Protocol][13])
+
+This means production-grade push is *not* “fire and forget”: both sides are expected to implement retry/idempotency logic.
+
+
+### Service parameters, versioning, and extensions: the “horizontal” control plane
+
+A2A separates per-request metadata (arbitrary JSON) from “service parameters” (case-insensitive string keys + string values) whose transmission depends on binding (HTTP headers for HTTP-based bindings, gRPC metadata for gRPC). ([A2A Protocol][13])
+
+Two standard service parameters are called out:
+
+* `A2A-Version`: client’s protocol version; server returns a version-not-supported error if unsupported. ([A2A Protocol][13])
+* `A2A-Extensions`: comma-separated extension URIs the client wants to use. ([A2A Protocol][13])
+
+This is the practical mechanism for incremental evolution: extensions let you strongly-type metadata for specific use cases, while the core stays stable. ([A2A Protocol][13])
+
+
+### Protocol bindings and interface negotiation
+
+Agents advertise one or more supported interfaces. Each `AgentInterface` couples a URL with a `protocolBinding` string; the spec calls out core bindings `JSONRPC`, `GRPC`, and `HTTP+JSON`, while keeping the field open for future bindings. ([A2A Protocol][13])
+
+The ordering of interfaces is meaningful: clients should prefer earlier entries when multiple options are supported. ([A2A Protocol][13])
+
+This makes interoperability practical in heterogeneous environments: a client can pick JSON-RPC for browser-like integrations, gRPC for intra-datacenter low-latency, or HTTP+JSON for simple REST stacks—while preserving the same logical semantics.
+
+
+### Implementation patterns extracted from real server stacks: broker, worker, storage
+
+A typical A2A server splits responsibilities into:
+
+* an HTTP/gRPC ingress layer that validates requests, checks capabilities, and emits protocol-shaped responses;
+* a scheduling component (“broker”) that decides where/how tasks run;
+* one or more workers that execute tasks and emit task operations/updates;
+* a storage layer that persists task state and artifacts for `GetTask`, resubscription, and recovery.
+
+This architecture is explicitly reflected in common A2A server implementations where the HTTP server schedules work via a broker abstraction intended to support both in-process and remote worker setups, and where workers receive task operations from that broker. ([Pydantic AI][40])
+
+The key protocol-driven reason to build it this way is that A2A requires coherent behavior across:
+
+* non-blocking calls (immediate return + later updates),
+* streaming (typed update stream),
+* push (webhook updates), and
+* polling (`GetTask` / `ListTasks`).
+
+You only get correct semantics if task state and artifact state are stored durably enough to be re-served and re-streamed.
+
+
+## Concrete pseudocode: “correct-by-construction” client and server logic
+
+The goal here is not a full implementation, but pseudocode that directly encodes the spec’s invariants (`oneof` objects, `blocking` semantics, chunked artifacts, idempotency, and service parameters).
+
+### Client: send non-blocking, then stream, reconstruct artifacts
+
+```python
+function send_and_stream(agent_url, user_text):
+    msg = {
+      messageId: uuid4(),              // required, creator-generated
+      role: "ROLE_USER",
+      parts: [{ text: user_text }]
+    }
+
+    req = {
+      message: msg,
+      configuration: {
+        acceptedOutputModes: ["text/plain", "application/json"],
+        blocking: false,
+        historyLength: 0
+      }
+    }
+
+    headers = {
+      "A2A-Version": "0.3",            // service parameter (HTTP header in HTTP bindings)
+      "A2A-Extensions": "https://example.com/extensions/citations/v1"
+    }
+
+    // Non-blocking: response may contain a task in working/input_required, etc.
+    resp = POST(agent_url + "/message:send", json=req, headers=headers)
+
+    task_id = resp.task.id   // naming varies by binding, but concept is: you now have a task handle
+
+    // Prefer streaming for realtime updates when available.
+    stream = POST_SSE(agent_url + "/message:stream", json=req, headers=headers)
+
+    artifacts = map<artifactId, ArtifactAccumulator>()
+    terminal_seen = false
+
+    for event in stream:
+        // Each SSE "data" is a StreamResponse with exactly one field set.
+        sr = parse_json(event.data)
+
+        switch which_oneof(sr):         // exactly one of: task|message|statusUpdate|artifactUpdate
+            case "message":
+                render_message(sr.message)
+
+            case "task":
+                // snapshot update; may contain artifacts/history depending on historyLength semantics
+                update_task_cache(sr.task)
+
+            case "statusUpdate":
+                update_task_status(sr.statusUpdate.status)
+                if sr.statusUpdate.final == true:
+                    terminal_seen = is_terminal(sr.statusUpdate.status.state)
+
+            case "artifactUpdate":
+                a = sr.artifactUpdate.artifact
+                acc = artifacts.get_or_create(a.artifactId)
+
+                if sr.artifactUpdate.append == true:
+                    acc.append_parts(a.parts)
+                else:
+                    acc.replace_parts(a.parts)
+
+                if sr.artifactUpdate.lastChunk == true:
+                    finalized = acc.finalize()
+                    persist_artifact(task_id, finalized)
+
+        if terminal_seen:
+            break
+
+    return (task_id, artifacts)
+```
+
+Why this matches the spec:
+
+* It treats `messageId` as required and client-generated. ([A2A Protocol][13])
+* It uses `acceptedOutputModes`, `blocking`, and `historyLength` exactly as defined, including the shared semantics of history length. ([A2A Protocol][13])
+* It dispatches on the `StreamResponse` “exactly one of” invariant and handles status and artifact events accordingly. ([A2A Protocol][13])
+* It reconstructs artifacts using `append` and `lastChunk`. ([A2A Protocol][13])
+
+### Client: idempotent retries using `messageId`
+
+Network retries are inevitable; the spec explicitly allows using `messageId` to detect duplicates for idempotency. ([A2A Protocol][13])
+
+```python
+function send_with_retry(agent_url, msg, cfg):
+    // msg.messageId is stable across retries
+    req = { message: msg, configuration: cfg }
+
+    for attempt in 1..MAX_RETRIES:
+        resp = try POST(agent_url + "/message:send", json=req)
+        if resp.success:
+            return resp
+
+        if resp.error.is_transient:
+            sleep(backoff(attempt))
+            continue
+
+        raise resp.error
+
+// Server side must treat same messageId as duplicate and avoid double-executing.
+```
+
+### Server: request validation that enforces the “oneof” invariants
+
+A2A’s “Part must contain exactly one of text/file/data” is a protocol requirement, so servers should validate it up-front (before dispatching to workers) and return a validation error if violated. ([A2A Protocol][13])
+
+```python
+function validate_message(message):
+    assert message.messageId is not empty
+
+    for part in message.parts:
+        count = (part.text != null) + (part.file != null) + (part.data != null)
+        if count != 1:
+            raise InvalidParams("Part must have exactly one of text|file|data")
+
+        if part.file != null:
+            f = part.file
+            count2 = (f.fileWithUri != null) + (f.fileWithBytes != null)
+            if count2 != 1:
+                raise InvalidParams("FilePart must have exactly one of uri|bytes")
+```
+
+### Server: `blocking` semantics implemented on top of a broker/worker pipeline
+
+In practice, servers implement A2A semantics by scheduling work and then either returning immediately (non-blocking) or awaiting terminal state (blocking). The scheduling abstraction (“broker”) exists precisely to decouple protocol ingress from task execution and allow multi-worker setups. ([Pydantic AI][40])
+
+```python
+function handle_send_message(request, service_params):
+    validate_version(service_params["A2A-Version"])  // VersionNotSupported if invalid
+    validate_message(request.message)
+
+    // Optional: enforce extension negotiation based on A2A-Extensions header
+    extensions = parse_csv(service_params.get("A2A-Extensions", ""))
+
+    // Deduplicate by messageId to achieve idempotency (recommended).
+    if storage.has_seen_message_id(request.message.messageId):
+        return storage.get_previous_response(request.message.messageId)
+
+    task = task_manager.create_or_resume_task(request.message)
+
+    broker.enqueue(task.id, request.message, request.metadata)  // schedules work
+
+    if request.configuration.blocking == true:
+        task = wait_until_terminal(task.id)      // completed/failed/cancelled/rejected
+        resp = { task: task }
+    else:
+        resp = { task: task }                    // in-progress snapshot
+
+    storage.record_message_id_response(request.message.messageId, resp)
+    return resp
+```
+
+This aligns with the normative behavior: non-blocking returns after task creation; blocking waits for terminal state. ([A2A Protocol][13])
+
+### Server: emitting streaming updates with `StreamResponse`
+
+Streaming endpoints emit a stream of `StreamResponse` objects where exactly one field is set. ([A2A Protocol][13])
+
+```python
+function stream_task_updates(task_id):
+    // Subscribe to task events from worker/task manager
+    for update in task_event_bus.subscribe(task_id):
+        if update.type == "status":
+            yield { statusUpdate: {
+                      taskId: task_id,
+                      contextId: update.context_id,
+                      status: update.status,
+                      final: update.final
+                   } }
+        else if update.type == "artifact_chunk":
+            yield { artifactUpdate: {
+                      taskId: task_id,
+                      contextId: update.context_id,
+                      artifact: update.artifact_delta,
+                      append: update.append,
+                      lastChunk: update.last_chunk
+                   } }
+        else if update.type == "message":
+            yield { message: update.message }
+        else if update.type == "task_snapshot":
+            yield { task: update.task }
+```
+
+### Push notification receiver: reusing the same dispatch loop as streaming
+
+Because push payloads reuse `StreamResponse`, your webhook handler can share logic with your SSE consumer. ([A2A Protocol][13])
+
+```python
+function webhook_handler(http_request):
+    sr = parse_json(http_request.body)     // StreamResponse: exactly one field set
+
+    assert verify_source(http_request)     // signature / token / mTLS / etc.
+
+    if which_oneof(sr) == "statusUpdate":
+        apply_status(sr.statusUpdate)
+        return 204
+    if which_oneof(sr) == "artifactUpdate":
+        apply_artifact_delta(sr.artifactUpdate)
+        return 204
+    if which_oneof(sr) == "task":
+        cache_task(sr.task)
+        return 204
+    if which_oneof(sr) == "message":
+        route_message(sr.message)
+        return 204
+```
+
+This matches the spec's client responsibilities (ACK with 2xx; process idempotently; validate task IDs). ([A2A Protocol][13])
+
+[13]: https://a2a-protocol.org/latest/specification/
+[14]: https://a2a-protocol.org/latest/topics/streaming-and-async/
+[40]: https://ai.pydantic.dev/a2a/
+
+
+## Security
+
+A2A security defines how agents authenticate, authorize, isolate, and audit cross-agent interactions while preserving composability and asynchronous execution.
+
+### Authentication and Agent Identity
+
+At the protocol level, A2A assumes strong, explicit agent identity rather than implicit trust between peers. Each agent is identified by a stable agent ID and presents verifiable credentials with every request. The protocol deliberately avoids mandating a single authentication mechanism, but its security model presumes cryptographically verifiable identity, typically implemented using OAuth2-style bearer tokens or mutual TLS.
+
+Authentication is performed before any task lifecycle logic is evaluated. A crucial requirement is that the cryptographic identity asserted by the credential is bound to the declared agent ID, preventing confused-deputy and identity-spoofing attacks.
+
+```python
+def authenticate_request(http_request):
+    token = extract_bearer_token(http_request.headers)
+    claims = verify_token_signature(token)
+
+    assert claims.issuer in TRUSTED_ISSUERS
+    assert claims.audience == "a2a"
+
+    agent_id = claims.subject
+    return AuthContext(
+        agent_id=agent_id,
+        scopes=claims.scopes,
+        expires_at=claims.exp
+    )
+```
+
+An important design constraint is that task payloads are treated as untrusted data until authentication has completed. Identity verification is therefore orthogonal to task semantics.
+
+### Authorization and Capability Scoping
+
+Authorization in A2A is capability-oriented rather than role-oriented. Instead of assigning broad roles to agents, the protocol evaluates whether a specific agent is permitted to perform a specific protocol operation on a specific resource. This allows fine-grained control over actions such as task creation, inspection, streaming, or cancellation.
+
+Authorization is evaluated at several layers simultaneously: the operation being requested, the relationship between the agent and the task (for example, creator versus observer), and the scope of resources exposed by that task. These checks are intentionally redundant, ensuring that partial privilege does not accidentally grant full access.
+
+```python
+def authorize(auth_ctx, operation, task=None):
+    if operation not in auth_ctx.scopes:
+        raise Forbidden("scope missing")
+
+    if task is not None:
+        if operation in WRITE_OPS and task.owner != auth_ctx.agent_id:
+            raise Forbidden("not task owner")
+
+    return True
+```
+
+A key property of the protocol is that authorization is never assumed to be static. Even for long-running tasks, permissions are re-evaluated on every request, including status polling and streaming updates.
+
+### Task Isolation and Trust Boundaries
+
+In A2A, a task is not merely a unit of work; it is a security boundary. Task state, intermediate artifacts, and final outputs are all scoped to a task ID and an explicit access policy. This prevents unrelated agents from inferring information about concurrent or historical tasks.
+
+Isolation is enforced whenever task state is loaded. Visibility is determined by explicit allow-lists rather than implicit trust derived from network location or execution context.
+
+```python
+def load_task(task_id, auth_ctx):
+    task = storage.get(task_id)
+
+    if auth_ctx.agent_id not in task.allowed_readers:
+        raise Forbidden("task not visible")
+
+    return task
+```
+
+This model discourages shared mutable global state across agents. Any shared context must be materialized as task-scoped artifacts with clearly defined read and write permissions.
+
+### Streaming, Polling, and Push Security
+
+Asynchronous interaction modes introduce additional attack surfaces, particularly around replay, hijacking, and information leakage. A2A addresses these risks by binding every asynchronous interaction to authenticated agent identity.
+
+For streaming and polling, authorization is enforced on each request, and continuation tokens or cursors are non-guessable and cryptographically bound to the requesting agent. A stolen cursor cannot be reused by a different agent.
+
+```python
+def stream_updates(task_id, cursor, auth_ctx):
+    assert cursor.agent_id == auth_ctx.agent_id
+    authorize(auth_ctx, "tasks.stream", task_id)
+
+    return event_stream(task_id, cursor)
+```
+
+Push notifications require even stricter controls. Endpoints must be explicitly registered and verified, delivery credentials are scoped to a single task or subscription, and revocation immediately invalidates any pending deliveries. This ensures that long-lived subscriptions do not become permanent exfiltration channels.
+
+### Secure Delegation and Agent-to-Agent Calls
+
+Delegation is a core feature of A2A and one of its most sensitive security mechanisms. The protocol does not permit implicit privilege propagation. Instead, delegation is implemented using explicit, narrowly scoped credentials issued by the delegating agent.
+
+When one agent delegates execution to another, the delegated agent receives only the minimal capabilities required to perform the delegated work, and only for a limited time. Even if the delegated agent has broader native permissions, those permissions are not applied to the delegated task.
+
+```python
+def create_delegation_token(parent_ctx, allowed_ops, ttl):
+    return sign_token({
+        "delegator": parent_ctx.agent_id,
+        "scopes": allowed_ops,
+        "exp": now() + ttl
+    })
+```
+
+This design prevents privilege amplification across agent networks and ensures that delegation chains remain auditable and bounded.
+
+### Auditability and Non-Repudiation
+
+A2A is designed for environments where accountability matters. Every security-relevant action is expected to generate an audit record, including authentication failures, authorization denials, task lifecycle events, and delegation operations.
+
+Audit records must include the agent identity, the affected task, the operation performed, and a timestamp. Because tasks may span minutes or days, audit logs must be durable and resistant to tampering.
+
+```python
+audit_log.write({
+    "agent": auth_ctx.agent_id,
+    "operation": operation,
+    "task_id": task_id,
+    "timestamp": now()
+})
+```
+
+This auditability enables forensic analysis, compliance verification, and operational debugging in multi-agent deployments.
+
+### Interaction with MCP Security
+
+When A2A is composed with Model Context Protocol, the security boundary remains explicit. A2A governs agent identity, task lifecycle, and delegation, while MCP governs tool invocation and context access. Credentials are not implicitly shared across protocols, preventing cross-protocol privilege leakage while preserving composability.
+
+
+# Hands-On: Introduction
+
+The hands-on sections that follow demonstrate A2A from basic client-server communication to multi-agent coordination. Starting with a single agent exposed over HTTP, the exercises progressively build toward a coordinator pattern where agents discover and delegate work to specialists. This bottom-up approach clarifies the protocol mechanics before introducing the architectural patterns that make A2A valuable in practice.
+
+The first exercise implements the simplest possible A2A interaction: one server, one client, one task. The server wraps a PydanticAI agent with arithmetic tools and exposes it via the A2A protocol. The client discovers the agent through its Agent Card, sends a computation request, polls for completion, and extracts the result. This exercise makes visible the full task lifecycle that underlies all A2A interactions: message construction, asynchronous execution, state transitions, and artifact retrieval.
+
+The second exercise builds on this foundation to demonstrate the coordinator pattern. A local agent acts as a router, fetching Agent Cards from multiple specialists to understand their capabilities, then delegating user requests to the appropriate specialist through A2A. The coordinator maintains conversation history across interactions, allowing multi-turn workflows that span different agents. This pattern shows how A2A enables multi-agent systems where specialists can be developed, deployed, and scaled independently while a coordinator provides a unified interface.
+
+
+# Hands-On: A2A Client-Server
+
+This hands-on demonstrates the A2A protocol in action through `example_a2a_server.py` and `example_a2a_client.ipynb`. The server exposes an agent with tools over HTTP, and the client discovers the agent's capabilities, sends a task, and retrieves results using the standard A2A operations.
+
+## The A2A Server
+
+The server in `example_a2a_server.py` creates an agent with two arithmetic tools and exposes it via the A2A protocol:
+
+```python
+from agentic_patterns.core.agents import get_agent
+
+
+def add(a: int, b: int) -> int:
+    """Add two numbers"""
+    return a + b
+
+
+def sub(a: int, b: int) -> int:
+    """Subtract two numbers"""
+    return a - b
+
+
+agent = get_agent(tools=[add, sub])
+app = agent.to_a2a()
+```
+
+The `to_a2a()` method transforms a PydanticAI agent into an ASGI application that speaks the A2A protocol. This application handles JSON-RPC requests for task creation, message sending, and task retrieval. It also serves the Agent Card at the well-known URL.
+
+Start the server with uvicorn:
+
+```bash
+uvicorn agentic_patterns.a2a.example_a2a_server:app --host 0.0.0.0 --port 8000
+```
+
+## Discovering the Agent
+
+Before sending work to an agent, a client can retrieve its Agent Card to understand what it offers. The card is published at a well-known URL:
+
+```python
+import httpx
+
+async with httpx.AsyncClient() as http:
+    response = await http.get("http://127.0.0.1:8000/.well-known/agent-card.json")
+    card = response.json()
+```
+
+The Agent Card contains metadata about the agent: its name, description, supported capabilities, and available skills. This "metadata-first" approach lets clients make routing decisions before sending any task content.
+
+## Creating an A2A Client
+
+The `fasta2a` library provides an `A2AClient` that handles the JSON-RPC protocol details:
+
+```python
+from fasta2a.client import A2AClient
+
+client = A2AClient(base_url="http://127.0.0.1:8000")
+```
+
+The client connects to the server's base URL and provides methods for the core A2A operations: sending messages, retrieving tasks, and managing task lifecycle.
+
+## Sending a Task
+
+A2A messages are structured with parts that can contain text, files, or structured data. For a simple text request:
+
+```python
+from fasta2a.schema import Message, TextPart
+import uuid
+
+prompt = "What is the sum of 40123456789 and 2123456789?"
+
+message = Message(
+    kind="message",
+    role="user",
+    parts=[TextPart(kind="text", text=prompt)],
+    message_id=str(uuid.uuid4())
+)
+
+response = await client.send_message(message=message)
+task_id = response['result']['id']
+```
+
+The `message_id` is client-generated and enables idempotent retries. If the same message is sent twice (due to network issues), the server can detect the duplicate and return the existing result.
+
+The response includes a task ID that serves as the handle for all subsequent operations on this unit of work.
+
+## Polling for Completion
+
+A2A tasks are asynchronous by default. After sending a message, the client polls for status updates:
+
+```python
+import asyncio
+
+while True:
+    task = await client.get_task(task_id=task_id)
+    state = task['result']['status']['state']
+
+    if state == "completed":
+        break
+    elif state == "failed":
+        raise Exception("Task failed")
+
+    await asyncio.sleep(0.2)
+```
+
+The task progresses through states like "working" before reaching a terminal state ("completed", "failed", "cancelled", or "rejected"). Polling is intentionally simple and robust, making it suitable for environments where streaming connections are not feasible.
+
+## Extracting Results
+
+Completed tasks include artifacts containing the outputs:
+
+```python
+artifacts = task['result'].get('artifacts', [])
+for artifact in artifacts:
+    for part in artifact.get('parts', []):
+        if part.get('kind') == 'text':
+            print(part['text'])
+```
+
+Artifacts are first-class objects in A2A, not just response text. They can contain structured data, files, or multiple parts, making them suitable for diverse output types.
+
+## Key Takeaways
+
+The A2A protocol standardizes agent-to-agent communication over HTTP using JSON-RPC. `to_a2a()` converts any PydanticAI agent into an A2A server with no changes to the agent's internal design.
+
+Agent Cards enable discovery and capability matching before task submission. Clients can inspect what an agent offers and make routing decisions based on declared skills.
+
+Tasks are the central abstraction. They have identities, states, and lifecycles that persist beyond individual request-response cycles. This supports long-running operations, retries, and coordination patterns that synchronous APIs cannot express.
+
+Polling provides a baseline observation mechanism. While A2A also supports streaming and push notifications for real-time updates, polling guarantees eventual visibility of results in any network environment.
+
+
+# Hands-On: A2A Coordinator Agent
+
+This hands-on builds on the basic A2A client-server example to demonstrate a coordinator agent that routes tasks to specialized A2A agents. The coordinator discovers available agents through their Agent Cards, understands their capabilities, and delegates work to the appropriate specialist. This pattern is central to building multi-agent systems where agents with different skills collaborate to solve complex problems.
+
+## Architecture Overview
+
+The system consists of three agents:
+
+1. **Arithmetic Agent** (port 8000) - Performs basic math operations: add, sub, mul, div
+2. **Area Calculator Agent** (port 8001) - Calculates areas: triangle, rectangle, circle
+3. **Coordinator Agent** (local) - Routes user requests to the appropriate specialist
+
+The coordinator is a regular PydanticAI agent with a tool that can communicate with the A2A agents. It uses the Agent Cards to understand what each specialist can do and includes this information in its system prompt so the LLM can make routing decisions.
+
+## The A2A Servers
+
+Each specialist server follows the same pattern from the basic example, with one addition: they declare their skills explicitly so the Agent Card contains useful capability information.
+
+```python
+from agentic_patterns.core.agents import get_agent
+from fasta2a import Skill
+
+def tool_to_skill(func: Callable) -> Skill:
+    """Convert a tool function to an A2A Skill."""
+    return Skill(id=func.__name__, name=func.__name__, description=func.__doc__ or func.__name__)
+
+def add(a: int, b: int) -> int:
+    """Add two numbers: a + b"""
+    return a + b
+
+# ... more tools ...
+
+tools = [add, sub, mul, div]
+skills = [tool_to_skill(f) for f in tools]
+
+agent = get_agent(tools=tools)
+app = agent.to_a2a(name="Arithmetic", description="An agent that can perform basic arithmetic operations", skills=skills)
+```
+
+The `tool_to_skill()` helper converts tool functions into A2A Skill objects by extracting the function name and docstring. When the agent is exposed via `to_a2a()`, these skills appear in the Agent Card, making them discoverable by clients.
+
+Start both servers before running the notebook:
+
+```bash
+# Terminal 1
+uvicorn agentic_patterns.a2a.example_a2a_server_1:app --host 0.0.0.0 --port 8000
+
+# Terminal 2
+uvicorn agentic_patterns.a2a.example_a2a_server_2:app --host 0.0.0.0 --port 8001
+```
+
+## Discovering Agent Capabilities
+
+The coordinator starts by fetching the Agent Card from each known server:
+
+```python
+async def agent_card(base_url: str) -> dict:
+    """Fetch the agent card from an A2A server."""
+    async with httpx.AsyncClient() as http:
+        response = await http.get(f"{base_url}/.well-known/agent-card.json")
+        return response.json()
+```
+
+The Agent Card contains the agent's name, description, and list of skills. A card for the Arithmetic agent looks like:
+
+```json
+{
+    "name": "Arithmetic",
+    "description": "An agent that can perform basic arithmetic operations",
+    "skills": [
+        {"id": "add", "name": "add", "description": "Add two numbers: a + b"},
+        {"id": "sub", "name": "sub", "description": "Subtract two numbers: a - b"},
+        {"id": "mul", "name": "mul", "description": "Multiply two numbers: a * b"},
+        {"id": "div", "name": "div", "description": "Divide two numbers: a / b"}
+    ]
+}
+```
+
+This metadata-first approach lets the coordinator understand what each agent can do without sending any actual task content.
+
+## Building the Coordinator's System Prompt
+
+The coordinator converts Agent Cards into a description string that becomes part of its system prompt:
+
+```python
+def card_to_description(card: dict) -> str:
+    """Convert agent card to a description string."""
+    descr = f"{card['name']}: {card['description']}\n"
+    for skill in card.get('skills', []):
+        descr += f"  - {skill['name']}: {skill['description']}\n"
+    return descr
+
+agent_descriptions = [card_to_description(card) for card in cards.values()]
+agent_descriptions_str = "\n".join(agent_descriptions)
+
+system_prompt = f"""You route tasks to specialized agents.
+
+Available agents:
+{agent_descriptions_str}
+
+NEVER perform calculations yourself. Always delegate to the appropriate agent.
+Only invoke one agent at a time.
+"""
+```
+
+The resulting system prompt tells the LLM exactly which agents are available and what each can do. The explicit instruction to never perform calculations ensures the coordinator always delegates rather than attempting work it should not do.
+
+## The Route Tool
+
+The coordinator's power comes from its `route` tool, which handles the full A2A workflow:
+
+```python
+async def route(agent_name: str, task_description: str) -> str | None:
+    """Route a task to a specialized agent."""
+    print(f"Routing to '{agent_name}': {task_description}")
+    client = clients_by_name.get(agent_name)
+    if not client:
+        return f"Agent '{agent_name}' not found"
+    result = await send_task(client, task_description)
+    text = get_result_text(result)
+    print(f"Result: {text}")
+    return text
+```
+
+The tool takes an agent name and task description. The LLM decides which agent to call based on the system prompt, and the tool handles the A2A protocol details: sending the message, polling for completion, and extracting the result.
+
+The `send_task()` helper encapsulates the polling loop:
+
+```python
+async def send_task(client: A2AClient, prompt: str) -> dict:
+    """Send a message to an A2A agent and wait for the result."""
+    message = Message(
+        kind="message",
+        role="user",
+        parts=[TextPart(kind="text", text=prompt)],
+        message_id=str(uuid.uuid4())
+    )
+    response = await client.send_message(message=message)
+    task_id = response['result']['id']
+
+    while True:
+        task_result = await client.get_task(task_id=task_id)
+        state = task_result['result']['status']['state']
+        if state == "completed":
+            return task_result
+        elif state == "failed":
+            raise Exception(f"Task failed: {task_result}")
+        await asyncio.sleep(0.2)
+```
+
+## Multi-Turn Conversation
+
+The coordinator maintains conversation history, allowing follow-up questions that reference previous results:
+
+```python
+message_history = []
+
+prompt = "What is the sum of 40123456789 and 2123456789?"
+agent_run, _ = await run_agent(agent=coordinator, prompt=prompt, message_history=message_history, verbose=True)
+message_history = agent_run.result.all_messages()
+
+prompt = "From that result, subtract 246913578"
+agent_run, _ = await run_agent(agent=coordinator, prompt=prompt, message_history=message_history, verbose=True)
+message_history = agent_run.result.all_messages()
+
+prompt = "Calculate the area of a circle with radius equal to half that number"
+agent_run, _ = await run_agent(agent=coordinator, prompt=prompt, message_history=message_history, verbose=True)
+```
+
+The conversation flows naturally across specialists. The coordinator remembers the previous result (42246913578), understands that subtracting gives 42000000000, and correctly routes the area calculation to the AreaCalculator agent with radius 21000000000.
+
+## Key Takeaways
+
+Agent Cards enable dynamic capability discovery. The coordinator does not hardcode knowledge of what specialists can do. Instead, it fetches this information at runtime and incorporates it into its prompt. This makes the system extensible: adding a new specialist requires only starting another A2A server.
+
+The coordinator pattern separates concerns cleanly. The coordinator handles user interaction and routing decisions. Specialists handle domain-specific computation. Neither needs to understand the other's internal implementation.
+
+A2A provides the interoperability layer. The specialists could be implemented in different frameworks, run on different machines, or be maintained by different teams. The coordinator only needs to speak the A2A protocol to work with them.
+
+Tools bridge local agents and remote A2A agents. The `route` tool wraps A2A client operations in a function the local LLM can call. This pattern works for any external service: wrap the protocol details in a tool, and the agent can use it like any other capability.
+
+
+## References
+
+1. FIPA. *FIPA ACL Message Structure Specification*. FIPA, 2002. https://www.fipa.org/specs/fipa00061/SC00061G.html
+2. Finin, T., Fritzson, R., McKay, D., McEntire, R. *KQML - A Language and Protocol for Knowledge and Information Exchange*. AAAI Workshop, 1994. https://www.aaai.org/Papers/Workshops/1994/WS-94-03/WS94-03-003.pdf
+3. Hardt, D. *The OAuth 2.0 Authorization Framework*. IETF RFC 6749, 2012. https://datatracker.ietf.org/doc/html/rfc6749
+4. JSON-RPC Working Group. *JSON-RPC 2.0 Specification*. jsonrpc.org, 2010. https://www.jsonrpc.org/specification
+5. KQML Advisory Group. *An Overview of KQML: A Knowledge Query and Manipulation Language*. Technical report, 1992.
+6. Rescorla, E. *The Transport Layer Security (TLS) Protocol*. IETF RFC 8446, 2018. https://datatracker.ietf.org/doc/html/rfc8446
+7. A2A Protocol. *A2A and MCP*. a2a-protocol.org. https://a2a-protocol.org/latest/topics/a2a-and-mcp/
+8. A2A Protocol. *Agent Discovery*. a2a-protocol.org. https://a2a-protocol.org/latest/topics/agent-discovery/
+9. A2A Protocol. *Enterprise-Ready Security*. a2a-protocol.org. https://a2a-protocol.org/latest/topics/enterprise-ready/
+10. A2A Protocol. *Key Concepts*. a2a-protocol.org. https://a2a-protocol.org/latest/topics/key-concepts/
+11. A2A Protocol. *Life of a Task*. a2a-protocol.org. https://a2a-protocol.org/latest/topics/life-of-a-task/
+12. A2A Protocol. *Protocol Definition*. a2a-protocol.org. https://a2a-protocol.org/latest/definitions/
+13. A2A Protocol. *Specification*. a2a-protocol.org. https://a2a-protocol.org/latest/specification/
+14. A2A Protocol. *Streaming and Asynchronous Operations*. a2a-protocol.org. https://a2a-protocol.org/latest/topics/streaming-and-async/
+15. A2A Protocol. *What is A2A?* a2a-protocol.org. https://a2a-protocol.org/latest/topics/what-is-a2a/
+16. FastMCP. *Documentation*. gofastmcp.com. https://gofastmcp.com/
+17. Pydantic AI. *A2A (Agent2Agent)*. ai.pydantic.dev. https://ai.pydantic.dev/a2a/
+18. Pydantic AI. *fasta2a API Reference*. ai.pydantic.dev. https://ai.pydantic.dev/api/fasta2a/
+
+
+\newpage
+
+# Skills
+
+## Skills
+
+Skills are structured, reusable capability abstractions that encapsulate complex behavior behind a minimal, declarative interface, revealing detail only when it is needed.
+
+### Historical perspective
+
+The intellectual roots of skills predate large language models. Classical AI planning introduced hierarchical task decomposition, where high-level goals were achieved by invoking abstract operators that expanded into concrete actions only during execution. In parallel, software engineering converged on similar ideas through procedures, modules, and APIs, all designed to hide implementation details behind stable contracts.
+
+With the emergence of LLM-based agents, these ideas resurfaced in a new form. Early systems relied heavily on long prompts and explicit step-by-step instructions, but this quickly proved brittle and expensive in terms of tokens. As tool use and function calling became common, practitioners observed that exposing *all* tools and instructions at once degraded model performance. Skills emerged as a response: a way to combine abstraction, modularity, and context efficiency into a single concept, tailored specifically to the constraints of probabilistic language models.
+
+### Core concept
+
+A skill defines **what a capability does**, **when it should be used**, and **what inputs and outputs are expected**, while deliberately omitting *how* it is implemented. The internal mechanics—scripts, heuristics, sub-tools, or even sub-agents—are hidden unless the agent explicitly needs them.
+
+This separation has three immediate benefits. First, it reduces cognitive and token load on the model, improving reliability. Second, it creates reusable building blocks that can be shared across agents and systems. Third, it establishes clear reasoning boundaries: the model reasons about *selecting* and *composing* skills, not about low-level execution details.
+
+### Progressive disclosure and context efficiency
+
+Progressive disclosure is the defining design principle behind skills. Instead of loading all instructions and references into the model context upfront, information is revealed incrementally.
+
+At discovery time, the agent may only see a skill’s name and short description. When the skill is selected, its main instructions are loaded. Only if the agent needs deeper guidance—edge cases, background knowledge, or operational details—are additional reference files consulted. This staged reveal is essential even for models with large context windows: performance degrades long before hard limits are reached.
+
+In practice, progressive disclosure is not an optimization; it is a prerequisite for scalable agent systems.
+
+### A spec-aligned skill example
+
+The AgentSkills specification formalizes skills as directories with a required `SKILL.md` file written in Markdown, optionally accompanied by scripts and reference material. The Markdown file serves as the primary interface between the agent and the skill.
+
+A minimal, spec-aligned skill layout looks like this:
+
+```
+pdf-processing/
+  SKILL.md
+  scripts/
+    extract_text_and_tables.py
+  references/
+    REFERENCE.md
+```
+
+The `SKILL.md` file combines structured metadata with natural-language instructions:
+
+```md
+---
+name: pdf-processing
+description: Extract text and tables from PDF files.
+allowed-tools: Bash(python:*) Read
+---
+
+# PDF Processing
+
+## When to use this skill
+Use this skill when the task involves reading, extracting, or transforming content from PDF documents.
+
+## How to use
+For standard extraction, run the bundled script:
+`scripts/extract_text_and_tables.py <file.pdf>`
+
+## Output
+Return extracted text with page numbers and any detected tables in a structured format.
+
+## Notes
+If you encounter scanned PDFs or complex layouts, consult the reference file.
+```
+
+Several important ideas are illustrated here. The YAML frontmatter provides machine-readable metadata for discovery and policy enforcement. The Markdown body provides human-readable guidance for the agent. Crucially, implementation details are *not* embedded inline; they are delegated to scripts and references that are only loaded if needed.
+
+A corresponding script might look like this (simplified for illustration):
+
+```python
+def extract(pdf_path: str) -> dict:
+    # Implementation details live here, not in the prompt
+    return {"text": [], "tables": []}
+```
+
+The agent never needs to reason about how extraction works unless explicitly instructed to inspect or modify the implementation.
+
+### Skills versus tools and prompts
+
+A tool is typically a thin wrapper around an external operation. A prompt is static text. A skill is neither. It is a *capability contract* that may orchestrate tools, enforce invariants, and embed domain knowledge, while remaining opaque by default.
+
+From the agent’s perspective, invoking a skill is an act of intent: *“I want this outcome.”* The skill handles execution. This division allows planning and execution to scale independently.
+
+### Skills as reasoning boundaries
+
+Beyond modularity, skills act as constraints on agent reasoning. By limiting the exposed surface area of capabilities, designers reduce misuse, prompt injection risks, and accidental complexity. Planning becomes a matter of selecting and sequencing skills rather than inventing procedures on the fly, making agent behavior more interpretable and auditable.
+
+As agent systems grow, skills increasingly define the action vocabulary of the agent.
 
 ### References
 
-1. Wang et al. *CodeAct: Autonomous Code-Centric Agents*. arXiv, 2023.
-2. Yao et al. *ReAct: Synergizing Reasoning and Acting in Language Models*. arXiv, 2022.
-3. Chen et al. *Evaluating Large Language Models Trained on Code*. arXiv, 2021.
-4. MCP documentation and design notes. *Model Context Protocol*. 2024.
+1. AgentSkills Initiative. *What Are Skills?* AgentSkills.io, 2024. [https://agentskills.io/what-are-skills](https://agentskills.io/what-are-skills)
+2. AgentSkills Initiative. *Skill Specification*. AgentSkills.io, 2024. [https://agentskills.io/specification](https://agentskills.io/specification)
+3. Anthropic. *Claude Skills Documentation*. Anthropic, 2024. [https://code.claude.com/docs/en/skills](https://code.claude.com/docs/en/skills)
 
+
+# Chapter: Skills
+
+## Skills Specification
+
+The skills specification defines a **small, rigorous contract** that allows agentic capabilities to be described, reasoned about, and invoked reliably—without exposing implementation details or inflating the agent’s context.
+
+### Engineering goals of the specification
+
+From an engineer’s perspective, the specification is designed to solve three concrete problems that emerge once agents move beyond toy demos.
+
+First, agents must **plan before they execute**. This requires a representation of capabilities that is cheap to load into context, stable across versions, and precise enough to support reasoning and validation. Second, capabilities must be **portable across runtimes**: the same skill should work whether it is backed by a local function, an MCP server, or a remote service invoked via A2A. Third, the system must support **progressive disclosure**, so that agents reason over compact specifications and only pay the cost of execution when necessary.
+
+The skills specification addresses these constraints by being declarative, schema-driven, and intentionally minimal.
+
+### Skill as a declarative contract
+
+A skill is defined as a pure declaration of *what* is offered, not *how* it is implemented. The specification treats a skill as an interface with four essential components: identity, description, input schema, and output schema. Everything else is optional metadata.
+
+A canonical definition starts with identity and intent:
+
+```yaml
+id: filesystem.search
+version: "1.0.0"
+description: >
+  Search files by name or content and return matching paths.
+```
+
+The identifier is stable and globally unique within the agent’s skill universe. Versioning is explicit and semantic, allowing agents to reason about compatibility and upgrades. The description is written for the model, not for a human reader skimming documentation. In practice, short declarative sentences outperform long prose.
+
+### Typed inputs as the primary control surface
+
+The input schema is the most operationally important part of the specification. It defines exactly what arguments an agent may supply and constrains the space of valid invocations.
+
+```yaml
+input:
+  type: object
+  properties:
+    query:
+      type: string
+      description: Text to search for
+    recursive:
+      type: boolean
+      default: true
+    limit:
+      type: integer
+      minimum: 1
+      maximum: 100
+      default: 10
+  required: [query]
+```
+
+Several design choices matter here. Inputs are always explicit objects, never positional arguments, which makes partial construction and validation straightforward. Defaults reduce token overhead during invocation. Simple constraints such as bounds or enums significantly reduce failure modes when models generate arguments.
+
+For an engineer, this schema doubles as runtime validation and as a *prompting primitive*. The model internalizes the structure and learns to stay within it.
+
+### Outputs as guarantees, not suggestions
+
+Output schemas provide a hard guarantee about the shape of the result. This is essential for downstream composition, where one skill’s output often feeds directly into another’s input.
+
+```yaml
+output:
+  type: object
+  properties:
+    matches:
+      type: array
+      items:
+        type: object
+        properties:
+          path:
+            type: string
+          score:
+            type: number
+```
+
+Unlike traditional APIs, agents often consume outputs probabilistically. A strict schema anchors that uncertainty. Engineers can rely on structural correctness even if semantic quality varies.
+
+### Optional metadata and execution hints
+
+The specification allows lightweight metadata that informs planning and orchestration without constraining implementation. These fields are advisory, not prescriptive.
+
+```yaml
+metadata:
+  side_effects: false
+  latency: low
+  idempotent: true
+```
+
+This information becomes valuable once agents perform speculative planning, retries, or parallel execution. For example, a planner may freely retry an idempotent skill but require confirmation before invoking one with side effects.
+
+### Separation from implementation
+
+A key property of the specification is that it is **implementation-agnostic**. The runtime binding between a skill definition and executable code is external to the spec.
+
+From the agent’s point of view, invocation is uniform:
+
+```json
+{
+  "skill": "filesystem.search",
+  "arguments": {
+    "query": "report",
+    "limit": 5
+  }
+}
+```
+
+Whether this call resolves to a local function, an MCP tool, or an A2A task is irrelevant at the specification level. This separation is what enables skills to act as the common currency between heterogeneous systems.
+
+### Minimal implementation burden
+
+Despite the rigor of the specification, implementing a skill is deliberately lightweight. In most runtimes, an implementation consists of binding a callable to a validated schema and returning structured data.
+
+```python
+@skill(
+    id="filesystem.search",
+    input=SearchInput,
+    output=SearchOutput,
+)
+def search(query: str, recursive: bool = True, limit: int = 10):
+    ...
+    return {"matches": matches}
+```
+
+There is no required inheritance model, lifecycle interface, or framework lock-in. This is a deliberate engineering trade-off: the specification optimizes for *many small skills* rather than a few monolithic tools.
+
+### Why simplicity matters at scale
+
+As agentic systems grow, complexity tends to accumulate at the boundaries: discovery, invocation, validation, and composition. The skills specification pushes that complexity into a single, well-defined layer and keeps everything else flexible.
+
+For engineers, this means faster iteration, safer composition, and the ability to integrate skills cleanly with orchestration layers such as MCP and A2A without rewriting or re-prompting core logic.
+
+### References
+
+1. Anthropic. *Claude Skills Documentation*. 2024. [https://code.claude.com/docs/en/skills](https://code.claude.com/docs/en/skills)
+2. AgentSkills. *What Are Skills?*. 2024. [https://agentskills.io/what-are-skills](https://agentskills.io/what-are-skills)
+3. AgentSkills. *Skill Specification*. 2024. [https://agentskills.io/specification](https://agentskills.io/specification)
+
+
+## Engineering
+
+We discuss making skills discoverable, cheap to advertise to a model, and safe to activate and execute inside a broader agent system.
+
+### What “engineering skills” actually means
+
+The Agent Skills integration guide is explicit about what a skills-compatible runtime must do: it discovers skill directories, loads only metadata at startup, matches tasks to skills, activates a selected skill by loading full instructions, and then executes scripts and accesses bundled resources as needed. ([Agent Skills][64]) The important architectural point is that integration is designed around progressive disclosure: startup and routing should rely on frontmatter only, while “activation” is the moment you pay to load instructions and any additional files. ([Agent Skills][64])
+
+The specification formalizes the artifact you are integrating. A skill is a directory with a required `SKILL.md` file and optional `scripts/`, `references/`, and `assets/` directories. ([Agent Skills][65]) The `SKILL.md` file begins with YAML frontmatter that must include `name` and `description`, and may include fields such as `compatibility`, `metadata`, and an experimental `allowed-tools` allowlist. ([Agent Skills][65]) The body is arbitrary Markdown instructions, and the spec notes that the agent loads the whole body only after it has decided to activate the skill. ([Agent Skills][65])
+
+A minimal discovery and metadata loader therefore looks like:
+
+```python
+def discover_skills(skill_roots: list[str]) -> list[dict]:
+    skills = []
+    for root in skill_roots:
+        for skill_dir in list_directories(root):
+            if exists(f"{skill_dir}/SKILL.md"):
+                fm = extract_yaml_frontmatter(read_file(f"{skill_dir}/SKILL.md"))
+                skills.append(
+                    {"name": fm["name"], "description": fm["description"], "path": skill_dir}
+                )
+    return skills
+```
+
+This is not an implementation detail; it is the core performance/safety contract. The integration guide recommends parsing only the frontmatter at startup “to keep initial context usage low.” ([Agent Skills][64]) The specification quantifies the intended disclosure tiers: metadata (name/description) is loaded for all skills, full instructions are loaded on activation, and resources are loaded only when required. ([Agent Skills][65])
+
+### Filesystem-based integration vs tool-based integration
+
+The Agent Skills guide describes two integration approaches.
+
+In a filesystem-based agent, the model operates in a computer-like environment (bash/unix). A skill is “activated” when the model reads `SKILL.md` directly (the guide’s example uses a shell `cat` of the file), and bundled resources are accessed through normal file operations. ([Agent Skills][64]) This approach is “the most capable option” precisely because it does not require you to pre-invent an API for every way the skill might need to read or run something; the skill can ship scripts and references and the runtime can expose them as files.
+
+In a tool-based agent, there is no dedicated computer environment, so the developer implements explicit tools that let the model list skills, fetch `SKILL.md`, and retrieve bundled assets. ([Agent Skills][64]) The guide deliberately does not prescribe the exact tool design (“the specific tool implementation is up to the developer”), which is a reminder not to conflate the skill format with a particular invocation API. ([Agent Skills][64])
+
+### Injecting skill metadata into the model context
+
+The guide says to include skill metadata in the system prompt so the model knows what skills exist, and to “follow your platform’s guidance” for how system prompts are updated. ([Agent Skills][64]) It then provides a single example: for Claude models, it shows an XML wrapper format. ([Agent Skills][64]) That example is platform-specific and should not be treated as a general recommendation for other runtimes.
+
+The general requirement is simpler: at runtime start (or on refresh), you provide a compact catalog containing at least `name`, `description`, and a way to locate the skill so the runtime can load `SKILL.md` when selected. The integration guide’s own pseudocode returns `{ name, description, path }`, which is the essential structure. ([Agent Skills][64]) A neutral, implementation-agnostic representation could be expressed as JSON (or any equivalent internal structure) without implying any particular prompt markup language:
+
+```json
+{
+  "available_skills": [
+    {
+      "name": "pdf-processing",
+      "description": "Extract text and tables from PDF files, fill forms, merge documents.",
+      "path": "/skills/pdf-processing"
+    }
+  ]
+}
+```
+
+The skill system works because selection can be done from the metadata alone; the body is only loaded when the orchestrator commits to activation. ([Agent Skills][64])
+
+### Security boundaries during activation
+
+Skill integration changes the risk profile the moment `scripts/` are involved. The specification defines `scripts/` as executable code that agents can run, and explicitly notes that supported languages and execution details depend on the agent implementation. ([Agent Skills][65]) The frontmatter’s experimental `allowed-tools` field exists to help some runtimes enforce “pre-approved tools” a skill may use, but support may vary. ([Agent Skills][65])
+
+For integration, the key design is to treat activation and execution as a controlled transition. Discovery and metadata loading are read-only operations over a directory tree; activation is when the model receives instructions that may request tool use or script execution; execution is when side effects happen. Mapping that to your agent runtime typically means (a) restricting what the model can do before activation, (b) enforcing tool/script policies during execution, and (c) logging what happened in a way that can be audited later. The Skill spec’s progressive disclosure guidance is as much about control and review as it is about context budget. ([Agent Skills][65])
+
+### How skills relate to MCP
+
+MCP defines a client/server protocol where servers expose primitives, and “tools” are one of those primitives: executable functions that an AI application can invoke, alongside resources and prompts. ([Model Context Protocol][66]) In MCP terms, tools are meant to be small, schema’d capabilities: file operations, API calls, database queries, and similar discrete actions. ([Model Context Protocol][66])
+
+A skill is not a competing notion of a tool. It is a packaging format for instructions plus optional scripts and references that can orchestrate one or more tools. The clean modularization pattern is to keep MCP tools narrow and reusable, and compose them inside skills where the domain workflow lives. The skill remains stable as an interface and knowledge bundle, while the underlying tool calls are the mechanical substrate that can be reused across many skills.
+
+A concrete way to express that separation is to have a skill instruct the agent to use a database-query tool and then post-process results, without embedding database details into the tool itself:
+
+```markdown
+# In SKILL.md body (instructions)
+
+When you need cohort statistics:
+1) Use the database query tool to fetch rows for the cohort definition.
+2) Compute summary metrics.
+3) If a chart is requested, call the charting tool with the computed series.
+```
+
+The reuse comes from the fact that the database-query MCP tool stays the same whether it is used by “cohort-analysis”, “data-quality-check”, or “report-generator” skills.
+
+### How skills relate to A2A
+
+The A2A protocol is positioned as an application-level protocol for agents to discover each other, negotiate interactions, manage tasks, and exchange conversational context and complex data as peers. ([a2a-protocol.org][4]) The A2A documentation frames MCP as the domain of “tools and resources” (primitives with structured inputs/outputs, often stateless) and A2A as the domain of “agents” (autonomous systems that reason, plan, maintain state, and conduct multi-turn interaction). ([a2a-protocol.org][4])
+
+Skills align with this split. A skill is a capability package that is typically invoked “tool-like” from the outside: it has a clear name/description for routing, and activation loads instructions that define how to perform the task. ([Agent Skills][65]) Internally, a skill may run a complex workflow and call many tools, but the integration surface is a capability boundary. In an A2A deployment, that boundary can be hosted by a remote agent instead of a local runtime.
+
+The A2A text even notes that an A2A server could expose some of its skills as MCP-compatible resources when they are well-defined and can be invoked in a more tool-like manner, while emphasizing that A2A’s strength is more flexible, stateful collaboration beyond typical tool invocation. ([a2a-protocol.org][4]) This gives a practical integration rule: use skills (and MCP) for capability invocation; use A2A when you need delegation to a peer that will plan, negotiate, and collaborate over time.
+
+### Converting an A2A agent into a skill, and a skill into an A2A agent
+
+A safe way to talk about “conversion” without inventing protocol features is to describe what must remain invariant and what changes.
+
+What should remain invariant is the capability contract: the thing you want to be able to select by name/description, activate with full instructions, and produce outputs from. In skill terms, that contract is represented by `SKILL.md` frontmatter plus its instruction body and any referenced files. ([Agent Skills][65]) In A2A terms, the contract is represented by whatever the remote agent advertises and accepts as task input, together with the task lifecycle semantics A2A provides. ([a2a-protocol.org][4])
+
+Converting an A2A agent into a skill is therefore a packaging move: you take one externally meaningful capability that the agent provides and express it as a skill directory whose `SKILL.md` contains the instructions that the agent previously embodied in code and prompts. The integration consequences are that (a) any long-lived statefulness must be made explicit in inputs or moved up into the orchestrator, and (b) any external dependencies must be declared via `compatibility` and/or enforced via execution policy. ([Agent Skills][65])
+
+Converting a skill into an A2A agent is a hosting move: you take the skill as the unit of work and put it behind an A2A server that offers it to other agents. The skill still remains the internal playbook and resource bundle, while A2A provides the network-level concerns: discovery, negotiation, task lifecycle, and exchange of context/results. ([a2a-protocol.org][4])
+
+The important point is that “conversion” is rarely a literal mechanical transform. It is an architectural refactoring where the skill remains the portable capability artifact, and A2A is the transport and collaboration wrapper when that capability needs to be offered across trust boundaries or organizational boundaries.
+
+## References
+
+1. AgentSkills Working Group. *Integrate skills into your agent*. AgentSkills.io, 2024. [https://agentskills.io/integrate-skills](https://agentskills.io/integrate-skills) ([Agent Skills][64])
+2. AgentSkills Working Group. *Specification*. AgentSkills.io, 2024. [https://agentskills.io/specification](https://agentskills.io/specification) ([Agent Skills][65])
+3. A2A Protocol Authors. *A2A and MCP*. A2A Protocol, 2025. [https://a2a-protocol.org/latest/topics/a2a-and-mcp/](https://a2a-protocol.org/latest/topics/a2a-and-mcp/) ([a2a-protocol.org][67])
+4. Model Context Protocol Authors. *Architecture (Primitives)*. Model Context Protocol, 2025. [https://modelcontextprotocol.io/docs/learn/architecture](https://modelcontextprotocol.io/docs/learn/architecture) ([Model Context Protocol][66])
+5. Model Context Protocol Authors. *Architecture (Specification 2025-06-18)*. Model Context Protocol, 2025. [https://modelcontextprotocol.io/specification/2025-06-18/architecture](https://modelcontextprotocol.io/specification/2025-06-18/architecture) ([Model Context Protocol][68])
+
+[64]: https://agentskills.io/integrate-skills "Integrate skills into your agent - Agent Skills"
+[65]: https://agentskills.io/specification "Specification - Agent Skills"
+[66]: https://modelcontextprotocol.io/docs/learn/architecture?utm_source=chatgpt.com "Architecture overview"
+[67]: https://a2a-protocol.org/latest/topics/a2a-and-mcp/ "A2A and MCP - A2A Protocol"
+[68]: https://modelcontextprotocol.io/specification/2025-06-18/architecture?utm_source=chatgpt.com "Architecture"
+
+\newpage
+
+# Connectors
+
+This chapter covers patterns for connecting agents to external data sources and systems.
+
+## NL2SQL (Natural Language to SQL)
+
+NL2SQL is the execution pattern in which an agent translates a natural language question into a validated, read-only SQL query, executes it safely, and returns results in a form suitable for both human inspection and downstream processing.
+
+### Historical perspective
+
+Research on translating natural language into database queries predates modern language models by several decades. Early systems in the 1970s and 1980s, such as LUNAR and CHAT-80, relied on hand-crafted rules and domain-specific grammars. These approaches demonstrated the feasibility of natural language interfaces to databases but were expensive to build and brittle outside narrowly defined schemas.
+
+From the late 2000s onward, statistical and neural semantic parsing reframed NL2SQL as a supervised learning problem: mapping text directly to formal query representations. Public datasets such as GeoQuery and WikiSQL enabled broader experimentation, while encoder–decoder architectures improved generalization across schemas. The recent emergence of large language models shifted the emphasis again. Instead of training a specialized parser per database, modern systems condition a general-purpose model with rich schema context, examples, and execution constraints. As a result, NL2SQL has become a practical and reliable execution mode in production agentic systems, provided it is embedded in a defensively designed pipeline.
+
+### The NL2SQL execution pattern
+
+NL2SQL should be understood as a controlled execution pipeline rather than a simple text-to-SQL transformation. The database is a high-impact tool, and the schema is the primary grounding mechanism that constrains the model’s reasoning.
+
+A typical workflow begins with a natural language question. Before any SQL is generated, the agent is provided with a complete, annotated schema describing tables, columns, relationships, and conventions. Using this context, the agent proposes a SQL query. That query is then passed through explicit validation steps that enforce security and correctness constraints, such as read-only access and single-statement execution. Only validated queries are executed, and results are returned in a bounded form.
+
+This separation between reasoning, validation, and execution is what makes NL2SQL robust enough for real-world use.
+
+### Schema as first-class context
+
+One of the most important lessons from production NL2SQL systems is that schema preparation belongs offline. Instead of querying database catalogs dynamically at runtime, schemas are extracted once, enriched, and cached as structured metadata. This cached schema becomes the authoritative reference for all NL2SQL reasoning.
+
+A “good” schema for agents is not minimal. It is intentionally verbose and explanatory, especially around ambiguous or overloaded fields. Confusing column names are clarified in comments, enum-like fields explicitly list their allowed values, and small samples of real data illustrate typical usage.
+
+A representative schema fragment might look like this:
+
+```sql
+-- Table: orders
+-- Purpose: Customer purchase orders in the e-commerce system
+
+CREATE TABLE orders (
+    order_id INTEGER PRIMARY KEY,
+        -- Unique identifier for each order
+
+    status VARCHAR(20),
+        -- Current lifecycle state of the order
+        -- Allowed values (controlled vocabulary):
+        --   pending    : order placed, not yet processed
+        --   shipped    : order shipped to customer
+        --   cancelled  : order cancelled before shipment
+
+    channel VARCHAR(20),
+        -- Sales channel through which the order was placed
+        -- Allowed values:
+        --   web, mobile_app, phone_support
+
+    total_amount DECIMAL(10,2),
+        -- Total order value in USD, including taxes
+
+    created_at TIMESTAMP,
+        -- Order creation timestamp in UTC
+
+    customer_id INTEGER
+        -- References customers.customer_id
+);
+
+-- Sample data (illustrative):
+-- order_id , status   , channel     , total_amount
+-- 10231    , shipped  , web         , 149.99
+-- 10232    , pending  , mobile_app  ,  29.50
+```
+
+This level of annotation significantly reduces ambiguity for the agent. It also discourages the model from inventing values that do not exist in the database, a common failure mode when schemas are underspecified.
+
+### Controlled vocabularies and query reliability
+
+Well-designed NL2SQL schemas emphasize controlled vocabularies. Fields such as status codes, categories, types, or channels should be treated as explicit enums, even if the underlying database does not enforce them strictly.
+
+From an agent’s perspective, controlled vocabularies serve two purposes. First, they constrain generation: when the model knows that `status` can only be one of a small, named set, it is far less likely to hallucinate invalid filter conditions. Second, they improve semantic alignment between user language and database values. Natural language phrases like “open orders” or “completed orders” can be reliably mapped to documented enum values rather than guessed strings.
+
+Embedding enum values directly in schema comments, along with short explanations, makes this mapping explicit. In practice, this often matters more than formal database constraints, because the agent reasons over the schema text rather than the physical DDL alone.
+
+### Query generation and validation
+
+Even with a high-quality schema, generated SQL must be treated as untrusted input. NL2SQL systems therefore apply multiple validation layers before execution.
+
+At a minimum, only read-only queries are permitted, and multiple statements are rejected, but this is a dangerous becaus harmfull code may still be possible. A simple syntactic validation step can catch common violations:
+
+```python
+query = query.strip()
+
+# WARNING: This is just a quick validation step, ALWAYS rely on DB permissions for security
+if not query.upper().startswith("SELECT"):
+    raise ValueError("Only SELECT queries are allowed")
+
+if query.rstrip(";").count(";") > 0:
+    raise ValueError("Multiple SQL statements are not allowed")
+```
+
+Much more effective is to have "READ-ONLY" database users that are restricted by permissions at the database level. This way, even if the agent generates a malicious query, it cannot perform harmful operations.
+
+Beyond syntactic checks, execution safeguards are typically applied. Query timeouts prevent expensive scans from monopolizing database resources, and explicit limits on result size protect both the database and the agent’s context window.
+
+### Result handling and the workspace
+
+Large result sets should not be injected directly into the agent context. Instead, results are written to files in a shared workspace, and only a small preview is returned.
+
+```python
+df.to_csv("workspace/results/orders_summary.csv")
+
+preview = df.head(10)
+```
+
+The agent can then summarize the findings, show a few representative rows, and provide the file path for full inspection. This pattern keeps prompts small while preserving complete, reusable data for humans or downstream tools.
+
+### Security and access control
+
+Production NL2SQL systems operate under strict security constraints. Database access is typically read-only, and credentials are managed externally through a secrets manager. Queries are executed on behalf of users without exposing raw credentials to the agent.
+
+This design supports auditing, user-specific permissions, and credential rotation without modifying agent logic. The agent interacts with the database only through a constrained execution interface.
+
+### Architectural considerations
+
+Successful NL2SQL systems usually adopt a layered architecture. Database-specific logic is isolated behind abstract interfaces, while business logic operates on standardized result types. This separation allows the same NL2SQL agent to work across multiple databases with minimal changes.
+
+Equally important is minimizing runtime complexity. Schema extraction, annotation, enum detection, and example query generation are expensive operations that belong in offline pipelines. At runtime, the agent should rely entirely on cached metadata and focus on reasoning, validation, and execution.
+
+### References
+
+1. Woods, W. A. *Progress in Natural Language Understanding: An Application to Lunar Geology*. AFIPS Conference Proceedings, 1973.
+2. Zelle, J., Mooney, R. *Learning to Parse Database Queries Using Inductive Logic Programming*. AAAI, 1996.
+3. Zhong, V., et al. *Seq2SQL: Generating Structured Queries from Natural Language using Reinforcement Learning*. arXiv, 2017.
+4. Yu, T., et al. *Spider: A Large-Scale Human-Labeled Dataset for Complex and Cross-Domain Semantic Parsing and Text-to-SQL Task*. EMNLP, 2018.
+
+
+\newpage
+
+# Execution Infrastructure
+
+This chapter covers the production infrastructure for running agent-generated code safely: containerized sandboxes, stateful REPL environments, and approval workflows for autonomous execution.
 
 ## MCP Sandbox Overview
 
@@ -6733,131 +11257,6 @@ Together, these patterns allow agents to reason *through execution* without comp
 4. Chen, M. et al. *Evaluating Large Language Models Trained on Code*. arXiv, 2021.
 
 
-## NL2SQL (Natural Language to SQL)
-
-NL2SQL is the execution pattern in which an agent translates a natural language question into a validated, read-only SQL query, executes it safely, and returns results in a form suitable for both human inspection and downstream processing.
-
-### Historical perspective
-
-Research on translating natural language into database queries predates modern language models by several decades. Early systems in the 1970s and 1980s, such as LUNAR and CHAT-80, relied on hand-crafted rules and domain-specific grammars. These approaches demonstrated the feasibility of natural language interfaces to databases but were expensive to build and brittle outside narrowly defined schemas.
-
-From the late 2000s onward, statistical and neural semantic parsing reframed NL2SQL as a supervised learning problem: mapping text directly to formal query representations. Public datasets such as GeoQuery and WikiSQL enabled broader experimentation, while encoder–decoder architectures improved generalization across schemas. The recent emergence of large language models shifted the emphasis again. Instead of training a specialized parser per database, modern systems condition a general-purpose model with rich schema context, examples, and execution constraints. As a result, NL2SQL has become a practical and reliable execution mode in production agentic systems, provided it is embedded in a defensively designed pipeline.
-
-### The NL2SQL execution pattern
-
-NL2SQL should be understood as a controlled execution pipeline rather than a simple text-to-SQL transformation. The database is a high-impact tool, and the schema is the primary grounding mechanism that constrains the model’s reasoning.
-
-A typical workflow begins with a natural language question. Before any SQL is generated, the agent is provided with a complete, annotated schema describing tables, columns, relationships, and conventions. Using this context, the agent proposes a SQL query. That query is then passed through explicit validation steps that enforce security and correctness constraints, such as read-only access and single-statement execution. Only validated queries are executed, and results are returned in a bounded form.
-
-This separation between reasoning, validation, and execution is what makes NL2SQL robust enough for real-world use.
-
-### Schema as first-class context
-
-One of the most important lessons from production NL2SQL systems is that schema preparation belongs offline. Instead of querying database catalogs dynamically at runtime, schemas are extracted once, enriched, and cached as structured metadata. This cached schema becomes the authoritative reference for all NL2SQL reasoning.
-
-A “good” schema for agents is not minimal. It is intentionally verbose and explanatory, especially around ambiguous or overloaded fields. Confusing column names are clarified in comments, enum-like fields explicitly list their allowed values, and small samples of real data illustrate typical usage.
-
-A representative schema fragment might look like this:
-
-```sql
--- Table: orders
--- Purpose: Customer purchase orders in the e-commerce system
-
-CREATE TABLE orders (
-    order_id INTEGER PRIMARY KEY,
-        -- Unique identifier for each order
-
-    status VARCHAR(20),
-        -- Current lifecycle state of the order
-        -- Allowed values (controlled vocabulary):
-        --   pending    : order placed, not yet processed
-        --   shipped    : order shipped to customer
-        --   cancelled  : order cancelled before shipment
-
-    channel VARCHAR(20),
-        -- Sales channel through which the order was placed
-        -- Allowed values:
-        --   web, mobile_app, phone_support
-
-    total_amount DECIMAL(10,2),
-        -- Total order value in USD, including taxes
-
-    created_at TIMESTAMP,
-        -- Order creation timestamp in UTC
-
-    customer_id INTEGER
-        -- References customers.customer_id
-);
-
--- Sample data (illustrative):
--- order_id , status   , channel     , total_amount
--- 10231    , shipped  , web         , 149.99
--- 10232    , pending  , mobile_app  ,  29.50
-```
-
-This level of annotation significantly reduces ambiguity for the agent. It also discourages the model from inventing values that do not exist in the database, a common failure mode when schemas are underspecified.
-
-### Controlled vocabularies and query reliability
-
-Well-designed NL2SQL schemas emphasize controlled vocabularies. Fields such as status codes, categories, types, or channels should be treated as explicit enums, even if the underlying database does not enforce them strictly.
-
-From an agent’s perspective, controlled vocabularies serve two purposes. First, they constrain generation: when the model knows that `status` can only be one of a small, named set, it is far less likely to hallucinate invalid filter conditions. Second, they improve semantic alignment between user language and database values. Natural language phrases like “open orders” or “completed orders” can be reliably mapped to documented enum values rather than guessed strings.
-
-Embedding enum values directly in schema comments, along with short explanations, makes this mapping explicit. In practice, this often matters more than formal database constraints, because the agent reasons over the schema text rather than the physical DDL alone.
-
-### Query generation and validation
-
-Even with a high-quality schema, generated SQL must be treated as untrusted input. NL2SQL systems therefore apply multiple validation layers before execution.
-
-At a minimum, only read-only queries are permitted, and multiple statements are rejected, but this is a dangerous becaus harmfull code may still be possible. A simple syntactic validation step can catch common violations:
-
-```python
-query = query.strip()
-
-# WARNING: This is just a quick validation step, ALWAYS rely on DB permissions for security
-if not query.upper().startswith("SELECT"):
-    raise ValueError("Only SELECT queries are allowed")
-
-if query.rstrip(";").count(";") > 0:
-    raise ValueError("Multiple SQL statements are not allowed")
-```
-
-Much more effective is to have "READ-ONLY" database users that are restricted by permissions at the database level. This way, even if the agent generates a malicious query, it cannot perform harmful operations.
-
-Beyond syntactic checks, execution safeguards are typically applied. Query timeouts prevent expensive scans from monopolizing database resources, and explicit limits on result size protect both the database and the agent’s context window.
-
-### Result handling and the workspace
-
-Large result sets should not be injected directly into the agent context. Instead, results are written to files in a shared workspace, and only a small preview is returned.
-
-```python
-df.to_csv("workspace/results/orders_summary.csv")
-
-preview = df.head(10)
-```
-
-The agent can then summarize the findings, show a few representative rows, and provide the file path for full inspection. This pattern keeps prompts small while preserving complete, reusable data for humans or downstream tools.
-
-### Security and access control
-
-Production NL2SQL systems operate under strict security constraints. Database access is typically read-only, and credentials are managed externally through a secrets manager. Queries are executed on behalf of users without exposing raw credentials to the agent.
-
-This design supports auditing, user-specific permissions, and credential rotation without modifying agent logic. The agent interacts with the database only through a constrained execution interface.
-
-### Architectural considerations
-
-Successful NL2SQL systems usually adopt a layered architecture. Database-specific logic is isolated behind abstract interfaces, while business logic operates on standardized result types. This separation allows the same NL2SQL agent to work across multiple databases with minimal changes.
-
-Equally important is minimizing runtime complexity. Schema extraction, annotation, enum detection, and example query generation are expensive operations that belong in offline pipelines. At runtime, the agent should rely entirely on cached metadata and focus on reasoning, validation, and execution.
-
-### References
-
-1. Woods, W. A. *Progress in Natural Language Understanding: An Application to Lunar Geology*. AFIPS Conference Proceedings, 1973.
-2. Zelle, J., Mooney, R. *Learning to Parse Database Queries Using Inductive Logic Programming*. AAAI, 1996.
-3. Zhong, V., et al. *Seq2SQL: Generating Structured Queries from Natural Language using Reinforcement Learning*. arXiv, 2017.
-4. Yu, T., et al. *Spider: A Large-Scale Human-Labeled Dataset for Complex and Cross-Domain Semantic Parsing and Text-to-SQL Task*. EMNLP, 2018.
-
-
 ## Autonomous vs supervised execution, approval, rollback, and reversibility
 
 An execution-mode pattern for tool- and code-running agents that balances autonomy with explicit control points (approvals) and safety nets (rollback / compensations) around state-changing actions.
@@ -7042,3148 +11441,9 @@ This also clarifies a subtle but important point: *human-in-the-loop is not only
 [59]: https://arxiv.org/abs/2112.09332?utm_source=chatgpt.com "WebGPT: Browser-assisted question-answering with human feedback"
 
 
+# Approval, Rollback, and Reversibility
 
-\newpage
 
-# RAG (Retrieval-Augmented Generation)
-
-
-**Retrieval-Augmented Generation (RAG)** is an architectural pattern that combines information retrieval systems with generative language models so that responses are grounded in external, up-to-date, and inspectable knowledge rather than relying solely on model parameters.
-
-### Historical perspective
-
-The core idea behind RAG predates modern large language models and can be traced back to classical information retrieval and question answering systems from the 1990s and early 2000s, where a retriever selected relevant documents and a separate component synthesized an answer. Early open-domain QA systems combined search engines with symbolic or statistical answer extractors, highlighting the separation between *finding information* and *using it*.
-
-With the rise of neural language models, research shifted toward integrating retrieval more tightly with generation. Dense retrieval methods, such as neural embeddings for semantic search, emerged in the late 2010s and enabled retrieval beyond keyword matching. This line of work culminated in explicit Retrieval-Augmented Generation formulations around 2020, where retrieved documents were injected into the model’s context to guide generation. The motivation was twofold: reduce hallucinations by grounding outputs in real documents, and decouple knowledge updates from expensive model retraining.
-
-### Conceptual overview of RAG
-
-At a high level, a RAG system treats external data as a first-class component of generation. Instead of asking a model to answer a question directly, the system first retrieves relevant information from a corpus, then conditions the model on that information when generating the final answer. The language model remains a reasoning and synthesis engine, while the retriever acts as a dynamic memory.
-
-This separation introduces a clear information workflow with two main phases: **document ingestion** and **document retrieval**, followed by **generation**.
-
-![Image](/Users/kqrw311/workspace/aixplore/book_agentic_patterns/chapters/06_rag/img/rag_overview.jpg)
-
-![Image](/Users/kqrw311/workspace/aixplore/book_agentic_patterns/chapters/06_rag/img/rag_workflow.png)
-
-![Image](/Users/kqrw311/workspace/aixplore/book_agentic_patterns/chapters/06_rag/img/semantic_search.png)
-
-### Information workflow in RAG systems
-
-#### Document ingestion
-
-Document ingestion is the offline (or semi-offline) process that prepares raw data for efficient retrieval. It typically begins with collecting documents from sources such as filesystems, databases, APIs, or web crawls. These documents are then normalized into a common textual representation, which may involve parsing PDFs, stripping markup, or extracting structured fields.
-
-Because language models have limited context windows, documents are usually divided into smaller units called "chunks". This chunking step aims to balance semantic coherence with retrievability: chunks should be large enough to preserve meaning, but small enough to be selectively retrieved. Each chunk is then transformed into a numerical representation, typically via embeddings that capture semantic similarity. The resulting vectors, along with metadata such as source, timestamps, or access permissions, are stored in an index optimized for similarity search.
-
-Ingested data is therefore not just stored text, but a structured memory that supports efficient and meaningful retrieval.
-
-#### Document retrieval
-
-Document retrieval is the online phase, executed at query time. Given a user query or task description, the system first produces a query representation, often using the same embedding space as the documents. This representation is used to search the index and retrieve the most relevant chunks according to a similarity or scoring function.
-
-Retrieval rarely ends at a single step. Results may be filtered using metadata constraints, re-ranked using more expensive scoring models, or combined with other retrieval strategies such as keyword search or structured database queries. The outcome is a small set of contextually relevant passages that can fit within the model’s context window.
-
-These retrieved chunks form the factual grounding for the generation step, effectively acting as an external, query-specific memory.
-
-### How a simple RAG works
-
-In its simplest form, a RAG system can be described as a linear pipeline: ingest documents, retrieve relevant chunks, and generate an answer conditioned on them. The following pseudocode illustrates the core idea, omitting implementation details:
-
-```python
-# Offline ingestion
-chunks = chunk_documents(documents)
-vectors = embed(chunks)
-index.store(vectors, metadata=chunks.metadata)
-
-# Online query
-query_vector = embed(query)
-retrieved_chunks = index.search(query_vector, top_k=5)
-
-# Generation
-context = "\n".join(chunk.text for chunk in retrieved_chunks)
-answer = llm.generate(
-    prompt=f"Use the following context to answer the question:\n{context}\n\nQuestion: {query}"
-)
-```
-
-Despite its simplicity, this pattern already delivers most of the benefits associated with RAG. The model is guided by retrieved evidence, answers can be traced back to source documents, and updating knowledge only requires re-ingesting data rather than retraining the model.
-
-More advanced systems extend this basic flow with richer chunking strategies, hybrid retrieval, iterative querying, and explicit evaluation loops, but the foundational pattern remains the same: retrieval first, generation second, with a clear boundary between the two.
-
-### References
-
-1. Lewis, P. et al. *Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks*. NeurIPS, 2020. [https://arxiv.org/abs/2005.11401](https://arxiv.org/abs/2005.11401)
-2. Karpukhin, V. et al. *Dense Passage Retrieval for Open-Domain Question Answering*. EMNLP, 2020. [https://arxiv.org/abs/2004.04906](https://arxiv.org/abs/2004.04906)
-3. Chen, D. et al. *Reading Wikipedia to Answer Open-Domain Questions*. ACL, 2017. [https://arxiv.org/abs/1704.00051](https://arxiv.org/abs/1704.00051)
-4. Izacard, G., Grave, E. *Leveraging Passage Retrieval with Generative Models for Open Domain Question Answering*. EACL, 2021. [https://arxiv.org/abs/2007.01282](https://arxiv.org/abs/2007.01282)
-
-
-## Embeddings
-
-Embeddings are the mechanism that transforms raw data (text, images, audio, etc.) into numerical vectors such that semantic similarity becomes geometric proximity.
-
-### Historical perspective
-
-The idea of representing language as vectors predates modern deep learning. Early information retrieval systems in the 1960s and 1970s relied on sparse vector representations such as term-frequency and TF-IDF, motivated by the *distributional hypothesis*: words that appear in similar contexts tend to have similar meanings. These approaches treated language as a high-dimensional but mostly empty space, where each dimension corresponded to a vocabulary term.
-
-In the early 2010s, research shifted toward *dense* representations that could be learned from data. Neural language models demonstrated that low-dimensional continuous vectors could encode syntactic and semantic regularities far more effectively than sparse counts. This transition laid the foundation for modern embedding-based retrieval systems and, eventually, for Retrieval-Augmented Generation.
-
-### From word counts to vector spaces (intuition)
-
-A simple way to build intuition is to start with word-count vectors. Consider the sentence:
-
-> “The cat is under the table”
-
-If the vocabulary is `{the, cat, is, under, table}`, the sentence can be represented as a vector of counts:
-
-```
-[the: 2, cat: 1, is: 1, under: 1, table: 1]
-```
-
-This representation is easy to construct and works reasonably well for keyword matching. However, it has two fundamental limitations. First, it is *sparse* and high-dimensional, which makes storage and comparison inefficient. Second, it carries no notion of meaning: “cat” and “dog” are as unrelated as “cat” and “table” unless they literally co-occur.
-
-Modern embeddings keep the core idea—mapping language to vectors—but replace sparse counts with dense, learned representations where proximity reflects semantics rather than surface form.
-
-![Image](/Users/kqrw311/workspace/aixplore/book_agentic_patterns/chapters/06_rag/img/word_embedding_space.png)
-
-![Image](/Users/kqrw311/workspace/aixplore/book_agentic_patterns/chapters/06_rag/img/semantic_relevance.png)
-
-### Dense semantic embeddings
-
-Dense embeddings map words, sentences, or documents into a continuous vector space (often hundreds or thousands of dimensions). In this space, semantic relationships emerge naturally: synonyms cluster together, analogies correspond to vector offsets, and related concepts occupy nearby regions.
-
-Early influential methods include **Word2Vec**, which learns word vectors by predicting context words, **GloVe**, which combines local context with global co-occurrence statistics, and **FastText**, which incorporates character n-grams to better handle morphology and rare words. These models marked a decisive shift from symbolic counts to geometric meaning.
-
-Conceptually, these embeddings still rely on co-occurrence statistics, but they compress them into a dense space where distance metrics such as cosine similarity become meaningful signals for retrieval.
-
-### Transformer-based embeddings
-
-The next major step came with transformer architectures. Models such as **BERT** introduced *contextual embeddings*: a word’s vector depends on its surrounding words, so “bank” in “river bank” differs from “bank” in “investment bank”. This resolved a long-standing limitation of earlier static embeddings.
-
-Transformer-based embedding models typically operate at the sentence or document level for retrieval. They encode an entire passage into a single vector that captures its overall meaning. In a RAG system, these vectors are indexed in a vector database and compared against query embeddings to retrieve semantically relevant context, even when there is little lexical overlap.
-
-A minimal illustrative snippet for text embedding might look like:
-
-```python
-# Pseudocode: embed text into a dense vector
-text = "The cat is under the table"
-vector = embed(text)   # returns a dense float array
-```
-
-The key point is not the API, but the abstraction: text is projected into a semantic space where similarity search is efficient and meaningful.
-
-### Multimodal generalization
-
-The embedding concept generalizes naturally beyond text. Multimodal models learn a *shared* vector space for different data types, allowing cross-modal retrieval. A canonical example is **CLIP**, which aligns images and text descriptions so that an image of a “red chair” is close to the text “a red chair” in the same embedding space.
-
-This generalization is increasingly important in modern RAG systems, where documents may include text, diagrams, tables, or images. A single embedding space enables unified retrieval across modalities, simplifying system design while expanding capability.
-
-### Embeddings in the RAG pipeline
-
-Within a RAG architecture, embeddings serve as the semantic interface between raw data and retrieval. During ingestion, documents are converted into vectors and indexed. At query time, the user question is embedded into the same space, and nearest-neighbor search retrieves the most relevant chunks. The quality of the embeddings directly determines recall, precision, and ultimately the factual grounding of the generated answers.
-
-### References
-
-1. Salton, G., Wong, A., & Yang, C. S. *A Vector Space Model for Automatic Indexing*. Communications of the ACM, 1975.
-2. Mikolov, T., Chen, K., Corrado, G., & Dean, J. *Efficient Estimation of Word Representations in Vector Space*. arXiv, 2013.
-3. Pennington, J., Socher, R., & Manning, C. *GloVe: Global Vectors for Word Representation*. EMNLP, 2014.
-4. Bojanowski, P., Grave, E., Joulin, A., & Mikolov, T. *Enriching Word Vectors with Subword Information*. TACL, 2017.
-5. Devlin, J., Chang, M.-W., Lee, K., & Toutanova, K. *BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding*. NAACL, 2019.
-6. Radford, A. et al. *Learning Transferable Visual Models From Natural Language Supervision*. ICML, 2021.
-
-
-## Vector Databases
-
-Vector databases are specialized data systems designed to store high-dimensional vectors and efficiently retrieve the most similar vectors to a given query.
-
-### Historical perspective
-
-The foundations of vector databases lie in decades of research on similarity search and nearest-neighbor problems in information retrieval and computational geometry. Early work in the 1970s and 1980s focused on exact nearest-neighbor search in low-dimensional metric spaces, but these approaches did not scale to high dimensions. As datasets grew and feature representations became more complex, research shifted toward *approximate nearest neighbor* (ANN) methods, trading exactness for dramatic gains in speed and memory efficiency.
-
-In the late 1990s and 2000s, algorithms such as KD-trees, ball trees, and locality-sensitive hashing (LSH) emerged as practical approximations. However, the modern resurgence of vector search was driven by machine learning and deep learning, where embeddings routinely live in hundreds or thousands of dimensions. Systems like **FAISS** (2017) and later dedicated vector databases such as **Milvus** formalized these ideas into production-ready infrastructure, making vector search a core primitive for recommender systems, semantic search, and eventually Retrieval-Augmented Generation (RAG).
-
-### How vector databases work
-
-At a conceptual level, a vector database manages three tightly coupled concerns: storage, indexing, and similarity search. Each document, chunk, or entity is represented as a numerical vector produced by an embedding model. These vectors are stored alongside identifiers and optional metadata, but the primary operation is not key-value lookup—it is similarity search.
-
-When a query arrives, it is first embedded into the same vector space. The database then searches for vectors that are “close” to the query vector under a chosen similarity metric. Because naïvely comparing the query to every stored vector is prohibitively expensive at scale, vector databases rely on specialized indexes that dramatically reduce the search space while preserving good recall.
-
-In practice, a vector database behaves less like a traditional relational database and more like a search engine optimized for continuous spaces. Insertions update both raw storage and index structures; queries traverse those indexes to produce a ranked list of candidate vectors, often combined with metadata filtering before final results are returned.
-
-### Similarity metrics
-
-Similarity metrics define what it means for two vectors to be “close.” The choice of metric is not incidental; it encodes assumptions about how embeddings were trained and how magnitude and direction should be interpreted.
-
-Cosine similarity measures the angle between vectors and is invariant to vector length. It is commonly used when embeddings are normalized and direction encodes semantics. Dot product is closely related and often preferred in dense retrieval models trained with inner-product objectives. Euclidean distance measures absolute geometric distance and is natural when vector magnitudes are meaningful.
-
-Most vector databases treat the metric as a first-class configuration, because index structures and optimizations may depend on it. A mismatch between embedding model and similarity metric can significantly degrade retrieval quality, even if the infrastructure itself is functioning correctly.
-
-### Indexing strategies
-
-Indexing is the defining feature that distinguishes a vector database from a simple vector store. An index organizes vectors so that nearest-neighbor queries can be answered efficiently without exhaustive comparison.
-
-Tree-based structures, such as KD-trees or ball trees, recursively partition the space and work well in low to moderate dimensions, but they degrade rapidly as dimensionality increases. Hash-based methods, particularly locality-sensitive hashing, map nearby vectors to the same buckets with high probability, enabling fast candidate generation at the cost of approximate results.
-
-Graph-based indexes represent vectors as nodes in a graph, with edges connecting nearby neighbors. During search, the algorithm navigates the graph starting from an entry point and greedily moves toward vectors that are closer to the query. These structures scale well to high dimensions and large datasets and are widely used in modern systems.
-
-Quantization-based approaches compress vectors into more compact representations, reducing memory footprint and improving cache efficiency. While quantization introduces approximation error, it often yields favorable trade-offs for large-scale deployments.
-
-### Core vector database algorithms
-
-Most production vector databases rely on a small family of ANN algorithms, often combined or layered for better performance. Hierarchical Navigable Small World (HNSW) graphs build multi-layer proximity graphs that enable logarithmic-like search behavior in practice. Inverted file (IVF) indexes first cluster vectors and then search only within the most relevant clusters. Product quantization (PQ) decomposes vectors into subspaces and encodes them compactly, enabling fast distance estimation.
-
-These algorithms are rarely used in isolation. A common pattern is coarse partitioning (such as IVF) followed by graph-based or quantized search within partitions. The database exposes high-level configuration knobs—index type, efSearch, nprobe, recall targets—but internally orchestrates multiple algorithmic stages to balance latency, recall, and memory usage.
-
-### Vector databases in RAG systems
-
-In a RAG architecture, the vector database acts as the semantic memory layer. Document chunks are embedded and indexed once during ingestion, while user queries are embedded and searched at runtime. The quality of retrieval depends jointly on embedding quality, similarity metric, index choice, and search parameters. As a result, vector databases are not passive storage components but active participants in the behavior of the overall system.
-
-Tuning a RAG system often involves iterative adjustments to vector database configuration: choosing an index that matches data scale, increasing recall at the expense of latency, or combining vector search with metadata filters to enforce structural constraints. Understanding how vector databases work internally is therefore essential for diagnosing retrieval failures and for designing robust, scalable RAG pipelines.
-
-
-## Core Vector Database Algorithms
-
-Vector databases are fundamentally concerned with solving the *nearest neighbor search* problem in high-dimensional continuous spaces. The practical design of these systems is best understood by starting from the formal problem definition and then examining how successive algorithmic relaxations make large-scale retrieval tractable.
-
-### Formal problem definition
-
-Let
-$$
-\mathcal{X} = \{x_1, x_2, \dots, x_n\}, \quad x_i \in \mathbb{R}^d
-$$
-be a collection of vectors embedded in a $d$-dimensional space, and let
-$$
-q \in \mathbb{R}^d
-$$
-be a query vector. Given a distance function $\delta(\cdot, \cdot)$, the *exact nearest neighbor* problem is defined as
-$$
-\operatorname{NN}(q) = \arg\min_{x_i \in \mathcal{X}} \delta(q, x_i)
-$$
-
-For cosine similarity, this becomes
-$$
-\operatorname{NN}(q) = \arg\max_{x_i \in \mathcal{X}} \frac{q \cdot x_i}{|q| |x_i|}
-$$
-
-A brute-force solution requires $O(nd)$ operations per query, which is computationally infeasible for large $n$. The central challenge addressed by vector database algorithms is to reduce this complexity while preserving ranking quality.
-
-### High-dimensional effects and approximation
-
-As dimensionality increases, distances between points concentrate. For many distributions, the ratio
-$$
-\frac{\min_i \delta(q, x_i)}{\max_i \delta(q, x_i)} \rightarrow 1 \quad \text{as } d \rightarrow \infty
-$$
-
-This phenomenon undermines exact pruning strategies and motivates *Approximate Nearest Neighbor (ANN)* search. ANN replaces the exact objective with a relaxed one:
-$$
-\delta(q, \hat{x}) \le (1 + \varepsilon) \cdot \delta(q, x^*)
-$$
-where $x^*$ is the true nearest neighbor.
-
-All modern vector database algorithms can be understood as structured approximations to this relaxed objective.
-
-## Partition-based search: Inverted File Index (IVF)
-
-The inverted file index reduces search complexity by introducing a *coarse quantization* of the vector space. Let
-$$
-C = \{c_1, \dots, c_k\}
-$$
-be a set of centroids obtained via k-means clustering:
-$$
-C = \arg\min_{C} \sum_{i=1}^{n} \min_{c_j \in C} |x_i - c_j|^2
-$$
-
-Each vector is assigned to its closest centroid:
-$$
-\text{bucket}(x_i) = \arg\min_{c_j \in C} |x_i - c_j|
-$$
-
-At query time, the search proceeds in two stages. First, the query is compared against all centroids:
-$$
-d_j = |q - c_j|
-$$
-Then, only the vectors stored in the $n_{\text{probe}}$ closest buckets are searched exhaustively.
-
-#### IVF query algorithm (pseudo-code)
-
-```
-function IVF_SEARCH(query q, centroids C, buckets B, n_probe):
-    distances = compute_distance(q, C)
-    selected = argmin_n(distances, n_probe)
-    candidates = union(B[c] for c in selected)
-    return top_k_by_distance(q, candidates)
-```
-
-This reduces query complexity to approximately
-$$
-O(kd + \frac{n}{k} \cdot n_{\text{probe}} \cdot d)
-$$
-which is sublinear in $n$ for reasonable values of $k$ and $n_{\text{probe}}$.
-
-## Vector compression: Product Quantization (PQ)
-
-Product Quantization further reduces computational and memory costs by compressing vectors. The original space $\mathbb{R}^d$ is decomposed into $m$ disjoint subspaces:
-$$
-x = (x^{(1)}, x^{(2)}, \dots, x^{(m)})
-$$
-
-Each subspace is quantized independently using a codebook:
-$$
-Q_j : \mathbb{R}^{d/m} \rightarrow \{1, \dots, k\}
-$$
-
-A vector is encoded as a sequence of discrete codes:
-$$
-\text{PQ}(x) = (Q_1(x^{(1)}), \dots, Q_m(x^{(m)}))
-$$
-
-Distance computation uses *asymmetric distance estimation*:
-$$
-\delta(q, x) \approx \sum_{j=1}^{m} | q^{(j)} - c_{Q_j(x)}^{(j)} |^2
-$$
-
-#### PQ distance computation (pseudo-code)
-
-```
-function PQ_DISTANCE(query q, codes c, lookup_tables T):
-    dist = 0
-    for j in 1..m:
-        dist += T[j][c[j]]
-    return dist
-```
-
-Theoretical justification comes from rate–distortion theory: PQ minimizes expected reconstruction error under constrained bit budgets. Empirically, it preserves relative ordering sufficiently well for ranking-based retrieval.
-
-## Hash-based search: Locality-Sensitive Hashing (LSH)
-
-Locality-Sensitive Hashing constructs hash functions $h \in \mathcal{H}$ such that
-$$
-\Pr[h(x) = h(y)] = f(\delta(x, y))
-$$
-where $f$ decreases monotonically with distance.
-
-For Euclidean distance, a common family is
-$$
-h_{a,b}(x) = \left\lfloor \frac{a \cdot x + b}{w} \right\rfloor
-$$
-with random $a \sim \mathcal{N}(0, I)$ and $b \sim U(0, w)$.
-
-By concatenating hashes and using multiple tables, LSH achieves expected query complexity
-$$
-O(n^\rho), \quad \rho < 1
-$$
-
-Despite strong theoretical guarantees, LSH often underperforms graph-based methods in dense embedding spaces typical of neural models.
-
-## Graph-based search: Navigable small-world graphs and HNSW
-
-Graph-based methods model the dataset as a proximity graph $G = (V, E)$, where each node corresponds to a vector. Search proceeds via greedy graph traversal:
-$$
-x_{t+1} = \arg\min_{y \in \mathcal{N}(x_t)} \delta(q, y)
-$$
-
-Hierarchical Navigable Small World (HNSW) graphs extend this idea by constructing multiple graph layers. Each vector is assigned a maximum level:
-$$
-\ell \sim \text{Geometric}(p)
-$$
-
-Upper layers are sparse and provide long-range connections, while lower layers are dense and preserve local neighborhoods.
-
-#### HNSW search algorithm (simplified)
-
-```
-function HNSW_SEARCH(query q, entry e, graph G):
-    current = e
-    for level from max_level down to 1:
-        current = greedy_search(q, current, G[level])
-    return best_neighbors(q, current, G[0])
-```
-
-Theoretical intuition comes from small-world graph theory: the presence of long-range links reduces graph diameter, while local edges enable precise refinement. Expected search complexity is close to $O(\log n)$, with high recall even in large, high-dimensional datasets.
-
-## Algorithmic composition in vector databases
-
-In practice, vector databases compose these algorithms hierarchically. A typical pipeline applies IVF to reduce the candidate set, PQ to compress vectors and accelerate distance computation, and graph-based search to refine nearest neighbors. Each stage introduces controlled approximation while drastically reducing computational cost.
-
-This layered structure mirrors the mathematical decomposition of the nearest neighbor problem: spatial restriction, metric approximation, and navigational optimization.
-
-## Implications for RAG systems
-
-In Retrieval-Augmented Generation, these algorithms define the semantic recall boundary of the system. Errors in retrieval are often consequences of approximation layers rather than embedding quality. Understanding the mathematical and algorithmic foundations of vector databases is therefore essential for diagnosing failure modes, tuning recall–latency trade-offs, and designing reliable RAG pipelines.
-
-Vector databases should thus be viewed not as storage engines, but as algorithmic systems grounded in decades of research on high-dimensional geometry, probabilistic approximation, and graph navigation.
-
-## References
-
-1. Indyk, P., Motwani, R. *Approximate Nearest Neighbors: Towards Removing the Curse of Dimensionality*. STOC, 1998.
-2. Jégou, H., Douze, M., Schmid, C. *Product Quantization for Nearest Neighbor Search*. IEEE TPAMI, 2011.
-3. Johnson, J., Douze, M., Jégou, H. *Billion-scale similarity search with GPUs*. IEEE Transactions on Big Data, 2019.
-4. Malkov, Y., Yashunin, D. *Efficient and robust approximate nearest neighbor search using Hierarchical Navigable Small World graphs*. IEEE TPAMI, 2020.
-5. Andoni, A., Indyk, P. *Near-optimal hashing algorithms for approximate nearest neighbor in high dimensions*. FOCS, 2006.
-6. Indyk, P., Motwani, R. *Approximate Nearest Neighbors: Towards Removing the Curse of Dimensionality*. STOC, 1998.
-7. Johnson, J., Douze, M., Jégou, H. *Billion-scale similarity search with GPUs*. IEEE Transactions on Big Data, 2019.
-8. Malkov, Y., Yashunin, D. *Efficient and robust approximate nearest neighbor search using Hierarchical Navigable Small World graphs*. IEEE TPAMI, 2020.
-9. Jégou, H., Douze, M., Schmid, C. *Product Quantization for Nearest Neighbor Search*. IEEE TPAMI, 2011.
-10. [https://ai.pydantic.dev/](https://ai.pydantic.dev/)
-
-
-
-
-## Document Ingestion and Chunking
-
-Document ingestion is the process that transforms raw, heterogeneous source material into a structured, searchable representation suitable for retrieval-augmented generation.
-
-### Historical perspective
-
-The roots of document ingestion predate modern RAG systems by several decades. Early information retrieval systems in the 1960s and 1970s, such as vector space models and probabilistic retrieval, already required a preprocessing pipeline that normalized documents, removed noise, and represented text in a machine-processable form. Tokenization, stop-word removal, and stemming emerged in this era as practical responses to limited storage and computation.
-
-In the 1990s and early 2000s, large-scale search engines pushed ingestion pipelines further. Web crawling, HTML parsing, boilerplate removal, and inverted index construction became standard. Research on passage retrieval and question answering in the late 1990s introduced the idea that documents should not always be treated as indivisible units, but rather decomposed into smaller spans to improve recall and precision.
-
-The modern RAG ingestion pipeline crystallized after the widespread adoption of neural embeddings around 2018–2020. Dense vector representations made it possible to retrieve semantically similar content, but also introduced new constraints: embedding models have context length limits, and retrieval quality degrades when vectors represent overly long or heterogeneous text. As a result, document chunking became a first-class design concern, tightly coupled with ingestion rather than an afterthought.
-
-### The document ingestion pipeline
-
-At a conceptual level, document ingestion is a deterministic transformation pipeline. Its purpose is not to answer queries, but to prepare a stable corpus over which retrieval can operate efficiently and reproducibly.
-
-The pipeline typically begins with **source acquisition**. Documents may originate from files (PDFs, Word documents, Markdown), databases, web pages, APIs, or generated artifacts such as logs and reports. At this stage, ingestion systems focus on completeness and traceability: every ingested unit should retain a reference to its origin, version, and ingestion time.
-
-Next comes **parsing and normalization**. Raw formats are converted into a canonical internal representation, usually plain text plus structural annotations. For PDFs this may involve OCR; for HTML, DOM traversal and boilerplate removal; for code or structured data, language-aware parsers. Normalization also includes character encoding fixes, whitespace normalization, and the preservation of semantic boundaries such as headings, paragraphs, tables, or code blocks.
-
-Once text is normalized, the pipeline enriches it with **metadata**. Metadata may include document-level attributes (title, author, date, source, access control labels) and section-level attributes (heading hierarchy, page number, offsets). This metadata is critical later for filtering, ranking, and provenance tracking, even if it plays no role in embedding computation itself.
-
-Only after these steps does **chunking** occur. Chunking transforms a single normalized document into a sequence of smaller, partially overlapping or non-overlapping text segments. Each chunk becomes the atomic unit for embedding and storage in a vector database. Importantly, chunking is not merely a technical workaround for context limits; it encodes assumptions about how information should be retrieved and recombined at generation time.
-
-Finally, each chunk is **embedded and stored**, together with its metadata and a reference back to the source document. Although embedding and storage are sometimes discussed as part of retrieval infrastructure, from a systems perspective they conclude the ingestion phase: the corpus is now ready to be queried.
-
-### Document chunking: motivations and constraints
-
-Chunking addresses three fundamental constraints.
-
-First, embedding models have finite context windows. A single vector must summarize its input text, and beyond a certain length this summary becomes lossy. Chunking bounds this loss.
-
-Second, retrieval operates at the level of chunks, not documents. If a document contains multiple unrelated topics, a single embedding will conflate them. Chunking improves semantic locality, allowing retrieval to surface only the relevant parts.
-
-Third, generation benefits from focused context. Passing a handful of precise chunks to a language model is generally more effective than passing an entire document, even if the model could technically accept it.
-
-These constraints imply that chunking is an information-theoretic trade-off between context completeness and semantic specificity.
-
-### Chunking strategies
-
-The simplest strategy is **fixed-size chunking**, where text is split every *N* tokens or characters. This approach is easy to implement and model-agnostic, but it ignores document structure. Chunks may begin or end mid-sentence, which can reduce embedding quality.
-
-A small refinement is **fixed-size chunking with overlap**. Consecutive chunks share a window of tokens, reducing boundary effects and preserving continuity across chunks. Overlap improves recall at the cost of storage and compute.
-
-A more semantically informed approach is **structure-aware chunking**. Here, chunk boundaries align with natural units such as paragraphs, sections, or headings, subject to a maximum size constraint. This strategy preserves discourse coherence and is especially effective for technical documents, manuals, and academic papers.
-
-In domains where meaning depends on logical flow, **recursive or hierarchical chunking** is often used. Large sections are split into subsections, then paragraphs, and finally sentences until size constraints are satisfied. Each chunk retains metadata describing its position in the hierarchy, enabling later aggregation or re-ranking.
-
-Finally, **semantic chunking** attempts to split text based on topic shifts rather than explicit structure. This can be implemented using lightweight similarity checks between adjacent spans. While more computationally expensive, it can produce chunks that align closely with conceptual units.
-
-### Illustrative chunking logic
-
-The following pseudocode illustrates structure-aware chunking with a size constraint, without committing to a specific framework or library:
-
-```python
-def chunk_document(sections, max_tokens, overlap):
-    chunks = []
-    for section in sections:
-        buffer = []
-        token_count = 0
-
-        for paragraph in section.paragraphs:
-            p_tokens = count_tokens(paragraph)
-
-            if token_count + p_tokens > max_tokens:
-                chunks.append(join(buffer))
-                buffer = buffer[-overlap:] if overlap > 0 else []
-                token_count = count_tokens(buffer)
-
-            buffer.append(paragraph)
-            token_count += p_tokens
-
-        if buffer:
-            chunks.append(join(buffer))
-
-    return chunks
-```
-
-This pattern highlights two core ideas: chunking respects document structure, and size constraints are enforced incrementally rather than by naïve slicing.
-
-### Chunking as a design decision
-
-Chunk size, overlap, and boundary selection are not universal constants. They depend on embedding dimensionality, model context limits, expected query granularity, and downstream re-ranking strategies. In practice, ingestion pipelines often expose these parameters explicitly, treating chunking as a tunable component rather than a fixed preprocessing step.
-
-A well-designed ingestion pipeline therefore makes chunking reproducible, auditable, and revisable. Re-chunking a corpus with different parameters should be possible without re-ingesting raw sources, enabling systematic evaluation and iteration.
-
-### Statistical chunking (unsupervised segmentation)
-
-Statistical chunking refers to a family of methods that segment documents into coherent units using distributional signals derived directly from the text, without relying on predefined structure or large language models.
-
-The origins of statistical chunking can be traced to work on **text segmentation** and **topic boundary detection** in the 1990s. Early systems sought to divide long documents into topically coherent segments by exploiting lexical cohesion: the intuition that words related to the same topic tend to recur within a segment and change abruptly at topic boundaries. This line of research emerged in parallel with probabilistic language modeling and information retrieval, well before dense embeddings were available.
-
-A canonical example is the TextTiling algorithm, which introduced the idea of sliding a window over a document and measuring similarity between adjacent blocks of text. When similarity drops sharply, a topic boundary is inferred. Later work extended this idea using probabilistic models, such as Hidden Markov Models and Bayesian topic models, to infer latent segment structure.
-
-In a modern ingestion pipeline, statistical chunking is best understood as a **model-light, data-driven alternative** to both rule-based and LLM-based chunking. Instead of enforcing fixed sizes or asking a model to reason about discourse, the system observes how word distributions evolve across the document and places boundaries where the statistics change.
-
-The core mechanism typically follows a common pattern. The document is first divided into small, uniform units such as sentences or short paragraphs. Each unit is represented as a vector, often using term frequency–inverse document frequency (TF–IDF) or other bag-of-words–based representations. A similarity measure is then computed between adjacent windows of units. Low similarity indicates a potential topic shift and thus a candidate chunk boundary.
-
-Conceptually, this can be expressed as follows:
-
-```python
-units = split_into_sentences(document)
-vectors = tfidf_encode(units)
-
-boundaries = []
-for i in range(1, len(vectors)):
-    sim = cosine_similarity(vectors[i-1], vectors[i])
-    if sim < threshold:
-        boundaries.append(i)
-
-chunks = merge_units(units, boundaries)
-```
-
-Although simplified, this illustrates the essence of statistical chunking: segmentation emerges from local changes in distributional similarity rather than explicit semantic reasoning.
-
-Several variations exist. Some approaches smooth similarity scores over a wider window to avoid spurious boundaries. Others apply clustering algorithms, grouping adjacent units into segments that maximize intra-segment similarity. Topic-model–based approaches, such as Latent Dirichlet Allocation, infer a latent topic mixture for each unit and place boundaries where the dominant topic changes.
-
-Statistical chunking offers a number of practical advantages. It is deterministic, reproducible, and inexpensive compared to LLM-based methods. It also scales well to very large corpora and can be applied uniformly across domains without prompt engineering. For ingestion pipelines that prioritize stability and cost control, these properties are attractive.
-
-However, statistical methods have well-known limitations. Lexical variation can obscure topic continuity, especially when the same concept is expressed using different terminology. Conversely, shared vocabulary can mask genuine topic shifts. As a result, statistical chunking tends to perform best on expository or technical text with consistent terminology and degrades on narrative, conversational, or highly abstract material.
-
-In contemporary RAG systems, statistical chunking is often used as a **baseline or first-pass segmentation**. Its output may be refined by structure-aware heuristics or selectively reprocessed using LLM-based chunking. This layered approach preserves the efficiency and determinism of statistical methods while allowing higher-level semantic models to intervene where they add the most value.
-
-From an architectural perspective, statistical chunking reinforces the idea that document ingestion is a spectrum of techniques rather than a single algorithm, with different strategies occupying different points in the trade-off space between cost, interpretability, and semantic fidelity.
-
-
-### LLM-based chunking (topic-aware chunking)
-
-An increasingly common alternative to heuristic chunking is **LLM-based chunking**, where a language model is explicitly asked to segment a document into coherent topical units.
-
-The idea of using models to guide segmentation has roots in earlier work on text segmentation and discourse modeling, such as topic segmentation with probabilistic models or lexical cohesion methods in the late 1990s. However, these approaches were limited by shallow representations and required careful feature engineering. Large language models change the landscape by providing a strong prior over discourse structure, topic boundaries, and semantic coherence, making it possible to delegate chunking decisions to the model itself.
-
-In LLM-based chunking, the ingestion pipeline treats the document (or a large section of it) as input to a language model and asks the model to identify topical segments. Instead of enforcing a fixed token budget upfront, the model is instructed to split the text into chunks that each represent a single topic, concept, or subtask, optionally subject to soft size constraints. Each resulting chunk is then embedded and stored like any other ingestion unit.
-
-Conceptually, this approach reframes chunking from a syntactic operation into a semantic one. The model is no longer constrained to respect paragraph or sentence boundaries alone; it can merge multiple paragraphs into one chunk if they form a single idea, or split a long paragraph if it contains multiple distinct topics. This is particularly valuable for documents with weak or inconsistent structure, such as internal reports, design documents, meeting notes, or conversational transcripts.
-
-A typical prompt for LLM-based chunking specifies three elements. First, the **segmentation objective**, for example “split the document into self-contained topical sections suitable for retrieval.” Second, **constraints**, such as a maximum target length per chunk or a preference for fewer, larger chunks over many small ones. Third, the **output schema**, which usually requires the model to return a list of chunks with titles, summaries, or offsets to support traceability.
-
-The following pseudocode illustrates the pattern at a high level:
-
-```python
-prompt = """
-You are given a document.
-Split it into coherent topical chunks.
-Each chunk should cover a single topic and be self-contained.
-Prefer chunks under 300 tokens when possible.
-
-Return a JSON list of:
-- title
-- chunk_text
-"""
-
-chunks = llm(prompt, document_text)
-
-for chunk in chunks:
-    vector = embed(chunk["chunk_text"])
-    store(vector, metadata={
-        "title": chunk["title"],
-        "source_doc": doc_id
-    })
-```
-
-This pattern highlights a key difference from traditional chunking: the model produces **semantic boundaries**, not just text spans. Titles or summaries generated during chunking can later be reused for retrieval diagnostics, re-ranking, or citation.
-
-LLM-based chunking has clear advantages, but it also introduces new trade-offs. Because the model is non-deterministic, chunk boundaries may vary across runs unless temperature is tightly controlled. The process is also more expensive than rule-based chunking and may require batching or hierarchical application for very large documents. Additionally, errors at ingestion time can be harder to detect, since chunk boundaries are no longer derived from explicit document structure.
-
-For these reasons, LLM-based chunking is often used selectively. Common patterns include applying it only to long or poorly structured documents, combining it with structure-aware pre-segmentation, or using it to refine coarse chunks produced by heuristic methods. In all cases, it should be treated as a configurable ingestion strategy rather than a default replacement for simpler approaches.
-
-From a systems perspective, LLM-based chunking reinforces a broader theme in modern RAG pipelines: ingestion is no longer a purely mechanical preprocessing step, but an opportunity to inject semantic understanding early in the lifecycle of the data.
-
-### References
-
-1. Salton, G., Wong, A., Yang, C. S. *A Vector Space Model for Automatic Indexing*. Communications of the ACM, 1975.
-2. Voorhees, E. M., Tice, D. M. *The TREC-8 Question Answering Track Evaluation*. TREC, 1999.
-3. Karpukhin, V. et al. *Dense Passage Retrieval for Open-Domain Question Answering*. EMNLP, 2020.
-4. Lewis, P. et al. *Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks*. NeurIPS, 2020.
-5. Izacard, G., Grave, E. *Leveraging Passage Retrieval with Generative Models for Open Domain Question Answering*. EACL, 2021.
-
-
-## Document Retrieval
-
-Document retrieval is the stage in a RAG system that transforms a user query into a ranked, filtered set of candidate documents or passages that are most likely to support a correct answer.
-
-### Historical perspective
-
-Document retrieval predates modern language models by several decades and originates in classical Information Retrieval (IR). Early systems in the 1960s–1980s focused on Boolean retrieval and term matching, culminating in the vector space model, where documents and queries were represented as sparse term-frequency vectors. The introduction of probabilistic IR models in the 1990s, most notably BM25, provided a principled scoring framework grounded in relevance estimation rather than pure geometric similarity.
-
-From the mid-2000s onward, learning-to-rank methods reframed retrieval as a supervised ranking problem, combining many signals into a single scoring function. The 2010s introduced neural retrieval, first through latent semantic models and later through dense embeddings learned with deep neural networks. Modern RAG systems inherit all of these ideas: symbolic query rewriting from classical IR, sparse and dense retrieval models, multi-stage ranking pipelines, and explicit filtering using structured metadata. What is new is not the individual components, but their tight integration into a single retrieval pipeline optimized to serve downstream generative models.
-
-### Conceptual overview of document retrieval
-
-In a RAG system, document retrieval is not a single operation but a pipeline. A raw user query is progressively transformed, evaluated, and constrained until a small, high-quality context set is produced. Each stage trades recall for precision, with early stages favoring breadth and later stages favoring accuracy and relevance.
-
-At a high level, the retrieval process consists of query interpretation and rewriting, candidate generation, scoring, re-ranking, filtering, and combination with structured constraints. While these stages can be collapsed in small systems, large-scale RAG deployments almost always implement them explicitly to control cost, latency, and quality.
-
-### Query interpretation and rewriting
-
-User queries are often underspecified, ambiguous, or conversational. Before retrieval, the system may rewrite the query into one or more canonical forms that are better aligned with the indexed representation of documents. This includes expanding abbreviations, resolving coreferences, normalizing terminology, or decomposing a complex question into multiple sub-queries.
-
-In neural systems, query rewriting is frequently performed by a language model that produces a more retrieval-friendly query while preserving intent. Importantly, rewriting does not aim to answer the question, but to maximize the likelihood that relevant documents are retrieved.
-
-```python
-# Pseudocode for query rewriting
-rewritten_query = rewrite_model.generate(
-    original_query,
-    objective="maximize retrievability"
-)
-```
-
-Multiple rewritten queries may be generated to increase recall, with their results merged downstream.
-
-### Candidate generation
-
-Candidate generation is the first retrieval pass over the corpus. Its purpose is to retrieve a relatively large set of potentially relevant documents with high recall and low computational cost. This stage commonly uses either sparse retrieval (e.g., inverted indexes with BM25), dense vector search over embeddings, or both.
-
-Dense retrieval maps the rewritten query into the same embedding space as documents and retrieves nearest neighbors under a similarity metric. At this stage, approximate nearest neighbor algorithms are typically used to ensure scalability.
-
-```python
-# Dense candidate generation
-query_vector = embed(rewritten_query)
-candidates = vector_index.search(
-    query_vector,
-    top_k=K_large
-)
-```
-
-The output of this stage is intentionally noisy. Precision is improved later.
-
-### Scoring and initial ranking
-
-Each candidate document is assigned a relevance score with respect to the query. In simple systems, this score may be the similarity returned by the vector database or the BM25 score. In more advanced systems, multiple signals are combined, such as dense similarity, sparse similarity, document freshness, or domain-specific heuristics.
-
-Formally, scoring can be expressed as a function
-$s(d, q) \rightarrow \mathbb{R}$,
-where $d$ is a document and $q$ is the rewritten query. At this stage, the goal is to produce a reasonably ordered list, not a final ranking.
-
-### Re-ranking with cross-encoders or task-aware models
-
-Re-ranking refines the initial ranking using more expensive but more accurate models. Instead of independently embedding queries and documents, re-rankers jointly encode the query–document pair, allowing fine-grained interaction between their tokens. This substantially improves precision, especially at the top of the ranking.
-
-Because re-ranking is computationally expensive, it is applied only to a small subset of top candidates from the previous stage.
-
-```python
-# Re-ranking stage
-top_candidates = candidates[:K_small]
-reranked = reranker.score_pairs(
-    query=rewritten_query,
-    documents=top_candidates
-)
-```
-
-The result is a high-precision ordering optimized for downstream generation rather than generic relevance.
-
-### Filtering and constraints
-
-Filtering removes candidates that are irrelevant or invalid given explicit constraints. These constraints often come from metadata, such as document type, access permissions, time ranges, language, or domain tags. Filtering can be applied before retrieval to reduce the search space, after retrieval to prune results, or at both stages.
-
-In enterprise RAG systems, filtering is critical for correctness and safety. A highly relevant document that violates a constraint is worse than a less relevant but valid one.
-
-```python
-# Metadata-based filtering
-filtered = [
-    d for d in reranked
-    if d.metadata["access_level"] <= user_access
-]
-```
-
-### Combined strategies: metadata, SQL, and embeddings
-
-Modern retrieval pipelines frequently combine symbolic and vector-based approaches. A common pattern is to use structured queries (e.g., SQL or metadata filters) to narrow the candidate set, followed by dense similarity search within that subset. This hybrid approach exploits the strengths of both paradigms: exactness and interpretability from structured filters, and semantic generalization from embeddings.
-
-Conceptually, this corresponds to retrieving from a conditional distribution
-$p(d \mid q, m)$,
-where $m$ represents structured metadata constraints.
-
-This combination is especially powerful in domains with rich schemas, such as scientific literature, enterprise knowledge bases, or regulatory documents.
-
-### Retrieval as a system, not a single model
-
-A key insight in modern RAG is that retrieval quality emerges from the interaction of stages rather than from any single algorithm. Query rewriting increases recall, candidate generation ensures coverage, scoring and re-ranking enforce relevance, and filtering guarantees validity. Treating retrieval as a modular pipeline allows systematic evaluation, targeted optimization, and controlled trade-offs between cost and quality.
-
-### References
-
-1. Gerard Salton, Andrew Wong, and Chung-Shu Yang. *A Vector Space Model for Automatic Indexing*. Communications of the ACM, 1975.
-2. Stephen Robertson and Hugo Zaragoza. *The Probabilistic Relevance Framework: BM25 and Beyond*. Foundations and Trends in Information Retrieval, 2009.
-3. Omar Khattab and Matei Zaharia. *ColBERT: Efficient and Effective Passage Search via Contextualized Late Interaction*. SIGIR, 2020.
-4. Lee et al. *Dense Passage Retrieval for Open-Domain Question Answering*. EMNLP, 2019.
-5. Nogueira and Cho. *Passage Re-ranking with BERT*. arXiv, 2019.
-6. Litschko et al. *Evaluating Hybrid Retrieval Approaches for Retrieval-Augmented Generation*. arXiv, 2023.
-
-
-## Evaluating RAG Systems
-
-Evaluating a Retrieval-Augmented Generation (RAG) system means measuring, in a principled way, how well retrieval and generation jointly support factual, relevant, and grounded answers.
-
-### Historical perspective
-
-Evaluation of RAG systems sits at the intersection of two older research traditions: information retrieval (IR) and natural language generation. Long before RAG, classical IR research in the 1960s–1990s focused on evaluating document retrieval quality using relevance judgments and set-based metrics such as precision and recall, formalized in early test collections like Cranfield and later standardized through TREC. These methods assumed a human reader as the final consumer of retrieved documents, not a generative model.
-
-In parallel, natural language generation and question answering research developed its own evaluation practices, often relying on string-overlap metrics such as BLEU and ROUGE, or task-specific accuracy measures. With the emergence of neural open-domain QA in the 2010s, retrieval and generation began to merge, but evaluation was still typically split: retrieval was evaluated independently, and generation was evaluated against gold answers.
-
-The first RAG-style systems, appearing around 2020 with dense retrieval and pretrained language models, exposed the limitations of this separation. A system could retrieve highly relevant documents yet fail to use them correctly, or produce fluent answers that were weakly grounded or even hallucinated. This led to a shift toward multi-level evaluation: measuring vector search quality, document retrieval effectiveness, and end-to-end answer quality together. More recent work emphasizes faithfulness, attribution, and robustness, reflecting the use of RAG in high-stakes and enterprise settings where correctness and traceability matter as much as surface-level answer quality.
-
-
-## Evaluation layers in RAG systems
-
-A modern RAG system is best evaluated as a pipeline with interacting components rather than a single black box. Each layer answers a different question: *are we retrieving the right things, are we selecting the right evidence, and does the final answer correctly use that evidence?*
-
-### Metrics for vector search
-
-Vector search evaluation focuses on the quality of nearest-neighbor retrieval in embedding space, independent of any downstream generation. The goal is to assess whether semantically relevant items are geometrically close to the query embedding.
-
-Typical metrics are based on ranked retrieval. Recall@k measures whether at least one relevant item appears in the top-k results, which is particularly important in RAG because downstream components only see a small retrieved set. Precision@k captures how many of the retrieved items are relevant, but is often secondary to recall in early retrieval stages. Mean Reciprocal Rank (MRR) emphasizes how early the first relevant item appears, reflecting latency-sensitive pipelines. Normalized Discounted Cumulative Gain (nDCG) generalizes these ideas when relevance is graded rather than binary.
-
-In practice, vector search evaluation requires a labeled dataset of queries paired with relevant documents or passages. These labels are often incomplete or noisy, which is why recall-oriented metrics are preferred: they are more robust to missing judgments.
-
-```python
-def recall_at_k(retrieved_ids, relevant_ids, k):
-    top_k = set(retrieved_ids[:k])
-    return int(len(top_k & relevant_ids) > 0)
-```
-
-This level of evaluation answers the question: *given a query embedding, does the vector index surface semantically relevant candidates?* It does not tell us whether these candidates are actually useful for answering the question.
-
-
-### Metrics for document retrieval
-
-Document retrieval metrics evaluate the effectiveness of the full retrieval stack, which may include query rewriting, filtering, hybrid search, and re-ranking. Unlike pure vector search, this level is concerned with the *final set of documents passed to the generator*.
-
-The same families of metrics—Recall@k, MRR, and nDCG—are commonly used, but the unit of relevance is often more task-specific. Relevance may be defined as containing sufficient evidence to answer the question, not merely semantic similarity. This distinction is critical: a document can be topically related yet useless for grounding an answer.
-
-Evaluation at this level often relies on human annotation or weak supervision, such as matching retrieved passages against known supporting facts. In enterprise systems, retrieval quality is frequently evaluated by measuring coverage over authoritative sources, policy documents, or curated knowledge bases.
-
-Conceptually, this layer answers: *does the system retrieve the right evidence, in the right form, for generation?*
-
-
-### End-to-end RAG metrics
-
-End-to-end evaluation treats the RAG system as a whole and measures the quality of the final answer. This is the most user-visible layer and the hardest to evaluate reliably.
-
-Traditional generation metrics such as exact match, F1, BLEU, or ROUGE are sometimes used when gold answers are available, but they are poorly aligned with the goals of RAG. A correct answer phrased differently may score poorly, while an answer that matches the gold text but is unsupported by retrieved evidence may score well.
-
-As a result, modern RAG evaluation increasingly emphasizes three complementary properties. **Answer correctness** measures whether the answer is factually correct with respect to a reference or authoritative source. **Groundedness or faithfulness** measures whether the answer can be directly supported by the retrieved documents. **Attribution quality** measures whether the system correctly cites or points to the evidence it used.
-
-LLM-based judges are often used to operationalize these criteria by comparing the answer against retrieved context and scoring dimensions such as correctness and support. While imperfect, this approach scales better than manual evaluation and aligns more closely with real-world usage.
-
-```python
-def judge_groundedness(answer, context):
-    prompt = f"""
-    Is the answer fully supported by the context?
-    Answer: {answer}
-    Context: {context}
-    """
-    return call_llm(prompt)
-```
-
-This level answers the question users actually care about: *does the system produce a correct, well-supported answer?*
-
-
-## Measuring improvements in RAG systems
-
-Evaluating a single snapshot of a RAG system is rarely sufficient. What matters in practice is measuring *improvement* as the system evolves.
-
-A common baseline is a non-RAG model that answers questions without retrieval. Comparing end-to-end performance against this baseline isolates the value added by retrieval. If RAG does not outperform a strong non-RAG baseline, retrieval may be unnecessary or poorly integrated.
-
-Ablation studies are equally important. By selectively disabling components—such as query rewriting, re-ranking, or metadata filtering—one can measure their marginal contribution. This helps avoid overfitting to complex pipelines whose benefits are not well understood.
-
-Offline metrics should be complemented with online or human-in-the-loop evaluation where possible. User feedback, answer acceptance rates, and error analysis often reveal failure modes that are invisible to automated metrics, such as subtle hallucinations or missing caveats.
-
-Taken together, these practices shift evaluation from a one-time score to a continuous measurement discipline, which is essential for maintaining reliable RAG systems in production.
-
-
-## References
-
-1. Voorhees, E. M., and Harman, D. *TREC: Experiment and Evaluation in Information Retrieval*. MIT Press, 2005.
-2. Karpukhin, V., et al. *Dense Passage Retrieval for Open-Domain Question Answering*. EMNLP, 2020. [https://arxiv.org/abs/2004.04906](https://arxiv.org/abs/2004.04906)
-3. Lewis, P., et al. *Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks*. NeurIPS, 2020. [https://arxiv.org/abs/2005.11401](https://arxiv.org/abs/2005.11401)
-4. Thorne, J., et al. *Evidence-based Fact Checking with Retrieval-Augmented Models*. EMNLP, 2018.
-5. Gao, T., et al. *RARR: Researching and Revising What Language Models Say, Using Language Models*. ACL, 2023. [https://arxiv.org/abs/2210.08726](https://arxiv.org/abs/2210.08726)
-
-
-## Attribution, Citation, Provenance, and Truth Maintenance
-
-Attribution in RAG systems concerns the ability to explicitly link generated statements to the source documents, data items, and transformations that produced them.
-
-### Historical perspective
-
-The roots of attribution and provenance long predate modern RAG systems. In database research of the late 1980s and 1990s, work on *data lineage* and *why-provenance* sought to explain how query results were derived from relational tables. This line of research matured in the early 2000s with formal models of provenance for SQL, XML, and workflow systems, motivated by scientific computing and data-intensive experiments where reproducibility was critical.
-
-In parallel, information retrieval and question answering research emphasized citation and evidence extraction. Early open-domain QA systems in the 2000s already attempted to return answer snippets together with document references, but attribution was heuristic and weakly coupled to generation. With the rise of neural language models in the late 2010s, attribution became a central concern again, now framed around *hallucinations* and unverifiable model outputs. Retrieval-augmented generation, introduced as a way to ground language models in external knowledge, naturally revived provenance, citation, and truth maintenance as first-class design goals. Recent work focuses on making attribution machine-readable, auditable, and robust across multi-step retrieval and generation pipelines.
-
-### Conceptual overview
-
-In a RAG system, attribution spans the entire information flow. Documents are ingested, transformed, chunked, embedded, retrieved, possibly re-ranked, and finally used as conditioning context for generation. Each of these steps introduces opportunities to lose or blur the connection between an output token and its original source. Attribution mechanisms aim to preserve this connection explicitly.
-
-Closely related but distinct concepts are often conflated. *Attribution* answers the question “which source supports this statement?”. *Citation* is the presentation layer, deciding how that source is exposed to users (for example, inline references or footnotes). *Provenance tracking* is the internal bookkeeping that records how data flowed through the system. *Truth maintenance* addresses how these links remain valid over time as documents, embeddings, or models change.
-
-A robust RAG system treats these as complementary layers rather than a single feature.
-
-### Attribution in RAG generation
-
-At generation time, attribution typically operates at the level of retrieved chunks rather than entire documents. Each chunk carries stable identifiers and metadata inherited from ingestion. During retrieval, these identifiers are preserved and propagated alongside the text content. The generator is then constrained or guided to associate generated statements with one or more of these chunk identifiers.
-
-A common pattern is to structure the model output so that answers and sources are produced together. This reduces ambiguity and allows downstream validation.
-
-```python
-# Conceptual output schema used by the generator
-{
-    "answer": "The BRCA1 gene is involved in DNA repair.",
-    "sources": [
-        {"doc_id": "oncology_review_2019", "chunk_id": "p3_c2"},
-        {"doc_id": "genetics_textbook", "chunk_id": "ch5_c7"}
-    ]
-}
-```
-
-Even when the language model is free-form, the system can post-process token spans and align them with the retrieved chunks that were present in context. The key requirement is that attribution identifiers remain machine-readable and stable across the pipeline.
-
-### References and citation strategies
-
-Citation is the user-facing expression of attribution. In RAG systems, citation strategies range from coarse to fine-grained. Some systems attach a single list of documents supporting the entire answer. More advanced designs provide sentence-level or clause-level citations, which improves trust and debuggability but requires tighter coupling between generation and retrieval.
-
-A critical design choice is whether citations are generated by the model or imposed by the system. Model-generated citations are flexible but error-prone, while system-enforced citations trade fluency for correctness. In practice, hybrid approaches are common: the system restricts the citation candidates to retrieved chunks, and the model selects among them.
-
-### Provenance tracking across the pipeline
-
-Provenance tracking is not limited to the final answer. It begins at ingestion and continues through retrieval and generation. Each transformation step should preserve or enrich provenance metadata rather than overwrite it.
-
-A minimal provenance record typically includes the original document identifier, version information, chunk boundaries, and timestamps. More advanced systems also track the embedding model version, retrieval parameters, and re-ranking decisions. This allows engineers to answer questions such as whether an incorrect answer was caused by stale data, poor retrieval, or model behavior.
-
-```python
-# Example of a provenance record attached to a retrieved chunk
-provenance = {
-    "doc_id": "clinical_guidelines_v2",
-    "doc_version": "2024-06-15",
-    "chunk_id": "sec4_para1",
-    "embedding_model": "text-embedding-v3",
-    "retrieval_score": 0.87
-}
-```
-
-Such records are rarely exposed to end users, but they are essential for auditing, debugging, and offline evaluation.
-
-### Truth maintenance in evolving RAG systems
-
-Truth maintenance addresses the fact that RAG systems are not static. Documents are updated, embeddings are recomputed, and models are replaced. Without explicit mechanisms, previously correct attributions can silently become invalid.
-
-One approach is versioned provenance. Every answer is associated not just with a document identifier, but with a specific document version and ingestion timestamp. When the underlying data changes, the system can detect that an answer depends on outdated sources and either invalidate it or trigger regeneration.
-
-Another approach borrows ideas from classical truth maintenance systems, where derived facts are linked to their supporting assumptions. When an assumption changes, all dependent conclusions are marked for review. In RAG, the “assumptions” correspond to retrieved chunks and their content. This framing is particularly useful in regulated or high-stakes domains, where stale answers are unacceptable.
-
-### Practical implications
-
-Attribution, provenance, and truth maintenance are often treated as optional add-ons in early RAG prototypes. In production systems, they quickly become essential. They enable explainability, support compliance requirements, and make systematic evaluation possible. More importantly, they turn RAG from a black-box augmentation trick into a transparent information system whose outputs can be inspected, trusted, and improved over time.
-
-### References
-
-1. Buneman, P., Khanna, S., Tan, W.-C. *Why and Where: A Characterization of Data Provenance*. ICDT, 2001.
-2. Cheney, J., Chiticariu, L., Tan, W.-C. *Provenance in Databases: Why, How, and Where*. Foundations and Trends in Databases, 2009.
-3. Lewis, P., et al. *Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks*. NeurIPS, 2020.
-4. Rashkin, H., et al. *Increasing Faithfulness in Knowledge-Grounded Dialogue with Attributed Responses*. ACL, 2021.
-5. Thorne, J., Vlachos, A. *Automated Fact Checking: Task Formulations, Methods and Future Directions*. COLING, 2018.
-
-
-
-\newpage
-
-# MCP: Model Context Protocol
-
-# Chapter: Model Context Protocol (MCP)
-
-## Introduction
-
-**Model Context Protocol (MCP)** is an open protocol that standardizes how AI models discover, describe, and interact with external tools, resources, and structured context across long-running sessions.
-
-### Historical perspective
-
-The emergence of MCP is best understood as the convergence of several research and engineering threads that matured between roughly 2018 and 2024. Early neural language models were largely *stateless* and *closed*: prompts were short, tools were hard-coded, and any notion of “context” was manually injected. As models became more capable, this led to brittle integrations where each application defined its own ad-hoc conventions for tool calling, prompt templates, file access, and memory.
-
-In parallel, earlier software ecosystems had already faced a similar problem. Language Server Protocol (LSP), introduced in the mid-2010s, demonstrated that a clean, transport-agnostic protocol could decouple editors from language tooling. Around the same time, work on agent architectures, tool-augmented language models, and function-calling APIs highlighted the need for a more principled interface between models and their environment. Research on tool use, planning, and long-horizon interaction made it clear that context could no longer be treated as a flat text prompt, but instead as a structured, evolving state.
-
-MCP emerged from this backdrop as a unifying abstraction: rather than embedding tool logic and context management inside each application or model runtime, MCP defines a shared protocol that externalizes these concerns. The result is a system where models can operate over rich, inspectable context without being tightly coupled to any specific framework, transport, or vendor.
-
-### Conceptual overview
-
-At its core, MCP defines a **contract** between a *client* (typically an AI runtime or agent host) and one or more *servers* that expose capabilities. These capabilities are not limited to executable tools; they also include prompts, static or dynamic resources, and interaction patterns that guide how models request information or actions.
-
-The key idea is that **context is first-class**. Instead of treating context as opaque text, MCP models it as a set of structured entities with explicit lifecycles. A client can discover what a server offers, reason about how to use it, and invoke those capabilities in a uniform way. This enables composition: multiple servers can be combined, swapped, or upgraded without changing the model’s internal logic.
-
-Unlike earlier tool-calling APIs, MCP is deliberately **transport-agnostic** and **model-agnostic**. Whether the underlying connection is local, remote, synchronous, or streaming is orthogonal to the semantics of the interaction. Similarly, MCP does not assume a particular model architecture; it only specifies how context and actions are represented and exchanged.
-
-### MCP in practice
-
-An MCP server advertises its capabilities declaratively. A client connects, inspects those capabilities, and then decides—often with model assistance—how to use them. The protocol distinguishes between different kinds of interaction:
-
-Tools represent callable operations with structured inputs and outputs. Prompts define reusable, parameterized instructions. Resources expose read-only or versioned data that can be incorporated into model reasoning. On the client side, additional mechanisms allow the model to request clarification, sampling decisions, or user input when uncertainty arises.
-
-The following simplified snippet illustrates the conceptual shape of a tool definition exposed by an MCP server:
-
-```json
-{
-  "name": "search_documents",
-  "description": "Search indexed documents using semantic and metadata filters",
-  "input_schema": {
-    "query": "string",
-    "filters": {
-      "type": "object",
-      "optional": true
-    }
-  }
-}
-```
-
-From the client’s perspective, this definition is not just documentation. It is machine-readable context that the model can reason over: when to call the tool, how to construct valid inputs, and how to interpret outputs. The client mediates execution, ensuring that permissions, transport, and lifecycle constraints are respected.
-
-Crucially, MCP encourages **long-lived sessions**. Context accumulates over time, resources can be updated or invalidated, and tools can be dynamically enabled or disabled. This aligns naturally with agentic systems that plan, revise, and reflect rather than producing a single response.
-
-### FastMCP as the reference implementation
-
-As MCP moved from a conceptual specification into real-world use, **FastMCP** emerged as the de-facto reference implementation of the protocol. Its significance was not driven by formal standardization, but by rapid adoption: FastMCP provided an early, complete, and idiomatic implementation of MCP server semantics that closely tracked the evolving specification while remaining practical for production use. By offering clear abstractions for tools, prompts, and resources—along with sensible defaults for lifecycle management, transport handling, and schema validation—it dramatically lowered the barrier to building MCP-compliant servers. As a result, many early MCP clients and examples were developed and tested against FastMCP, creating a positive feedback loop where compatibility with FastMCP effectively meant compatibility with MCP itself. Over time, this positioned FastMCP not merely as one implementation among many, but as the *behavioral reference* against which other implementations were implicitly validated, similar to how early language servers shaped expectations around LSP despite the protocol being formally independent of any single codebase.
-
-### Why MCP matters
-
-MCP addresses a structural problem that becomes unavoidable as systems scale: without a protocol, every agent framework reinvents its own notion of tools, memory, and context boundaries. This fragmentation makes systems harder to audit, secure, and evolve. By providing a shared vocabulary and lifecycle model, MCP enables interoperability across tools, agents, and runtimes.
-
-Equally important, MCP shifts responsibility to the right layer. Models focus on reasoning and decision-making; servers focus on exposing well-defined capabilities; clients enforce policy, security, and orchestration. This separation mirrors successful patterns in distributed systems and is a prerequisite for building robust, enterprise-grade agent platforms.
-
-### References
-
-1. OpenAI et al. *Language Server Protocol*. Microsoft, 2016. [https://microsoft.github.io/language-server-protocol/](https://microsoft.github.io/language-server-protocol/)
-2. Schick et al. *Toolformer: Language Models Can Teach Themselves to Use Tools*. NeurIPS, 2023.
-3. Yao et al. *ReAct: Synergizing Reasoning and Acting in Language Models*. ICLR, 2023.
-4. Model Context Protocol. *Getting Started: Introduction*. Model Context Protocol Documentation, 2024. [https://modelcontextprotocol.io/docs/getting-started/intro](https://modelcontextprotocol.io/docs/getting-started/intro)
-
-
-# Chapter: MCP
-
-## Tools
-
-**Tools are the execution boundary of MCP: they are where model intent is turned into validated, observable, and recoverable actions.**
-
-In practical MCP systems, tools are not an auxiliary feature; they are the core mechanism through which an agent interacts with the world. Everything else in MCP—prompts, resources, sampling, elicitation—exists to support better decisions about *which tools to invoke and how*. A tool is therefore best understood not as a function exposed to a model, but as a carefully constrained execution contract enforced by the server.
-
-This section focuses on how tools work *in practice*, with concrete examples drawn from common MCP server implementations such as FastMCP, and how errors and failures propagate back into an agent loop typically implemented with frameworks like Pydantic-AI.
-
-
-## From functions to tools: contracts, not code
-
-Although tools are often implemented as ordinary functions, MCP deliberately erases that fact at the protocol boundary. What the model sees is never the function itself, only a declarative description derived from it.
-
-Consider a tool that writes a file into a sandboxed workspace:
-
-```python
-def write_file(path: str, content: str, overwrite: bool = False) -> None:
-    """
-    Write text content to a file in the agent workspace.
-
-    Args:
-        path: Relative path inside the workspace.
-        content: File contents.
-        overwrite: Whether to overwrite an existing file.
-    """
-    ...
-```
-
-When exposed via an MCP server, this function is translated into a tool definition consisting of a name, an input schema, and a description. The schema encodes type information, required fields, and defaults. The description is written *for the model*, not for the developer.
-
-At this point, the function body becomes irrelevant to the protocol. The model reasons entirely over the contract. This separation allows the server to validate inputs, enforce permissions, and reject invalid requests before execution.
-
-
-## Tool invocation as structured output
-
-From the model’s perspective, invoking a tool is an act of structured generation. The model emits a message that must conform exactly to the tool’s schema. Conceptually, the output looks like this:
-
-```json
-{
-  "tool": "write_file",
-  "arguments": {
-    "path": "notes/summary.txt",
-    "content": "Draft conclusions…",
-    "overwrite": false
-  }
-}
-```
-
-The MCP server validates this payload against the schema derived from the function signature. If validation fails—because a field is missing, a type is incorrect, or an unexpected argument appears—the call is rejected without executing any code.
-
-This is the first and most important safety boundary in MCP. Tool calls are not “best effort”. They are either valid or they do not run.
-
-
-## Validation failures and early rejection
-
-Validation errors are common, especially in early agent iterations. MCP makes these failures explicit and structured, rather than burying them in logs or free-form text.
-
-For example, if the model omits a required field, the server might return:
-
-```json
-{
-  "error": {
-    "code": "INVALID_ARGUMENTS",
-    "message": "Missing required field: path",
-    "details": {
-      "field": "path"
-    }
-  }
-}
-```
-
-This error is returned to the client and injected back into the agent’s context. The agent can now reason over the failure deterministically, rather than guessing what went wrong from an unstructured error string.
-
-
-## Domain errors inside tool execution
-
-Even when inputs are valid, execution may still fail. These failures belong to the *domain* of the tool, not to schema validation.
-
-Returning to the file-writing example, suppose the file already exists and `overwrite` is false. The implementation may raise a domain-specific error, which the MCP server translates into a structured response:
-
-```json
-{
-  "error": {
-    "code": "FILE_EXISTS",
-    "message": "File already exists and overwrite=false",
-    "details": {
-      "path": "notes/summary.txt"
-    }
-  }
-}
-```
-
-This distinction matters. The model provided valid inputs, but the requested action is not permissible under current conditions. A well-designed agent can respond by retrying with `overwrite=true`, choosing a different path, or asking the user for confirmation.
-
-
-## How tool errors propagate into the agent loop
-
-In agentic systems, tool execution is embedded in a reasoning–action loop. A simplified control flow looks like this:
-
-```python
-result = call_tool(tool_call)
-
-if result.is_error:
-    agent.observe_tool_error(
-        code=result.error.code,
-        message=result.error.message,
-        details=result.error.details,
-    )
-else:
-    agent.observe_tool_result(result.data)
-```
-
-The critical point is that tool failures are *observations*, not exceptions that crash the system. The agent receives structured data describing what happened and incorporates it into the next reasoning step.
-
-This is where MCP’s design aligns naturally with typed agent frameworks. Errors are values. They can be inspected, classified, and acted upon using ordinary control logic.
-
-
-## Retry and recovery as explicit policy
-
-MCP does not define retry semantics, and this is by design. Retries depend on context that only the agent or orchestrator can see: task intent, execution history, side effects already performed, and external constraints.
-
-Because errors are structured, retry logic can be written explicitly and safely:
-
-```python
-if error.code == "RATE_LIMITED":
-    sleep(backoff(attempt))
-    retry_same_call()
-elif error.code == "FILE_EXISTS":
-    retry_with_arguments(overwrite=True)
-else:
-    escalate_or_abort()
-```
-
-The tool implementation does not decide whether to retry. It merely reports what went wrong. The agent decides what to do next.
-
-This separation prevents hidden retries, duplicated side effects, and uncontrolled loops—failure modes that are common in naïve tool-calling systems.
-
-
-## Transient vs terminal failures
-
-A crucial practical concern is distinguishing transient failures from terminal ones. Network timeouts, temporary unavailability, or rate limits may warrant retries. Permission errors, unsupported operations, or invariant violations usually do not.
-
-By standardizing error codes and propagating them explicitly, MCP enables agents to make this distinction reliably. Over time, this allows agent behavior to evolve from brittle heuristics into deliberate recovery strategies.
-
-
-## Why this level of rigor matters
-
-In long-running or autonomous agents, tools may be invoked hundreds or thousands of times. Without strict contracts, structured validation, and explicit error propagation, failures accumulate silently and reasoning degrades. Debugging becomes guesswork, and safety boundaries erode.
-
-MCP’s tool model addresses this by treating tool invocation as a first-class, schema-governed interaction with clear failure semantics. When combined with typed agent frameworks and explicit retry policies, tools become a reliable execution substrate rather than a fragile extension of prompting.
-
-In practice, this is what allows MCP-based systems to move beyond demos and into production-grade agentic platforms.
-
-
-## References
-
-1. Anthropic. *Model Context Protocol: Server Tools Specification*. MCP Documentation, 2025. [https://modelcontextprotocol.io/specification/2025-06-18/server/tools](https://modelcontextprotocol.io/specification/2025-06-18/server/tools)
-2. FastMCP Contributors. *FastMCP Tool Servers*. FastMCP Documentation, 2025. [https://gofastmcp.com/servers/tools](https://gofastmcp.com/servers/tools)
-3. OpenAI. *Structured Outputs and Function Calling*. OpenAI Technical Documentation, 2023.
-
-
-## Other Server and Client Features
-
-MCP features beyond tools define how instructions, data, generation control, and human input are modeled explicitly, making agent behavior inspectable, reproducible, and scalable.
-
-This section omits tools and focuses on the remaining server- and client-side features that structure *context* and *control flow* around model execution.
-
-
-## Prompts (server feature)
-
-Prompts are server-defined, named instruction templates that clients can invoke with parameters.
-
-### What prompts are in practice
-
-A prompt is a reusable instruction artifact owned by the server. It encapsulates task framing, tone, constraints, and best practices, while exposing only a small set of parameters to the client. The client selects *which* prompt to use and supplies arguments; the server controls the actual instruction text.
-
-### Server-side definition
-
-```python
-@mcp.prompt()
-def analyze_log_file(severity: str, audience: str) -> str:
-    return f"""
-    Analyze the provided log file.
-    Focus on issues with severity >= {severity}.
-    Explain findings for a {audience} audience.
-    Provide concrete remediation steps.
-    """
-```
-
-Multiple prompts can coexist on the same server, each representing a distinct behavioral contract.
-
-### Client-side usage
-
-```python
-response = client.run(
-    prompt="analyze_log_file",
-    arguments={
-        "severity": "ERROR",
-        "audience": "site reliability engineers"
-    }
-)
-```
-
-The client never embeds the instruction text itself. This makes prompt changes transparent to clients and easier to review and test centrally.
-
-
-## Resources (server feature)
-
-Resources expose data artifacts as addressable protocol objects rather than inline text.
-
-### What resources are in practice
-
-A resource is any piece of data an agent may need to consult: documents, configuration files, intermediate results, reports, or generated artifacts. Resources are identified by stable paths or URIs and fetched explicitly.
-
-### Server-side definition
-
-```python
-@mcp.resource("reports/{report_id}")
-def load_report(report_id: str) -> str:
-    path = f"/data/reports/{report_id}.md"
-    with open(path) as f:
-        return f.read()
-```
-
-Resources can also be dynamically generated:
-
-```python
-@mcp.resource("runs/{run_id}/summary")
-def run_summary(run_id: str) -> str:
-    return summarize_run_state(run_id)
-```
-
-### Client-side usage
-
-```python
-report_text = client.read_resource("reports/incident-2025-01")
-
-analysis = client.run(
-    prompt="analyze_log_file",
-    arguments={
-        "severity": "WARN",
-        "audience": "management"
-    },
-    context={
-        "report": report_text
-    }
-)
-```
-
-This pattern avoids copying large documents into every prompt and supports workspace-style workflows where artifacts are produced, stored, and revisited across turns.
-
-
-## Sampling (client feature)
-
-Sampling gives the client explicit control over generation behavior on a per-request basis.
-
-### What sampling controls
-
-Sampling parameters govern randomness, verbosity, and termination. By elevating these to the protocol level, MCP allows clients to adapt generation behavior to the current phase of an agent workflow.
-
-### Client-side examples
-
-Exploratory reasoning phase:
-
-```python
-draft = client.run(
-    prompt="brainstorm_hypotheses",
-    arguments={"topic": "database latency spikes"},
-    sampling={
-        "temperature": 0.8,
-        "max_tokens": 500
-    }
-)
-```
-
-Deterministic execution phase:
-
-```python
-final_report = client.run(
-    prompt="produce_incident_report",
-    arguments={"incident_id": "2025-01"},
-    sampling={
-        "temperature": 0.1,
-        "max_tokens": 800
-    }
-)
-```
-
-Sampling becomes an explicit part of orchestration logic rather than a hidden global setting.
-
-
-## Elicitation (client feature)
-
-Elicitation represents explicit requests for human input during agent execution.
-
-### What elicitation is in practice
-
-When an agent cannot proceed safely or correctly without additional information, it emits an elicitation request instead of continuing autonomously. This creates a well-defined pause point that external systems can handle reliably.
-
-### Client-side elicitation request
-
-```python
-client.elicit(
-    question="Which environment should this fix be deployed to?",
-    options=["staging", "production"]
-)
-```
-
-The agent’s execution is suspended until a response is provided.
-
-### Resuming after elicitation
-
-```python
-answer = client.wait_for_elicitation()
-
-deployment = client.run(
-    prompt="deploy_fix",
-    arguments={"environment": answer}
-)
-```
-
-This makes human-in-the-loop interaction explicit, auditable, and composable with automated steps.
-
-
-## How these features work together
-
-A typical flow combining these features might look as follows:
-
-1. The client retrieves a resource representing an existing artifact.
-2. The client invokes a server-defined prompt to analyze or transform that artifact.
-3. Sampling parameters are tuned to the task’s requirements.
-4. If ambiguity arises, the agent issues an elicitation request.
-5. Execution resumes once human input is provided, producing new resources or outputs.
-
-None of these steps require embedding large instructions or data blobs directly into prompts. The protocol enforces structure while remaining agnostic to storage, UI, or orchestration frameworks.
-
-
-## References
-
-1. Model Context Protocol. *Server Prompts Specification*. MCP, 2025. [https://modelcontextprotocol.io/specification/2025-06-18/server/prompts](https://modelcontextprotocol.io/specification/2025-06-18/server/prompts)
-2. Model Context Protocol. *Server Resources Specification*. MCP, 2025. [https://modelcontextprotocol.io/specification/2025-06-18/server/resources](https://modelcontextprotocol.io/specification/2025-06-18/server/resources)
-3. Model Context Protocol. *Client Sampling Specification*. MCP, 2025. [https://modelcontextprotocol.io/specification/2025-06-18/client/sampling](https://modelcontextprotocol.io/specification/2025-06-18/client/sampling)
-4. Model Context Protocol. *Client Elicitation Specification*. MCP, 2025. [https://modelcontextprotocol.io/specification/2025-06-18/client/elicitation](https://modelcontextprotocol.io/specification/2025-06-18/client/elicitation)
-5. GoFastMCP. *Examples and Server Patterns*. GoFastMCP, 2024. [https://gofastmcp.com](https://gofastmcp.com)
-
-
-## Architecture
-
-This section describes the architectural structure of the Model Context Protocol (MCP): how clients and servers coordinate over a well-defined lifecycle, how responsibilities are split across components, and how transport, authorization, and security concerns are handled in a principled way. The abstract architecture defined in the specification is concretely realized in implementations such as **FastMCP** and in the MCP integration patterns described by **Pydantic-AI**, which together provide practical guidance on how these concepts are applied in real systems.
-
-### Lifecycle
-
-The MCP lifecycle defines the ordered phases through which a client–server session progresses. Rather than treating connections as ad-hoc request/response exchanges, MCP makes lifecycle transitions explicit, enabling both sides to reason about capabilities, permissions, and state.
-
-The lifecycle begins with initialization. The client establishes a connection and negotiates protocol compatibility and supported features. FastMCP exposes this phase explicitly, ensuring that capability discovery and validation occur once per session. In Pydantic-AI’s MCP integration, this boundary cleanly separates agent reasoning from external interaction: no domain actions occur until initialization succeeds.
-
-Once initialized, the session enters the active phase. During this phase, the client may invoke prompts, access resources, request sampling, or engage in elicitation flows, strictly within the capabilities that were negotiated. Implementations emphasize that this phase is stateful. FastMCP maintains session-scoped context across multiple interactions, while Pydantic-AI reinjects MCP responses into the model context over successive turns, enabling iterative and reflective agent behavior.
-
-The lifecycle ends with shutdown. Either side may terminate the session, at which point in-flight operations are resolved, resources are released, and all session context is discarded. Both FastMCP and Pydantic-AI documentation stress that explicit teardown is essential for long-running or autonomous agents, where leaked state or lingering permissions would otherwise accumulate.
-
-### Server
-
-An MCP server is the authoritative boundary between models and external systems. Architecturally, it exposes structured capabilities while enforcing protocol rules, authorization, and isolation.
-
-FastMCP provides a reference server architecture that closely mirrors the MCP specification. The server is typically organized in layers: a transport layer for message delivery, a protocol layer that validates messages and enforces lifecycle constraints, and an application layer that implements domain-specific logic. This separation ensures that business logic is never directly exposed to unvalidated client input.
-
-A defining characteristic of MCP servers is declarative capability exposure. Instead of executing arbitrary instructions from a client, the server advertises what it can do, under which constraints, and with which inputs and outputs. Pydantic-AI adopts the same principle in its MCP guidance, framing the server as a controlled execution boundary rather than a general command interface.
-
-Conceptually, server request handling follows a pattern such as:
-
-```python
-def handle_message(message, session):
-    enforce_lifecycle(session)
-    validate_message_schema(message)
-    authorize(message, session)
-    dispatch(message, session)
-```
-
-The value of this structure lies in the invariant it enforces: all access to external systems is mediated by protocol rules and session state.
-
-### Client
-
-The MCP client orchestrates interactions on behalf of a model or agent. While the server defines what is possible, the client decides what to request, when to request it, and how to integrate the results back into the agent’s reasoning loop.
-
-Clients maintain session state, tracking negotiated capabilities, permissions, and accumulated context. In both FastMCP examples and Pydantic-AI integrations, the client acts as a policy and coordination layer, translating model intents into MCP requests and injecting structured responses back into the model context.
-
-This design keeps protocol mechanics out of the model itself. Pydantic-AI explicitly promotes this separation, treating MCP as the execution boundary where agent decisions are realized in the external world.
-
-A typical client flow is:
-
-```python
-session = connect_to_server()
-capabilities = session.initialize()
-
-if capabilities.supports_resources:
-    data = session.request_resource("example")
-    model_context.add(data)
-```
-
-The explicit capability check, emphasized in both FastMCP and Pydantic-AI documentation, is central to MCP’s robustness across heterogeneous servers.
-
-### Transport
-
-MCP deliberately decouples protocol semantics from transport mechanisms. The specification defines message structure and behavior independently of how messages are transmitted.
-
-FastMCP demonstrates this abstraction by supporting multiple transports, including standard input/output for local tool servers and HTTP-based transports for remote services. Pydantic-AI’s MCP documentation similarly treats transport as an implementation detail, allowing the same agent logic to operate unchanged across local development environments and production deployments.
-
-Architecturally, this means transport can evolve without affecting higher-level agent logic, as long as MCP message semantics are preserved.
-
-### Authorization
-
-Authorization in MCP is embedded directly into the protocol flow rather than being handled entirely out of band. Both the specification and FastMCP documentation emphasize fine-grained, capability-level authorization.
-
-During initialization, clients authenticate and establish identity. During the active phase, every request is checked against the permissions associated with the session. FastMCP enforces these checks as part of request dispatch, while Pydantic-AI highlights authorization as a first-class concern when integrating MCP into agent runtimes.
-
-This approach enables dynamic authorization. Permissions may depend on session context, negotiated features, or prior actions, supporting patterns such as staged access, scoped credentials, or human-approved escalation.
-
-### Security
-
-Security in MCP is an architectural property that emerges from explicit lifecycle management, declarative capabilities, and strict validation.
-
-A core principle is least privilege. Clients can only invoke capabilities that the server has explicitly advertised, and only within the bounds of the current session. FastMCP documentation frames MCP servers as containment boundaries, while Pydantic-AI recommends exposing narrowly scoped operations rather than general execution primitives.
-
-Isolation is equally important. Sessions are isolated from one another, and context is never shared across lifecycles. FastMCP treats session state as ephemeral, and Pydantic-AI guidance reinforces that MCP contexts should be discarded at the end of an interaction.
-
-Finally, defensive validation is pervasive. Messages are schema-validated, lifecycle transitions are enforced, and unexpected inputs are rejected early. These practices are critical when MCP clients may be driven by partially autonomous agents.
-
-### References
-
-1. Model Context Protocol Working Group. *MCP Lifecycle Specification*. 2025. [https://modelcontextprotocol.io/specification/2025-06-18/basic/lifecycle](https://modelcontextprotocol.io/specification/2025-06-18/basic/lifecycle)
-2. Model Context Protocol Working Group. *Server Concepts*. 2025. [https://modelcontextprotocol.io/docs/learn/server-concepts](https://modelcontextprotocol.io/docs/learn/server-concepts)
-3. Model Context Protocol Working Group. *Client Concepts*. 2025. [https://modelcontextprotocol.io/docs/learn/client-concepts](https://modelcontextprotocol.io/docs/learn/client-concepts)
-4. Model Context Protocol Working Group. *Transports*. 2025. [https://modelcontextprotocol.io/specification/2025-06-18/basic/transports](https://modelcontextprotocol.io/specification/2025-06-18/basic/transports)
-5. Model Context Protocol Working Group. *Authorization*. 2025. [https://modelcontextprotocol.io/specification/2025-06-18/basic/authorization](https://modelcontextprotocol.io/specification/2025-06-18/basic/authorization)
-6. Model Context Protocol Working Group. *Security Best Practices*. 2025. [https://modelcontextprotocol.io/specification/2025-06-18/basic/security_best_practices](https://modelcontextprotocol.io/specification/2025-06-18/basic/security_best_practices)
-7. FastMCP Contributors. *FastMCP Documentation*. 2024–2025. [https://gofastmcp.com](https://gofastmcp.com)
-8. Pydantic-AI Contributors. *MCP Overview and Integration Patterns*. 2024–2025. [https://ai.pydantic.dev/mcp/overview/](https://ai.pydantic.dev/mcp/overview/)
-
-
-# MCP Template Design Document
-
-This template provides a foundation for building FastMCP servers with secure data handling, workspace isolation, and enterprise authentication. The architecture prioritizes separation of concerns, proper error handling, and compliance with private data requirements.
-
-## 2. Core Architecture
-
-### 2.1 Component Layers
-
-**Server Layer:**
-- `server.py` - MCP server initialization with middleware stack
-- Authentication, logging, error handling, timing, token limiting
-
-**Entry Point Layer:**
-- `main.py` - Imports server and registers tools via wildcard imports
-- Tools only register when their modules are imported
-
-**Tool Layer:**
-- `tools/` - Modular tool implementations
-- Each module contains related tool functions
-- Tools use decorator pattern for registration
-
-**Conceptual Structure:**
-```
-create_mcp_server(name, middleware) -> mcp
-mcp.tool decorator -> register tool functions
-main.py imports -> tool registration
-```
-
-### 2.2 Tool Registration Pattern
-
-Tools register by importing after server creation:
-
-```python
-# server.py
-mcp = create_mcp_server(name=__doc__)
-
-# main.py
-from server import mcp
-from tools.tools_simple import *    # Tools register themselves
-from tools.tools_context import *
-```
-
-If a tool module is not imported, its tools will not be available.
-
-## 3. Data Isolation Architecture
-
-### 3.1 Two-Path System
-
-**Sandbox Paths (Agent View):**
-- Virtual paths starting with `/workspace/`
-- Example: `/workspace/results.csv`
-- Agents NEVER see real filesystem paths
-
-**Host Paths (Server Reality):**
-- Real filesystem locations
-- Example: `/data/workspaces/user123/session456/results.csv`
-- Pattern: `$DATA_DIR/workspaces/$user_id/$session_id/`
-
-**Path Conversion Pattern:**
-```python
-# Agent provides sandbox path
-agent_path = "/workspace/result.csv"
-
-# Convert to host path for file operations
-host_path = container_to_host_path(PurePosixPath(agent_path), ctx)
-# Returns: PosixPath('/data/workspaces/user123/session456/result.csv')
-
-# Convert back for returning to agent
-sandbox_path = host_to_container_path(host_path)
-# Returns: '/workspace/result.csv'
-```
-
-### 3.2 Session Isolation
-
-Each user/session has isolated workspace preventing cross-user data access:
-
-```
-/data/workspaces/
-|-- user_id_1/
-|   |-- session_id_a/
-|   `-- session_id_b/
-`-- user_id_2/
-    `-- session_id_c/
-```
-
-**User/Session Retrieval:**
-```python
-user_id = get_user_id_from_request()
-session_id = get_session_id_from_request()
-```
-
-Default values (`default_user`, `default_session`) for testing only, not production.
-
-## 4. Tool Implementation Patterns
-
-### 4.1 Simple Tools
-
-Direct input/output for small results:
-
-```python
-@mcp.tool
-async def add(a: int, b: int) -> int:
-    """Adds two integers."""
-    return a + b
-```
-
-**Characteristics:**
-- Type hints on all parameters
-- Clear docstrings
-- Return values directly
-- No context needed
-
-### 4.2 Large Data Tools
-
-Save results to files, return paths:
-
-```python
-@mcp.tool
-async def query_database(sql: str, output_file: str, ctx: Context) -> str:
-    """Execute query and save results."""
-    # Generate large result
-    df = execute_query(sql)
-
-    # Convert sandbox path to host path
-    host_path = container_to_host_path(PurePosixPath(output_file), ctx)
-
-    # Save to file
-    df.to_csv(host_path, index=False)
-
-    # Return sandbox path + preview
-    preview = df.head().to_csv(index=False)
-    return f"Result in '{output_file}'\nPreview:\n{preview}"
-```
-
-**Key Requirements:**
-- MUST save to file using `output_file` parameter
-- MUST convert paths using `container_to_host_path()`
-- MUST return sandbox path, NOT host path
-- SHOULD include preview/summary
-
-### 4.3 Context-Aware Tools
-
-Use context for state, progress, messages:
-
-```python
-@mcp.tool
-async def process_data(input: str, ctx: Context) -> str:
-    """Process with state tracking."""
-    # Get/set state
-    data = ctx.get_state("my_data")
-    ctx.set_state("my_data", updated_data)
-
-    # Send messages
-    await ctx.info("Starting process...")
-
-    # Report progress
-    for i in range(total):
-        await ctx.report_progress(progress=i+1, total=total)
-
-    return result
-```
-
-**Context parameter:**
-- DO NOT document `ctx: Context` in docstring (framework injects it)
-- Use for state: `get_state()`, `set_state()`
-- Use for messages: `await info()`
-- Use for progress: `await report_progress()`
-
-### 4.4 Private Data Tools
-
-Flag sensitive data for compliance:
-
-```python
-@mcp.tool
-async def query_patient_data(sql: str, output_file: str, ctx: Context) -> str:
-    """Query patient database."""
-    # Query and save
-    df = query_database(sql)
-    host_path = container_to_host_path(PurePosixPath(output_file), ctx)
-    df.to_csv(host_path, index=False)
-
-    # Flag as private
-    PrivateData(ctx).add_private_dataset(output_file)
-
-    return f"Result in '{output_file}'"
-```
-
-**Requirements:**
-- Follow all large data guidelines
-- MUST flag with `PrivateData(ctx).add_private_dataset()`
-- Workspace isolation provides data protection
-
-### 4.5 Sandboxed Tools
-
-Execute untrusted code with bubblewrap isolation:
-
-```python
-def execute_sandboxed(workspace_path: str, command: str) -> dict:
-    """Execute command in sandbox."""
-    bwrap_cmd = [
-        "bwrap",
-        "--unshare-all",              # Isolate all namespaces
-        "--cap-drop", "ALL",           # Drop capabilities
-        "--uid", "1000",               # Non-root
-        "--gid", "1000",
-        "--tmpfs", "/",                # Fake root (discarded)
-        "--ro-bind", "/bin", "/bin",   # Read-only system
-        "--ro-bind", "/lib", "/lib",
-        "--ro-bind", "/usr", "/usr",
-        "--bind", workspace_path, "/data",  # Read-write workspace
-        "--chdir", "/data",
-        "/bin/sh", "-c", command
-    ]
-
-    result = subprocess.run(bwrap_cmd, capture_output=True, timeout=30)
-    return {"stdout": result.stdout, "exit_code": result.returncode}
-```
-
-**Requirements:**
-- Docker compose needs security options:
-```yaml
-security_opt:
-  - seccomp:unconfined
-  - apparmor:unconfined
-```
-
-## 5. Error Handling Strategy
-
-### 5.1 Two-Tier Exception Model
-
-**Retryable Errors (AixToolError):**
-- Input validation failures
-- User-correctable errors
-- LLM can fix and retry
-
-**Code Errors (Standard Exceptions):**
-- Bugs requiring developer attention
-- Should propagate naturally
-- Never caught and converted
-
-### 5.2 Error Pattern
-
-```python
-@mcp.tool
-async def process(name: str) -> str:
-    """Process with validation."""
-    # Retryable - LLM can fix
-    if not name:
-        raise AixToolError("Name cannot be empty")
-
-    # Code errors - let propagate
-    df = pd.read_csv(file_path)      # FileNotFoundError
-    result = data['key']              # KeyError
-
-    return result
-```
-
-### 5.3 Logging Behavior
-
-**Middleware automatically logs:**
-- `AixToolError` - WARNING level, short message
-- Other exceptions - ERROR level, full stack trace
-- Each line prefixed with `session_id`
-
-### 5.4 Anti-Pattern
-
-NEVER wrap entire tool in try/except:
-
-```python
-# WRONG - hides bugs
-try:
-    # entire tool code
-except Exception as e:
-    raise AixToolError(str(e))
-```
-
-## 6. Middleware Stack
-
-### 6.1 Default Middleware
-
-Automatically applied via `create_mcp_server()`:
-
-1. **Authentication** - OAuth2 JWT validation
-2. **Error Handling** - Two-tier exception logging
-3. **Timing** - Request duration tracking
-4. **Token Limiting** - Response truncation
-
-### 6.2 Token Limit Middleware
-
-**Automatic truncation:**
-- Triggers when response exceeds 10,000 tokens
-- Saves full response to `/workspace/full_tool_responses/`
-- Returns truncated preview (first 2000 + last 2000 chars)
-- Async writes avoid blocking
-
-**Opt-out pattern:**
-```python
-from aixtools.mcp import TokenLimitMiddleware, get_default_middleware
-
-mcp = create_mcp_server(
-    name="My Server",
-    middleware=[m for m in get_default_middleware()
-                if not isinstance(m, TokenLimitMiddleware)]
-)
-```
-
-**When to opt-out:**
-- File read/edit tools needing complete contents
-- Structured data requiring full parsing
-- Code generation needing completeness
-
-## 7. Authentication and Authorization
-
-### 7.1 OAuth2 JWT Flow
-
-**Azure EntraID integration:**
-```
-Client -> JWT token in Authorization header
-   |
-   v
-Middleware validates token against EntraID
-   |
-   v
-Check tenant ID, audience, scope, group membership
-   |
-   v
-Extract user_id and session_id
-```
-
-**Environment Configuration:**
-- `APP_TENANT_ID` - Azure AD tenant
-- `APP_API_ID` - Application ID URI
-- `APP_DEFAULT_SCOPE` - JWT scope
-- `APP_AUTHORIZED_GROUPS` - Allowed group GUIDs
-
-**Development bypass:**
-```bash
-SKIP_MCP_AUTHORIZATION=true
-```
-
-Never use in production.
-
-## 8. Docker Architecture
-
-### 8.1 Service Hierarchy
-
-```
-mcp-base-data          # Defines /data volume
-    |
-    v
-mcp-base               # Standard service with auth
-    |
-    +-> mcp-base-aws       # Adds AWS credentials
-    |       |
-    |       v
-    |   mcp-base-vault     # Adds Vault integration
-```
-
-### 8.2 Base Service Configuration
-
-```yaml
-mcp-base:
-  extends: mcp-base-data
-  environment:
-    - APP_TENANT_ID
-    - APP_AUTHORIZED_GROUPS
-    - SKIP_MCP_AUTHORIZATION
-  labels:
-    # Path routing
-    - traefik.http.routers.service.rule=PathPrefix(/service/)
-    - traefik.http.middlewares.service-strip.stripprefix.prefixes=/service
-    # OAuth well-known routing
-    - traefik.http.routers.service-opr.rule=PathPrefix(/.well-known/oauth-protected-resource/service/)
-```
-
-### 8.3 Development Mode
-
-**File watching:**
-```yaml
-develop:
-  watch:
-    - action: sync+restart
-      path: ./mcp_module/
-      target: /app/mcp_module/
-    - action: sync+restart
-      path: ./.env
-      target: /app/.env
-```
-
-**Usage:**
-```bash
-docker compose up --watch
-```
-
-Auto-syncs changes and restarts service.
-
-### 8.4 Build Optimization
-
-**Layer caching:**
-```dockerfile
-RUN --mount=type=cache,target=/home/mcp_user/.cache/uv \
-    uv sync
-```
-
-**Strategy:**
-- Install dependencies before copying code
-- Leverage BuildKit cache mounts
-- Use `UV_LINK_MODE=copy` for consistency
-
-## 9. Docker Base Images
-
-### 9.1 Image Hierarchy
-
-**mcp-base:**
-- Ubuntu with uv, git, curl
-- Zscaler certificate configuration
-- Non-root user setup (mcp_user)
-
-**mcp-base-datascience:**
-- Extends mcp-base
-- pandas, numpy, matplotlib, scikit-learn
-- lightgbm, xgboost, shap
-
-### 9.2 Certificate Handling
-
-Custom certificates (Zscaler):
-```bash
-cat certs/custom_cert.crt >> .venv/lib/python*/site-packages/certifi/cacert.pem
-```
-
-Enables corporate proxy communication.
-
-## 10. Script Architecture
-
-### 10.1 Configuration Pattern
-
-**config.sh - Single source of truth:**
-```bash
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-export PROJECT_DIR="$SCRIPT_DIR/.."
-export DATA_DIR="$PROJECT_DIR/data"
-export SOURCE_DIR="$(cd $PROJECT_DIR/mcp_* ; pwd)"
-
-# Activate venv
-source "$PROJECT_DIR/.venv/bin/activate"
-
-# Load and export .env
-set -a
-source "$PROJECT_DIR/.env"
-set +a
-```
-
-**All scripts source config.sh:**
-```bash
-#!/bin/bash -eu
-set -o pipefail
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/config.sh"
-
-# Script logic here
-```
-
-### 10.2 Standard Scripts
-
-**install.sh:**
-- Create virtual environment with uv
-- Install dependencies
-- Install custom certificates
-- Create .env from template
-- Run db_download.sh and db_ingest.sh if present
-
-**run.sh:**
-- Default: Run FastMCP server
-- `dev`: Run with MCP Inspector
-- `watch`: Run with auto-reload
-
-**test.sh:**
-- Run all tests with coverage
-- Support specific test files/functions
-- Uses pytest
-
-**lint.sh:**
-- Check formatting and style
-- `--fix`: Auto-fix issues
-- Uses ruff
-
-## 11. Tool Return Value Strategy
-
-### 11.1 Two-Channel Output
-
-**Prompt Values:**
-- Small results (text, numbers, short JSON)
-- Summaries and previews
-- File paths (sandbox format)
-- Auto-truncated if exceeds token limit
-
-**Files:**
-- Large datasets (CSV, JSON, Parquet)
-- Images, plots, visualizations
-- Full command outputs
-- Path returned in prompt value
-
-### 11.2 Large Data Pattern
-
-```python
-# Generate data
-df = query_large_dataset(sql)
-
-# Convert and save
-result_file = container_to_host_path(PurePosixPath(output_file), ctx)
-df.to_csv(result_file, index=False)
-
-# Return path + preview
-preview = df.head(10).to_string()
-return f"Saved {len(df)} rows to '{output_file}'\n\nPreview:\n{preview}"
-```
-
-## 12. Database Guidelines
-
-### 12.1 Local Database Pattern
-
-For MCP servers with local databases (ClinicalTrials, OpenFDA):
-
-**db_download.sh:**
-- Downloads raw data from public sources
-- Supports `--fast` flag for preprocessed data
-
-**db_ingest.sh:**
-- Ingests data into local database
-- Supports `--fast` flag for quick setup
-
-**install.sh integration:**
-```bash
-if [ -f "$SCRIPT_DIR/db_download.sh" ]; then
-    bash "$SCRIPT_DIR/db_download.sh"
-fi
-
-if [ -f "$SCRIPT_DIR/db_ingest.sh" ]; then
-    bash "$SCRIPT_DIR/db_ingest.sh"
-fi
-```
-
-### 12.2 Fast Mode
-
-Development mode for quick iteration:
-```bash
-./scripts/db_download.sh --fast
-./scripts/db_ingest.sh --fast
-```
-
-Uses preprocessed data instead of full download/processing.
-
-## 13. Testing and Debugging
-
-### 13.1 In-Memory Client
-
-For unit tests and notebooks:
-```python
-from fastmcp import Client
-from mcp_template.server import mcp
-
-# Create in-memory client
-client = Client(mcp)
-
-# Direct tool invocation
-result = await client.call_tool("add", {"a": 5, "b": 3})
-```
-
-No server setup required.
-
-### 13.2 Test Structure
-
-```
-tests/
-|-- __init__.py
-|-- test_simple_tools.py
-|-- test_large_data.py
-`-- data/
-    `-- test_data.csv
-```
-
-**Test execution:**
-```bash
-./scripts/test.sh                           # All tests
-./scripts/test.sh tests/test_simple.py      # Specific file
-./scripts/test.sh tests/test_simple.py::test_add  # Specific test
-```
-
-## 14. Naming Conventions
-
-**Projects:**
-- Use dashes: `mcp-sandbox`, `mcp-repl`, `mcp-playwright`
-
-**Source directories:**
-- Use underscores matching project: `mcp-sandbox/mcp_sandbox/`
-
-**Pattern:**
-```
-mcp-my-service/
-|-- mcp_my_service/
-|   |-- server.py
-|   |-- main.py
-|   `-- tools/
-|-- scripts/
-|-- tests/
-`-- docker-compose.yml
-```
-
-## 15. Key Principles
-
-### 15.1 Separation of Concerns
-
-MCP servers should focus on single functionality:
-- Database query tool - not mixed with file processing
-- Sandbox execution - not mixed with API calls
-- Follow Unix philosophy: do one thing well
-
-### 15.2 Security First
-
-- Workspace isolation prevents cross-user access
-- OAuth2 JWT for authentication
-- Bubblewrap sandboxing for untrusted code
-- Private data flagging for compliance
-- Never expose real filesystem paths to agents
-
-### 15.3 Error Transparency
-
-- Distinguish retryable vs code errors
-- Detailed logging with session IDs
-- Clear error messages for LLM recovery
-- Full stack traces for developers
-
-### 15.4 Agent Experience
-
-- Agents work with simple `/workspace/` paths
-- Large results automatically handled
-- Progress reporting for long operations
-- Token limiting prevents context overflow
-
-## 16. Common Patterns Summary
-
-### 16.1 Path Handling
-```python
-# Agent path -> Host path
-host_path = container_to_host_path(PurePosixPath(agent_path), ctx)
-
-# Host path -> Agent path
-agent_path = host_to_container_path(host_path)
-```
-
-### 16.2 State Management
-```python
-data = ctx.get_state("key")
-ctx.set_state("key", updated_data)
-```
-
-### 16.3 Progress Reporting
-```python
-await ctx.info("Starting task...")
-await ctx.report_progress(progress=current, total=total)
-```
-
-### 16.4 Error Handling
-```python
-# Retryable
-if invalid_input:
-    raise AixToolError("Clear message for LLM")
-
-# Code errors - let propagate
-df = pd.read_csv(path)  # FileNotFoundError
-```
-
-### 16.5 Large Data
-```python
-host_path = container_to_host_path(PurePosixPath(output_file), ctx)
-df.to_csv(host_path)
-preview = df.head().to_string()
-return f"Saved to '{output_file}'\n{preview}"
-```
-
-### 16.6 Private Data
-```python
-host_path = container_to_host_path(PurePosixPath(output_file), ctx)
-df.to_csv(host_path)
-PrivateData(ctx).add_private_dataset(output_file)
-return f"Saved to '{output_file}'"
-```
-
-### 16.7 Middleware Customization
-```python
-mcp = create_mcp_server(
-    name="My Server",
-    middleware=[m for m in get_default_middleware()
-                if not isinstance(m, TokenLimitMiddleware)]
-)
-```
-
-This design document captures the essential patterns and architecture for building production-grade MCP servers with proper isolation, security, and error handling.
-
-\newpage
-
-# A2A: Model
-
-## Introduction
-
-A2A (Agent2Agent) is an application-layer protocol that standardizes how autonomous agents discover each other, exchange messages, and coordinate work as tasks over HTTP(S), enabling cross-framework and cross-organization interoperability.
-
-### Historical perspective
-
-The idea of agents communicating through standardized messages predates LLM-based systems by decades. In the early 1990s, distributed AI research emphasized interoperability among heterogeneous agents via explicit communication “performatives” rather than bespoke point-to-point integrations. KQML is a canonical artifact of this period: a message language/protocol intended to let independent systems query, inform, and coordinate knowledge exchange. In the late 1990s, efforts such as FIPA ACL pushed further toward standardizing agent communication semantics and interaction patterns, aiming to make “agent societies” feasible across implementations.
-
-Many of these early standards were conceptually influential but operationally heavy: they assumed relatively structured symbolic agents, and they predated today’s ubiquitous web stack. The 2020s reintroduced the need for inter-agent interoperability under different constraints: LLM agents are often deployed as services, they must cooperate across vendor boundaries, and they increasingly manage long-running tasks and artifacts. Modern web primitives (HTTP(S), JSON serialization) and lightweight RPC framing (JSON-RPC 2.0) make it practical to standardize inter-agent communication without requiring a shared runtime.
-
-A2A is best read as a pragmatic continuation of this line of work: instead of attempting to standardize internal reasoning or cognitive semantics, it standardizes the *external contract* for discovery, task-oriented interaction, and delivery of results.
-
-### What is A2A
-
-A2A defines how one agent (a “client agent”) communicates with another agent (a “remote agent”) over HTTP(S), using JSON-RPC 2.0 envelopes. The remote agent is intentionally treated as opaque: A2A does not prescribe how the remote agent plans, calls tools, or maintains internal state. What it *does* prescribe is how the client creates and advances work, and how the remote agent reports progress and returns outputs in a predictable, interoperable format.
-
-This choice makes A2A suitable for delegation patterns that show up in real systems. A coordinator agent can discover specialized agents (for billing, travel planning, literature review, data cleaning), select one based on declared capabilities, and then initiate and track a task. The client doesn’t need a shared framework with the remote agent; it needs only the protocol contract.
-
-The protocol’s use of JSON-RPC is deliberately conservative. JSON-RPC provides the framing for request/response correlation (IDs), method invocation, and standardized error handling, while A2A defines the domain concepts on top: agent metadata, tasks, message structures, and artifacts.
-
-### Key concepts
-
-A2A’s main abstractions are designed to match how multi-agent work actually unfolds over time.
-
-An **Agent Card** is the discovery and capability surface: a machine-readable document published by a remote agent that describes who it is, where its endpoint is, which authentication schemes it supports, and what capabilities and skills it claims. This supports “metadata-first” routing and policy checks before any work begins.
-
-A **Task** is a stateful unit of work with its own identity and lifecycle. Tasks exist to support multi-turn collaboration and long-running operations, so an interaction does not have to fit into one synchronous request/response. Instead, the client can start a task, send additional messages, and retrieve updates or results later.
-
-**Messages** are how conversational turns are exchanged, and they are structured as **parts** so that text, structured data, and file references can be represented consistently. **Artifacts** are the concrete outputs attached to a task—documents, structured results, or other deliverables that can be stored, forwarded, audited, or fed into downstream workflows.
-
-A useful mental model is: **Agent Card** answers “who are you and what can you do?”, **Task** answers “what unit of work are we coordinating?”, **Messages** carry the interaction, and **Artifacts** are the outputs worth persisting.
-
-### Agent discovery
-
-A2A discovery is built around retrieving the Agent Card. A common mechanism is a well-known URL under the agent’s domain (aligned with established “well-known URI” conventions), allowing clients to probe domains deterministically. Discovery is intentionally explicit: clients can validate capabilities, authentication requirements, and declared skills before initiating a task, and systems can log discovery metadata for audit and governance.
-
-Conceptual snippet:
-
-```python
-import requests
-
-def discover_agent_card(domain: str) -> dict:
-    url = f"https://{domain}/.well-known/agent-card.json"
-    r = requests.get(url, timeout=5)
-    r.raise_for_status()
-    return r.json()
-
-card = discover_agent_card("billing.example.com")
-# Use: card["skills"], card["authentication"], card["capabilities"], card["url"]
-```
-
-This “metadata-first” approach matters operationally: it enables capability matching, policy gating (e.g., only delegate to agents with certain auth), and safer orchestration decisions *before* sending sensitive task content.
-
-### A2A and MCP
-
-A2A and MCP are complementary layers rather than competing protocols. MCP standardizes how agents interact with tools and resources (structured inputs/outputs, tool schemas, permission boundaries). A2A standardizes how agents interact with *other agents* as autonomous peers (discovery, task lifecycle, messaging, artifact delivery).
-
-A common composition is **A2A for delegation, MCP for tool-use**. A coordinator uses A2A to delegate a task to a specialist agent. The specialist agent, while executing the task, may rely on MCP internally to access databases, file systems, execution sandboxes, or enterprise services. When the specialist completes work (or makes partial progress), it returns results back to the coordinator as A2A messages and artifacts. This separation keeps each protocol focused: A2A doesn’t need to understand tool schemas, and MCP doesn’t need to standardize multi-agent collaboration.
-
-### Touchpoints from Pydantic-ai and FastMCP ecosystems
-
-The Pydantic ecosystem documents A2A as a practical interoperability layer and provides Python tooling to expose agents as A2A servers and to build clients that can discover agents, initiate tasks, and consume artifacts—without requiring the agent’s internal design to be rewritten around protocol internals. The emphasis is on preserving your existing agent architecture while making the boundary interoperable.
-
-FastMCP, meanwhile, is often used as a pragmatic deployment unit for MCP tool servers. In practice, this leads to a common layered architecture: A2A connects agents across boundaries; MCP connects agents to tools/resources; and FastMCP-style servers host the tool endpoints that agents call. Bridging components can translate between A2A and MCP where needed (for example, to let an A2A-facing agent expose or consume MCP-backed capabilities behind the scenes).
-
-A minimal task invocation at the wire level (illustrative, independent of any specific framework) looks like this:
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": "req_123",
-  "method": "tasks/send",
-  "params": {
-    "message": {
-      "role": "user",
-      "parts": [
-        { "kind": "text", "text": "Reconcile invoice #4812 and explain discrepancies." }
-      ]
-    }
-  }
-}
-```
-
-The important point is not the method name per se, but the design: JSON-RPC provides the envelope; A2A defines the task/message/artifact semantics; and implementations can remain diverse behind the boundary.
-
-
-## References
-
-1. Tim Finin, Rich Fritzson, Don McKay, Robin McEntire. *KQML – A Language and Protocol for Knowledge and Information Exchange*. AAAI Workshop, 1994. [https://www.aaai.org/Papers/Workshops/1994/WS-94-03/WS94-03-003.pdf](https://www.aaai.org/Papers/Workshops/1994/WS-94-03/WS94-03-003.pdf)
-2. KQML Advisory Group. *An Overview of KQML: A Knowledge Query and Manipulation Language*. Technical report, 1992. (Commonly circulated via early KQML/UMBC technical report archives.)
-3. FIPA. *FIPA ACL Message Structure Specification*. FIPA, 2002. [https://www.fipa.org/specs/fipa00061/SC00061G.html](https://www.fipa.org/specs/fipa00061/SC00061G.html)
-4. JSON-RPC Working Group. *JSON-RPC 2.0 Specification*. jsonrpc.org, 2010. [https://www.jsonrpc.org/specification](https://www.jsonrpc.org/specification)
-5. Pydantic. *A2A (Agent2Agent)*. ai.pydantic.dev, (latest). [https://ai.pydantic.dev/a2a/](https://ai.pydantic.dev/a2a/)
-6. A2A Protocol. *What is A2A?* a2a-protocol.org, (latest). [https://a2a-protocol.org/latest/topics/what-is-a2a/](https://a2a-protocol.org/latest/topics/what-is-a2a/)
-7. A2A Protocol. *Key Concepts*. a2a-protocol.org, (latest). [https://a2a-protocol.org/latest/topics/key-concepts/](https://a2a-protocol.org/latest/topics/key-concepts/)
-8. A2A Protocol. *Agent Discovery*. a2a-protocol.org, (latest). [https://a2a-protocol.org/latest/topics/agent-discovery/](https://a2a-protocol.org/latest/topics/agent-discovery/)
-9. A2A Protocol. *A2A and MCP*. a2a-protocol.org, (latest). [https://a2a-protocol.org/latest/topics/a2a-and-mcp/](https://a2a-protocol.org/latest/topics/a2a-and-mcp/)
-
-
-
-## Task Lifecycle in Agent-to-Agent (A2A) Systems
-
-In A2A systems, a task is a durable, observable unit of work whose lifecycle is decoupled from synchronous execution through streaming, polling, notifications, and explicit coordination components.
-
-
-### Asynchronous Execution as a First-Class Concept
-
-A2A tasks are explicitly designed to be asynchronous. Once a task is created, the initiating agent does not assume immediate completion. Instead, progress and results are exposed incrementally through well-defined observation mechanisms. This makes tasks suitable for long-running reasoning, external tool calls, delegation chains, and human approval steps.
-
-Asynchrony in A2A is not an implementation detail but a protocol-level guarantee: every task can be observed, resumed, or completed independently of the original request–response channel.
-
-
-### Streaming Task Updates
-
-Streaming provides a push-based mechanism for observing task progress as it happens. Rather than waiting for a task to complete, an agent may subscribe to a stream of events emitted by the executing agent. These events can include state transitions, partial outputs, logs, or structured intermediate results.
-
-Conceptually, streaming turns a task into an event source. Each emitted event is associated with the task identifier, preserving causal ordering and traceability across agents.
-
-```python
-# Conceptual structure of a streamed task update
-event = {
-    "task_id": "a2a-task-42",
-    "event_type": "progress",
-    "payload": {"stage": "analysis", "percent": 60},
-    "timestamp": now(),
-}
-```
-
-This model aligns with modern server-sent events and async streaming patterns. In practice, agent runtimes inspired by Pydantic AI expose streaming as an optional observation channel, allowing clients to switch seamlessly between synchronous completion and live progress reporting.
-
-
-### Polling as a Baseline Observation Mechanism
-
-Polling remains a core part of the A2A task model. Any agent can query the current state of a task at arbitrary times using its task identifier. Polling is intentionally simple and robust, making it suitable for environments where streaming connections are not feasible or reliable.
-
-Polling provides a consistent fallback mechanism that guarantees eventual visibility of task outcomes, even in the presence of network interruptions or restarts.
-
-```python
-# Conceptual polling response
-status = {
-    "task_id": "a2a-task-42",
-    "state": "running",
-    "last_update": "2026-01-10T10:15:00Z",
-}
-```
-
-From a design perspective, streaming and polling are complementary rather than competing approaches. Streaming optimizes for latency and responsiveness, while polling guarantees durability and simplicity.
-
-
-### Push Notifications and External Callbacks
-
-Push notifications extend the task model beyond agent-to-agent communication. Instead of requiring an agent to actively poll or maintain a stream, a task can be configured to notify external systems when specific conditions are met, such as completion or failure.
-
-These notifications are typically delivered via HTTP callbacks or messaging systems and are defined declaratively as part of task configuration.
-
-```python
-# Conceptual push notification configuration
-notification = {
-    "on": ["completed", "failed"],
-    "target": "https://example.com/task-callback",
-}
-```
-
-This pattern is especially relevant in enterprise environments, where tasks may need to trigger downstream workflows, update dashboards, or notify humans without tight coupling to the agent runtime.
-
-
-### Task Storage and Persistence
-
-Durability is a defining property of A2A tasks. Tasks are expected to outlive individual processes, network connections, and even agent restarts. To support this, task state is persisted in a storage layer that records inputs, state transitions, artifacts, and outputs.
-
-Persistent storage enables several critical behaviors: recovery after failure, replay of task history for auditing, and coordination across multiple workers. It also enforces the principle that a task identifier is the single source of truth for the unit of work.
-
-Agent runtimes built around A2A concepts treat storage as an explicit abstraction rather than an internal cache, ensuring that task state can be shared, inspected, or migrated if needed.
-
-
-### Workers as Task Executors
-
-A worker is the execution component responsible for advancing tasks through their lifecycle. Workers pick up tasks from storage or a coordination layer, perform the required reasoning or tool invocation, and emit updates as execution progresses.
-
-Importantly, workers are stateless with respect to task identity. All durable state is stored externally, which allows workers to scale horizontally, restart safely, and cooperate on large task volumes.
-
-```python
-# Conceptual worker loop
-while True:
-    task = next_runnable_task()
-    execute_step(task)
-    persist_update(task)
-```
-
-This separation mirrors established distributed systems patterns and is directly reflected in FastMCP-style agent servers, where execution logic is isolated from task persistence and coordination.
-
-
-### The Task Broker and Coordination
-
-The task broker acts as the coordination hub between task producers and workers. Its responsibilities include routing tasks to available workers, enforcing concurrency limits, and ensuring fair scheduling across agents or tenants.
-
-In multi-agent systems, the broker becomes essential for preventing overload and for managing large numbers of concurrent tasks. It also provides a natural integration point for policies such as prioritization, rate limiting, or isolation between independent workflows.
-
-Conceptually, the broker decouples *who wants work done* from *who is currently able to do it*, enabling flexible deployment and scaling strategies.
-
-
-### Putting It All Together
-
-Streaming, polling, push notifications, storage, workers, and brokers form a coherent execution model around the A2A task abstraction. Tasks are created once, stored durably, executed by interchangeable workers, coordinated by a broker, and observed through multiple complementary channels. This design allows A2A systems to support deep agent collaboration, long-running workflows, and enterprise-grade reliability without sacrificing transparency or control.
-
-
-## References
-
-1. A2A Protocol Authors. *Streaming and Async Execution*. A2A Protocol Documentation, 2024. [https://a2a-protocol.org/latest/topics/streaming-and-async/](https://a2a-protocol.org/latest/topics/streaming-and-async/)
-2. A2A Protocol Authors. *Life of a Task*. A2A Protocol Documentation, 2024. [https://a2a-protocol.org/latest/topics/life-of-a-task/](https://a2a-protocol.org/latest/topics/life-of-a-task/)
-3. Pydantic AI Team. *A2A Concepts and APIs*. Pydantic-AI Documentation, 2024. [https://ai.pydantic.dev/a2a/](https://ai.pydantic.dev/a2a/)
-4. Pydantic AI Team. *Push Notifications, Storage, Workers, and Brokers*. Pydantic-AI API Reference, 2024. [https://ai.pydantic.dev/api/fasta2a/](https://ai.pydantic.dev/api/fasta2a/)
-5. FastMCP Contributors. *Asynchronous Agents and Long-Running Tasks*. FastMCP Documentation, 2024. [https://gofastmcp.com/](https://gofastmcp.com/)
-
-
-## A2A in Detail
-
-A2A is a protocol-level contract for agent interoperability: a small set of operations plus a strict data model that lets independently-built agents exchange messages, manage long-running tasks, and deliver incremental updates over multiple delivery mechanisms. ([A2A Protocol][60])
-
-### What “the spec” really is: operations + data model + bindings
-
-At the lowest level, A2A is defined by (1) a core set of operations (send, stream, get/list/cancel tasks, subscribe, push-config management, extended agent card) and (2) a constrained object model (Task, Message, Part, Artifact, plus streaming event envelopes). ([A2A Protocol][2])
-
-The specification then defines how those operations and objects map onto concrete transports (“protocol bindings”), notably JSON-RPC over HTTP(S), gRPC, and an HTTP+JSON/REST-style mapping. ([A2A Protocol][60])
-
-A key design point is that the same *logical* operations are intended to be functionally equivalent across bindings; the binding decides *how* parameters and service-wide headers/metadata are carried, but not what they mean. ([A2A Protocol][60])
-
-
-### Operation surface and execution semantics
-
-The “A2AService” operation set is designed around a task-centric model. Even if you initiate interaction by sending a message, the server may respond by creating/continuing a task, and all subsequent status and artifacts hang off that task identity. The specification’s “SendMessageRequest” carries the client message plus an optional configuration block and optional metadata. ([A2A Protocol][60])
-
-#### `SendMessage` and the `SendMessageConfiguration` contract
-
-`SendMessageConfiguration` is where most of the “knobs” live:
-
-* `acceptedOutputModes`: a list of media types the client is willing to receive in response *parts* (for both messages and artifacts). Servers **should** tailor outputs to these modes. ([A2A Protocol][60])
-* `historyLength`: an optional upper bound on how many recent messages of task history should be returned. The semantics are shared across operations: unset means server default; `0` means omit history; `>0` means cap to N most recent. ([A2A Protocol][60])
-* `blocking`: when `true`, the server must wait until the task is terminal and return the final task state; when `false`, return immediately after task creation with an in-progress state, and the caller must obtain progress via polling/subscription/push. ([A2A Protocol][60])
-* `pushNotificationConfig`: requests server-initiated updates via webhook delivery (covered below). ([A2A Protocol][60])
-
-This configuration block is what makes A2A “async-first” without making simple request/response impossible: a client can force synchronous completion with `blocking: true`, but the spec treats streaming and async delivery as first-class rather than bolt-ons. ([A2A Protocol][60])
-
-#### Blocking vs non-blocking as a protocol-level contract (not an implementation detail)
-
-The `blocking` flag is normative and affects correctness expectations:
-
-* In blocking mode, the server **MUST** wait for terminal states (`completed`, `failed`, `cancelled`, `rejected`) and include the final task state with artifacts/status. ([A2A Protocol][60])
-* In non-blocking mode, the server **MUST** return right after task creation and expects the client to continue via `GetTask`, subscription, or push. ([A2A Protocol][60])
-
-This matters because it pushes queueing/execution details out of band: even if the server’s internal worker system is distributed, the *observable* behavior must match these semantics.
-
-
-### The protocol data model: the “shape” constraints that make interoperability work
-
-A2A’s objects include both “business” fields (task IDs, status) and structural invariants (“exactly one of these fields must be present”) that keep message parsing unambiguous across languages.
-
-#### Message identity and correlation
-
-A `Message` is a unit of communication between client and server. The spec requires `messageId` and makes it creator-generated. This is not cosmetic: the spec explicitly allows Send Message operations to be idempotent and calls out using `messageId` to detect duplicates. ([A2A Protocol][60])
-
-A message may include `contextId` and/or `taskId`:
-
-* For server messages: `contextId` must be present; `taskId` is present only if a task was created.
-* For client messages: both are optional, but if both are present they must match the task’s context; if only `taskId` is provided, the server infers `contextId`. ([A2A Protocol][60])
-
-This rule is critical for multi-turn clients: it allows clients to “anchor” continuation on a known task without re-sending full conversational context.
-
-#### Parts: a strict “oneof” content container
-
-A `Part` is the atom of content in both messages and artifacts, and it must contain exactly one of `text`, `file`, or `data`. ([A2A Protocol][60])
-
-That constraint enables predictable parsing and transformation pipelines:
-
-* text → display or feed into downstream LLM steps
-* file → fetch via URI or decode bytes, respecting `mediaType` and optional `name`
-* data → structured JSON object for machine-to-machine exchange
-
-File parts have their own “oneof”: exactly one of `fileWithUri` or `fileWithBytes`. The spec also frames the intended usage: prefer bytes for small payloads; prefer URI for large payloads. ([A2A Protocol][60])
-
-#### Artifacts: outputs as first-class objects
-
-Artifacts represent task outputs and include an `artifactId` that must be unique at least within a task, plus a list of parts (must contain at least one). ([A2A Protocol][60])
-
-Treating outputs as artifacts rather than “just text” is what allows A2A to cover large files, structured results, and incremental generation in a uniform way.
-
-#### Task states and task status updates
-
-Tasks have states; the spec enumerates states including working, input-required, cancelled (terminal), rejected (terminal), and auth-required (special: not terminal and not “interrupted” in the same way as input-required). ([A2A Protocol][60])
-
-A task’s status container includes the current state, optional associated message, and timestamp. ([A2A Protocol][60])
-
-
-### Streaming updates: the `StreamResponse` envelope and event types
-
-A2A streaming is not “stream arbitrary tokens” by default; it streams *typed updates* wrapped in a `StreamResponse` envelope. The spec is explicit: a `StreamResponse` must contain exactly one of `task`, `message`, `statusUpdate`, or `artifactUpdate`. ([A2A Protocol][60])
-
-That invariant matters because it defines how clients must implement event loops: you do not parse “some JSON”; you dispatch on which field is present, and you get strongly-typed behavior.
-
-#### `TaskStatusUpdateEvent`
-
-A status update event includes `taskId`, `contextId`, `status`, and a required boolean `final` that indicates whether this is the final event in the stream for the interaction. ([A2A Protocol][60])
-
-A practical implication is that clients should treat `final=true` as a state machine edge, not merely “stream ended”. The spec describes this as the signal for end-of-updates in the cycle and often subsequent stream close. ([A2A Protocol][62])
-
-#### `TaskArtifactUpdateEvent` and chunked artifact reconstruction
-
-Artifact updates are deltas. Each update carries the artifact plus two key booleans:
-
-* `append`: if true, append content to a previously sent artifact with the same ID
-* `lastChunk`: if true, this is the final chunk of the artifact ([A2A Protocol][60])
-
-This is the protocol’s answer to “how do I stream a large file/structured output?”: the artifact is the stable identity, and the parts are chunked. A client must reconstruct by `(taskId, artifactId)` and apply append semantics to parts.
-
-
-### Push notifications: webhook delivery that reuses the same envelope
-
-Push notifications are not a separate event schema: the spec states that webhook payloads use the same `StreamResponse` format as streaming operations, delivering exactly one of the same event types. ([A2A Protocol][60])
-
-The push payload section is unusually explicit about responsibilities:
-
-* Clients must ACK with 2xx, process idempotently (duplicates may occur), validate task ID, and verify source. ([A2A Protocol][60])
-* Agents must attempt delivery at least once per configured webhook and may retry with exponential backoff; recommended timeouts are 10–30 seconds. ([A2A Protocol][60])
-
-This means production-grade push is *not* “fire and forget”: both sides are expected to implement retry/idempotency logic.
-
-
-### Service parameters, versioning, and extensions: the “horizontal” control plane
-
-A2A separates per-request metadata (arbitrary JSON) from “service parameters” (case-insensitive string keys + string values) whose transmission depends on binding (HTTP headers for HTTP-based bindings, gRPC metadata for gRPC). ([A2A Protocol][60])
-
-Two standard service parameters are called out:
-
-* `A2A-Version`: client’s protocol version; server returns a version-not-supported error if unsupported. ([A2A Protocol][60])
-* `A2A-Extensions`: comma-separated extension URIs the client wants to use. ([A2A Protocol][60])
-
-This is the practical mechanism for incremental evolution: extensions let you strongly-type metadata for specific use cases, while the core stays stable. ([A2A Protocol][60])
-
-
-### Protocol bindings and interface negotiation
-
-Agents advertise one or more supported interfaces. Each `AgentInterface` couples a URL with a `protocolBinding` string; the spec calls out core bindings `JSONRPC`, `GRPC`, and `HTTP+JSON`, while keeping the field open for future bindings. ([A2A Protocol][60])
-
-The ordering of interfaces is meaningful: clients should prefer earlier entries when multiple options are supported. ([A2A Protocol][60])
-
-This makes interoperability practical in heterogeneous environments: a client can pick JSON-RPC for browser-like integrations, gRPC for intra-datacenter low-latency, or HTTP+JSON for simple REST stacks—while preserving the same logical semantics.
-
-
-### Implementation patterns extracted from real server stacks: broker, worker, storage
-
-A typical A2A server splits responsibilities into:
-
-* an HTTP/gRPC ingress layer that validates requests, checks capabilities, and emits protocol-shaped responses;
-* a scheduling component (“broker”) that decides where/how tasks run;
-* one or more workers that execute tasks and emit task operations/updates;
-* a storage layer that persists task state and artifacts for `GetTask`, resubscription, and recovery.
-
-This architecture is explicitly reflected in common A2A server implementations where the HTTP server schedules work via a broker abstraction intended to support both in-process and remote worker setups, and where workers receive task operations from that broker. ([Pydantic AI][63])
-
-The key protocol-driven reason to build it this way is that A2A requires coherent behavior across:
-
-* non-blocking calls (immediate return + later updates),
-* streaming (typed update stream),
-* push (webhook updates), and
-* polling (`GetTask` / `ListTasks`).
-
-You only get correct semantics if task state and artifact state are stored durably enough to be re-served and re-streamed.
-
-
-## Concrete pseudocode: “correct-by-construction” client and server logic
-
-The goal here is not a full implementation, but pseudocode that directly encodes the spec’s invariants (`oneof` objects, `blocking` semantics, chunked artifacts, idempotency, and service parameters).
-
-### Client: send non-blocking, then stream, reconstruct artifacts
-
-```pseudo
-function send_and_stream(agent_url, user_text):
-    msg = {
-      messageId: uuid4(),              // required, creator-generated
-      role: "ROLE_USER",
-      parts: [{ text: user_text }]
-    }
-
-    req = {
-      message: msg,
-      configuration: {
-        acceptedOutputModes: ["text/plain", "application/json"],
-        blocking: false,
-        historyLength: 0
-      }
-    }
-
-    headers = {
-      "A2A-Version": "0.3",            // service parameter (HTTP header in HTTP bindings)
-      "A2A-Extensions": "https://example.com/extensions/citations/v1"
-    }
-
-    // Non-blocking: response may contain a task in working/input_required, etc.
-    resp = POST(agent_url + "/message:send", json=req, headers=headers)
-
-    task_id = resp.task.id   // naming varies by binding, but concept is: you now have a task handle
-
-    // Prefer streaming for realtime updates when available.
-    stream = POST_SSE(agent_url + "/message:stream", json=req, headers=headers)
-
-    artifacts = map<artifactId, ArtifactAccumulator>()
-    terminal_seen = false
-
-    for event in stream:
-        // Each SSE "data" is a StreamResponse with exactly one field set.
-        sr = parse_json(event.data)
-
-        switch which_oneof(sr):         // exactly one of: task|message|statusUpdate|artifactUpdate
-            case "message":
-                render_message(sr.message)
-
-            case "task":
-                // snapshot update; may contain artifacts/history depending on historyLength semantics
-                update_task_cache(sr.task)
-
-            case "statusUpdate":
-                update_task_status(sr.statusUpdate.status)
-                if sr.statusUpdate.final == true:
-                    terminal_seen = is_terminal(sr.statusUpdate.status.state)
-
-            case "artifactUpdate":
-                a = sr.artifactUpdate.artifact
-                acc = artifacts.get_or_create(a.artifactId)
-
-                if sr.artifactUpdate.append == true:
-                    acc.append_parts(a.parts)
-                else:
-                    acc.replace_parts(a.parts)
-
-                if sr.artifactUpdate.lastChunk == true:
-                    finalized = acc.finalize()
-                    persist_artifact(task_id, finalized)
-
-        if terminal_seen:
-            break
-
-    return (task_id, artifacts)
-```
-
-Why this matches the spec:
-
-* It treats `messageId` as required and client-generated. ([A2A Protocol][60])
-* It uses `acceptedOutputModes`, `blocking`, and `historyLength` exactly as defined, including the shared semantics of history length. ([A2A Protocol][60])
-* It dispatches on the `StreamResponse` “exactly one of” invariant and handles status and artifact events accordingly. ([A2A Protocol][60])
-* It reconstructs artifacts using `append` and `lastChunk`. ([A2A Protocol][60])
-
-### Client: idempotent retries using `messageId`
-
-Network retries are inevitable; the spec explicitly allows using `messageId` to detect duplicates for idempotency. ([A2A Protocol][60])
-
-```pseudo
-function send_with_retry(agent_url, msg, cfg):
-    // msg.messageId is stable across retries
-    req = { message: msg, configuration: cfg }
-
-    for attempt in 1..MAX_RETRIES:
-        resp = try POST(agent_url + "/message:send", json=req)
-        if resp.success:
-            return resp
-
-        if resp.error.is_transient:
-            sleep(backoff(attempt))
-            continue
-
-        raise resp.error
-
-// Server side must treat same messageId as duplicate and avoid double-executing.
-```
-
-### Server: request validation that enforces the “oneof” invariants
-
-A2A’s “Part must contain exactly one of text/file/data” is a protocol requirement, so servers should validate it up-front (before dispatching to workers) and return a validation error if violated. ([A2A Protocol][60])
-
-```pseudo
-function validate_message(message):
-    assert message.messageId is not empty
-
-    for part in message.parts:
-        count = (part.text != null) + (part.file != null) + (part.data != null)
-        if count != 1:
-            raise InvalidParams("Part must have exactly one of text|file|data")
-
-        if part.file != null:
-            f = part.file
-            count2 = (f.fileWithUri != null) + (f.fileWithBytes != null)
-            if count2 != 1:
-                raise InvalidParams("FilePart must have exactly one of uri|bytes")
-```
-
-### Server: `blocking` semantics implemented on top of a broker/worker pipeline
-
-In practice, servers implement A2A semantics by scheduling work and then either returning immediately (non-blocking) or awaiting terminal state (blocking). The scheduling abstraction (“broker”) exists precisely to decouple protocol ingress from task execution and allow multi-worker setups. ([Pydantic AI][63])
-
-```pseudo
-function handle_send_message(request, service_params):
-    validate_version(service_params["A2A-Version"])  // VersionNotSupported if invalid
-    validate_message(request.message)
-
-    // Optional: enforce extension negotiation based on A2A-Extensions header
-    extensions = parse_csv(service_params.get("A2A-Extensions", ""))
-
-    // Deduplicate by messageId to achieve idempotency (recommended).
-    if storage.has_seen_message_id(request.message.messageId):
-        return storage.get_previous_response(request.message.messageId)
-
-    task = task_manager.create_or_resume_task(request.message)
-
-    broker.enqueue(task.id, request.message, request.metadata)  // schedules work
-
-    if request.configuration.blocking == true:
-        task = wait_until_terminal(task.id)      // completed/failed/cancelled/rejected
-        resp = { task: task }
-    else:
-        resp = { task: task }                    // in-progress snapshot
-
-    storage.record_message_id_response(request.message.messageId, resp)
-    return resp
-```
-
-This aligns with the normative behavior: non-blocking returns after task creation; blocking waits for terminal state. ([A2A Protocol][60])
-
-### Server: emitting streaming updates with `StreamResponse`
-
-Streaming endpoints emit a stream of `StreamResponse` objects where exactly one field is set. ([A2A Protocol][60])
-
-```pseudo
-function stream_task_updates(task_id):
-    // Subscribe to task events from worker/task manager
-    for update in task_event_bus.subscribe(task_id):
-        if update.type == "status":
-            yield { statusUpdate: {
-                      taskId: task_id,
-                      contextId: update.context_id,
-                      status: update.status,
-                      final: update.final
-                   } }
-        else if update.type == "artifact_chunk":
-            yield { artifactUpdate: {
-                      taskId: task_id,
-                      contextId: update.context_id,
-                      artifact: update.artifact_delta,
-                      append: update.append,
-                      lastChunk: update.last_chunk
-                   } }
-        else if update.type == "message":
-            yield { message: update.message }
-        else if update.type == "task_snapshot":
-            yield { task: update.task }
-```
-
-### Push notification receiver: reusing the same dispatch loop as streaming
-
-Because push payloads reuse `StreamResponse`, your webhook handler can share logic with your SSE consumer. ([A2A Protocol][60])
-
-```pseudo
-function webhook_handler(http_request):
-    sr = parse_json(http_request.body)     // StreamResponse: exactly one field set
-
-    assert verify_source(http_request)     // signature / token / mTLS / etc.
-
-    if which_oneof(sr) == "statusUpdate":
-        apply_status(sr.statusUpdate)
-        return 204
-    if which_oneof(sr) == "artifactUpdate":
-        apply_artifact_delta(sr.artifactUpdate)
-        return 204
-    if which_oneof(sr) == "task":
-        cache_task(sr.task)
-        return 204
-    if which_oneof(sr) == "message":
-        route_message(sr.message)
-        return 204
-```
-
-This matches the spec’s client responsibilities (ACK with 2xx; process idempotently; validate task IDs). ([A2A Protocol][60])
-
-
-## References
-
-1. A2A Project. *Agent2Agent (A2A) Protocol Specification (DRAFT v1.0)*. a2a-protocol.org, 2025–2026. ([A2A Protocol][60])
-2. A2A Project. *Protocol Definition (A2A schema; normative source of truth)*. a2a-protocol.org, 2025–2026. ([A2A Protocol][61])
-3. A2A Project. *Streaming & Asynchronous Operations*. a2a-protocol.org, 2025–2026. ([A2A Protocol][62])
-4. Pydantic AI Docs. *fasta2a: broker/worker scheduling abstractions for A2A servers*. ai.pydantic.dev, 2025–2026. ([Pydantic AI][63])
-
-[60]: https://a2a-protocol.org/latest/specification/ "Overview - A2A Protocol"
-[61]: https://a2a-protocol.org/latest/definitions/ "Protocol Definition - A2A Protocol"
-[62]: https://a2a-protocol.org/latest/topics/streaming-and-async/ "Streaming & Asynchronous Operations - A2A Protocol"
-[63]: https://ai.pydantic.dev/api/fasta2a/ "fasta2a - Pydantic AI"
-
-
-## Security
-
-A2A security defines how agents authenticate, authorize, isolate, and audit cross-agent interactions while preserving composability and asynchronous execution.
-
-### Authentication and Agent Identity
-
-At the protocol level, A2A assumes strong, explicit agent identity rather than implicit trust between peers. Each agent is identified by a stable agent ID and presents verifiable credentials with every request. The protocol deliberately avoids mandating a single authentication mechanism, but its security model presumes cryptographically verifiable identity, typically implemented using OAuth2-style bearer tokens or mutual TLS.
-
-Authentication is performed before any task lifecycle logic is evaluated. A crucial requirement is that the cryptographic identity asserted by the credential is bound to the declared agent ID, preventing confused-deputy and identity-spoofing attacks.
-
-```python
-def authenticate_request(http_request):
-    token = extract_bearer_token(http_request.headers)
-    claims = verify_token_signature(token)
-
-    assert claims.issuer in TRUSTED_ISSUERS
-    assert claims.audience == "a2a"
-
-    agent_id = claims.subject
-    return AuthContext(
-        agent_id=agent_id,
-        scopes=claims.scopes,
-        expires_at=claims.exp
-    )
-```
-
-An important design constraint is that task payloads are treated as untrusted data until authentication has completed. Identity verification is therefore orthogonal to task semantics.
-
-### Authorization and Capability Scoping
-
-Authorization in A2A is capability-oriented rather than role-oriented. Instead of assigning broad roles to agents, the protocol evaluates whether a specific agent is permitted to perform a specific protocol operation on a specific resource. This allows fine-grained control over actions such as task creation, inspection, streaming, or cancellation.
-
-Authorization is evaluated at several layers simultaneously: the operation being requested, the relationship between the agent and the task (for example, creator versus observer), and the scope of resources exposed by that task. These checks are intentionally redundant, ensuring that partial privilege does not accidentally grant full access.
-
-```python
-def authorize(auth_ctx, operation, task=None):
-    if operation not in auth_ctx.scopes:
-        raise Forbidden("scope missing")
-
-    if task is not None:
-        if operation in WRITE_OPS and task.owner != auth_ctx.agent_id:
-            raise Forbidden("not task owner")
-
-    return True
-```
-
-A key property of the protocol is that authorization is never assumed to be static. Even for long-running tasks, permissions are re-evaluated on every request, including status polling and streaming updates.
-
-### Task Isolation and Trust Boundaries
-
-In A2A, a task is not merely a unit of work; it is a security boundary. Task state, intermediate artifacts, and final outputs are all scoped to a task ID and an explicit access policy. This prevents unrelated agents from inferring information about concurrent or historical tasks.
-
-Isolation is enforced whenever task state is loaded. Visibility is determined by explicit allow-lists rather than implicit trust derived from network location or execution context.
-
-```python
-def load_task(task_id, auth_ctx):
-    task = storage.get(task_id)
-
-    if auth_ctx.agent_id not in task.allowed_readers:
-        raise Forbidden("task not visible")
-
-    return task
-```
-
-This model discourages shared mutable global state across agents. Any shared context must be materialized as task-scoped artifacts with clearly defined read and write permissions.
-
-### Streaming, Polling, and Push Security
-
-Asynchronous interaction modes introduce additional attack surfaces, particularly around replay, hijacking, and information leakage. A2A addresses these risks by binding every asynchronous interaction to authenticated agent identity.
-
-For streaming and polling, authorization is enforced on each request, and continuation tokens or cursors are non-guessable and cryptographically bound to the requesting agent. A stolen cursor cannot be reused by a different agent.
-
-```python
-def stream_updates(task_id, cursor, auth_ctx):
-    assert cursor.agent_id == auth_ctx.agent_id
-    authorize(auth_ctx, "tasks.stream", task_id)
-
-    return event_stream(task_id, cursor)
-```
-
-Push notifications require even stricter controls. Endpoints must be explicitly registered and verified, delivery credentials are scoped to a single task or subscription, and revocation immediately invalidates any pending deliveries. This ensures that long-lived subscriptions do not become permanent exfiltration channels.
-
-### Secure Delegation and Agent-to-Agent Calls
-
-Delegation is a core feature of A2A and one of its most sensitive security mechanisms. The protocol does not permit implicit privilege propagation. Instead, delegation is implemented using explicit, narrowly scoped credentials issued by the delegating agent.
-
-When one agent delegates execution to another, the delegated agent receives only the minimal capabilities required to perform the delegated work, and only for a limited time. Even if the delegated agent has broader native permissions, those permissions are not applied to the delegated task.
-
-```python
-def create_delegation_token(parent_ctx, allowed_ops, ttl):
-    return sign_token({
-        "delegator": parent_ctx.agent_id,
-        "scopes": allowed_ops,
-        "exp": now() + ttl
-    })
-```
-
-This design prevents privilege amplification across agent networks and ensures that delegation chains remain auditable and bounded.
-
-### Auditability and Non-Repudiation
-
-A2A is designed for environments where accountability matters. Every security-relevant action is expected to generate an audit record, including authentication failures, authorization denials, task lifecycle events, and delegation operations.
-
-Audit records must include the agent identity, the affected task, the operation performed, and a timestamp. Because tasks may span minutes or days, audit logs must be durable and resistant to tampering.
-
-```python
-audit_log.write({
-    "agent": auth_ctx.agent_id,
-    "operation": operation,
-    "task_id": task_id,
-    "timestamp": now()
-})
-```
-
-This auditability enables forensic analysis, compliance verification, and operational debugging in multi-agent deployments.
-
-### Interaction with MCP Security
-
-When A2A is composed with Model Context Protocol, the security boundary remains explicit. A2A governs agent identity, task lifecycle, and delegation, while MCP governs tool invocation and context access. Credentials are not implicitly shared across protocols, preventing cross-protocol privilege leakage while preserving composability.
-
-### References
-
-1. A2A Protocol Authors. *Enterprise-Ready Security*. A2A Protocol Documentation, 2024. [https://a2a-protocol.org/latest/topics/enterprise-ready/](https://a2a-protocol.org/latest/topics/enterprise-ready/)
-2. A2A Protocol Authors. *A2A Specification*. A2A Protocol Documentation, 2024. [https://a2a-protocol.org/latest/specification/](https://a2a-protocol.org/latest/specification/)
-3. Hardt, D. *The OAuth 2.0 Authorization Framework*. IETF RFC 6749, 2012. [https://datatracker.ietf.org/doc/html/rfc6749](https://datatracker.ietf.org/doc/html/rfc6749)
-4. Rescorla, E. *The Transport Layer Security (TLS) Protocol*. IETF RFC 8446, 2018. [https://datatracker.ietf.org/doc/html/rfc8446](https://datatracker.ietf.org/doc/html/rfc8446)
-
-
-
-
-\newpage
-
-# Skills
-
-## Skills
-
-Skills are structured, reusable capability abstractions that encapsulate complex behavior behind a minimal, declarative interface, revealing detail only when it is needed.
-
-### Historical perspective
-
-The intellectual roots of skills predate large language models. Classical AI planning introduced hierarchical task decomposition, where high-level goals were achieved by invoking abstract operators that expanded into concrete actions only during execution. In parallel, software engineering converged on similar ideas through procedures, modules, and APIs, all designed to hide implementation details behind stable contracts.
-
-With the emergence of LLM-based agents, these ideas resurfaced in a new form. Early systems relied heavily on long prompts and explicit step-by-step instructions, but this quickly proved brittle and expensive in terms of tokens. As tool use and function calling became common, practitioners observed that exposing *all* tools and instructions at once degraded model performance. Skills emerged as a response: a way to combine abstraction, modularity, and context efficiency into a single concept, tailored specifically to the constraints of probabilistic language models.
-
-### Core concept
-
-A skill defines **what a capability does**, **when it should be used**, and **what inputs and outputs are expected**, while deliberately omitting *how* it is implemented. The internal mechanics—scripts, heuristics, sub-tools, or even sub-agents—are hidden unless the agent explicitly needs them.
-
-This separation has three immediate benefits. First, it reduces cognitive and token load on the model, improving reliability. Second, it creates reusable building blocks that can be shared across agents and systems. Third, it establishes clear reasoning boundaries: the model reasons about *selecting* and *composing* skills, not about low-level execution details.
-
-### Progressive disclosure and context efficiency
-
-Progressive disclosure is the defining design principle behind skills. Instead of loading all instructions and references into the model context upfront, information is revealed incrementally.
-
-At discovery time, the agent may only see a skill’s name and short description. When the skill is selected, its main instructions are loaded. Only if the agent needs deeper guidance—edge cases, background knowledge, or operational details—are additional reference files consulted. This staged reveal is essential even for models with large context windows: performance degrades long before hard limits are reached.
-
-In practice, progressive disclosure is not an optimization; it is a prerequisite for scalable agent systems.
-
-### A spec-aligned skill example
-
-The AgentSkills specification formalizes skills as directories with a required `SKILL.md` file written in Markdown, optionally accompanied by scripts and reference material. The Markdown file serves as the primary interface between the agent and the skill.
-
-A minimal, spec-aligned skill layout looks like this:
-
-```
-pdf-processing/
-  SKILL.md
-  scripts/
-    extract_text_and_tables.py
-  references/
-    REFERENCE.md
-```
-
-The `SKILL.md` file combines structured metadata with natural-language instructions:
-
-```md
----
-name: pdf-processing
-description: Extract text and tables from PDF files.
-allowed-tools: Bash(python:*) Read
----
-
-# PDF Processing
-
-## When to use this skill
-Use this skill when the task involves reading, extracting, or transforming content from PDF documents.
-
-## How to use
-For standard extraction, run the bundled script:
-`scripts/extract_text_and_tables.py <file.pdf>`
-
-## Output
-Return extracted text with page numbers and any detected tables in a structured format.
-
-## Notes
-If you encounter scanned PDFs or complex layouts, consult the reference file.
-```
-
-Several important ideas are illustrated here. The YAML frontmatter provides machine-readable metadata for discovery and policy enforcement. The Markdown body provides human-readable guidance for the agent. Crucially, implementation details are *not* embedded inline; they are delegated to scripts and references that are only loaded if needed.
-
-A corresponding script might look like this (simplified for illustration):
-
-```python
-def extract(pdf_path: str) -> dict:
-    # Implementation details live here, not in the prompt
-    return {"text": [], "tables": []}
-```
-
-The agent never needs to reason about how extraction works unless explicitly instructed to inspect or modify the implementation.
-
-### Skills versus tools and prompts
-
-A tool is typically a thin wrapper around an external operation. A prompt is static text. A skill is neither. It is a *capability contract* that may orchestrate tools, enforce invariants, and embed domain knowledge, while remaining opaque by default.
-
-From the agent’s perspective, invoking a skill is an act of intent: *“I want this outcome.”* The skill handles execution. This division allows planning and execution to scale independently.
-
-### Skills as reasoning boundaries
-
-Beyond modularity, skills act as constraints on agent reasoning. By limiting the exposed surface area of capabilities, designers reduce misuse, prompt injection risks, and accidental complexity. Planning becomes a matter of selecting and sequencing skills rather than inventing procedures on the fly, making agent behavior more interpretable and auditable.
-
-As agent systems grow, skills increasingly define the action vocabulary of the agent.
-
-### References
-
-1. AgentSkills Initiative. *What Are Skills?* AgentSkills.io, 2024. [https://agentskills.io/what-are-skills](https://agentskills.io/what-are-skills)
-2. AgentSkills Initiative. *Skill Specification*. AgentSkills.io, 2024. [https://agentskills.io/specification](https://agentskills.io/specification)
-3. Anthropic. *Claude Skills Documentation*. Anthropic, 2024. [https://code.claude.com/docs/en/skills](https://code.claude.com/docs/en/skills)
-
-
-# Chapter: Skills
-
-## Skills Specification
-
-The skills specification defines a **small, rigorous contract** that allows agentic capabilities to be described, reasoned about, and invoked reliably—without exposing implementation details or inflating the agent’s context.
-
-### Engineering goals of the specification
-
-From an engineer’s perspective, the specification is designed to solve three concrete problems that emerge once agents move beyond toy demos.
-
-First, agents must **plan before they execute**. This requires a representation of capabilities that is cheap to load into context, stable across versions, and precise enough to support reasoning and validation. Second, capabilities must be **portable across runtimes**: the same skill should work whether it is backed by a local function, an MCP server, or a remote service invoked via A2A. Third, the system must support **progressive disclosure**, so that agents reason over compact specifications and only pay the cost of execution when necessary.
-
-The skills specification addresses these constraints by being declarative, schema-driven, and intentionally minimal.
-
-### Skill as a declarative contract
-
-A skill is defined as a pure declaration of *what* is offered, not *how* it is implemented. The specification treats a skill as an interface with four essential components: identity, description, input schema, and output schema. Everything else is optional metadata.
-
-A canonical definition starts with identity and intent:
-
-```yaml
-id: filesystem.search
-version: "1.0.0"
-description: >
-  Search files by name or content and return matching paths.
-```
-
-The identifier is stable and globally unique within the agent’s skill universe. Versioning is explicit and semantic, allowing agents to reason about compatibility and upgrades. The description is written for the model, not for a human reader skimming documentation. In practice, short declarative sentences outperform long prose.
-
-### Typed inputs as the primary control surface
-
-The input schema is the most operationally important part of the specification. It defines exactly what arguments an agent may supply and constrains the space of valid invocations.
-
-```yaml
-input:
-  type: object
-  properties:
-    query:
-      type: string
-      description: Text to search for
-    recursive:
-      type: boolean
-      default: true
-    limit:
-      type: integer
-      minimum: 1
-      maximum: 100
-      default: 10
-  required: [query]
-```
-
-Several design choices matter here. Inputs are always explicit objects, never positional arguments, which makes partial construction and validation straightforward. Defaults reduce token overhead during invocation. Simple constraints such as bounds or enums significantly reduce failure modes when models generate arguments.
-
-For an engineer, this schema doubles as runtime validation and as a *prompting primitive*. The model internalizes the structure and learns to stay within it.
-
-### Outputs as guarantees, not suggestions
-
-Output schemas provide a hard guarantee about the shape of the result. This is essential for downstream composition, where one skill’s output often feeds directly into another’s input.
-
-```yaml
-output:
-  type: object
-  properties:
-    matches:
-      type: array
-      items:
-        type: object
-        properties:
-          path:
-            type: string
-          score:
-            type: number
-```
-
-Unlike traditional APIs, agents often consume outputs probabilistically. A strict schema anchors that uncertainty. Engineers can rely on structural correctness even if semantic quality varies.
-
-### Optional metadata and execution hints
-
-The specification allows lightweight metadata that informs planning and orchestration without constraining implementation. These fields are advisory, not prescriptive.
-
-```yaml
-metadata:
-  side_effects: false
-  latency: low
-  idempotent: true
-```
-
-This information becomes valuable once agents perform speculative planning, retries, or parallel execution. For example, a planner may freely retry an idempotent skill but require confirmation before invoking one with side effects.
-
-### Separation from implementation
-
-A key property of the specification is that it is **implementation-agnostic**. The runtime binding between a skill definition and executable code is external to the spec.
-
-From the agent’s point of view, invocation is uniform:
-
-```json
-{
-  "skill": "filesystem.search",
-  "arguments": {
-    "query": "report",
-    "limit": 5
-  }
-}
-```
-
-Whether this call resolves to a local function, an MCP tool, or an A2A task is irrelevant at the specification level. This separation is what enables skills to act as the common currency between heterogeneous systems.
-
-### Minimal implementation burden
-
-Despite the rigor of the specification, implementing a skill is deliberately lightweight. In most runtimes, an implementation consists of binding a callable to a validated schema and returning structured data.
-
-```python
-@skill(
-    id="filesystem.search",
-    input=SearchInput,
-    output=SearchOutput,
-)
-def search(query: str, recursive: bool = True, limit: int = 10):
-    ...
-    return {"matches": matches}
-```
-
-There is no required inheritance model, lifecycle interface, or framework lock-in. This is a deliberate engineering trade-off: the specification optimizes for *many small skills* rather than a few monolithic tools.
-
-### Why simplicity matters at scale
-
-As agentic systems grow, complexity tends to accumulate at the boundaries: discovery, invocation, validation, and composition. The skills specification pushes that complexity into a single, well-defined layer and keeps everything else flexible.
-
-For engineers, this means faster iteration, safer composition, and the ability to integrate skills cleanly with orchestration layers such as MCP and A2A without rewriting or re-prompting core logic.
-
-### References
-
-1. Anthropic. *Claude Skills Documentation*. 2024. [https://code.claude.com/docs/en/skills](https://code.claude.com/docs/en/skills)
-2. AgentSkills. *What Are Skills?*. 2024. [https://agentskills.io/what-are-skills](https://agentskills.io/what-are-skills)
-3. AgentSkills. *Skill Specification*. 2024. [https://agentskills.io/specification](https://agentskills.io/specification)
-
-
-## Engineering
-
-We discuss making skills discoverable, cheap to advertise to a model, and safe to activate and execute inside a broader agent system.
-
-### What “engineering skills” actually means
-
-The Agent Skills integration guide is explicit about what a skills-compatible runtime must do: it discovers skill directories, loads only metadata at startup, matches tasks to skills, activates a selected skill by loading full instructions, and then executes scripts and accesses bundled resources as needed. ([Agent Skills][64]) The important architectural point is that integration is designed around progressive disclosure: startup and routing should rely on frontmatter only, while “activation” is the moment you pay to load instructions and any additional files. ([Agent Skills][64])
-
-The specification formalizes the artifact you are integrating. A skill is a directory with a required `SKILL.md` file and optional `scripts/`, `references/`, and `assets/` directories. ([Agent Skills][65]) The `SKILL.md` file begins with YAML frontmatter that must include `name` and `description`, and may include fields such as `compatibility`, `metadata`, and an experimental `allowed-tools` allowlist. ([Agent Skills][65]) The body is arbitrary Markdown instructions, and the spec notes that the agent loads the whole body only after it has decided to activate the skill. ([Agent Skills][65])
-
-A minimal discovery and metadata loader therefore looks like:
-
-```python
-def discover_skills(skill_roots: list[str]) -> list[dict]:
-    skills = []
-    for root in skill_roots:
-        for skill_dir in list_directories(root):
-            if exists(f"{skill_dir}/SKILL.md"):
-                fm = extract_yaml_frontmatter(read_file(f"{skill_dir}/SKILL.md"))
-                skills.append(
-                    {"name": fm["name"], "description": fm["description"], "path": skill_dir}
-                )
-    return skills
-```
-
-This is not an implementation detail; it is the core performance/safety contract. The integration guide recommends parsing only the frontmatter at startup “to keep initial context usage low.” ([Agent Skills][64]) The specification quantifies the intended disclosure tiers: metadata (name/description) is loaded for all skills, full instructions are loaded on activation, and resources are loaded only when required. ([Agent Skills][65])
-
-### Filesystem-based integration vs tool-based integration
-
-The Agent Skills guide describes two integration approaches.
-
-In a filesystem-based agent, the model operates in a computer-like environment (bash/unix). A skill is “activated” when the model reads `SKILL.md` directly (the guide’s example uses a shell `cat` of the file), and bundled resources are accessed through normal file operations. ([Agent Skills][64]) This approach is “the most capable option” precisely because it does not require you to pre-invent an API for every way the skill might need to read or run something; the skill can ship scripts and references and the runtime can expose them as files.
-
-In a tool-based agent, there is no dedicated computer environment, so the developer implements explicit tools that let the model list skills, fetch `SKILL.md`, and retrieve bundled assets. ([Agent Skills][64]) The guide deliberately does not prescribe the exact tool design (“the specific tool implementation is up to the developer”), which is a reminder not to conflate the skill format with a particular invocation API. ([Agent Skills][64])
-
-### Injecting skill metadata into the model context
-
-The guide says to include skill metadata in the system prompt so the model knows what skills exist, and to “follow your platform’s guidance” for how system prompts are updated. ([Agent Skills][64]) It then provides a single example: for Claude models, it shows an XML wrapper format. ([Agent Skills][64]) That example is platform-specific and should not be treated as a general recommendation for other runtimes.
-
-The general requirement is simpler: at runtime start (or on refresh), you provide a compact catalog containing at least `name`, `description`, and a way to locate the skill so the runtime can load `SKILL.md` when selected. The integration guide’s own pseudocode returns `{ name, description, path }`, which is the essential structure. ([Agent Skills][64]) A neutral, implementation-agnostic representation could be expressed as JSON (or any equivalent internal structure) without implying any particular prompt markup language:
-
-```json
-{
-  "available_skills": [
-    {
-      "name": "pdf-processing",
-      "description": "Extract text and tables from PDF files, fill forms, merge documents.",
-      "path": "/skills/pdf-processing"
-    }
-  ]
-}
-```
-
-The skill system works because selection can be done from the metadata alone; the body is only loaded when the orchestrator commits to activation. ([Agent Skills][64])
-
-### Security boundaries during activation
-
-Skill integration changes the risk profile the moment `scripts/` are involved. The specification defines `scripts/` as executable code that agents can run, and explicitly notes that supported languages and execution details depend on the agent implementation. ([Agent Skills][65]) The frontmatter’s experimental `allowed-tools` field exists to help some runtimes enforce “pre-approved tools” a skill may use, but support may vary. ([Agent Skills][65])
-
-For integration, the key design is to treat activation and execution as a controlled transition. Discovery and metadata loading are read-only operations over a directory tree; activation is when the model receives instructions that may request tool use or script execution; execution is when side effects happen. Mapping that to your agent runtime typically means (a) restricting what the model can do before activation, (b) enforcing tool/script policies during execution, and (c) logging what happened in a way that can be audited later. The Skill spec’s progressive disclosure guidance is as much about control and review as it is about context budget. ([Agent Skills][65])
-
-### How skills relate to MCP
-
-MCP defines a client/server protocol where servers expose primitives, and “tools” are one of those primitives: executable functions that an AI application can invoke, alongside resources and prompts. ([Model Context Protocol][66]) In MCP terms, tools are meant to be small, schema’d capabilities: file operations, API calls, database queries, and similar discrete actions. ([Model Context Protocol][66])
-
-A skill is not a competing notion of a tool. It is a packaging format for instructions plus optional scripts and references that can orchestrate one or more tools. The clean modularization pattern is to keep MCP tools narrow and reusable, and compose them inside skills where the domain workflow lives. The skill remains stable as an interface and knowledge bundle, while the underlying tool calls are the mechanical substrate that can be reused across many skills.
-
-A concrete way to express that separation is to have a skill instruct the agent to use a database-query tool and then post-process results, without embedding database details into the tool itself:
-
-```markdown
-# In SKILL.md body (instructions)
-
-When you need cohort statistics:
-1) Use the database query tool to fetch rows for the cohort definition.
-2) Compute summary metrics.
-3) If a chart is requested, call the charting tool with the computed series.
-```
-
-The reuse comes from the fact that the database-query MCP tool stays the same whether it is used by “cohort-analysis”, “data-quality-check”, or “report-generator” skills.
-
-### How skills relate to A2A
-
-The A2A protocol is positioned as an application-level protocol for agents to discover each other, negotiate interactions, manage tasks, and exchange conversational context and complex data as peers. ([a2a-protocol.org][4]) The A2A documentation frames MCP as the domain of “tools and resources” (primitives with structured inputs/outputs, often stateless) and A2A as the domain of “agents” (autonomous systems that reason, plan, maintain state, and conduct multi-turn interaction). ([a2a-protocol.org][4])
-
-Skills align with this split. A skill is a capability package that is typically invoked “tool-like” from the outside: it has a clear name/description for routing, and activation loads instructions that define how to perform the task. ([Agent Skills][65]) Internally, a skill may run a complex workflow and call many tools, but the integration surface is a capability boundary. In an A2A deployment, that boundary can be hosted by a remote agent instead of a local runtime.
-
-The A2A text even notes that an A2A server could expose some of its skills as MCP-compatible resources when they are well-defined and can be invoked in a more tool-like manner, while emphasizing that A2A’s strength is more flexible, stateful collaboration beyond typical tool invocation. ([a2a-protocol.org][4]) This gives a practical integration rule: use skills (and MCP) for capability invocation; use A2A when you need delegation to a peer that will plan, negotiate, and collaborate over time.
-
-### Converting an A2A agent into a skill, and a skill into an A2A agent
-
-A safe way to talk about “conversion” without inventing protocol features is to describe what must remain invariant and what changes.
-
-What should remain invariant is the capability contract: the thing you want to be able to select by name/description, activate with full instructions, and produce outputs from. In skill terms, that contract is represented by `SKILL.md` frontmatter plus its instruction body and any referenced files. ([Agent Skills][65]) In A2A terms, the contract is represented by whatever the remote agent advertises and accepts as task input, together with the task lifecycle semantics A2A provides. ([a2a-protocol.org][4])
-
-Converting an A2A agent into a skill is therefore a packaging move: you take one externally meaningful capability that the agent provides and express it as a skill directory whose `SKILL.md` contains the instructions that the agent previously embodied in code and prompts. The integration consequences are that (a) any long-lived statefulness must be made explicit in inputs or moved up into the orchestrator, and (b) any external dependencies must be declared via `compatibility` and/or enforced via execution policy. ([Agent Skills][65])
-
-Converting a skill into an A2A agent is a hosting move: you take the skill as the unit of work and put it behind an A2A server that offers it to other agents. The skill still remains the internal playbook and resource bundle, while A2A provides the network-level concerns: discovery, negotiation, task lifecycle, and exchange of context/results. ([a2a-protocol.org][4])
-
-The important point is that “conversion” is rarely a literal mechanical transform. It is an architectural refactoring where the skill remains the portable capability artifact, and A2A is the transport and collaboration wrapper when that capability needs to be offered across trust boundaries or organizational boundaries.
-
-## References
-
-1. AgentSkills Working Group. *Integrate skills into your agent*. AgentSkills.io, 2024. [https://agentskills.io/integrate-skills](https://agentskills.io/integrate-skills) ([Agent Skills][64])
-2. AgentSkills Working Group. *Specification*. AgentSkills.io, 2024. [https://agentskills.io/specification](https://agentskills.io/specification) ([Agent Skills][65])
-3. A2A Protocol Authors. *A2A and MCP*. A2A Protocol, 2025. [https://a2a-protocol.org/latest/topics/a2a-and-mcp/](https://a2a-protocol.org/latest/topics/a2a-and-mcp/) ([a2a-protocol.org][67])
-4. Model Context Protocol Authors. *Architecture (Primitives)*. Model Context Protocol, 2025. [https://modelcontextprotocol.io/docs/learn/architecture](https://modelcontextprotocol.io/docs/learn/architecture) ([Model Context Protocol][66])
-5. Model Context Protocol Authors. *Architecture (Specification 2025-06-18)*. Model Context Protocol, 2025. [https://modelcontextprotocol.io/specification/2025-06-18/architecture](https://modelcontextprotocol.io/specification/2025-06-18/architecture) ([Model Context Protocol][68])
-
-[64]: https://agentskills.io/integrate-skills "Integrate skills into your agent - Agent Skills"
-[65]: https://agentskills.io/specification "Specification - Agent Skills"
-[66]: https://modelcontextprotocol.io/docs/learn/architecture?utm_source=chatgpt.com "Architecture overview"
-[67]: https://a2a-protocol.org/latest/topics/a2a-and-mcp/ "A2A and MCP - A2A Protocol"
-[68]: https://modelcontextprotocol.io/specification/2025-06-18/architecture?utm_source=chatgpt.com "Architecture"
 
 \newpage
 
