@@ -1,16 +1,13 @@
 #!/bin/bash -eu
 set -o pipefail
 
-# Source config to set up environment
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/config.sh"
 
 cd "${PROJECT_DIR}"
 
-# Run specific test if argument provided, otherwise run unit then integration tests
 if [ $# -eq 0 ]; then
-    "${SCRIPT_DIR}/test_unit.sh"
-    "${SCRIPT_DIR}/test_integration.sh"
+    python -m unittest discover -s tests/unit -p "test_*.py"
 else
     python -m unittest "$@"
 fi
