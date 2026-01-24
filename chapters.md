@@ -181,8 +181,13 @@ These are all about how agents manage information over time.
 - [x] Specification
 - [x] Engineering: Skills with A2A, and MCPs.
 
-### Chapter: Sub-Agents
+### Chapter: [Sub-Agents](chapters/sub_agents/chapter.md)
 
+- [x] Introduction
+- [x] Sub-agents
+- [x] Context engineering: why sub-agents help
+- [x] Relationship to A2A and AgentSkills
+- [x] References
 
 ### Chapter: [Evals](chapters/evals/chapter.md)
 
@@ -233,6 +238,20 @@ These are all about how agents manage information over time.
 - [ ] Error propagation
 
 ### Section: Production, Scaling & Enterprise
+
+Into: Introduction to section, what we are building and how
+
+### Chapter: Core Agent
+
+- Core agent
+- CodeAct
+- Run skills
+- Run sub-agents
+- Workspace
+- Basic MCPs:
+  - mcp-todo
+  - mcp-file-edit
+  - mcp-sandbox
 
 ### Chapter: [Execution Infrastructure](chapters/execution_infrastructure/chapter.md)
 

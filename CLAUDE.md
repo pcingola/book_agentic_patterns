@@ -51,6 +51,8 @@ The core library provides reusable infrastructure for building AI agentic system
 
 **doctors/**: CLI tools for AI-powered analysis of prompts, tools, MCP servers, A2A agent cards, and Agent Skills. Run via `doctors` command (after `uv pip install -e .`) or `python -m agentic_patterns.core.doctors`. Subcommands: `prompt` (analyze prompt files), `tool` (analyze Python tool functions), `mcp` (analyze MCP server tools), `a2a` (analyze agent cards), `skill` (analyze agentskills.io format). Each doctor uses an LLM to evaluate quality and returns recommendations with issue levels.
 
+**skills/**: Skill library for agent capabilities with progressive disclosure pattern. `models.py` defines `SkillMetadata` (lightweight info: name, description, path) and `Skill` (full skill with frontmatter, body, script/reference paths). `registry.py` provides `SkillRegistry` with `discover()` to scan skill directories and cache metadata (cheap), `list_all()` to return cached metadata for system prompt injection, and `get()` to lazy-load full skill on activation (expensive). Skills are defined in directories containing a `SKILL.md` file with YAML frontmatter (name, description) and markdown body. Optional `scripts/` and `references/` subdirectories hold supporting files. `tools.py` exposes `list_available_skills()` for compact one-liner listings and `get_skill_instructions()` for full body and file paths.
+
 **prompt.py**: Template-based prompt loading from markdown files. `load_prompt()` extracts `{variable_name}` patterns, validates all required variables are provided, and raises ValueError for missing/unused variables. Helper functions: `get_system_prompt()`, `get_prompt()`, `get_instructions()`.
 
 **workspace.py**: Sandbox workspace isolation for multi-tenant scenarios. `container_to_host_path()` and `host_to_container_path()` translate between agent-visible paths (`/workspace/...`) and host filesystem paths with traversal protection. User/session isolation via `get_user_id_from_request()` and `get_session_id_from_request()` from RunContext. File operations: `read_from_workspace()`, `write_to_workspace()`, `store_result()`.
@@ -79,7 +81,7 @@ Code examples organized by chapter (Jupyter notebooks and Python scripts):
 
 ## Chapters
 
-Twelve chapters in `chapters/`: foundations, core_patterns, tools, context_memory, orchestration, rag, mcp, a2a, evals, execution_infrastructure, skills, connectors. Each contains `chapter.md` index linking to section files and hands-on exercises. Master index in `chapters.md` at root.
+Chapters in `chapters/`: foundations, core_patterns, tools, context_memory, orchestration, rag, mcp, a2a, skills, sub_agents, evals, execution_infrastructure, connectors. Each contains `chapter.md` index linking to section files and hands-on exercises. Master index in `chapters.md` at root.
 
 ## Scripts
 

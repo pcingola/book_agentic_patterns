@@ -2,10 +2,8 @@
 
 ## Text
 
-- Move "doctors" to later
-  - McpDoctor to MCP chapter: Check against the specification
-  - A2ADoctor to A2A chapter: Check against the protocol (e.g. agentCard)
-- Skill Doctor
+- A2A: How can an agent connect to the servers
+- get_agent_full(): gets a full agent, including tools, MCP connections, A2A connections, skills, etc. Most of this defined in config.yaml
 
 - ADD Chapter 1: Hands_on setting up the environment
   - VS-Code

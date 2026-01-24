@@ -1,5 +1,6 @@
 """Tests for agentic_patterns.core.context.history module - history compaction with tool call/return pairing."""
 
+import asyncio
 import logging
 import unittest
 
@@ -23,6 +24,8 @@ class TestHistoryCompactor(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.config = CompactionConfig(max_tokens=100, target_tokens=50)
         self.model = ModelMock(responses=["Summary."])
+        loop = asyncio.get_event_loop()
+        loop.slow_callback_duration = 1.0
 
     def _make_user_message(self, text: str) -> ModelRequest:
         return ModelRequest(parts=[UserPromptPart(content=text)])
