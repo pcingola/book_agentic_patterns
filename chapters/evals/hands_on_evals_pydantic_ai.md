@@ -1,4 +1,4 @@
-# Hands-On: Pydantic Evals Framework
+## Hands-On: Pydantic Evals Framework
 
 The pydantic-evals library provides structured abstractions for building evaluation suites. This hands-on explores the framework through `example_evals_pydantic_ai.ipynb`, demonstrating how Cases, Evaluators, and Datasets work together to create maintainable, scalable evals.
 

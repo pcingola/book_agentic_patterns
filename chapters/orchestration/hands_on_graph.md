@@ -1,4 +1,4 @@
-# Hands-On: Graph-Based Orchestration
+## Hands-On: Graph-Based Orchestration
 
 Graphs model agent execution as explicit state machines where nodes represent work units and edges define transitions. Unlike linear chains or simple workflows, graphs support branching, cycles, and conditional transitions that are inspectable and verifiable.
 

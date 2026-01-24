@@ -1,4 +1,4 @@
-# Hands-On: Tool Discovery and Selection
+## Hands-On: Tool Discovery and Selection
 
 When an agent has access to many tools, presenting all of them in every request becomes inefficient. Context length grows, the model's attention is diluted across irrelevant options, and the likelihood of incorrect tool selection increases. Tool discovery and selection addresses this by using a separate step to identify which tools are relevant before the main agent executes.
 

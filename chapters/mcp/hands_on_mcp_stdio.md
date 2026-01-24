@@ -1,4 +1,4 @@
-# Hands-On: MCP STDIO Transport
+## Hands-On: MCP STDIO Transport
 
 The STDIO transport is MCP's simplest communication mechanism. The client spawns the server as a subprocess and exchanges JSON-RPC messages through standard input and output streams. This transport is ideal for local tool servers where the client and server run on the same machine.
 

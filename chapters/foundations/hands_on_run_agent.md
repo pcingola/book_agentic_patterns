@@ -1,4 +1,4 @@
-# Hands-On: How run_agent() Works (Optional)
+## Hands-On: How run_agent() Works (Optional)
 
 This section explains how the `run_agent()` function combines Python's async features to enable agent execution streaming. If you haven't read the Python concepts recap in the previous section, review that first.
 

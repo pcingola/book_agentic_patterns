@@ -1,4 +1,4 @@
-# Evals
+# Chapter: Evals
 
 [Historical perspective](./historical_perspective.md)
 

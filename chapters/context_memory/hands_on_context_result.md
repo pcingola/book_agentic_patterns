@@ -1,4 +1,4 @@
-# Hands-On: Context Result Decorator
+## Hands-On: Context Result Decorator
 
 Tools in agentic systems often return large amounts of data: database query results with thousands of rows, application logs spanning hours of activity, API responses with nested payloads. When this data flows directly into the model's context, it creates problems. The context window fills up with raw data, leaving less room for reasoning. Worse, models can enter what practitioners informally call "the dumb zone" where too much context degrades performance rather than improving it.
 

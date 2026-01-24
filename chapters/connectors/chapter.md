@@ -1,4 +1,4 @@
-# Connectors
+# Chapter: Connectors
 
 This chapter covers patterns for connecting agents to external data sources and systems.
 

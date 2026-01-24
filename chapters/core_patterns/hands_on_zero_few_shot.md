@@ -1,4 +1,4 @@
-# Hands-On: Zero-shot and Few-shot Prompting
+## Hands-On: Zero-shot and Few-shot Prompting
 
 This section demonstrates when few-shot prompting becomes necessary by comparing one task where zero-shot works and one where it fails.
 

@@ -1,5 +1,3 @@
-# Chapter: Skills
-
 ## Skills Specification
 
 The skills specification defines a **small, rigorous contract** that allows agentic capabilities to be described, reasoned about, and invoked reliably—without exposing implementation details or inflating the agent’s context.

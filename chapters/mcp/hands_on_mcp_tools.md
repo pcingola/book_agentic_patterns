@@ -1,4 +1,4 @@
-# Hands-On: MCP Tools with Agents
+## Hands-On: MCP Tools with Agents
 
 The previous hands-on explored the raw MCP protocol, showing the JSON-RPC messages that flow between client and server. In practice, agent frameworks handle this protocol transparently. This hands-on demonstrates how agents connect to MCP servers and use their tools through `example_agent_mcp_client_stdio.ipynb` and `example_agent_mcp_client_http.ipynb`.
 

@@ -1,4 +1,4 @@
-# Hands-On: The Workspace
+## Hands-On: The Workspace
 
 The workspace pattern addresses a fundamental tension in agentic systems: models have limited context windows, but real tasks often produce large intermediate artifacts. A data analysis might return thousands of rows. A code generator might produce hundreds of lines. A search might yield dozens of documents. Stuffing all of this into the prompt is wasteful and eventually impossible.
 

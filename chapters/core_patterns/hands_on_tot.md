@@ -1,4 +1,4 @@
-# Hands-On: Tree of Thought Reasoning
+## Hands-On: Tree of Thought Reasoning
 
 Tree of Thought extends Chain-of-Thought reasoning by exploring multiple reasoning paths simultaneously. Instead of following a single linear chain of reasoning, the model generates multiple candidate solutions, evaluates them, and selectively expands the most promising ones. This deliberate exploration prevents premature commitment to suboptimal solutions.
 

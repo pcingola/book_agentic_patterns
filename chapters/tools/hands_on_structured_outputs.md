@@ -1,4 +1,4 @@
-# Hands-On: Structured Outputs
+## Hands-On: Structured Outputs
 
 Structured output is the pattern of constraining a model's response to conform to a predefined schema rather than allowing free-form text. This transforms the model from a text generator into a data producer, enabling direct integration with typed code and automated validation.
 

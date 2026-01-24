@@ -1,4 +1,4 @@
-# Hands-On: Tool Permissions
+## Hands-On: Tool Permissions
 
 Tool permissions define explicit authority boundaries that govern what an agent can observe, query, or mutate. Without permissions, an agent with access to both a read-balance function and a transfer-funds function has equal authority to use both. Permissions create the distinction between reading data and modifying it, between internal operations and external connections.
 

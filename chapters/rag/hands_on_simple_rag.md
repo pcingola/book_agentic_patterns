@@ -1,4 +1,4 @@
-# Hands-On: Simple Document Ingestion and Retrieval
+## Hands-On: Simple Document Ingestion and Retrieval
 
 This hands-on walks through the fundamental RAG pipeline: ingesting documents into a vector database and retrieving relevant passages to augment LLM prompts. The examples use `example_RAG_01_load.ipynb` for ingestion and `example_RAG_01_query.ipynb` for retrieval.
 

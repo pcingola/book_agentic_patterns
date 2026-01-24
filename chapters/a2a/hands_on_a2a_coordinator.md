@@ -1,4 +1,4 @@
-# Hands-On: A2A Coordinator Agent
+## Hands-On: A2A Coordinator Agent
 
 This hands-on builds on the basic A2A client-server example to demonstrate a coordinator agent that routes tasks to specialized A2A agents. The coordinator discovers available agents through their Agent Cards, understands their capabilities, and delegates work to the appropriate specialist. This pattern is central to building multi-agent systems where agents with different skills collaborate to solve complex problems.
 

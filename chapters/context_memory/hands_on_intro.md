@@ -1,4 +1,4 @@
-# Hands-On: Introduction
+## Hands-On: Introduction
 
 The preceding sections introduced the concepts that shape effective context management: prompt layers that separate identity from task control, compression techniques that bound token consumption, and the principle of intentional loss when context budgets are exceeded. The hands-on exercises that follow translate these concepts into working code using the `agentic_patterns` core library.
 

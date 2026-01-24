@@ -1,5 +1,3 @@
-# Chapter: Model Context Protocol (MCP)
-
 ## Introduction
 
 **Model Context Protocol (MCP)** is an open protocol that standardizes how AI models discover, describe, and interact with external tools, resources, and structured context across long-running sessions.

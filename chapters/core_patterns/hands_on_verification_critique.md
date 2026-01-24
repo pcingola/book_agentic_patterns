@@ -1,4 +1,4 @@
-# Hands-On: Verification / Critique Pattern
+## Hands-On: Verification / Critique Pattern
 
 The verification/critique pattern introduces explicit evaluation into an agent's workflow. Rather than trusting the first output, the agent (or a separate verifier) checks the result against defined criteria before accepting it. This hands-on explores the pattern using `example_verification_critique.ipynb`, demonstrating how explicit verification loops improve reliability for constraint-satisfaction tasks.
 

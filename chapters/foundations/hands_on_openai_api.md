@@ -1,4 +1,4 @@
-# Understanding the OpenAI API Standard
+## Understanding the OpenAI API Standard
 
 Before building agents, it's essential to understand how data flows between your code and language model providers. While frameworks like Pydantic-ai abstract these details, knowing what happens under the hood helps you debug issues, optimize costs, understand framework limitations, and make informed architectural decisions.
 

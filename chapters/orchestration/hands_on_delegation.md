@@ -1,4 +1,4 @@
-# Hands-On: Agent Delegation
+## Hands-On: Agent Delegation
 
 Delegation is a pattern where one agent invokes another through a tool while retaining control of the overall task. Unlike workflows, where an external orchestrator sequences agent calls, delegation keeps decision-making inside the parent agent. The parent reasons about when to delegate, calls the specialist, and incorporates the result into its own response.
 

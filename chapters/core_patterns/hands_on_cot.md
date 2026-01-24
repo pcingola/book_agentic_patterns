@@ -1,4 +1,4 @@
-# Hands-On: Chain-of-Thought Reasoning
+## Hands-On: Chain-of-Thought Reasoning
 
 Chain-of-Thought prompting improves model accuracy on reasoning tasks by instructing the model to show its work. Instead of jumping directly to an answer, the model generates intermediate steps that decompose the problem, apply logic, and arrive at a conclusion through explicit reasoning.
 

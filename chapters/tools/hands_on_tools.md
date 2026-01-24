@@ -1,4 +1,4 @@
-# Hands-On: Tool Use
+## Hands-On: Tool Use
 
 Tool use is the mechanism by which language models cross the boundary between reasoning and action. Instead of generating text that describes what should happen, the model invokes external functions that actually make it happen. This transforms a language model from a text generator into an agent capable of interacting with the world.
 

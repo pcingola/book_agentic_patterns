@@ -1,4 +1,4 @@
-# Hands-On: CodeAct
+## Hands-On: CodeAct
 
 CodeAct is a pattern where an agent reasons primarily by writing and executing code, using program execution itself as the main feedback loop. Instead of text-based actions like ReAct's `LookupOrder[id]`, the agent generates actual Python code that runs in a sandboxed environment. Execution results, including errors, become first-class feedback that guides the next iteration.
 

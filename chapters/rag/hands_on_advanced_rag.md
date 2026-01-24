@@ -1,4 +1,4 @@
-# Hands-On: Advanced Document Ingestion and Retrieval
+## Hands-On: Advanced Document Ingestion and Retrieval
 
 This hands-on explores techniques that improve upon the basic RAG pipeline: semantic chunking during ingestion and multi-stage retrieval with query expansion, filtering, and re-ranking. The examples use `example_RAG_02_load.ipynb` for LLM-based chunking and `example_RAG_02_query.ipynb` for advanced retrieval.
 

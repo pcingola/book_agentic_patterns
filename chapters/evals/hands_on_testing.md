@@ -1,4 +1,4 @@
-# Hands-On: Deterministic Testing
+## Hands-On: Deterministic Testing
 
 Agentic systems present a testing challenge: the LLM at their core is non-deterministic. The same prompt can produce different outputs across runs, making traditional assertion-based testing unreliable. This hands-on explores how to achieve deterministic testing by replacing the non-deterministic components with controlled mocks.
 

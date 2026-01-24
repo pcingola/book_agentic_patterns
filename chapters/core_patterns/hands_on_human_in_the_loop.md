@@ -1,4 +1,4 @@
-# Hands-On: Human in the Loop
+## Hands-On: Human in the Loop
 
 Human-in-the-loop (HITL) is a control pattern where an agent deliberately pauses autonomous execution to request human approval before proceeding with high-impact actions. This hands-on explores the pattern using `example_human_in_the_loop.ipynb`, demonstrating how to build structured checkpoints that give humans authority over irreversible operations.
 

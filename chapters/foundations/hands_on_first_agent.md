@@ -1,4 +1,4 @@
-# Hands-On: Building Your First Agent
+## Hands-On: Building Your First Agent
 
 This section walks through creating and running a simple agent. We use Pydantic-ai as our framework, but the underlying concepts apply universally to all agentic frameworks.
 

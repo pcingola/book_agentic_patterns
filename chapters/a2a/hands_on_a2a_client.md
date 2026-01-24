@@ -1,4 +1,4 @@
-# Hands-On: A2A Client-Server
+## Hands-On: A2A Client-Server
 
 This hands-on demonstrates the A2A protocol in action through `example_a2a_server.py` and `example_a2a_client.ipynb`. The server exposes an agent with tools over HTTP, and the client discovers the agent's capabilities, sends a task, and retrieves results using the standard A2A operations.
 

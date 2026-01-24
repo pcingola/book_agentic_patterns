@@ -1,4 +1,4 @@
-# Hands-On: Introduction
+## Hands-On: Introduction
 
 The hands-on sections that follow demonstrate a layered approach to validating agentic systems, progressing from deterministic testing through evaluation frameworks to automated quality analysis. Each layer addresses a different aspect of the testing and evaluation challenge: controlling non-determinism, measuring output quality, scaling evaluation infrastructure, and assessing the quality of the components themselves.
 

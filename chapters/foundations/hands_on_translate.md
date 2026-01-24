@@ -1,4 +1,4 @@
-# Hands-On: System Prompts vs. User Prompts
+## Hands-On: System Prompts vs. User Prompts
 
 This section explores two different approaches to prompting language models using a translation task as our example. We'll compare `example_translate_basic.ipynb` and `example_translate_system_prompt.ipynb` to understand when and why to separate instructions from content.
 

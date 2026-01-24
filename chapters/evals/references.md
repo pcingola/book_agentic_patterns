@@ -1,4 +1,4 @@
-# References
+## References
 
 1. Amershi, S. et al. *Software Engineering for Machine Learning: A Case Study*. ICSE, 2019.
 2. Beck, K. *Test-Driven Development: By Example*. Addison-Wesley, 2002.

@@ -1,4 +1,4 @@
-# Hands-On: Basic Evals
+## Hands-On: Basic Evals
 
 Evals transform informal confidence ("this agent seems to work") into repeatable, versioned evidence about correctness. This hands-on explores three fundamental evaluation approaches through `example_evals.ipynb`, progressing from simple string matching to LLM-as-a-Judge.
 

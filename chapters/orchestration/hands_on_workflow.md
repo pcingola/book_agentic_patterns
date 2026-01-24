@@ -1,4 +1,4 @@
-# Hands-On: Sequential Workflows
+## Hands-On: Sequential Workflows
 
 A workflow externalizes control flow from the agent's reasoning. Instead of a single agent deciding what to do next, the orchestrator defines explicit stages, each with a focused responsibility. The agent reasons within each stage; the workflow determines when and how stages connect.
 

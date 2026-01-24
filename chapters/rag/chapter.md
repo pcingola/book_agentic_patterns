@@ -1,4 +1,4 @@
-# RAG (Retrieval-Augmented Generation)
+# Chapter: RAG (Retrieval-Augmented Generation)
 
 [Introduction](./introduction.md)
 

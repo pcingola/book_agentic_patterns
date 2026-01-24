@@ -1,5 +1,3 @@
-# Chapter: MCP
-
 ## Tools
 
 **Tools are the execution boundary of MCP: they are where model intent is turned into validated, observable, and recoverable actions.**

@@ -1,4 +1,4 @@
-# Hands-On: MCP Features
+## Hands-On: MCP Features
 
 The previous hands-on sections covered the raw MCP protocol and how agents use MCP tools. This hands-on explores the broader set of MCP server features through `example_mcp_features.ipynb`: tools, resources, and prompts. These features structure how context and capabilities are exposed to clients.
 

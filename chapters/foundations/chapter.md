@@ -1,4 +1,4 @@
-# Foundations
+# Chapter: Foundations
 
 [Outline](./outline.md)
 

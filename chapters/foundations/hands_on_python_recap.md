@@ -1,4 +1,4 @@
-# Hands-On: Python Concepts for Async Agent Execution
+## Hands-On: Python Concepts for Async Agent Execution
 
 This section covers essential Python concepts you need to understand how async agent execution works.
 

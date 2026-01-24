@@ -1,4 +1,4 @@
-# Hands-On: Planning and Decomposition
+## Hands-On: Planning and Decomposition
 
 Planning and decomposition separates *what* an agent wants to achieve from *how* it will achieve it. Instead of diving directly into implementation, the agent first reasons at a higher level, identifying major steps and their dependencies, and only then descends into concrete actions. This separation manages complexity, creates opportunities for validation, and produces artifacts that can be inspected or modified before any code is written.
 

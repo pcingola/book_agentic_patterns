@@ -1,5 +1,3 @@
-# Chapter: Evals
-
 ## Evals
 
 Evals are the discipline of turning “this agent seems to work” into repeatable, versioned evidence about correctness, quality, safety, and behavior.

@@ -1,4 +1,4 @@
-# Skills
+# Chapter: Skills
 
 [Intro](./intro.md)
 

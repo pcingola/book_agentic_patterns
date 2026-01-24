@@ -1,4 +1,4 @@
-# Hands-On: Prompts
+## Hands-On: Prompts
 
 The effective context an LLM sees is the concatenation of multiple layers: system prompts, developer instructions, and user prompts. Each layer serves a different purpose and has different persistence behavior. This hands-on explores these prompt layers using `example_prompts.ipynb`.
 

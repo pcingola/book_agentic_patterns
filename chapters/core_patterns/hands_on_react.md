@@ -1,4 +1,4 @@
-# Hands-On: ReAct (Reasoning + Acting)
+## Hands-On: ReAct (Reasoning + Acting)
 
 ReAct is a prompting pattern where the model explicitly interleaves reasoning steps with actions. The model writes structured text containing "Thought" and "Action" labels, the system parses and executes the action, and the resulting observation is appended back to the context. This loop continues until the model produces a final answer.
 

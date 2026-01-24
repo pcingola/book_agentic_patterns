@@ -181,6 +181,9 @@ These are all about how agents manage information over time.
 - [x] Specification
 - [x] Engineering: Skills with A2A, and MCPs.
 
+### Chapter: Sub-Agents
+
+
 ### Chapter: [Evals](chapters/evals/chapter.md)
 
 - [x] Historical Perspective
@@ -192,9 +195,6 @@ These are all about how agents manage information over time.
 - [x] Hands-on: Pydantic Evals Framework
 - [x] Hands-on: Doctors
 - [x] References
-
-### Chapter: Sub-agents
-
 
 ### Chapter: [Connectors](chapters/connectors/chapter.md)
 
@@ -223,8 +223,6 @@ These are all about how agents manage information over time.
 - [ ] Document consistency
 - [ ] Knowledge updating and reconciliation
 
-### Section 3: Production, Scaling & Enterprise
-
 ### Chapter: UI
 
 - [ ] Chainlit
@@ -233,6 +231,8 @@ These are all about how agents manage information over time.
 - [ ] Session ID -> MCP / A2A tracking
 - [ ] File uploads
 - [ ] Error propagation
+
+### Section: Production, Scaling & Enterprise
 
 ### Chapter: [Execution Infrastructure](chapters/execution_infrastructure/chapter.md)
 
