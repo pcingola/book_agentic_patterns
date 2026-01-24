@@ -98,16 +98,3 @@ Converting a skill into an A2A agent is a hosting move: you take the skill as th
 
 The important point is that “conversion” is rarely a literal mechanical transform. It is an architectural refactoring where the skill remains the portable capability artifact, and A2A is the transport and collaboration wrapper when that capability needs to be offered across trust boundaries or organizational boundaries.
 
-## References
-
-1. AgentSkills Working Group. *Integrate skills into your agent*. AgentSkills.io, 2024. [https://agentskills.io/integrate-skills](https://agentskills.io/integrate-skills) ([Agent Skills][64])
-2. AgentSkills Working Group. *Specification*. AgentSkills.io, 2024. [https://agentskills.io/specification](https://agentskills.io/specification) ([Agent Skills][65])
-3. A2A Protocol Authors. *A2A and MCP*. A2A Protocol, 2025. [https://a2a-protocol.org/latest/topics/a2a-and-mcp/](https://a2a-protocol.org/latest/topics/a2a-and-mcp/) ([a2a-protocol.org][67])
-4. Model Context Protocol Authors. *Architecture (Primitives)*. Model Context Protocol, 2025. [https://modelcontextprotocol.io/docs/learn/architecture](https://modelcontextprotocol.io/docs/learn/architecture) ([Model Context Protocol][66])
-5. Model Context Protocol Authors. *Architecture (Specification 2025-06-18)*. Model Context Protocol, 2025. [https://modelcontextprotocol.io/specification/2025-06-18/architecture](https://modelcontextprotocol.io/specification/2025-06-18/architecture) ([Model Context Protocol][68])
-
-[64]: https://agentskills.io/integrate-skills "Integrate skills into your agent - Agent Skills"
-[65]: https://agentskills.io/specification "Specification - Agent Skills"
-[66]: https://modelcontextprotocol.io/docs/learn/architecture?utm_source=chatgpt.com "Architecture overview"
-[67]: https://a2a-protocol.org/latest/topics/a2a-and-mcp/ "A2A and MCP - A2A Protocol"
-[68]: https://modelcontextprotocol.io/specification/2025-06-18/architecture?utm_source=chatgpt.com "Architecture"

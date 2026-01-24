@@ -86,8 +86,3 @@ Beyond modularity, skills act as constraints on agent reasoning. By limiting the
 
 As agent systems grow, skills increasingly define the action vocabulary of the agent.
 
-### References
-
-1. AgentSkills Initiative. *What Are Skills?* AgentSkills.io, 2024. [https://agentskills.io/what-are-skills](https://agentskills.io/what-are-skills)
-2. AgentSkills Initiative. *Skill Specification*. AgentSkills.io, 2024. [https://agentskills.io/specification](https://agentskills.io/specification)
-3. Anthropic. *Claude Skills Documentation*. Anthropic, 2024. [https://code.claude.com/docs/en/skills](https://code.claude.com/docs/en/skills)
