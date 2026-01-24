@@ -1,6 +1,6 @@
 """Tool factory for creating PydanticAI tools from A2A clients."""
 
-import asyncio
+from collections.abc import Callable
 
 from pydantic_ai import RunContext, Tool
 
@@ -8,8 +8,14 @@ from agentic_patterns.core.a2a.client import A2AClientExtended, TaskStatus
 from agentic_patterns.core.a2a.utils import extract_text, extract_question, slugify, card_to_prompt
 
 
-def create_a2a_tool(client: A2AClientExtended, name: str | None = None) -> Tool:
+def create_a2a_tool(client: A2AClientExtended, card: dict, name: str | None = None, is_cancelled: Callable[[], bool] | None = None) -> Tool:
     """Create a PydanticAI tool that delegates to a remote A2A agent.
+
+    Args:
+        client: The A2A client to use for communication
+        card: The agent card (fetched via client.get_agent_card())
+        name: Optional tool name override (defaults to slugified agent name)
+        is_cancelled: Optional callback to check if operation should be cancelled
 
     The tool returns formatted strings for the coordinator to interpret:
     - [COMPLETED] result text
@@ -18,7 +24,6 @@ def create_a2a_tool(client: A2AClientExtended, name: str | None = None) -> Tool:
     - [CANCELLED] task was cancelled
     - [TIMEOUT] task timed out
     """
-    card = asyncio.get_event_loop().run_until_complete(client.get_agent_card())
     tool_name = name or slugify(card["name"])
 
     async def delegate(ctx: RunContext, prompt: str, task_id: str | None = None) -> str:
@@ -32,9 +37,6 @@ def create_a2a_tool(client: A2AClientExtended, name: str | None = None) -> Tool:
         Returns:
             Formatted string with status prefix and result/message
         """
-        def is_cancelled() -> bool:
-            return getattr(ctx, "is_cancelled", lambda: False)()
-
         status, task = await client.send_and_observe(
             prompt=prompt,
             task_id=task_id,
@@ -62,12 +64,13 @@ def create_a2a_tool(client: A2AClientExtended, name: str | None = None) -> Tool:
     return Tool(delegate)
 
 
-def build_coordinator_prompt(clients: list[A2AClientExtended]) -> str:
-    """Build a system prompt section describing available A2A agents."""
-    sections = []
-    for client in clients:
-        card = asyncio.get_event_loop().run_until_complete(client.get_agent_card())
-        sections.append(card_to_prompt(card))
+def build_coordinator_prompt(cards: list[dict]) -> str:
+    """Build a system prompt section describing available A2A agents.
+
+    Args:
+        cards: List of agent cards (fetched via client.get_agent_card())
+    """
+    sections = [card_to_prompt(card) for card in cards]
 
     header = """You coordinate tasks between specialized agents.
 
