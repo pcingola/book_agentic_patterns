@@ -12,17 +12,8 @@ def list_available_skills(registry: SkillRegistry) -> str:
 
 
 def get_skill_instructions(registry: SkillRegistry, name: str) -> str | None:
-    """Returns full SKILL.md body and reference file paths for activation."""
+    """Returns full SKILL.md body for activation (second tier of progressive disclosure)."""
     skill = registry.get(name)
     if not skill:
         return None
-    lines = [skill.body]
-    if skill.reference_paths:
-        lines.append("\n## References")
-        for ref_path in skill.reference_paths:
-            lines.append(f"- {ref_path}")
-    if skill.script_paths:
-        lines.append("\n## Scripts")
-        for script_path in skill.script_paths:
-            lines.append(f"- {script_path}")
-    return "\n".join(lines)
+    return skill.body

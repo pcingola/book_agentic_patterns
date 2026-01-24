@@ -28,6 +28,7 @@ class Skill(BaseModel):
     body: str
     script_paths: list[Path]
     reference_paths: list[Path]
+    asset_paths: list[Path]
 
     def __str__(self) -> str:
         return f"Skill({self.name})"

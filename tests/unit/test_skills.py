@@ -29,6 +29,7 @@ class TestSkill(unittest.TestCase):
             body="# Test\nSome instructions",
             script_paths=[],
             reference_paths=[],
+            asset_paths=[],
         )
         self.assertEqual(str(skill), "Skill(test-skill)")
 
@@ -153,6 +154,18 @@ description: {description}
         skill = registry.get("skill-with-refs")
         self.assertEqual(len(skill.reference_paths), 1)
 
+    def test_get_collects_asset_paths(self):
+        skill_dir = self._create_test_skill("skill-with-assets", "Has assets")
+        assets_dir = skill_dir / "assets"
+        assets_dir.mkdir()
+        (assets_dir / "template.json").write_text("{}")
+        (assets_dir / "schema.yaml").write_text("type: object")
+
+        registry = SkillRegistry()
+        registry.discover([self.skills_root])
+        skill = registry.get("skill-with-assets")
+        self.assertEqual(len(skill.asset_paths), 2)
+
 
 class TestSkillTools(unittest.TestCase):
 
@@ -198,8 +211,9 @@ class TestSkillTools(unittest.TestCase):
         output = get_skill_instructions(registry, "nonexistent")
         self.assertIsNone(output)
 
-    def test_get_skill_instructions_includes_script_paths(self):
-        skill_dir = self._create_test_skill("with-scripts", "Has scripts")
+    def test_get_skill_instructions_returns_only_body(self):
+        """Per spec, activation returns only the body (tier 2). Resources are tier 3."""
+        skill_dir = self._create_test_skill("with-scripts", "Has scripts", body="# Main Instructions")
         scripts_dir = skill_dir / "scripts"
         scripts_dir.mkdir()
         (scripts_dir / "run.py").write_text("print('hello')")
@@ -207,20 +221,9 @@ class TestSkillTools(unittest.TestCase):
         registry = SkillRegistry()
         registry.discover([self.skills_root])
         output = get_skill_instructions(registry, "with-scripts")
-        self.assertIn("## Scripts", output)
-        self.assertIn("run.py", output)
-
-    def test_get_skill_instructions_includes_reference_paths(self):
-        skill_dir = self._create_test_skill("with-refs", "Has refs")
-        refs_dir = skill_dir / "references"
-        refs_dir.mkdir()
-        (refs_dir / "api.md").write_text("# API")
-
-        registry = SkillRegistry()
-        registry.discover([self.skills_root])
-        output = get_skill_instructions(registry, "with-refs")
-        self.assertIn("## References", output)
-        self.assertIn("api.md", output)
+        self.assertIn("Main Instructions", output)
+        self.assertNotIn("## Scripts", output)
+        self.assertNotIn("run.py", output)
 
 
 class TestSkillsAgentIntegration(unittest.IsolatedAsyncioTestCase):

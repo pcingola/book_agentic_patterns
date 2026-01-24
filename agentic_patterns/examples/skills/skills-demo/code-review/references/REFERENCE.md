@@ -1,16 +1,16 @@
 # Code Review Reference
 
-## Security Checklist
+## Common Security Vulnerabilities
 
-- Input validation on all user-provided data
-- Parameterized queries for database operations
-- Authentication and authorization checks
-- Sensitive data exposure (logs, errors, responses)
-- Dependency vulnerabilities
+### Code Injection
+- `eval()` - Executes arbitrary code from string input
+- `exec()` - Executes arbitrary Python statements
+- Template injection - Unescaped user input in templates
 
-## Common Bug Patterns
+### SQL Injection
+- String concatenation in SQL queries
+- Missing parameterized queries
 
-- Off-by-one errors in loops
-- Null/undefined handling
-- Race conditions in async code
-- Resource leaks (connections, file handles)
+### Cross-Site Scripting (XSS)
+- Unescaped HTML output
+- innerHTML with user data

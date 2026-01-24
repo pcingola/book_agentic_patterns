@@ -52,6 +52,7 @@ class TestOrchestratorAgent(unittest.IsolatedAsyncioTestCase):
             body="# Instructions",
             script_paths=[],
             reference_paths=[],
+            asset_paths=[],
         )
         spec = AgentSpec(name="skilled-agent", model=model, skills=[skill])
 

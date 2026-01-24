@@ -8,20 +8,20 @@ compatibility: Works with Python, JavaScript, and TypeScript files.
 
 ## When to use this skill
 
-Use this skill when reviewing code changes, pull requests, or existing codebases for quality issues.
+Use this skill when asked to review, analyze, or check code for issues. This includes security audits, bug detection, and code quality assessments.
 
 ## How to use
 
-Analyze the provided code and check for:
-1. Logic errors and potential bugs
-2. Security vulnerabilities (injection, authentication, authorization)
-3. Code style and readability issues
-4. Performance concerns
+After activating this skill, use the `analyze_code` tool to examine code snippets.
 
-## Output format
+## What to look for
 
-Provide findings organized by severity: critical, warning, suggestion.
+When reviewing code, check for:
+- Security vulnerabilities (eval, exec, SQL injection, XSS)
+- Error handling gaps
+- Resource leaks
+- Logic errors
 
-## Additional guidance
+## Output
 
-For detailed security checklists, consult the reference file.
+Provide a clear list of issues found, categorized by severity (CRITICAL, WARNING, INFO).

@@ -111,15 +111,13 @@ If you encounter scanned PDFs or complex layouts, consult the reference file.
 
 ### Progressive disclosure tiers
 
-The specification is designed around three disclosure tiers, each with different cost characteristics:
+The specification formalizes the three disclosure tiers introduced earlier:
 
-1. **Metadata** (~100 tokens): The `name` and `description` fields are loaded at startup for all skills. This enables skill selection without loading full instructions.
+1. **Metadata** (~100 tokens): The `name` and `description` fields, loaded at startup for all skills.
 
-2. **Instructions** (<5000 tokens recommended): The full `SKILL.md` body is loaded when the skill is activated. This provides detailed guidance for executing the capability.
+2. **Instructions** (<5000 tokens recommended): The full `SKILL.md` body, loaded when the skill is activated.
 
-3. **Resources** (as needed): Files in `scripts/`, `references/`, and `assets/` are loaded only when required. This keeps the agent's context focused on what it actually needs.
-
-This tiered approach is not an optimization for edge cases. It is a prerequisite for building agents with many capabilities. Even models with large context windows perform worse when filled with irrelevant instructions.
+3. **Resources** (as needed): Files in `scripts/`, `references/`, and `assets/`, loaded only when explicitly required by the agent.
 
 ### File references
 

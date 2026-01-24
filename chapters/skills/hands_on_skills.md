@@ -1,14 +1,6 @@
 ## Hands-On: Skills and Progressive Disclosure
 
-Skills solve a fundamental problem in agentic systems: how to give an agent access to many capabilities without overwhelming its context with instructions it may never need. The solution is progressive disclosure, where information is revealed incrementally based on what the agent actually requires.
-
 This hands-on explores skills through `example_skills.ipynb`, demonstrating how an agent discovers available skills, activates one based on the task, and uses its tools.
-
-## The Problem Skills Solve
-
-Consider an agent with access to dozens of capabilities: PDF processing, code review, data analysis, image manipulation, API integrations. Loading full instructions for all capabilities into the system prompt creates two problems. First, token costs grow linearly with capabilities. Second, model performance degrades as context fills with irrelevant information, even before hard limits are reached.
-
-Skills address this by separating what an agent knows exists from what it knows how to do. At startup, the agent sees a compact catalog of skill names and descriptions. Only when the agent decides it needs a specific capability does it load the full instructions.
 
 ## Skill Structure
 
@@ -103,18 +95,6 @@ You must activate a skill before using its tools."""
 
 When the agent receives a code review task, it recognizes the match with the code-review skill, activates it to get instructions, then uses `analyze_code` to perform the actual analysis. The output shows this sequence clearly through the activation and tool call markers.
 
-## Why This Pattern Matters
-
-Progressive disclosure is not an optimization for edge cases. It is a prerequisite for building agents with many capabilities. Even models with large context windows perform worse when filled with irrelevant instructions. By loading only what is needed, when it is needed, skills keep the agent's effective context focused on the current task.
-
-The pattern also creates clear boundaries for capability management. Skills can be added, removed, or updated independently. Access control can be implemented at the activation layer. Audit logs can track which skills an agent used for any given task.
-
 ## Key Takeaways
 
-Skills separate capability discovery from capability use. The agent sees a compact catalog at startup and loads full instructions only when needed.
-
-Progressive disclosure has three tiers: metadata (always loaded), instructions (loaded on activation), and resources like scripts and references (loaded only when the agent reads them).
-
-Gating tools behind activation enforces the pattern at runtime and makes skill usage visible in the execution trace.
-
-The skill structure (SKILL.md with frontmatter and body, optional scripts and references directories) provides a standard format for packaging agent capabilities.
+Gating tools behind activation enforces the progressive disclosure pattern at runtime and makes skill usage visible in the execution trace. The `[SKILL ACTIVATED]` and `[SKILL TOOL CALLED]` markers demonstrate the clear boundary between discovery, activation, and execution.

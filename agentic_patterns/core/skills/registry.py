@@ -91,6 +91,7 @@ class SkillRegistry:
                 body=body,
                 script_paths=_collect_paths(skill_dir / "scripts"),
                 reference_paths=_collect_paths(skill_dir / "references"),
+                asset_paths=_collect_paths(skill_dir / "assets"),
             )
         except (OSError, UnicodeDecodeError):
             return None
