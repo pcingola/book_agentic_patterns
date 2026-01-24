@@ -1,6 +1,6 @@
 # Hands-On: Doctors
 
-Doctors are AI-powered quality analyzers that evaluate artifacts used in agentic systems: prompts, tools, MCP servers, and A2A agent cards. Each doctor uses an LLM to assess quality, identify issues, and provide actionable recommendations. This hands-on explores the four doctor types through `example_doctors.ipynb`.
+Doctors are AI-powered quality analyzers that evaluate artifacts used in agentic systems: prompts, tools, MCP servers, A2A agent cards, and Agent Skills. Each doctor uses an LLM to assess quality, identify issues, and provide actionable recommendations. This hands-on explores the five doctor types through `example_doctors.ipynb`.
 
 The doctor pattern addresses a common challenge: as agentic systems grow, the quality of their components becomes harder to verify manually. A prompt that seems clear to its author may confuse the model. A tool definition missing type hints forces the model to guess about expected inputs. Doctors automate this quality assessment, catching issues before they cause problems in production.
 
@@ -139,6 +139,56 @@ app = agent.to_a2a(
 
 The description explains what the agent does. Skills are explicitly listed with their own names, descriptions, and tags. Other agents can make informed decisions about when and how to delegate tasks.
 
+## SkillDoctor: Analyzing Agent Skills
+
+SkillDoctor analyzes Agent Skills (agentskills.io format) for compliance and quality. Agent Skills are self-contained packages that provide agents with capabilities, similar to how MCP servers expose tools but focused on agent-executable instructions and scripts.
+
+```python
+skill_dir = Path("skill-bad")
+
+doctor = SkillDoctor()
+result = await doctor.analyze(skill_dir)
+```
+
+The doctor validates multiple aspects of a skill. First, it checks the directory structure: skills must contain a `SKILL.md` file with YAML frontmatter, and may optionally include `scripts/`, `references/`, and `assets/` directories. Files placed directly in the skill root (other than SKILL.md and LICENSE) violate the specification.
+
+Second, it validates the frontmatter metadata. The `name` field must be lowercase alphanumeric with hyphens and match the directory name. The `description` field should explain what the skill does and when to use it. A poorly defined skill might have:
+
+```yaml
+---
+name: BadSkill
+description: Does stuff
+---
+
+Use this skill.
+```
+
+This fails multiple checks: the name uses incorrect casing and does not match the directory name, the description is too vague, and the body provides no useful instructions.
+
+Third, the doctor analyzes each script in the `scripts/` directory, checking for proper documentation, error handling, and consistency with the SKILL.md description. If a script exists but is not documented in SKILL.md, or if SKILL.md references a script that does not exist, the doctor flags these inconsistencies.
+
+A well-defined skill provides comprehensive metadata and clear instructions:
+
+```yaml
+---
+name: skill-good
+description: A code formatting skill that counts lines and words in text files. Use this skill when you need basic file statistics.
+compatibility: Works with any text files.
+---
+
+# File Statistics Skill
+
+This skill provides basic statistics for text files.
+
+## Available Scripts
+
+### stats.py
+
+Counts lines, words, and characters in a text file. Accepts a file path as argument and prints the counts.
+```
+
+The name follows the specification format and matches the directory. The description explains both what the skill does and when to use it. Scripts are documented with usage examples and expected output. The accompanying script includes a docstring, type hints, and proper error handling.
+
 ## CLI Integration
 
 Doctors are available as command-line tools for CI/CD integration:
@@ -155,6 +205,9 @@ python -m agentic_patterns.core.doctors mcp --stdio "fastmcp run server.py"
 
 # Analyze A2A agent cards
 python -m agentic_patterns.core.doctors a2a http://localhost:8001
+
+# Analyze Agent Skills
+python -m agentic_patterns.core.doctors skill ./my-skill/
 ```
 
 Each command returns a non-zero exit code if any artifact needs improvement, enabling use as a quality gate in CI pipelines. The `--verbose` flag provides detailed output for debugging.
@@ -163,7 +216,7 @@ Each command returns a non-zero exit code if any artifact needs improvement, ena
 
 Doctors fit naturally into development workflows at several points.
 
-During development, run doctors interactively to get feedback on new prompts and tools. The immediate feedback loop helps catch issues early, before they propagate into agent behavior.
+During development, run doctors interactively to get feedback on new prompts, tools, and skills. The immediate feedback loop helps catch issues early, before they propagate into agent behavior.
 
 In code review, doctor output provides objective quality metrics. Rather than debating whether a docstring is "good enough," the doctor's structured analysis offers concrete improvement suggestions.
 
@@ -175,6 +228,6 @@ For third-party integrations, MCPDoctor and A2ADoctor evaluate external services
 
 Doctors use an LLM to assess quality, which introduces non-determinism. The same artifact might receive slightly different assessments across runs. For critical decisions, run doctors multiple times or use the structured `needs_improvement` flag rather than individual issue details.
 
-The quality criteria are encoded in prompt templates (stored in `prompts/doctors/`). These templates embody opinions about what constitutes good prompts, tools, and agent cards. Organizations may need to customize these templates to align with their specific standards.
+The quality criteria are encoded in prompt templates (stored in `prompts/doctors/`). These templates embody opinions about what constitutes good prompts, tools, agent cards, and skills. Organizations may need to customize these templates to align with their specific standards.
 
 Doctor analysis adds latency and cost, as each analysis requires an LLM call. For large codebases, consider running doctors only on changed files rather than the entire codebase.

@@ -23,11 +23,14 @@ Your task is to verify:
    - Does it handle errors gracefully?
 
 Rules:
+- ONLY report actual problems that need fixing (WARNING or ERROR level)
+- Do NOT create INFO-level issues for things that are correct or well-done
 - Focus on issues that would cause an agent to misunderstand or misuse the script
-- If the script is not mentioned in SKILL.md at all, this is a significant issue
-- If the script is mentioned but the description is inaccurate, flag this
-- Set needs_improvement=true if there are any issues
-- Provide actionable suggestions
+- If the script is not mentioned in SKILL.md at all, this is a significant issue (WARNING)
+- If the script is mentioned but the description is inaccurate, flag this (WARNING or ERROR)
+- Set needs_improvement=true only if there are WARNING or ERROR level issues
+- If everything is correct, return an empty issues list
+- Provide actionable suggestions for actual problems
 
 SKILL.md content:
 {skill_md_content}

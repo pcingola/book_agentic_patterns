@@ -117,9 +117,9 @@ def _validate_structure(skill_dir: Path) -> list[Issue]:
     for item in skill_dir.iterdir():
         if item.is_file() and item.name not in ("SKILL.md", "LICENSE", "LICENSE.txt", "LICENSE.md"):
             if not item.name.startswith("."):
-                issues.append(Issue(level=IssueLevel.INFO, category=IssueCategory.COMPLETENESS, message=f"Unexpected file '{item.name}' in skill root", suggestion="Move to scripts/, references/, or assets/ directory"))
+                issues.append(Issue(level=IssueLevel.ERROR, category=IssueCategory.STRUCTURE, message=f"Unexpected file '{item.name}' in skill root", suggestion="Move to scripts/, references/, or assets/ directory"))
         elif item.is_dir() and item.name not in ("scripts", "references", "assets") and not item.name.startswith("."):
-            issues.append(Issue(level=IssueLevel.INFO, category=IssueCategory.COMPLETENESS, message=f"Unexpected directory '{item.name}'", suggestion="Use scripts/, references/, or assets/ for organization"))
+            issues.append(Issue(level=IssueLevel.ERROR, category=IssueCategory.STRUCTURE, message=f"Unexpected directory '{item.name}'", suggestion="Use scripts/, references/, or assets/ for organization"))
     return issues
 
 
@@ -229,7 +229,18 @@ class SkillDoctor(DoctorBase):
         result.structure_issues.extend(structure_issues)
         result.scripts = script_recommendations
         result.consistency_issues = consistency_issues
-        result.needs_improvement = result.needs_improvement or bool(frontmatter_issues or body_issues or structure_issues or consistency_issues or any(s.issues for s in script_recommendations))
+
+        def has_problems(issues: list[Issue]) -> bool:
+            return any(i.level != IssueLevel.INFO for i in issues)
+
+        result.needs_improvement = (
+            result.needs_improvement
+            or has_problems(frontmatter_issues)
+            or has_problems(body_issues)
+            or has_problems(structure_issues)
+            or has_problems(consistency_issues)
+            or any(s.has_problems() for s in script_recommendations)
+        )
         return result
 
     async def _analyze_batch_internal(self, batch: list[Path], verbose: bool = False) -> list[AgentSkillRecommendation]:
@@ -271,8 +282,8 @@ class SkillDoctor(DoctorBase):
             result = agent_run.result.output
             for script_name in result.undocumented_scripts:
                 issues.append(Issue(
-                    level=IssueLevel.WARNING,
-                    category=IssueCategory.CONSISTENCY,
+                    level=IssueLevel.ERROR,
+                    category=IssueCategory.DOCUMENTATION,
                     message=f"Script '{script_name}' exists but is not documented in SKILL.md",
                     suggestion=f"Add documentation for scripts/{script_name} in SKILL.md body",
                 ))

@@ -152,10 +152,17 @@ class ScriptRecommendation(BaseModel):
     issues: list[Issue]
 
     def __str__(self) -> str:
-        if not self.issues:
+        actionable = [i for i in self.issues if i.level != IssueLevel.INFO]
+        if not actionable:
             return f"{self.script_name}: OK"
-        issues_str = "; ".join(str(i) for i in self.issues)
-        return f"{self.script_name}: {issues_str}"
+        out = f"{self.script_name}:"
+        for issue in actionable:
+            out += f"\n        - {issue}"
+        return out
+
+    def has_problems(self) -> bool:
+        """Return True if there are WARNING or ERROR level issues."""
+        return any(i.level != IssueLevel.INFO for i in self.issues)
 
 
 class AgentSkillRecommendation(Recommendation):
@@ -167,36 +174,54 @@ class AgentSkillRecommendation(Recommendation):
     scripts: list[ScriptRecommendation]
     structure_issues: list[Issue]
 
+    def _filter_actionable(self, issues: list[Issue]) -> list[Issue]:
+        """Filter to only WARNING and ERROR level issues."""
+        return [i for i in issues if i.level != IssueLevel.INFO]
+
     def __str__(self) -> str:
         status = "NEEDS IMPROVEMENT" if self.needs_improvement else "OK"
         out = f"Skill: {self.name} - {status}"
-        if self.issues:
+
+        general = self._filter_actionable(self.issues)
+        if general:
             out += "\n  General issues:"
-            for issue in self.issues:
+            for issue in general:
                 out += f"\n    - {issue}"
-        if self.frontmatter_issues:
+
+        frontmatter = self._filter_actionable(self.frontmatter_issues)
+        if frontmatter:
             out += "\n  Frontmatter issues:"
-            for issue in self.frontmatter_issues:
+            for issue in frontmatter:
                 out += f"\n    - {issue}"
-        if self.body_issues:
+
+        body = self._filter_actionable(self.body_issues)
+        if body:
             out += "\n  Body issues:"
-            for issue in self.body_issues:
+            for issue in body:
                 out += f"\n    - {issue}"
-        scripts_with_issues = [s for s in self.scripts if s.issues]
+
+        scripts_with_issues = [s for s in self.scripts if s.has_problems()]
         if scripts_with_issues:
             out += "\n  Script issues:"
             for script in scripts_with_issues:
                 out += f"\n    - {script}"
-        if self.consistency_issues:
+
+        consistency = self._filter_actionable(self.consistency_issues)
+        if consistency:
             out += "\n  Consistency issues:"
-            for issue in self.consistency_issues:
+            for issue in consistency:
                 out += f"\n    - {issue}"
-        if self.references:
+
+        refs = self._filter_actionable(self.references)
+        if refs:
             out += "\n  Reference issues:"
-            for issue in self.references:
+            for issue in refs:
                 out += f"\n    - {issue}"
-        if self.structure_issues:
+
+        structure = self._filter_actionable(self.structure_issues)
+        if structure:
             out += "\n  Structure issues:"
-            for issue in self.structure_issues:
+            for issue in structure:
                 out += f"\n    - {issue}"
+
         return out

@@ -139,15 +139,6 @@ These are all about how agents manage information over time.
   - [x] Write-back patterns
 - [x] Knowledge bases and consistency (Batch conversion of memory to knowledge, RAG)
 
-### Chapter: Evals
-
-- [x] Introducton
-- [x] Testing & Debugging agents
-- [x] Evals
-
-## Section 2: Modularization & Composition
-All about building larger systems from smaller pieces.
-
 ### Chapter: [MCP](chapters/mcp/chapter.md)
 
 - [x] Historical Perspective
@@ -178,6 +169,12 @@ All about building larger systems from smaller pieces.
 - [x] Introduction
 - [x] Specification
 - [x] Engineering: Skills with A2A, and MCPs.
+
+### Chapter: [Evals](chapters/evals/chapter.md)
+
+- [x] Introducton
+- [x] Testing & Debugging agents
+- [x] Evals
 
 ### Chapter: Modularity & Composition
 

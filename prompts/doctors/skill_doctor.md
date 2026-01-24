@@ -35,9 +35,12 @@ For each skill, check:
 5. **Progressive disclosure**: Is the skill structured for efficient context use? Main SKILL.md under 500 lines with details in reference files?
 
 Rules:
+- ONLY report actual problems that need fixing (WARNING or ERROR level)
+- Do NOT create INFO-level issues for things that are correct or well-done
 - Only flag issues that would affect an agent's ability to understand or execute the skill
 - Do not nitpick style preferences
 - Set needs_improvement=false if the skill is well-defined
+- If everything is correct, return an empty issues list
 - Focus on actionable suggestions
 
 Skill to analyze:

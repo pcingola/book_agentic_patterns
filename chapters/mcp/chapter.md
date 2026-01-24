@@ -1,8 +1,8 @@
 # MCP: Model Context Protocol
 
-[Historical Perspective](./historical_perspective.md)
-
 [Intro](./introduction.md)
+
+[Historical Perspective](./historical_perspective.md)
 
 [Tools](./tools.md)
 
