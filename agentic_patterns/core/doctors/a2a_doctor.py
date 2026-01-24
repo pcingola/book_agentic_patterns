@@ -3,7 +3,7 @@
 import json
 
 import httpx
-from pydantic import BaseModel
+from fasta2a.schema import AgentCard
 
 from agentic_patterns.core.agents import get_agent, run_agent
 from agentic_patterns.core.config.config import PROMPTS_DIR
@@ -11,45 +11,35 @@ from agentic_patterns.core.doctors.base import DoctorBase
 from agentic_patterns.core.doctors.models import A2ARecommendation
 from agentic_patterns.core.prompt import load_prompt
 
-
-class AgentCard(BaseModel):
-    """Minimal representation of an A2A agent card."""
-    name: str
-    description: str | None = None
-    capabilities: list[str] | None = None
-    skills: list[dict] | None = None
-    url: str | None = None
+# Required top-level fields in an A2A agent card per the protocol spec.
+AGENT_CARD_REQUIRED_FIELDS = ["name", "description", "url", "version", "skills"]
 
 
-async def fetch_agent_card(url: str) -> AgentCard:
-    """Fetch an agent card from a URL."""
+def validate_agent_card(data: dict) -> AgentCard:
+    """Validate that the response contains a valid A2A agent card.
+
+    We use basic validation instead of fasta2a's agent_card_ta.validate_python() because
+    the fasta2a library incorrectly marks Skill.inputModes and Skill.outputModes as required
+    fields, when the A2A protocol spec defines them as optional (skills inherit from the
+    agent-level defaultInputModes/defaultOutputModes when not specified). This causes
+    validation to fail on valid agent cards that follow the protocol correctly.
+    """
+    missing = [f for f in AGENT_CARD_REQUIRED_FIELDS if f not in data]
+    if missing:
+        raise ValueError(f"Invalid agent card: missing required fields: {missing}")
+    return data  # type: ignore[return-value]
+
+
+async def fetch_agent_card(base_url: str, verbose: bool = False) -> AgentCard:
+    """Fetch an agent card from an A2A server base URL."""
+    url = base_url.rstrip("/") + "/.well-known/agent-card.json"
     async with httpx.AsyncClient() as client:
         response = await client.get(url)
         response.raise_for_status()
         data = response.json()
-        return AgentCard(
-            name=data.get("name", "unknown"),
-            description=data.get("description"),
-            capabilities=data.get("capabilities"),
-            skills=data.get("skills"),
-            url=url,
-        )
-
-
-def _format_agent_card(card: AgentCard) -> str:
-    """Format an agent card for analysis."""
-    lines = [f"### Agent: {card.name}"]
-    if card.url:
-        lines.append(f"URL: {card.url}")
-    if card.description:
-        lines.append(f"Description: {card.description}")
-    if card.capabilities:
-        lines.append(f"Capabilities: {', '.join(card.capabilities)}")
-    if card.skills:
-        lines.append("Skills:")
-        for skill in card.skills:
-            lines.append(f"  - {json.dumps(skill)}")
-    return "\n".join(lines)
+        if verbose:
+            print(f"Agent card: {json.dumps(data, indent=2)}")
+        return validate_agent_card(data)
 
 
 class A2ADoctor(DoctorBase):
@@ -65,12 +55,14 @@ class A2ADoctor(DoctorBase):
         cards = []
         for item in batch:
             if isinstance(item, str):
-                card = await fetch_agent_card(item)
+                card = await fetch_agent_card(item, verbose=verbose)
             else:
                 card = item
+                if verbose:
+                    print(f"Agent card: {json.dumps(card, indent=2)}")
             cards.append(card)
 
-        agent_cards_content = "\n\n---\n\n".join(_format_agent_card(card) for card in cards)
+        agent_cards_content = "\n\n---\n\n".join(json.dumps(card, indent=2) for card in cards)
         analysis_prompt = load_prompt(
             PROMPTS_DIR / "doctors" / "a2a_doctor.md",
             agent_cards=agent_cards_content,

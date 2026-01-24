@@ -141,24 +141,9 @@ These are all about how agents manage information over time.
 
 ### Chapter: Evals
 
-- [ ] Introducton
-  - [ ] Testing types: Concepts and simple guidelines
-  - [ ] Unit tests, integration tests (e.g. testing tools) 
-  - [ ] Testing deterministic vs non-deterministic systems
-  - [ ] Evals: Testing Agents, workflows, etc
-  - [ ] Benchmarks: Testing Model/Agent capabilities (i.e. testing the limits). Different from evals (testing correctness)
-- Evals:
-  - [ ] Evals: Testing Agents, workflows, etc
-  - [ ] Regression testing across model and prompt versions
-  - [ ] Eval creators (Agent that creates evals)
-- [ ] Debugging
-  - [ ] Observability
-  - [ ] Logging
-- [ ] Using Agents to deug Agents
-  - [ ] Prompt doctor
-  - [ ] Tool doctor
-  - [ ] MCP doctor
-  - [ ] A2A doctor
+- [x] Introducton
+- [x] Testing & Debugging agents
+- [x] Evals
 
 ## Section 2: Modularization & Composition
 All about building larger systems from smaller pieces.

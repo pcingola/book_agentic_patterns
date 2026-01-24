@@ -186,6 +186,11 @@ async def main() -> int:
             return 1
 
 
-if __name__ == "__main__":
+def main_sync() -> int:
+    """Sync wrapper for console script entry point."""
     sys.path.insert(0, str(Path.cwd()))
-    sys.exit(asyncio.run(main()))
+    return asyncio.run(main())
+
+
+if __name__ == "__main__":
+    sys.exit(main_sync())

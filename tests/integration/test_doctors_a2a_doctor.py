@@ -2,7 +2,9 @@ import asyncio
 import unittest
 import warnings
 
-from agentic_patterns.core.doctors import A2ADoctor, A2ARecommendation, AgentCard, a2a_doctor
+from pydantic_ai.a2a import AgentCard, AgentSkill
+
+from agentic_patterns.core.doctors import A2ADoctor, A2ARecommendation, a2a_doctor
 
 
 class TestA2ADoctor(unittest.IsolatedAsyncioTestCase):
@@ -19,20 +21,17 @@ class TestA2ADoctor(unittest.IsolatedAsyncioTestCase):
             name="DataProcessingAgent",
             description="An intelligent agent that processes and analyzes data from various sources. "
             "It can handle CSV, JSON, and XML formats, perform statistical analysis, and generate reports.",
-            capabilities=["data_processing", "statistical_analysis", "report_generation"],
             skills=[
-                {
-                    "id": "process_csv",
-                    "description": "Process a CSV file and return structured data",
-                    "input_schema": {"type": "object", "properties": {"file_path": {"type": "string"}}},
-                    "output_schema": {"type": "object", "properties": {"data": {"type": "array"}}},
-                },
-                {
-                    "id": "generate_report",
-                    "description": "Generate a summary report from processed data",
-                    "input_schema": {"type": "object", "properties": {"data": {"type": "array"}}},
-                    "output_schema": {"type": "object", "properties": {"report": {"type": "string"}}},
-                },
+                AgentSkill(
+                    id="process_csv",
+                    name="Process CSV",
+                    description="Process a CSV file and return structured data",
+                ),
+                AgentSkill(
+                    id="generate_report",
+                    name="Generate Report",
+                    description="Generate a summary report from processed data",
+                ),
             ],
         )
 
@@ -47,8 +46,7 @@ class TestA2ADoctor(unittest.IsolatedAsyncioTestCase):
         card = AgentCard(
             name="Agent1",
             description="Does stuff",
-            capabilities=["misc"],
-            skills=[{"id": "do_thing"}],
+            skills=[AgentSkill(id="do_thing", name="Do Thing")],
         )
 
         doctor = A2ADoctor()
@@ -56,7 +54,6 @@ class TestA2ADoctor(unittest.IsolatedAsyncioTestCase):
 
         self.assertIsInstance(result, A2ARecommendation)
         self.assertEqual(result.name, "Agent1")
-        # Poorly-defined card should need improvement
         self.assertTrue(result.needs_improvement)
 
     async def test_a2a_doctor_batch(self):
@@ -65,8 +62,7 @@ class TestA2ADoctor(unittest.IsolatedAsyncioTestCase):
             AgentCard(
                 name="WellDefinedAgent",
                 description="A clearly defined agent that performs specific tasks",
-                capabilities=["task_execution"],
-                skills=[{"id": "execute_task", "description": "Execute a predefined task"}],
+                skills=[AgentSkill(id="execute_task", name="Execute Task", description="Execute a predefined task")],
             ),
             AgentCard(
                 name="VagueAgent",

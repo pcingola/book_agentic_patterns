@@ -15,5 +15,8 @@ dependencies = [
     "pyyaml>=6.0.0",
 ]
 
+[project.scripts]
+doctors = "agentic_patterns.core.doctors.__main__:main_sync"
+
 [tool.setuptools]
 packages = ["agentic_patterns"]
