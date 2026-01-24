@@ -32,7 +32,7 @@ A minimal, spec-aligned skill layout looks like this:
 pdf-processing/
   SKILL.md
   scripts/
-    extract_text_and_tables.py
+    extract.py
   references/
     REFERENCE.md
 ```
@@ -43,7 +43,6 @@ The `SKILL.md` file combines structured metadata with natural-language instructi
 ---
 name: pdf-processing
 description: Extract text and tables from PDF files.
-allowed-tools: Bash(python:*) Read
 ---
 
 # PDF Processing
