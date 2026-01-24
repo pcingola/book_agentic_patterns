@@ -14,16 +14,19 @@ class IssueLevel(str, Enum):
 
 class IssueCategory(str, Enum):
     """Category of an issue."""
-    NAMING = "naming"
-    DOCUMENTATION = "documentation"
-    TYPES = "types"
+    AMBIGUITY = "ambiguity"
     ARGUMENTS = "arguments"
-    RETURN_TYPE = "return_type"
+    CAPABILITIES = "capabilities"
     CLARITY = "clarity"
     COMPLETENESS = "completeness"
-    AMBIGUITY = "ambiguity"
-    CAPABILITIES = "capabilities"
+    CONSISTENCY = "consistency"
+    DOCUMENTATION = "documentation"
     ENDPOINTS = "endpoints"
+    NAMING = "naming"
+    RETURN_TYPE = "return_type"
+    SCRIPTS = "scripts"
+    STRUCTURE = "structure"
+    TYPES = "types"
 
 
 class Issue(BaseModel):
@@ -140,4 +143,60 @@ class A2ARecommendation(Recommendation):
             out += "\n  Skill issues:"
             for skill in skills_with_issues:
                 out += f"\n    - {skill}"
+        return out
+
+
+class ScriptRecommendation(BaseModel):
+    """Recommendation for a script in a skill."""
+    script_name: str
+    issues: list[Issue]
+
+    def __str__(self) -> str:
+        if not self.issues:
+            return f"{self.script_name}: OK"
+        issues_str = "; ".join(str(i) for i in self.issues)
+        return f"{self.script_name}: {issues_str}"
+
+
+class AgentSkillRecommendation(Recommendation):
+    """Recommendation for an Agent Skill (agentskills.io format)."""
+    body_issues: list[Issue]
+    consistency_issues: list[Issue]
+    frontmatter_issues: list[Issue]
+    references: list[Issue]
+    scripts: list[ScriptRecommendation]
+    structure_issues: list[Issue]
+
+    def __str__(self) -> str:
+        status = "NEEDS IMPROVEMENT" if self.needs_improvement else "OK"
+        out = f"Skill: {self.name} - {status}"
+        if self.issues:
+            out += "\n  General issues:"
+            for issue in self.issues:
+                out += f"\n    - {issue}"
+        if self.frontmatter_issues:
+            out += "\n  Frontmatter issues:"
+            for issue in self.frontmatter_issues:
+                out += f"\n    - {issue}"
+        if self.body_issues:
+            out += "\n  Body issues:"
+            for issue in self.body_issues:
+                out += f"\n    - {issue}"
+        scripts_with_issues = [s for s in self.scripts if s.issues]
+        if scripts_with_issues:
+            out += "\n  Script issues:"
+            for script in scripts_with_issues:
+                out += f"\n    - {script}"
+        if self.consistency_issues:
+            out += "\n  Consistency issues:"
+            for issue in self.consistency_issues:
+                out += f"\n    - {issue}"
+        if self.references:
+            out += "\n  Reference issues:"
+            for issue in self.references:
+                out += f"\n    - {issue}"
+        if self.structure_issues:
+            out += "\n  Structure issues:"
+            for issue in self.structure_issues:
+                out += f"\n    - {issue}"
         return out

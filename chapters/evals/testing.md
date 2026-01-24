@@ -1,12 +1,6 @@
 ## Testing
 
-Testing establishes confidence that agentic systems behave as intended across code changes, model updates, and evolving environments, despite inherent stochasticity.
-
-### Introduction and historical perspective
-
-Testing in software engineering predates modern AI by decades and emerged as a response to increasing system complexity. Early practices focused on validating deterministic programs through unit and integration tests, assuming that identical inputs would always produce identical outputs. As systems grew distributed and stateful, higher-level tests—system, end-to-end, and stress tests—became necessary to validate behavior under realistic conditions.
-
-Machine learning systems challenged these assumptions. Models trained on data introduced probabilistic behavior, statistical performance metrics, and distributional drift. Instead of asserting exact outputs, practitioners began validating properties, ranges, and aggregate behavior. Agentic systems amplify this shift: they combine stochastic models, external tools, long-running workflows, and evolving context. Testing therefore becomes less about exact answers and more about correctness envelopes, invariants, and failure modes. This section briefly revisits classical testing layers and reframes them in the context of agents.
+Testing establishes confidence that agentic systems behave as intended across code changes, model updates, and evolving environments, despite inherent stochasticity. Building on the historical evolution discussed earlier, this section examines classical testing layers through an agentic lens.
 
 ### Classical testing layers, revisited for agentic systems
 
@@ -48,10 +42,3 @@ Testing provides the scaffolding on which evals are built. Without reliable unit
 
 At an introductory level, testing can be seen as answering the question “does this system work at all?” Evals refine this into “does this system work well, consistently, and for the right reasons?” The remainder of this chapter builds on that foundation.
 
-## References
-
-1. Myers, G. J. *The Art of Software Testing*. Wiley, 1979.
-2. Beizer, B. *Software Testing Techniques*. Van Nostrand Reinhold, 1990.
-3. Amershi, S. et al. *Software Engineering for Machine Learning: A Case Study*. ICSE, 2019.
-4. Breck, E. et al. *The ML Test Score: A Rubric for ML Production Readiness*. Google Research, 2017.
-5. Ribeiro, M. T., Singh, S., Guestrin, C. *Why Should I Trust You? Explaining the Predictions of Any Classifier*. KDD, 2016.

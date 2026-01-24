@@ -9,6 +9,7 @@ Commands:
     prompt    Analyze prompt file(s)
     mcp       Analyze tools from an MCP server
     a2a       Analyze agent-to-agent card(s)
+    skill     Analyze Agent Skills (agentskills.io format)
 
 Examples:
     python -m agentic_patterns.core.doctors prompt prompts/system.md
@@ -16,6 +17,8 @@ Examples:
     python -m agentic_patterns.core.doctors mcp --url http://localhost:8000/mcp
     python -m agentic_patterns.core.doctors mcp --stdio "uv run mcp_server.py"
     python -m agentic_patterns.core.doctors a2a http://localhost:8001/.well-known/agent.json
+    python -m agentic_patterns.core.doctors skill ./my-skill
+    python -m agentic_patterns.core.doctors skill ./skills-directory --all
 """
 
 import argparse
@@ -143,6 +146,48 @@ async def cmd_a2a(args: argparse.Namespace) -> int:
     return 1 if needs_improvement > 0 else 0
 
 
+async def cmd_skill(args: argparse.Namespace) -> int:
+    """Run skill doctor."""
+    from agentic_patterns.core.doctors.skill_doctor import skill_doctor
+
+    skill_dirs = []
+    base_path = Path(args.path)
+
+    if not base_path.exists():
+        print(f"Path not found: {base_path}")
+        return 1
+
+    if args.all:
+        if not base_path.is_dir():
+            print(f"--all requires a directory path: {base_path}")
+            return 1
+        for item in base_path.iterdir():
+            if item.is_dir() and (item / "SKILL.md").exists():
+                skill_dirs.append(item)
+        if not skill_dirs:
+            print(f"No skills found in {base_path}")
+            return 1
+    else:
+        if base_path.is_dir():
+            skill_dirs.append(base_path)
+        else:
+            print(f"Path must be a skill directory: {base_path}")
+            return 1
+
+    if args.verbose:
+        print(f"Analyzing {len(skill_dirs)} skills")
+
+    results = await skill_doctor(skill_dirs, verbose=args.verbose)
+
+    for result in results:
+        print(result)
+        print()
+
+    needs_improvement = sum(1 for r in results if r.needs_improvement)
+    print(f"Summary: {needs_improvement}/{len(results)} skills need improvement")
+    return 1 if needs_improvement > 0 else 0
+
+
 async def main() -> int:
     """Main entry point."""
     parser = argparse.ArgumentParser(description="Doctor analysis tools for prompts, tools, MCP, and A2A")
@@ -170,6 +215,11 @@ async def main() -> int:
     a2a_parser.add_argument("urls", nargs="+", help="Agent card URLs")
     a2a_parser.add_argument("--batch-size", type=int, default=5, help="Agents per batch")
 
+    # Skill subcommand
+    skill_parser = subparsers.add_parser("skill", help="Analyze Agent Skills (agentskills.io)")
+    skill_parser.add_argument("path", help="Skill directory or parent directory with --all")
+    skill_parser.add_argument("--all", action="store_true", help="Analyze all skills in directory")
+
     args = parser.parse_args()
 
     match args.command:
@@ -181,6 +231,8 @@ async def main() -> int:
             return await cmd_mcp(args)
         case "a2a":
             return await cmd_a2a(args)
+        case "skill":
+            return await cmd_skill(args)
         case _:
             parser.print_help()
             return 1

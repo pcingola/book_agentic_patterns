@@ -18,7 +18,7 @@ A minimal abstraction set that scales from single-call LLM apps to complex agent
 
 ```python
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Generic, List, Optional, Protocol, TypeVar, Union
+from typing import Any, Callable, Generic, Protocol, TypeVar
 
 InputsT = TypeVar("InputsT")
 OutputT = TypeVar("OutputT")
@@ -27,13 +27,13 @@ OutputT = TypeVar("OutputT")
 class Case(Generic[InputsT, OutputT]):
     name: str
     inputs: InputsT
-    expected_output: Optional[OutputT] = None
-    metadata: Dict[str, Any] = None  # tags, difficulty, domain, etc.
+    expected_output: OutputT | None = None
+    metadata: dict[str, Any] | None = None  # tags, difficulty, domain, etc.
 
 # A result can be: assertion(bool), score(float), or label(str), optionally with a reason.
 @dataclass(frozen=True)
 class EvalResult:
-    value: Union[bool, float, str]
+    value: bool | float | str
     reason: str = ""
 
 @dataclass(frozen=True)
@@ -41,18 +41,18 @@ class EvalContext(Generic[InputsT, OutputT]):
     case: Case[InputsT, OutputT]
     output: OutputT
     # Optional execution traces/telemetry identifiers for deeper debugging.
-    trace_id: Optional[str] = None
-    span_id: Optional[str] = None
+    trace_id: str | None = None
+    span_id: str | None = None
 
 class Evaluator(Protocol[InputsT, OutputT]):
     name: str
-    def evaluate(self, ctx: EvalContext[InputsT, OutputT]) -> Union[EvalResult, Dict[str, EvalResult]]:
+    def evaluate(self, ctx: EvalContext[InputsT, OutputT]) -> EvalResult | dict[str, EvalResult]:
         ...
 
 @dataclass
 class Dataset(Generic[InputsT, OutputT]):
-    cases: List[Case[InputsT, OutputT]]
-    evaluators: List[Evaluator[InputsT, OutputT]]
+    cases: list[Case[InputsT, OutputT]]
+    evaluators: list[Evaluator[InputsT, OutputT]]
 ```
 
 This structure captures the core idea: datasets describe intent, experiments execute the system, and reports summarize what happened, including per-case outputs and per-evaluation reasons, plus links back to execution traces when available. ([Pydantic AI][1])
@@ -162,8 +162,8 @@ A process-level evaluator is conceptually just another evaluator that can read t
 @dataclass
 class SpanMatcher(Evaluator[InputsT, OutputT]):
     name: str
-    required: List[dict]  # declarative patterns: {"op": "tool.call", "tool": "sql.query"}
-    forbidden: List[dict] = None
+    required: list[dict]  # declarative patterns: {"op": "tool.call", "tool": "sql.query"}
+    forbidden: list[dict] | None = None
 
     def evaluate(self, ctx: EvalContext[InputsT, OutputT]) -> EvalResult:
         spans = load_spans(trace_id=ctx.trace_id)  # your OTel backend / captured trace
@@ -176,34 +176,9 @@ class SpanMatcher(Evaluator[InputsT, OutputT]):
 
 This is the key bridge between evals and observability: the same telemetry you rely on in production becomes the substrate for behavioral tests, and failing cases can link directly to trace identifiers for fast diagnosis. ([Pydantic AI][6])
 
-## References (references.md)
-
-1. Pydantic Services Inc. *Pydantic Evals*. Documentation, 2025. ([Pydantic AI][7])
-2. Pydantic Services Inc. *Quick Start (Evals)*. Documentation, 2025. ([Pydantic AI][8])
-3. Pydantic Services Inc. *Core Concepts (Evals)*. Documentation, 2025. ([Pydantic AI][1])
-4. Pydantic Services Inc. *Evaluators Overview (Evals)*. Documentation, 2025. ([Pydantic AI][2])
-5. Pydantic Services Inc. *LLM Judge Evaluator*. Documentation, 2025. ([Pydantic AI][3])
-6. Pydantic Services Inc. *Custom Evaluators*. Documentation, 2025. ([Pydantic AI][9])
-7. Pydantic Services Inc. *Span-Based Evaluation*. Documentation, 2025. ([Pydantic AI][6])
-8. Pydantic Services Inc. *Example: Simple Validation*. Documentation, 2025. ([Pydantic AI][10])
-9. Pydantic Services Inc. *Dataset Serialization*. Documentation, 2025. ([Pydantic AI][5])
-10. Zheng, L., Chiang, W.-L., et al. *Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena*. arXiv, 2023. ([arXiv][4])
-11. Liu, Y., et al. *NLG Evaluation using GPT-4 with Better Human Alignment (G-Eval)*. EMNLP, 2023. ([arXiv][11])
-12. Ye, J., et al. *Justice or Prejudice? Quantifying Biases in LLM-as-a-Judge*. OpenReview, 2024. ([OpenReview][12])
-13. Szymański, A., et al. *Limitations of the LLM-as-a-Judge Approach for Evaluating Domain-Specific Tasks*. ACM, 2025. ([ACM Digital Library][13])
-14. Song, Y., et al. *Explaining Length Bias in LLM-Based Preference Evaluation*. Findings of EMNLP, 2025. ([ACL Anthology][14])
-
-[1]: https://ai.pydantic.dev/evals/core-concepts/?utm_source=chatgpt.com "Core Concepts"
-[2]: https://ai.pydantic.dev/evals/evaluators/overview/?utm_source=chatgpt.com "Evaluators Overview"
-[3]: https://ai.pydantic.dev/evals/evaluators/llm-judge/?utm_source=chatgpt.com "LLM Judge"
-[4]: https://arxiv.org/abs/2306.05685?utm_source=chatgpt.com "Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena"
-[5]: https://ai.pydantic.dev/evals/how-to/dataset-serialization/?utm_source=chatgpt.com "Dataset Serialization"
-[6]: https://ai.pydantic.dev/evals/evaluators/span-based/?utm_source=chatgpt.com "Span-Based Evaluation"
-[7]: https://ai.pydantic.dev/evals/?utm_source=chatgpt.com "Pydantic Evals"
-[8]: https://ai.pydantic.dev/evals/quick-start/?utm_source=chatgpt.com "Quick Start - Pydantic AI"
-[9]: https://ai.pydantic.dev/evals/evaluators/custom/?utm_source=chatgpt.com "Custom Evaluators"
-[10]: https://ai.pydantic.dev/evals/examples/simple-validation/?utm_source=chatgpt.com "Examples: Simple Validation"
-[11]: https://arxiv.org/abs/2303.16634?utm_source=chatgpt.com "NLG Evaluation using GPT-4 with Better Human Alignment"
-[12]: https://openreview.net/forum?id=3GTtZFiajM&utm_source=chatgpt.com "Justice or Prejudice? Quantifying Biases in LLM-as-a-Judge"
-[13]: https://dl.acm.org/doi/10.1145/3708359.3712091?utm_source=chatgpt.com "Limitations of the LLM-as-a-Judge Approach for Evaluating ..."
-[14]: https://aclanthology.org/2025.findings-emnlp.358.pdf?utm_source=chatgpt.com "Explaining Length Bias in LLM-Based Preference ..."
+[1]: https://ai.pydantic.dev/evals/
+[2]: https://ai.pydantic.dev/evals/#evaluators
+[3]: https://ai.pydantic.dev/evals/#llm-as-a-judge
+[4]: https://arxiv.org/abs/2306.05685
+[5]: https://ai.pydantic.dev/evals/#datasets
+[6]: https://ai.pydantic.dev/evals/#span-based-evaluation

@@ -108,7 +108,7 @@ recipe_dataset = Dataset[CustomerOrder, Recipe, Any](
             metadata={'focus': 'vegetarian'},
             evaluators=(
                 LLMJudge(
-                    rubric='Recipe should not contain meat or animal products',
+                    rubric='Recipe should not contain meat or fish',
                     model=model
                 ),
             ),
