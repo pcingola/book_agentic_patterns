@@ -105,6 +105,7 @@ Structuring agent execution at a higher level.
 
 - [x] RAG: Introduction
   - [x] How a simple RAG works
+- [x] Historical Perspective
 - [x] Data retrieval
   - [x] Embeddings
   - [x] Vector DBs
@@ -120,12 +121,17 @@ Structuring agent execution at a higher level.
   - [x] Metric for vector search / vector DBs
   - [x] End-to-end RAG metrics
 - [x] References, Citation, attribution, provenance and truth maintenance
+- [x] Hands-on: Introduction
+- [x] Hands-on: Simple Document Ingestion and Retrieval
+- [x] Hands-on: Advanced Document Ingestion and Retrieval
+- [x] References
 - [ ] BEST PRACTICE: Doctors / reviewer
 
 ### Chapter: [Context & Memory](chapters/context_memory/chapter.md)
 
 These are all about how agents manage information over time.
 
+- [x] Historical Perspective
 - [x] Prompts
   - [x] System, prompt, instructions
   - [x] Conversation history
@@ -138,6 +144,11 @@ These are all about how agents manage information over time.
   - [x] Token budgeting
   - [x] Write-back patterns
 - [x] Knowledge bases and consistency (Batch conversion of memory to knowledge, RAG)
+- [x] Hands-on: Introduction
+- [x] Hands-on: Prompts
+- [x] Hands-on: Context Result Decorator
+- [x] Hands-on: History Compaction
+- [x] References
 
 ### Chapter: [MCP](chapters/mcp/chapter.md)
 
@@ -172,18 +183,18 @@ These are all about how agents manage information over time.
 
 ### Chapter: [Evals](chapters/evals/chapter.md)
 
-- [x] Introducton
+- [x] Historical Perspective
 - [x] Testing & Debugging agents
 - [x] Evals
+- [x] Hands-on: Introduction
+- [x] Hands-on: Deterministic Testing
+- [x] Hands-on: Basic Evals
+- [x] Hands-on: Pydantic Evals Framework
+- [x] Hands-on: Doctors
+- [x] References
 
-### Chapter: Modularity & Composition
+### Chapter: Sub-agents
 
-- [ ] AGENTS.md and coding-agent conventions
-- [ ] Subagents
-- [ ] Agent hierarchies
-- [ ] Agent swarms
-- [ ] MCP-based composition
-- [ ] A2A communication patterns
 
 ### Chapter: [Connectors](chapters/connectors/chapter.md)
 

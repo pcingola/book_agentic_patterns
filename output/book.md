@@ -5,6 +5,10 @@ author: ""
 date: ""
 ---
 
+\newpage
+
+# Disclaimer
+
 This book was directed and edited by Pablo Cingolani, who defined its structure, scope, and technical direction, and ensured that the content forms a coherent and consistent whole. While much of the text and many of the code examples were primarily produced with the assistance of AI tools, substantial effort was invested in curating, refining, and integrating these materials so that the narrative flows logically, the concepts build on one another, and the code reflects sound engineering practices. The result is not an automated compilation, but a carefully guided and edited work shaped by clear architectural intent and hands-on experience.
 
 
@@ -7743,18 +7747,6 @@ memory_store.save(checkpoint)
 Write-back reframes the model’s role. The language model is no longer the memory itself; it becomes a reasoning engine operating over explicitly managed state. This separation is essential for long-running agents, auditability, and system-level correctness.
 
 
-## References
-
-1. Tom B. Brown et al. *Language Models are Few-Shot Learners*. NeurIPS, 2020. https://proceedings.neurips.cc/paper/2020/file/1457c0d6bfcb4967418bfb8ac142f64a-Paper.pdf
-2. Jason Wei et al. *Finetuned Language Models Are Zero-Shot Learners*. ICLR, 2022. https://openreview.net/pdf?id=gEZrGCozdqR
-3. Long Ouyang et al. *Training language models to follow instructions with human feedback*. NeurIPS, 2022. https://proceedings.neurips.cc/paper_files/paper/2022/file/b1efde53be364a73914f58805a001731-Paper-Conference.pdf
-4. Ashish Vaswani et al. *Attention Is All You Need*. NeurIPS, 2017. https://papers.neurips.cc/paper/7181-attention-is-all-you-need.pdf
-5. Sainbayar Sukhbaatar et al. *End-To-End Memory Networks*. NeurIPS, 2015. https://proceedings.neurips.cc/paper/5846-end-to-end-memory-networks.pdf
-6. Mikael Henaff et al. *Tracking the World State with Recurrent Entity Networks*. ICLR, 2017. https://arxiv.org/pdf/1612.03969
-7. Pydantic AI Documentation. *Agents: System Prompts, Instructions, Runs vs. Conversations*. 2025. https://ai.pydantic.dev/agents/
-8. Ruirui Lou et al. *Large Language Model Instruction Following: A Survey of Progress and Challenges*. Computational Linguistics, 2024. https://direct.mit.edu/coli/article/50/3/1053/121669/Large-Language-Model-Instruction-Following-A
-
-
 # Hands-On: Introduction
 
 The preceding sections introduced the concepts that shape effective context management: prompt layers that separate identity from task control, compression techniques that bound token consumption, and the principle of intentional loss when context budgets are exceeded. The hands-on exercises that follow translate these concepts into working code using the `agentic_patterns` core library.
@@ -8232,18 +8224,21 @@ Compaction uses LLM summarization to preserve semantic content. The summary capt
 Tool call/return pairing is preserved automatically. The compactor finds safe boundaries that don't orphan tool returns, deferring compaction when necessary.
 
 
+## References
+
+1. Tom B. Brown et al. *Language Models are Few-Shot Learners*. NeurIPS, 2020. https://proceedings.neurips.cc/paper/2020/file/1457c0d6bfcb4967418bfb8ac142f64a-Paper.pdf
+2. Jason Wei et al. *Finetuned Language Models Are Zero-Shot Learners*. ICLR, 2022. https://openreview.net/pdf?id=gEZrGCozdqR
+3. Long Ouyang et al. *Training language models to follow instructions with human feedback*. NeurIPS, 2022. https://proceedings.neurips.cc/paper_files/paper/2022/file/b1efde53be364a73914f58805a001731-Paper-Conference.pdf
+4. Ashish Vaswani et al. *Attention Is All You Need*. NeurIPS, 2017. https://papers.neurips.cc/paper/7181-attention-is-all-you-need.pdf
+5. Sainbayar Sukhbaatar et al. *End-To-End Memory Networks*. NeurIPS, 2015. https://proceedings.neurips.cc/paper/5846-end-to-end-memory-networks.pdf
+6. Mikael Henaff et al. *Tracking the World State with Recurrent Entity Networks*. ICLR, 2017. https://arxiv.org/pdf/1612.03969
+7. Pydantic AI Documentation. *Agents: System Prompts, Instructions, Runs vs. Conversations*. 2025. https://ai.pydantic.dev/agents/
+8. Ruirui Lou et al. *Large Language Model Instruction Following: A Survey of Progress and Challenges*. Computational Linguistics, 2024. https://direct.mit.edu/coli/article/50/3/1053/121669/Large-Language-Model-Instruction-Following-A
+
+
 \newpage
 
 # MCP: Model Context Protocol
-
-## Historical Perspective
-
-The emergence of MCP is best understood as the convergence of several research and engineering threads that matured between roughly 2018 and 2024. Early neural language models were largely stateless and closed: prompts were short, tools were hard-coded, and any notion of "context" was manually injected. As models became more capable, this led to brittle integrations where each application defined its own ad-hoc conventions for tool calling, prompt templates, file access, and memory. Developers building agent systems found themselves reinventing the same abstractions repeatedly, with no shared vocabulary for how models should discover, describe, or invoke external capabilities.
-
-Earlier software ecosystems had already faced a similar problem and solved it through protocol design. Language Server Protocol (LSP), introduced in the mid-2010s, demonstrated that a clean, transport-agnostic protocol could decouple editors from language tooling. Rather than each IDE implementing its own parser, completion engine, and diagnostics for every programming language, LSP established a contract that allowed any compliant editor to work with any compliant language server. This architectural insight, that interoperability emerges from shared protocols rather than shared implementations, proved remarkably successful. Around the same time, work on agent architectures, tool-augmented language models, and function-calling APIs highlighted the need for a more principled interface between models and their environment. Research on tool use, planning, and long-horizon interaction made it clear that context could no longer be treated as a flat text prompt, but instead as a structured, evolving state that models reason over across multiple turns.
-
-MCP emerged from this backdrop as a unifying abstraction. Rather than embedding tool logic and context management inside each application or model runtime, MCP defines a shared protocol that externalizes these concerns. The result is a system where models can operate over rich, inspectable context without being tightly coupled to any specific framework, transport, or vendor. Just as LSP decoupled editors from language services, MCP decouples agent runtimes from tool implementations, enabling composition, substitution, and evolution at the protocol boundary rather than inside monolithic codebases.
-
 
 # Chapter: Model Context Protocol (MCP)
 
@@ -8295,6 +8290,15 @@ MCP addresses a structural problem that becomes unavoidable as systems scale: wi
 
 Equally important, MCP shifts responsibility to the right layer. Models focus on reasoning and decision-making; servers focus on exposing well-defined capabilities; clients enforce policy, security, and orchestration. This separation mirrors successful patterns in distributed systems and is a prerequisite for building robust, enterprise-grade agent platforms.
 
+
+
+## Historical Perspective
+
+The emergence of MCP is best understood as the convergence of several research and engineering threads that matured between roughly 2018 and 2024. Early neural language models were largely stateless and closed: prompts were short, tools were hard-coded, and any notion of "context" was manually injected. As models became more capable, this led to brittle integrations where each application defined its own ad-hoc conventions for tool calling, prompt templates, file access, and memory. Developers building agent systems found themselves reinventing the same abstractions repeatedly, with no shared vocabulary for how models should discover, describe, or invoke external capabilities.
+
+Earlier software ecosystems had already faced a similar problem and solved it through protocol design. Language Server Protocol (LSP), introduced in the mid-2010s, demonstrated that a clean, transport-agnostic protocol could decouple editors from language tooling. Rather than each IDE implementing its own parser, completion engine, and diagnostics for every programming language, LSP established a contract that allowed any compliant editor to work with any compliant language server. This architectural insight, that interoperability emerges from shared protocols rather than shared implementations, proved remarkably successful. Around the same time, work on agent architectures, tool-augmented language models, and function-calling APIs highlighted the need for a more principled interface between models and their environment. Research on tool use, planning, and long-horizon interaction made it clear that context could no longer be treated as a flat text prompt, but instead as a structured, evolving state that models reason over across multiple turns.
+
+MCP emerged from this backdrop as a unifying abstraction. Rather than embedding tool logic and context management inside each application or model runtime, MCP defines a shared protocol that externalizes these concerns. The result is a system where models can operate over rich, inspectable context without being tightly coupled to any specific framework, transport, or vendor. Just as LSP decoupled editors from language services, MCP decouples agent runtimes from tool implementations, enabling composition, substitution, and evolution at the protocol boundary rather than inside monolithic codebases.
 
 
 # Chapter: MCP

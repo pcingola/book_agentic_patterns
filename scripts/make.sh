@@ -33,12 +33,12 @@ for chapter_name in $CHAPTERS; do
 
         if [ "$GENERATE_PDF" = true ]; then
             echo "Generating PDF for chapter '$chapter_name'"
-            pandoc "$output_file" -o "$OUTPUT_DIR/${chapter_name}.pdf" --pdf-engine=xelatex
+            pandoc "$output_file" -o "$OUTPUT_DIR/${chapter_name}.pdf" --pdf-engine=xelatex -V geometry:margin=1in
         fi
     fi
 done
 
 if [ "$GENERATE_PDF" = true ]; then
     echo "Generating PDF for the entire book"
-    pandoc "$OUTPUT_DIR/book.md" -o "$OUTPUT_DIR/book.pdf" --pdf-engine=xelatex --toc --toc-depth=2
+    pandoc "$OUTPUT_DIR/book.md" -o "$OUTPUT_DIR/book.pdf" --pdf-engine=xelatex --toc --toc-depth=2 -V geometry:margin=1in
 fi
