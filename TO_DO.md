@@ -70,6 +70,8 @@
   - 
 - Chapter "Code execution": Move NL2SQL somewhere else (Data chapter)
 
+- Cluade Engineering blog: See resource from https://www.anthropic.com/engineering
+
 - IMPLEMENT: Fact checker (run for each chapter)
 
 - IMPLEMENT: Critique

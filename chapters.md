@@ -276,6 +276,7 @@ Production infrastructure for running agent-generated code safely.
 - [ ] Deep research
 - [ ] Biomni
 - [ ] ....
+- [ ] Personas and simulation, Role-playing and multi-perspective reasoning. Debate and arbitration agents
 
 ### Chapter: Privacy & Governance
 
@@ -296,6 +297,9 @@ Corporate security
 - [ ] Policy enforcement (pre- [ ] and post-execution)
 - [ ] Human approval gates for high-impact actions
 
+### Chapter: Advanced Patterns
+
+
 ### Chapter: Operations & Production
 
 - [ ] Error propagation: Tool, MCP, A2A, Agent, UI
@@ -309,54 +313,3 @@ Corporate security
 - [ ] Model, prompt, and tool version management
 
 
-
-
-
-
-------- Optional Chapters -------
-
-### Section 4: Advanced Topics
-
-### Chapter: Model Strategy & Runtime Economics
-
-- [ ] Model selection and routing
-- [ ] Small vs large models
-- [ ] Fallbacks and ensembles
-- [ ] Structured outputs and schema-first design
-- [ ] Output repair strategies
-- [ ] Latency vs cost tradeoffs
-- [ ] Caching, memoization, batching
-- [ ] Streaming and early stopping
-
-### Chapter: Distributed Systems Concerns for Agentic Systems
-
-- [ ] Distributed Systems Concerns for Agentic Systems
-- [ ] Partial observability and belief maintenance
-- [ ] Coordination and consensus in multi-agent settings
-- [ ] Consistency models for shared state and memory
-- [ ] Fault tolerance, partitions, and degraded operation
-- [ ] Idempotency and exactly-once semantics across agents
-
-### Chapter: Advanced Patterns
-
-- [ ] Personas and simulation
-- [ ] Role-playing and multi-perspective reasoning
-- [ ] Governance boards
-- [ ] Debate and arbitration agents
-
-### Chapter: Learning, Adaptation, and Self-Improvement
-
-- [ ] Online learning vs offline retraining
-- [ ] Preference learning and user modeling
-- [ ] Behavioral drift and stability control
-- [ ] Self-evaluation and feedback-driven improvement
-- [ ] Updating skills, tools, and policies safely
-- [ ] Guardrails for self-modifying agents
-
-### Chapter: Human Factors & Product Design
-
-- [ ] Intent clarification
-- [ ] When agents should ask questions
-- [ ] Explainability and transparency
-- [ ] Progress reporting and controllability
-- [ ] Trust UX and user confidence
