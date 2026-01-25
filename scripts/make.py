@@ -26,7 +26,18 @@ def resolve_includes(file_path: Path, visited: set[Path], source_file: Path | No
     pattern = r'\[([^\]]+)\]\(([^\)]+\.md)\)'
 
     result_lines = []
+    in_code_block = False
     for line_num, line in enumerate(lines, start=1):
+        # Track fenced code block state (``` or ~~~)
+        stripped = line.lstrip()
+        if stripped.startswith('```') or stripped.startswith('~~~'):
+            in_code_block = not in_code_block
+            result_lines.append(line)
+            continue
+        # Skip link processing inside code blocks and indented code
+        if in_code_block or line.startswith('    '):
+            result_lines.append(line)
+            continue
         def replace_include(match: re.Match) -> str:
             link_text = match.group(1)
             link_path = match.group(2)

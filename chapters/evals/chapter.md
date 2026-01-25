@@ -1,5 +1,7 @@
 # Chapter: Evals
 
+[Introduction](./introduction.md)
+
 [Historical perspective](./historical_perspective.md)
 
 [Testing](./testing.md)

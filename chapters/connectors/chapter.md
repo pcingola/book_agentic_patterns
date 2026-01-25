@@ -1,5 +1,7 @@
-# Chapter: Connectors
+# Connectors & Data Sources
 
-This chapter covers patterns for connecting agents to external data sources and systems.
+[Introduction](./introduction.md)
+
+[Connectors](./connectors.md)
 
 [NL2SQL](./nl2sql.md)

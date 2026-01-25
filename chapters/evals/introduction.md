@@ -1,0 +1,3 @@
+## Introduction
+
+Evaluating agentic systems requires rethinking traditional software testing assumptions. Classical tests assert exact outputs given exact inputs, but agents produce variable responses, invoke tools unpredictably, and reason through problems in ways that differ across runs. This chapter addresses how to test and evaluate such systems effectively: separating deterministic components (which can be tested conventionally) from stochastic agent behavior (which requires property-based evaluation and statistical validation). We cover testing strategies for the infrastructure surrounding agents, evaluation frameworks for assessing agent quality, and practical techniques for building confidence in systems that are inherently non-deterministic.

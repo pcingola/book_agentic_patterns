@@ -124,7 +124,7 @@ The specification formalizes the three disclosure tiers introduced earlier:
 When referencing other files in a skill, use relative paths from the skill root:
 
 ```markdown
-See [the reference guide](references/REFERENCE.md) for details.
+See [the reference guide](references/guide.md) for details.
 
 Run the extraction script:
 scripts/extract.py
