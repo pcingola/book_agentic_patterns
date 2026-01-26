@@ -1,4 +1,4 @@
-# Chapter: Sub-Agents
+# Chapter: Skills & Sub-Agents
 
 [Introduction](./introduction.md)
 
@@ -6,12 +6,16 @@
 
 [Context engineering: why sub-agents help](./context_engineering.md)
 
-[Relationship to A2A and AgentSkills](./relationship_a2a_skills.md)
+[Skills Specification](./skills_specification.md)
 
-[Hands-On: Introduction](./hands_on_intro.md)
+[Skills Engineering](./skills_engineering.md)
+
+[Comparison: Sub-agents, Skills, MCP, and A2A](./comparison.md)
 
 [Hands-On: Fixed Sub-Agents](./hands_on_sub_agents_fixed.md)
 
 [Hands-On: Dynamic Sub-Agents](./hands_on_sub_agents_dynamic.md)
+
+[Hands-On: Skills](./hands_on_skills.md)
 
 [References](./references.md)

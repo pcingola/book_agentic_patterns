@@ -175,21 +175,17 @@ These are all about how agents manage information over time.
 - [x] Hands-on: A2A Coordinator Agent
 - [x] References
 
-### Chapter: [Skills](chapters/skills/chapter.md)
-
-- [x] Introduction
-- [x] Specification
-- [x] Engineering: Skills with A2A, and MCPs.
-
-### Chapter: [Sub-Agents](chapters/sub_agents/chapter.md)
+### Chapter: [Skills & Sub-Agents](chapters/skills_and_sub_agents/chapter.md)
 
 - [x] Introduction
 - [x] Sub-agents
 - [x] Context engineering: why sub-agents help
-- [x] Relationship to A2A and AgentSkills
-- [x] Hands-on: Introduction
+- [x] Skills Specification
+- [x] Skills Engineering
+- [x] Comparison: Sub-agents, Skills, MCP, and A2A
 - [x] Hands-on: Fixed Sub-Agents
 - [x] Hands-on: Dynamic Sub-Agents
+- [x] Hands-on: Skills
 - [x] References
 
 ### Chapter: [Evals](chapters/evals/chapter.md)
