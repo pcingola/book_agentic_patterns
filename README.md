@@ -19,8 +19,6 @@ Software engineers and ML practitioners with experience in AI/ML and software de
 ## Contents
 
 - [Chapters](./chapters.md)
-- [Topics](./topics.md)
-- [References](./references.md)
 
 ## CLI Tools
 

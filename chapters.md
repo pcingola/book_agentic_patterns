@@ -201,7 +201,7 @@ These are all about how agents manage information over time.
 - [x] Hands-on: Doctors
 - [x] References
 
-### Chapter: [Connectors & Data Sources](chapters/connectors/chapter.md)
+### Chapter: [Data Sources & Connectors](chapters/connectors/chapter.md)
 
 - [ ] Introduction
 - [ ] Connector patterns
@@ -235,7 +235,9 @@ These are all about how agents manage information over time.
 - [ ] ...(google's new protocol)
 - [ ] Session ID -> MCP / A2A tracking
 - [ ] File uploads
-- [ ] Error propagation
+- [ ] Error / Cancellation propagation: Tool, MCP, A2A, Agent, UI
+  - [ ] MCP error handling and retry different than tool error handling
+- [ ] User feedback
 
 ### Section: Production, Scaling & Enterprise
 
@@ -296,20 +298,4 @@ Corporate security
 - [ ] Secret management and credential scoping
 - [ ] Policy enforcement (pre- [ ] and post-execution)
 - [ ] Human approval gates for high-impact actions
-
-### Chapter: Advanced Patterns
-
-
-### Chapter: Operations & Production
-
-- [ ] Error propagation: Tool, MCP, A2A, Agent, UI
-  - [ ] MCP error handling and retry different than tool error handling
-- [ ] Robustness (Tool, MCP, A2A, Agent, UI)
-- [ ] Failure recovery strategies
-- [ ] Observability
-- [ ] Monitoring
-- [ ] Logging and tracing
-- [ ] Incident response
-- [ ] Model, prompt, and tool version management
-
 
