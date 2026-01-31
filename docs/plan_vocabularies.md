@@ -120,15 +120,15 @@ A tool-equipped agent that uses VocabularyConnector methods as PydanticAI tools.
 ## File Structure
 
 ```
-agentic_patterns/core/connectors/
-  vocabulary.py              # VocabularyConnector (static methods)
-  vocabulary_loader.py       # VocabularyLoader (parsers, indexing)
-  vocabulary_models.py       # VocabularyTerm, VocabularyInfo, VocabularyConfig
-  vocabulary_registry.py     # Registry: load config, route to strategy backend
-  vocabulary_backends/
-    enum_backend.py          # In-memory dict backend
-    tree_backend.py          # Tree/graph backend with traversal
-    rag_backend.py           # Vector DB backend using existing vectordb module
+agentic_patterns/core/connectors/vocabulary/
+  connector.py             # VocabularyConnector (static methods)
+  loader.py                # VocabularyLoader (parsers, indexing)
+  models.py                # VocabularyTerm, VocabularyInfo, VocabularyConfig
+  registry.py              # Registry: load config, route to strategy
+  strategy_enum.py         # In-memory dict strategy
+  strategy_tree.py         # Tree/graph strategy with traversal
+  strategy_rag.py          # Vector DB strategy using existing vectordb module
+  config.py                # Paths and defaults
 ```
 
 
