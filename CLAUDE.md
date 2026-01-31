@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a repository for the book "Agentic Patterns", which explores design patterns and best practices for building agentic systems using AI technologies. The book is written in markdown with each chapter in its own directory.
+This is the repository for the book "Agentic Patterns". The book targets software engineers and ML practitioners who want to build agentic systems. It combines theoretical foundations with hands-on implementation, moving from foundational reasoning patterns (CoT, ReAct) through tool use, orchestration, and multi-agent protocols (MCP, A2A) to evaluation and production infrastructure. All code uses PydanticAI. The book is written in markdown with each chapter in its own directory.
+
+**GOAL**: Build a proof-of-concept agentic platform using established patterns and best practices -- not a full enterprise system, but one that teaches the architectural principles needed to design, implement, test, and operate AI agent systems that can evolve into production-ready solutions.
 
 ## Repository Structure
 
@@ -51,6 +53,10 @@ The core library provides reusable infrastructure for building AI agentic system
 
 **doctors/**: CLI tools for AI-powered analysis of prompts, tools, MCP servers, A2A agent cards, and Agent Skills. Run via `doctors` command (after `uv pip install -e .`) or `python -m agentic_patterns.core.doctors`. Subcommands: `prompt` (analyze prompt files), `tool` (analyze Python tool functions), `mcp` (analyze MCP server tools), `a2a` (analyze agent cards), `skill` (analyze agentskills.io format). Each doctor uses an LLM to evaluate quality and returns recommendations with issue levels.
 
+**connectors/**: Data source connectors for agent file operations. `FileConnector` (file.py) provides read, write, append, delete, edit, find, head, tail, list operations. `CsvConnector` (csv.py) provides append, delete, query, read with auto-delimiter detection. `JsonConnector` (json.py) provides JSONPath-based read/write with structure truncation. All connectors use static methods, `@tool_permission()` decorators (READ/WRITE), and workspace sandbox isolation via `container_to_host_path()`.
+
+**mcp.py**: MCP client/server configuration. `MCPClientConfig` and `MCPServerConfig` with YAML-based settings loading and `${VAR}` environment variable expansion. Supports both HTTP and stdio transports.
+
 **skills/**: Skill library for agent capabilities with progressive disclosure pattern. `models.py` defines `SkillMetadata` (lightweight info: name, description, path) and `Skill` (full skill with frontmatter, body, script/reference/asset paths). `registry.py` provides `SkillRegistry` with `discover()` to scan skill directories and cache metadata (cheap), `list_all()` to return cached metadata for system prompt injection, and `get()` to lazy-load full skill on activation (expensive). Skills are defined in directories containing a `SKILL.md` file with YAML frontmatter (name, description) and markdown body. Optional `scripts/`, `references/`, and `assets/` subdirectories hold supporting files. `tools.py` exposes `list_available_skills()` for compact one-liner listings and `get_skill_instructions()` for returning the SKILL.md body only (per spec, resources are tier 3 and loaded separately).
 
 **a2a/**: Agent-to-Agent protocol integration. `client.py` provides `A2AClientExtended` with polling, retry, timeout, and cancellation support; `send_and_observe()` sends messages and polls until terminal state, returning `TaskStatus` (COMPLETED, FAILED, INPUT_REQUIRED, CANCELLED, TIMEOUT). `config.py` has `A2AClientConfig` and YAML-based settings loading. `coordinator.py` provides `create_coordinator()` async factory that takes A2A clients, fetches their agent cards, creates delegation tools, and returns a configured coordinator agent. `tool.py` has `create_a2a_tool(client, card)` to create PydanticAI tools for delegation (returns formatted strings like `[COMPLETED] result` or `[INPUT_REQUIRED:task_id=X] question`), and `build_coordinator_prompt(cards)` to generate system prompts. `mock.py` provides `MockA2AServer` for testing without LLM calls: configure responses with `on_prompt(prompt, result=...)` or `on_pattern(regex, input_required=...)`, use `set_default(result)` for fallback responses, use `on_prompt_delayed(prompt, polls, result=...)` for delayed responses that return working state until N polls complete, and call `to_app()` to get a FastAPI instance. Check `received_prompts` and `cancelled_task_ids` for assertions.
@@ -80,10 +86,12 @@ Code examples organized by chapter (Jupyter notebooks and Python scripts):
 - `mcp/` - MCP client (HTTP/stdio), MCP servers, features
 - `a2a/` - A2A servers and clients (v1, v2)
 - `evals/` - Evaluation examples, doctors analysis, skills (skill-bad, skill-good subdirectories)
+- `connectors/` - JSON connector example
+- `sub_agents/` - Sub-agent examples
 
 ## Chapters
 
-Chapters in `chapters/`: foundations, core_patterns, tools, context_memory, orchestration, rag, mcp, a2a, skills, sub_agents, evals, execution_infrastructure, connectors. Each contains `chapter.md` index linking to section files and hands-on exercises. Master index in `chapters.md` at root.
+Chapters in `chapters/`: foundations, core_patterns, tools, context_memory, orchestration, rag, mcp, a2a, skills_and_sub_agents, evals, execution_infrastructure, data_sources_and_connectors. Each contains `chapter.md` index linking to section files and hands-on exercises. Master index in `chapters.md` at root.
 
 ## Scripts
 
@@ -96,12 +104,14 @@ All scripts in `scripts/` follow the `config.sh` pattern (sets PROJECT_DIR, load
 - `test_integration.sh` - Runs pytest on tests/integration/
 - `evals.sh` - Runs evaluations
 - `lint.sh` - Runs linter
+- `make.py` - Python utility for book compilation
+- `fix_references.py` - Reference fixing utility
 
 ## Configuration
 
 **config.yaml**: Model configurations with named entries (default, fast, azure_gpt4, bedrock_claude, bedrock_claude_extended, ollama_local, openrouter_claude). Each model config includes model_family, model_name, provider-specific credentials, timeout, optional parallel_tool_calls.
 
-**pyproject.toml**: Project metadata and dependencies. Key packages: pydantic-ai (>=1.39.0), chromadb (>=1.4.1), openai (>=2.14.0), fastmcp (>=2.14.2), fasta2a (>=0.6.0), pyyaml, dotenv, ipykernel. Console script: `doctors`.
+**pyproject.toml**: Project metadata and dependencies. Key packages: pydantic-ai (>=1.39.0), chromadb (>=1.4.1), openai (>=2.14.0), fastmcp (>=2.14.2), fasta2a (>=0.6.0), jsonpath-ng, pyyaml, dotenv, ipykernel. Console script: `doctors`.
 
 ## Additional Conventions
 
