@@ -1,0 +1,6 @@
+# Database Connections Configuration
+
+databases:
+  bookstore:
+    type: sqlite
+    dbname: data/db/bookstore.db
