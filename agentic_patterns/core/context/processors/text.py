@@ -24,7 +24,7 @@ def detect_encoding(file_path: Path) -> str:
     return "latin-1"
 
 
-def _read_line_range(file_path: Path, encoding: str, start: int, end: int) -> tuple[list[str], bool, bool]:
+def read_line_range(file_path: Path, encoding: str, start: int, end: int) -> tuple[list[str], bool, bool]:
     """Read lines from start to end index without loading entire file.
 
     Returns (selected_lines, ended_at_eof, file_ends_with_newline).
@@ -71,7 +71,7 @@ def process_text(
                 content="", success=True, file_type=file_type, truncation_info=TruncationInfo(), metadata=metadata
             )
 
-        selected_lines, ended_at_eof, file_ends_with_newline = _read_line_range(file_path, encoding, actual_start, actual_end)
+        selected_lines, ended_at_eof, file_ends_with_newline = read_line_range(file_path, encoding, actual_start, actual_end)
         lines_shown = len(selected_lines)
 
         output = io.StringIO()

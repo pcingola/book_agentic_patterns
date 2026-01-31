@@ -2,11 +2,9 @@
 
 Agents are only as useful as the data they can reliably read and safely change, so “connectors” should expose a small set of predictable operations that cover most everyday data access needs.
 
-## Connector patterns
+A connector, in the agent sense, is a tool surface that turns an external system into a few stable verbs the agent can call directly. The key design constraint is that the verbs must be generic enough to work across many backends, but opinionated enough to provide real leverage (validation, previews, schema discovery, safe writes, and bounded reads). A raw "HTTP request tool" is too generic to be dependable, while a "SQL connector" is generic in a useful way because SQL is itself a strong abstraction and most databases provide the same introspection and query semantics.
 
-A connector, in the agent sense, is a tool surface that turns an external system into a few stable verbs the agent can call directly. The key design constraint is that the verbs must be generic enough to work across many backends, but opinionated enough to provide real leverage (validation, previews, schema discovery, safe writes, and bounded reads). A raw “HTTP request tool” is too generic to be dependable, while a “SQL connector” is generic in a useful way because SQL is itself a strong abstraction and most databases provide the same introspection and query semantics.
-
-In practice, three connector archetypes solve the majority of day-to-day enterprise use cases for agents: file/object storage connectors, SQL connectors, and OpenAPI/REST connectors.
+In practice, five connector archetypes cover the majority of day-to-day enterprise use cases for agents: file/object storage connectors, SQL connectors, OpenAPI/REST connectors, graph/relationship connectors, and controlled vocabulary/ontology connectors.
 
 ### File and object-storage connectors
 
@@ -15,24 +13,29 @@ The simplest and most widely applicable connector is “file-like access.” Thi
 A practical, agent-facing file connector typically exposes a small set of operations that map well to both filesystems and object stores:
 
 ```python
-# Listing and metadata
-files.list("docs/")                 # returns children + basic metadata
-files.stat("docs/runbook.md")       # size, modified time, etag/version if available
+# Listing and searching
+file.list("docs/", pattern="*.md")
+file.find("logs/", query="OutOfMemoryError")
+
+# Full read with automatic truncation for large files
+text = file.read("docs/runbook.md")
 
 # Bounded reads (critical to keep tool calls cheap and predictable)
-files.head("logs/app.log", n=200)   # first N lines (or bytes)
-files.tail("logs/app.log", n=200)   # last N lines (or bytes)
-files.read("docs/runbook.md", start=0, length=20_000)  # byte-range read
+file.head("logs/app.log", n=10)        # first N lines
+file.tail("logs/app.log", n=10)        # last N lines
 
-# Writes with safe semantics
-files.write("notes/todo.md", content=text, if_match=etag)  # optimistic concurrency
-files.append("logs/agent.log", content=line)               # if the backend supports it
+# Writes
+file.write("notes/todo.md", content=text)
+file.append("logs/app.log", content=new_entry)
 
-# Small edits without re-uploading entire objects when feasible
-files.replace_lines("docs/runbook.md", start_line=40, end_line=55, new_lines=patch)
+# Small edits: replace a line range without rewriting the entire file
+file.edit("docs/runbook.md", start_line=40, end_line=55, new_content=patch)
+
+# Deletion
+file.delete("notes/obsolete.md")
 ```
 
-The “bounded read” methods (head/tail/range) are not a convenience; they are what makes file connectors workable for agents at scale. Object stores and blob APIs explicitly support metadata reads and range reads (or equivalent headers), which lets a tool implement preview and partial retrieval efficiently. ([AWS Documentation][1])
+The bounded read methods (`head`/`tail`, present in all three format connectors) are not a convenience; they are what makes file connectors workable for agents at scale. Object stores and blob APIs explicitly support metadata reads and range reads (or equivalent headers), which lets a tool implement preview and partial retrieval efficiently. ([AWS Documentation][1])
 
 A common trap is over-generalizing editing. Agents frequently need to make small changes, but arbitrary in-place mutation is not uniformly supported across object stores. The connector should therefore define edits in terms of safe, portable behavior: read the smallest necessary slice, apply a patch deterministically, and write back with concurrency control (ETag / version preconditions) so the agent does not overwrite someone else’s update.
 
@@ -43,24 +46,45 @@ File-like connectors become substantially more useful when they add a few format
 For text-like content, line-oriented operations are enough:
 
 ```python
-text = files.read("src/service.py", start=0, length=40_000)
-files.replace_lines("src/service.py", 120, 138, new_lines=fixed_block)
+text = file.read("src/service.py")
+file.edit("src/service.py", start_line=120, end_line=138, new_content=fixed_block)
 ```
 
-For CSV, the agent usually wants either a preview table or a cell/row update without manually counting commas. A connector can offer a minimal table abstraction while still being backend-agnostic:
+For CSV, the agent usually wants a bounded preview (`head`/`tail`) or a cell/row update without manually counting commas. A connector can offer a minimal table abstraction while still being backend-agnostic:
 
 ```python
-preview = csv.preview("data/customers.csv", rows=20)
-csv.update_cell("data/customers.csv", row=12, column="status", value="active")
-csv.update_row("data/customers.csv", key={"customer_id": "C-1932"},
-               values={"status": "inactive", "churned_at": "2026-01-15"})
+# Discovery and reading
+csv.headers("data/customers.csv")
+csv.head("data/customers.csv", n=10)
+csv.tail("data/customers.csv", n=10)
+csv.read_row("data/customers.csv", row_number=5)
+csv.find("data/customers.csv", column="status", value="active", limit=10)
+
+# Writes
+csv.update_cell("data/customers.csv", row_number=12, column="status", value="active")
+csv.update_row("data/customers.csv", key_column="customer_id", key_value="C-1932",
+               updates={"status": "inactive", "churned_at": "2026-01-15"})
+csv.append("data/customers.csv", values={"customer_id": "C-2001", "status": "new"})
+csv.delete("data/customers.csv", column="status", value="churned")
 ```
 
-For JSON, the agent typically needs to inspect a subtree and update a field. JSONPath-like addressing (or a constrained pointer syntax) is enough; the tool should validate that the edit is local and does not accidentally rewrite large unrelated sections:
+For JSON, the agent typically needs to inspect a subtree and update a field. JSONPath-like addressing (or a constrained pointer syntax) is enough; the tool should validate that the edit is local and does not accidentally rewrite large unrelated sections. As with the other format connectors, all operations use `json.method()` style:
 
 ```python
-sub = json.get("config/app.json", path="$.features.rollout")
-json.set("config/app.json", path="$.features.rollout.percent", value=25)
+# Discovery and reading
+json.validate("config/app.json")
+json.head("config/app.json", json_path="$.features", n=10)
+json.tail("config/app.json", json_path="$.features", n=10)
+json.keys("config/app.json", json_path="$.features")
+json.get("config/app.json", json_path="$.features.rollout")
+
+# Writes
+json.set("config/app.json", json_path="$.features.rollout.percent", value="25")
+json.delete("config/app.json", json_path="$.features.rollout.deprecated_flag")
+json.merge("config/app.json", json_path="$.features.rollout",
+           updates='{"percent": 25, "enabled": true}')
+json.append("config/app.json", json_path="$.features.rollout.regions",
+            value='"eu-west-1"')
 ```
 
 The important pattern is that format-aware methods do not replace the generic file connector; they sit alongside it as “sharp tools” for the top few formats. This keeps the connector surface small while still being meaningfully usable.
@@ -123,7 +147,7 @@ for page in api.paginate("GET /tickets", params={"status": "open"}, page_size=20
 
 The design goal is to avoid a “generic API connector” that is just `http_get(url)` and `http_post(url, body)`. Those primitives push complexity onto the agent, which then must infer required fields, handle pagination styles, encode authentication correctly, and interpret error responses. By contrast, an OpenAPI-driven connector can make the agent reliably productive by turning undocumented details into discoverable tool affordances, and by ensuring that calls are validated before they hit production services. ([OpenAPI Initiative Publications][2])
 
-## Graph and relationship connectors
+### Graph and relationship connectors
 
 Graph and relationship stores appear whenever the primary question is not “what records match this filter,” but “how things are connected.” Ownership hierarchies, dependency graphs, identity and access models, data lineage, and knowledge graphs all fall into this category. In these systems, the value is not in individual rows or documents, but in traversals, neighborhoods, and paths.
 
@@ -175,15 +199,7 @@ Graph connectors are especially valuable in enterprise environments for system d
 
 In practice, this makes the graph connector a specialized but high-leverage addition. It does not replace SQL or file access, but complements them in domains where relationships, not records, are the primary unit of meaning.
 
-You are right to call this out. **Controlled vocabularies and ontologies are a distinct connector archetype**, and they are not fully covered by files, SQL, or graphs—even though they may be implemented on top of any of those.
-
-They matter because they constrain *meaning*, not just *structure*. For agents operating over private data, this is often the difference between “technically correct” and “organizationally correct.”
-
-Below is a subsection that fits naturally after Graph connectors.
-
----
-
-## Controlled vocabularies and ontology connectors
+### Controlled vocabularies and ontology connectors
 
 Controlled vocabularies and ontologies define the *allowed language* of a system: canonical terms, enumerations, synonyms, hierarchies, and semantic relationships. They are common in regulated, data-intensive, or long-lived domains such as healthcare, finance, life sciences, enterprise architecture, and data governance.
 
@@ -236,7 +252,7 @@ Controlled vocabulary connectors are especially important when agents perform wr
 
 Conceptually, this connector sits between schema and semantics. SQL schemas define *what shape* data can take; vocabularies define *what meanings* are allowed. Treating vocabularies as first-class connectors acknowledges that meaning is shared infrastructure, not incidental metadata.
 
-Including this archetype strengthens the chapter by making explicit how agents stay aligned with organizational language, policies, and domain standards—something that cannot be reliably achieved through generic file or database access alone.
+This archetype makes explicit how agents stay aligned with organizational language, policies, and domain standards -- something that cannot be reliably achieved through generic file or database access alone.
 
 ## References
 

@@ -1,4 +1,4 @@
-# Connectors & Data Sources
+# Data Sources & Connectors
 
 [Introduction](./introduction.md)
 

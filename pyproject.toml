@@ -11,6 +11,7 @@ dependencies = [
     "fastapi>=0.128.0",
     "fastmcp>=2.14.2",
     "ipykernel>=7.1.0",
+    "jsonpath-ng>=1.7.0",
     "openai>=2.14.0",
     "pydantic-ai>=1.39.0",
     "pyyaml>=6.0.0",

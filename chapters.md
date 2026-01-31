@@ -201,7 +201,7 @@ These are all about how agents manage information over time.
 - [x] Hands-on: Doctors
 - [x] References
 
-### Chapter: [Data Sources & Connectors](chapters/connectors/chapter.md)
+### Chapter: [Data Sources & Connectors](chapters/data_sources_and_connectors/chapter.md)
 
 - [ ] Introduction
 - [ ] Connector patterns

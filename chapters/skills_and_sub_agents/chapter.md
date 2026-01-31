@@ -12,6 +12,8 @@
 
 [Comparison: Sub-agents, Skills, MCP, and A2A](./comparison.md)
 
+[Agents.md](./agents.md)
+
 [Hands-On: Fixed Sub-Agents](./hands_on_sub_agents_fixed.md)
 
 [Hands-On: Dynamic Sub-Agents](./hands_on_sub_agents_dynamic.md)
