@@ -1,5 +1,5 @@
-from agentic_patterns.core.tools.utils import func_to_description
 from agentic_patterns.core.tools.selection import ToolSelector
+from agentic_patterns.core.tools.utils import func_to_description
 from agentic_patterns.core.tools.permissions import (
     ToolPermission,
     ToolPermissionError,

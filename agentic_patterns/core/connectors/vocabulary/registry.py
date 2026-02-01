@@ -7,13 +7,9 @@ import yaml
 
 from agentic_patterns.core.connectors.vocabulary.config import VOCABULARIES_YAML_PATH, VOCABULARY_CACHE_DIR
 from agentic_patterns.core.connectors.vocabulary.models import VocabularyConfig, VocabularyInfo
-from agentic_patterns.core.connectors.vocabulary.strategy_enum import StrategyEnum
-from agentic_patterns.core.connectors.vocabulary.strategy_rag import StrategyRag
-from agentic_patterns.core.connectors.vocabulary.strategy_tree import StrategyTree
+from agentic_patterns.core.connectors.vocabulary.strategy import Strategy
 
 logger = logging.getLogger(__name__)
-
-Strategy = StrategyEnum | StrategyTree | StrategyRag
 
 _registry: dict[str, Strategy] = {}
 _configs: dict[str, VocabularyConfig] = {}

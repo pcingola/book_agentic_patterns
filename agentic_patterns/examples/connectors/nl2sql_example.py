@@ -5,7 +5,7 @@ import asyncio
 from agentic_patterns.core.connectors.sql.config import DBS_YAML_PATH
 from agentic_patterns.core.connectors.sql.db_connection_config import DbConnectionConfigs
 from agentic_patterns.core.connectors.sql.db_infos import DbInfos
-from agentic_patterns.core.connectors.sql.nl2sql.agent import run_nl2sql_query
+from agentic_patterns.core.agents.nl2sql.agent import run_nl2sql_query
 
 
 DB_ID = "bookstore"

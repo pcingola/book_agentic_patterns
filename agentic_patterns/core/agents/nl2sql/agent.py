@@ -5,9 +5,9 @@ from typing import Any
 from pydantic_ai import Agent
 
 from agentic_patterns.core.agents.agents import get_agent, run_agent
+from agentic_patterns.core.agents.nl2sql.prompts import get_instructions, get_system_prompt
 from agentic_patterns.core.connectors.sql.db_infos import DbInfos
-from agentic_patterns.core.connectors.sql.nl2sql.prompts import get_instructions, get_system_prompt
-from agentic_patterns.core.connectors.sql.nl2sql.tools import get_all_tools
+from agentic_patterns.core.tools.nl2sql import get_all_tools
 
 
 def create_nl2sql_agent(db_id: str) -> Agent:
