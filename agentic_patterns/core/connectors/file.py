@@ -4,6 +4,7 @@ import fnmatch
 from pathlib import Path, PurePosixPath
 
 from agentic_patterns.core.connectors.base import Connector
+from agentic_patterns.core.context.decorators import context_result
 from agentic_patterns.core.context.processors import count_lines, detect_encoding, read_line_range
 from agentic_patterns.core.context.reader import read_file_as_string
 from agentic_patterns.core.workspace import WorkspaceError, workspace_to_host_path
@@ -88,6 +89,7 @@ class FileConnector(Connector):
         except OSError as e:
             return f"[Error] Failed to edit file: {e}"
 
+    @context_result()
     def find(self, path: str, query: str) -> str:
         """Search file contents for a string, returning matching lines."""
         host_path = self._translate_path(path)
@@ -143,6 +145,7 @@ class FileConnector(Connector):
         except OSError as e:
             return f"[Error] Failed to read file: {e}"
 
+    @context_result()
     def list(self, path: str, pattern: str = "*") -> str:
         """List files matching a glob pattern."""
         host_path = self._translate_path(path)
@@ -173,6 +176,7 @@ class FileConnector(Connector):
         except OSError as e:
             return f"[Error] Failed to list directory: {e}"
 
+    @context_result()
     def read(self, path: str) -> str:
         """Read entire file with automatic truncation for large files."""
         host_path = self._translate_path(path)

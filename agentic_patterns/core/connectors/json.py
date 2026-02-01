@@ -13,6 +13,7 @@ from jsonpath_ng import parse as jsonpath_parse
 from jsonpath_ng.exceptions import JsonPathParserError
 
 from agentic_patterns.core.connectors.file import FileConnector
+from agentic_patterns.core.context.decorators import context_result
 from agentic_patterns.core.context.processors.json_processor import process_json
 
 
@@ -227,6 +228,7 @@ class JsonConnector(FileConnector):
 
         return f"Deleted {json_path} from {path}"
 
+    @context_result()
     def get(self, path: str, json_path: str) -> str:
         """Get a value or subtree using JSONPath syntax."""
         host_path = self._translate_path(path)
@@ -264,6 +266,7 @@ class JsonConnector(FileConnector):
         finally:
             tmp_path.unlink()
 
+    @context_result()
     def head(self, path: str, json_path: str = "$", n: int = 10) -> str:
         """Return the first N keys or elements at a JSONPath."""
         host_path = self._translate_path(path)
@@ -291,6 +294,7 @@ class JsonConnector(FileConnector):
         sliced, total = _slice_value(value, n, from_end=False)
         return _format_sliced(sliced, n, total, from_end=False, json_path=json_path)
 
+    @context_result()
     def keys(self, path: str, json_path: str = "$") -> str:
         """List keys at a specific path in the JSON structure."""
         host_path = self._translate_path(path)
@@ -420,6 +424,7 @@ class JsonConnector(FileConnector):
         value_preview = value if len(value) <= 50 else f"{value[:47]}..."
         return f"Updated {json_path} = {value_preview} in {path}"
 
+    @context_result()
     def tail(self, path: str, json_path: str = "$", n: int = 10) -> str:
         """Return the last N keys or elements at a JSONPath."""
         host_path = self._translate_path(path)

@@ -70,14 +70,14 @@ csv.headers("data/customers.csv")
 csv.head("data/customers.csv", n=10)
 csv.tail("data/customers.csv", n=10)
 csv.read_row("data/customers.csv", row_number=5)
-csv.find("data/customers.csv", column="status", value="active", limit=10)
+csv.find_rows("data/customers.csv", column="status", value="active", limit=10)
 
 # Writes
 csv.update_cell("data/customers.csv", row_number=12, column="status", value="active")
 csv.update_row("data/customers.csv", key_column="customer_id", key_value="C-1932",
                updates={"status": "inactive", "churned_at": "2026-01-15"})
 csv.append("data/customers.csv", values={"customer_id": "C-2001", "status": "new"})
-csv.delete("data/customers.csv", column="status", value="churned")
+csv.delete_rows("data/customers.csv", column="status", value="churned")
 ```
 
 For JSON, the agent typically needs to inspect a subtree and update a field. JSONPath-like addressing (or a constrained pointer syntax) is enough; the tool should validate that the edit is local and does not accidentally rewrite large unrelated sections. As with the other format connectors, all operations use `json.method()` style:
@@ -92,7 +92,7 @@ json.get("config/app.json", json_path="$.features.rollout")
 
 # Writes
 json.set("config/app.json", json_path="$.features.rollout.percent", value="25")
-json.delete("config/app.json", json_path="$.features.rollout.deprecated_flag")
+json.delete_key("config/app.json", json_path="$.features.rollout.deprecated_flag")
 json.merge("config/app.json", json_path="$.features.rollout",
            updates='{"percent": 25, "enabled": true}')
 json.append("config/app.json", json_path="$.features.rollout.regions",
@@ -109,28 +109,26 @@ A useful SQL connector for agents typically starts with schema discovery, then r
 
 ```python
 # Schema discovery: the agent should be able to orient itself without prior knowledge
-db.list_schemas()
-db.list_tables(schema="public")
-db.describe_table("public", "invoices")   # columns, types, indexes, constraints
-db.sample_rows("public.invoices", limit=10)
+db.list_databases()
+db.list_tables(db_id="bookstore")
+db.show_schema(db_id="bookstore")                          # full schema SQL
+db.show_table_details(db_id="bookstore", table_name="invoices")  # single table
 
-# Read-only query with guardrails
-db.validate_query("SELECT ...")           # parse + policy checks + cost checks
-rows = db.query("SELECT * FROM public.invoices WHERE status = ?", ["overdue"],
-                limit=500)
+# Read-only query with automatic validation and bounded preview
+result = db.execute_sql(db_id="bookstore",
+                        query="SELECT * FROM invoices WHERE status = 'overdue'",
+                        output_file="results/overdue.csv")
 
-# Optional: writes behind stricter policy gates
-db.begin()
-db.execute("UPDATE public.invoices SET status = ? WHERE invoice_id = ?",
-           ["paid", "INV-1042"])
-db.commit()
+# Row-level access with optional related-record expansion
+row = db.get_row_by_id(db_id="bookstore", table_name="invoices",
+                       row_id="1042", fetch_related=True)
 ```
 
 Two details matter more for agents than for traditional application code.
 
-First, “schema first” is not optional. Agents do not have compile-time types or ORM models; they need a reliable way to ask “what tables exist” and “what columns mean.” Schema discovery functions should be optimized for readability (names, types, constraints, and a few sample rows), because this is what enables the agent to generate correct queries and interpret results.
+First, "schema first" is not optional. Agents do not have compile-time types or ORM models; they need a reliable way to ask "what tables exist" and "what columns mean." Schema discovery methods (`list_databases`, `list_tables`, `show_schema`, `show_table_details`) should be optimized for readability (names, types, constraints, descriptions, and example queries), because this is what enables the agent to generate correct queries and interpret results.
 
-Second, validation must be a first-class operation, not an afterthought. An agent should be able to ask the connector to reject unsafe queries (for example, unbounded scans, cross-joins without predicates, or queries that violate access policy) before execution. Many systems implement this as a combination of parsing, allow/deny lists, parameterization enforcement, and optionally an “explain” step to estimate cost. Even when the connector supports writes, mutation should be explicit (separate method), transactional by default, and subject to stricter policy (table allowlists, row-level constraints, and mandatory WHERE clauses for UPDATE/DELETE).
+Second, query validation must be built into execution, not left as an afterthought. The connector should reject unsafe queries (for example, non-SELECT statements, multiple statements, or queries that violate access policy) before they reach the database. Results should be bounded by default: `execute_sql` returns a truncated preview and optionally saves full results to a CSV file, so the agent gets enough context to reason without flooding the conversation with thousands of rows.
 
 This is one of the rare places where “generic” remains very effective: the connector can be broadly applicable because SQL itself is the abstraction, and schema discovery works regardless of application domain.
 
@@ -223,39 +221,36 @@ The most basic capability is listing and describing vocabularies:
 
 ```python
 vocab.list_vocabularies()
-vocab.describe("ticket_priority")
+vocab.info("ticket_priority")
 ```
 
 This allows an agent to discover that a controlled set exists at all, rather than inventing free-text values that later fail validation.
 
-Once a vocabulary is known, the agent must be able to enumerate and interpret its terms:
+Once a vocabulary is known, the agent must be able to look up and search its terms:
 
 ```python
-vocab.list_terms("ticket_priority")
-vocab.describe_term("ticket_priority", code="P1")
+vocab.lookup("ticket_priority", term_code="P1")
+vocab.search("ticket_priority", query="high", max_results=10)
 ```
 
-Descriptions typically include human-readable labels, definitions, allowed contexts, and deprecation status. This information is essential for agents generating user-facing text or structured updates.
+Lookup returns the full term (code, label, definition, synonyms, relationships), while search finds terms matching a text query. For large vocabularies backed by a RAG strategy, semantic suggestions are also available via `suggest()`.
 
 Validation is the most critical operation. Before writing to a database or calling an API, the agent should be able to check that a value conforms to the controlled vocabulary:
 
 ```python
-vocab.validate("ticket_priority", value="P1")
-vocab.validate("ticket_priority", value="high")   # returns false + suggestions
+vocab.validate("ticket_priority", term_code="P1")
+vocab.validate("ticket_priority", term_code="high")   # returns invalid + suggestion
 ```
 
-In many systems, normalization is equally important. Agents often encounter synonyms, legacy codes, or user-provided text that must be mapped to canonical terms:
+More sophisticated ontologies introduce hierarchy and semantic relations. The connector exposes navigational operations at multiple levels of depth without becoming a full graph API:
 
 ```python
-canonical = vocab.normalize("ticket_priority", value="high")
-# returns "P1"
-```
-
-More sophisticated ontologies introduce hierarchy and semantic relations. In those cases, the connector can expose limited navigational operations without becoming a full graph API:
-
-```python
-vocab.parents("diagnosis_code", code="E11.9")
-vocab.children("incident_category", code="NETWORK")
+vocab.parent("diagnosis_code", term_code="E11.9")
+vocab.children("incident_category", term_code="NETWORK")
+vocab.ancestors("diagnosis_code", term_code="E11.9", max_depth=10)
+vocab.descendants("incident_category", term_code="NETWORK", max_depth=10)
+vocab.siblings("incident_category", term_code="NETWORK")
+vocab.roots("incident_category")
 ```
 
 This allows agents to reason about generalization and specialization (for example, rolling up metrics or selecting the appropriate level of specificity) while keeping traversal depth constrained.

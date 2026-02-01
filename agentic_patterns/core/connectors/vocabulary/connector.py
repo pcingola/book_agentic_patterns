@@ -3,6 +3,7 @@
 from agentic_patterns.core.connectors.base import Connector
 from agentic_patterns.core.connectors.vocabulary.models import VocabularyTerm
 from agentic_patterns.core.connectors.vocabulary.registry import get_vocabulary, list_vocabularies as _list_vocabularies
+from agentic_patterns.core.context.decorators import context_result
 
 
 def _format_terms(terms: list[VocabularyTerm]) -> str:
@@ -28,6 +29,7 @@ class VocabularyConnector(Connector):
         except Exception as e:
             return f"[Error] {e}"
 
+    @context_result()
     def children(self, vocab_name: str, term_code: str) -> str:
         """Get direct children of a term."""
         try:
@@ -36,6 +38,7 @@ class VocabularyConnector(Connector):
         except Exception as e:
             return f"[Error] {e}"
 
+    @context_result()
     def descendants(self, vocab_name: str, term_code: str, max_depth: int = 10) -> str:
         """Get all descendants (subtree)."""
         try:
@@ -95,6 +98,7 @@ class VocabularyConnector(Connector):
         except Exception as e:
             return f"[Error] {e}"
 
+    @context_result()
     def roots(self, vocab_name: str) -> str:
         """Get top-level terms."""
         try:
@@ -103,6 +107,7 @@ class VocabularyConnector(Connector):
         except Exception as e:
             return f"[Error] {e}"
 
+    @context_result()
     def search(self, vocab_name: str, query: str, max_results: int = 10) -> str:
         """Search for terms matching a query."""
         try:
@@ -111,6 +116,7 @@ class VocabularyConnector(Connector):
         except Exception as e:
             return f"[Error] {e}"
 
+    @context_result()
     def siblings(self, vocab_name: str, term_code: str) -> str:
         """Get terms sharing the same parent."""
         try:
@@ -119,6 +125,7 @@ class VocabularyConnector(Connector):
         except Exception as e:
             return f"[Error] {e}"
 
+    @context_result()
     def subtree(self, vocab_name: str, term_code: str, max_depth: int = 3) -> str:
         """Get hierarchical view for browsing."""
         try:

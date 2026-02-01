@@ -8,6 +8,7 @@ column/cell truncation to handle wide files.
 import csv
 import io
 from agentic_patterns.core.connectors.file import FileConnector
+from agentic_patterns.core.context.decorators import context_result
 from agentic_patterns.core.context.processors.csv_processor import _detect_delimiter, process_csv
 
 
@@ -101,6 +102,7 @@ class CsvConnector(FileConnector):
         except Exception as e:
             return f"[Error] {e}"
 
+    @context_result()
     def find_rows(self, path: str, column: str | int, value: str, limit: int = 10) -> str:
         """Find rows where a column matches a value with automatic truncation."""
         host_path = self._translate_path(path)
@@ -161,6 +163,7 @@ class CsvConnector(FileConnector):
         except Exception as e:
             return f"[Error] {e}"
 
+    @context_result()
     def head(self, path: str, n: int = 10) -> str:
         """Read first N rows with automatic column/cell truncation."""
         host_path = self._translate_path(path)
@@ -230,6 +233,7 @@ class CsvConnector(FileConnector):
 
         return f"[Row {row_number}]\n{result.content}"
 
+    @context_result()
     def tail(self, path: str, n: int = 10) -> str:
         """Read last N rows with automatic column/cell truncation."""
         host_path = self._translate_path(path)

@@ -1,8 +1,9 @@
 """SqlConnector: unified connector for SQL database operations."""
 
+import hashlib
 import json
 from datetime import datetime
-from pathlib import Path
+from pathlib import PurePosixPath
 
 import pandas as pd
 
@@ -11,6 +12,8 @@ from agentic_patterns.core.connectors.sql.config import PREVIEW_COLUMNS, PREVIEW
 from agentic_patterns.core.connectors.sql.db_infos import DbInfos
 from agentic_patterns.core.connectors.sql.query_result import QUERY_RESULT_METADATA_EXT, QueryResultMetadata
 from agentic_patterns.core.connectors.sql.query_validation import validate_query
+from agentic_patterns.core.context.decorators import context_result
+from agentic_patterns.core.workspace import workspace_to_host_path, write_to_workspace
 
 
 class SqlConnector(Connector):
@@ -27,37 +30,41 @@ class SqlConnector(Connector):
         if len(df) == 1 and len(df.columns) == 1:
             return f"Result: {df.iloc[0, 0]}"
 
-        if output_file:
-            csv_path = Path(output_file)
-            csv_path.parent.mkdir(parents=True, exist_ok=True)
-            df.to_csv(csv_path, index=False)
+        if not output_file:
+            query_hash = hashlib.md5(query.encode()).hexdigest()[:8]
+            output_file = f"/workspace/results/sql_{query_hash}.csv"
 
-            metadata = QueryResultMetadata(
-                sql_query=query, timestamp=datetime.now().isoformat(),
-                row_count=len(df), column_count=len(df.columns),
-                csv_filename=csv_path.name, db_id=db_id,
-                natural_language_query=nl_query,
-            )
-            metadata.save(csv_path.with_suffix(QUERY_RESULT_METADATA_EXT))
+        csv_content = df.to_csv(index=False)
+        write_to_workspace(output_file, csv_content)
+        host_path = workspace_to_host_path(PurePosixPath(output_file))
+
+        metadata = QueryResultMetadata(
+            sql_query=query, timestamp=datetime.now().isoformat(),
+            row_count=len(df), column_count=len(df.columns),
+            csv_filename=host_path.name, db_id=db_id,
+            natural_language_query=nl_query,
+        )
+        metadata.save(host_path.with_suffix(QUERY_RESULT_METADATA_EXT))
 
         return _truncate_df_to_csv(df, max_rows=PREVIEW_ROWS, max_columns=PREVIEW_COLUMNS, file_path=output_file)
 
-    async def get_row_by_id(self, db_id: str, table_name: str, row_id: str, fetch_related: bool = False) -> dict:
+    @context_result("sql_query")
+    async def get_row_by_id(self, db_id: str, table_name: str, row_id: str, fetch_related: bool = False) -> str:
         """Fetch a row by ID, optionally with related data from referenced tables."""
         db_infos = DbInfos.get()
         db_info = db_infos.get_db_info(db_id)
         table = db_info.get_table(table_name)
         if table is None:
-            return {"error": f"Table '{table_name}' not found in database schema"}
+            return json.dumps({"error": f"Table '{table_name}' not found in database schema"})
 
         db_ops = db_infos.get_operations(db_id)
         base_data = await db_ops.fetch_row_by_id(table, row_id)
         if base_data is None:
             pk_column = table.get_primary_key_column()
-            return {"error": f"No row found with {pk_column}={row_id}"}
+            return json.dumps({"error": f"No row found with {pk_column}={row_id}"})
 
         if not fetch_related:
-            return base_data
+            return json.dumps(base_data, indent=2, default=str)
 
         related = {}
         for fk in table.foreign_keys:
@@ -72,7 +79,7 @@ class SqlConnector(Connector):
             row = await db_ops.fetch_related_row(ref_table, fk.referenced_columns[0], fk_value)
             if row:
                 related[fk.referenced_table] = row
-        return {"data": base_data, "related": related}
+        return json.dumps({"data": base_data, "related": related}, indent=2, default=str)
 
     async def list_databases(self) -> str:
         """List all available databases."""

@@ -79,6 +79,39 @@ embeddings:
     model_name: all-MiniLM-L6-v2
     device: cpu
 
+# context:
+#   truncation:
+#     default:
+#       threshold: 5000
+#       max_preview_tokens: 500
+#       rows_head: 20
+#       rows_tail: 10
+#       lines_head: 50
+#       lines_tail: 20
+#       json_array_head: 10
+#       json_array_tail: 5
+#       json_max_keys: 20
+#     sql_query:
+#       threshold: 2000
+#       max_preview_tokens: 1000
+#       rows_head: 30
+#       rows_tail: 10
+#       lines_head: 50
+#       lines_tail: 20
+#       json_array_head: 10
+#       json_array_tail: 5
+#       json_max_keys: 20
+#     log_search:
+#       threshold: 10000
+#       max_preview_tokens: 300
+#       rows_head: 20
+#       rows_tail: 10
+#       lines_head: 50
+#       lines_tail: 20
+#       json_array_head: 10
+#       json_array_tail: 5
+#       json_max_keys: 20
+
 vectordb:
   default:
     backend: chroma
