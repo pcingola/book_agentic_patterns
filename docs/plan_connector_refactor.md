@@ -1,114 +1,55 @@
-# Plan: Make file connector API consistent across FileConnector, CsvConnector, and JsonConnector
+# Plan: Connector Refactoring -- Shared Base Class + Proper Abstractions
 
-**Files:**
-- `chapters/data_sources_and_connectors/connectors.md` (already done)
-- `agentic_patterns/core/connectors/file.py`
-- `agentic_patterns/core/connectors/csv.py`
-- `agentic_patterns/core/connectors/json.py`
-- `agentic_patterns/core/connectors/__init__.py`
-- `tests/unit/connectors/test_csv.py`
-- `tests/unit/connectors/test_json.py`
-- `agentic_patterns/examples/connectors/json_connector_example.py`
+## Status
 
-**Problem:** The chapter describes connectors using `connector.method()` style (e.g. `file.read()`, `csv.head()`, `json.get()`), but the code uses standalone functions (`read_file()`, `head_csv()`, `get_json()`). The code should use classes to match the chapter's API. Additionally, three file operations documented in the chapter are not implemented: `list`, `find`, `delete`.
+Phase 1 (class-based connectors with static methods) -- DONE previously.
+Phase 2 (base class, inheritance, instance methods, SqlConnector) -- DONE.
 
-**Principles:**
+## What's Done
 
-1. Same concept uses the same verb across all three connectors
-2. All use classes with methods matching `connector.method()` style from the chapter
-3. No redundant suffixes when the connector context already implies the unit
-4. `head`/`tail` everywhere for bounded reads, defaulting to `n=10`
-5. Each class in its own file, named after the class (e.g. `file.py` has `FileConnector`)
-6. `@tool_permission` decorators stay on each method
-7. `ctx` parameter stays on each method (workspace isolation)
+1. `agentic_patterns/core/connectors/base.py` -- `Connector` ABC created
+2. `FileConnector` -- instance methods, inherits `Connector`, `_translate_path` as instance method
+3. `CsvConnector` -- inherits `FileConnector`, overrides `head/tail/append`, renames `delete` -> `delete_rows`, `find` -> `find_rows`, extracts `_resolve_column` helper
+4. `JsonConnector` -- inherits `FileConnector`, overrides `head/tail/append`, renames `delete` -> `delete_key`, adds `get/set/keys/merge/validate`
+5. `VocabularyConnector` -- inherits `Connector`, instance methods, no `@tool_permission`
+6. `SqlConnector` -- new class in `sql/connector.py`, inherits `Connector`, self-contained (old `sql/operations.py` removed)
+7. All `@tool_permission` decorators removed from connector classes
+8. `__init__.py` exports `Connector`, `FileConnector`, `CsvConnector`, `JsonConnector`
+9. `vocabulary/agent.py` -- uses `_connector = VocabularyConnector()` instance
+10. `sql/nl2sql/tools.py` -- uses `SqlConnector()` instance
+11. All tests updated to use instances (223 tests pass)
+12. Examples updated: `json_connector_example.py`, `sql_connector_example.py`, `example_file_connector.ipynb`
 
-## Chapter changes (already applied)
+## What Remains
 
-The chapter (`connectors.md`) is already consistent. No changes needed.
+Nothing -- all items complete.
 
-## Code changes to FileConnector (`file.py`)
+## Class Hierarchy
 
-Wrap existing functions as methods on a `FileConnector` class. Add the three missing operations.
-
-| Current function | New method | Notes |
-|---|---|---|
-| `read_file(path, ctx)` | `FileConnector.read(path, ctx)` | Rename |
-| `write_file(path, content, ctx)` | `FileConnector.write(path, content, ctx)` | Rename |
-| `append_file(path, content, ctx)` | `FileConnector.append(path, content, ctx)` | Rename |
-| `head_file(path, n, ctx)` | `FileConnector.head(path, n, ctx)` | Rename |
-| `tail_file(path, n, ctx)` | `FileConnector.tail(path, n, ctx)` | Rename |
-| `edit_file(path, start_line, end_line, new_content, ctx)` | `FileConnector.edit(path, start_line, end_line, new_content, ctx)` | Rename |
-| -- | `FileConnector.list(path, pattern, ctx)` | New: list files matching glob pattern |
-| -- | `FileConnector.find(path, query, ctx)` | New: search file contents for a string |
-| -- | `FileConnector.delete(path, ctx)` | New: delete a file |
-
-Keep `_translate_path` as a module-level helper (or static method).
-
-## Code changes to CsvConnector (`csv.py`)
-
-Wrap existing functions as methods on a `CsvConnector` class.
-
-| Current function | New method | Notes |
-|---|---|---|
-| `get_csv_headers(path, ctx)` | `CsvConnector.headers(path, ctx)` | Rename |
-| `head_csv(path, n, ctx)` | `CsvConnector.head(path, n, ctx)` | Rename |
-| `tail_csv(path, n, ctx)` | `CsvConnector.tail(path, n, ctx)` | Rename |
-| `read_csv_row(path, row_number, ctx)` | `CsvConnector.read_row(path, row_number, ctx)` | Rename |
-| `find_csv(path, column, value, limit, ctx)` | `CsvConnector.find(path, column, value, limit, ctx)` | Rename |
-| `update_csv_cell(path, row_number, column, value, ctx)` | `CsvConnector.update_cell(path, row_number, column, value, ctx)` | Rename |
-| `update_csv_row(path, key_column, key_value, updates, ctx)` | `CsvConnector.update_row(path, key_column, key_value, updates, ctx)` | Rename |
-| `append_csv(path, values, ctx)` | `CsvConnector.append(path, values, ctx)` | Rename |
-| `delete_csv(path, column, value, ctx)` | `CsvConnector.delete(path, column, value, ctx)` | Rename |
-
-## Code changes to JsonConnector (`json.py`)
-
-Wrap existing functions as methods on a `JsonConnector` class. Internal helpers (`_parse_jsonpath`, `_is_wildcard_path`, `_get_value_at_path`, `_set_value_at_path`, `_delete_at_path`, `_slice_value`, `_format_sliced`) stay as module-level private functions.
-
-| Current function | New method | Notes |
-|---|---|---|
-| `validate_json(path, ctx)` | `JsonConnector.validate(path, ctx)` | Rename |
-| `head_json(path, json_path, n, ctx)` | `JsonConnector.head(path, json_path, n, ctx)` | Rename |
-| `tail_json(path, json_path, n, ctx)` | `JsonConnector.tail(path, json_path, n, ctx)` | Rename |
-| `keys_json(path, json_path, ctx)` | `JsonConnector.keys(path, json_path, ctx)` | Rename |
-| `get_json(path, json_path, ctx)` | `JsonConnector.get(path, json_path, ctx)` | Rename |
-| `set_json(path, json_path, value, ctx)` | `JsonConnector.set(path, json_path, value, ctx)` | Rename |
-| `delete_json(path, json_path, ctx)` | `JsonConnector.delete(path, json_path, ctx)` | Rename |
-| `merge_json(path, json_path, updates, ctx)` | `JsonConnector.merge(path, json_path, updates, ctx)` | Rename |
-| `append_json(path, json_path, value, ctx)` | `JsonConnector.append(path, json_path, value, ctx)` | Rename |
-
-## Changes to `__init__.py`
-
-Export the three classes instead of individual functions:
-
-```python
-from agentic_patterns.core.connectors.csv import CsvConnector
-from agentic_patterns.core.connectors.file import FileConnector
-from agentic_patterns.core.connectors.json import JsonConnector
+```
+Connector (ABC)                         # base.py
+  FileConnector                         # file.py
+    CsvConnector                        # csv.py -- inherits delete/edit/find/list/read/write
+    JsonConnector                       # json.py -- inherits delete/edit/find/list/read/write
+  VocabularyConnector                   # vocabulary/connector.py
+  SqlConnector                          # sql/connector.py
 ```
 
-## Changes to tests
+## Method Overview
 
-Update imports and calls in:
-- `tests/unit/connectors/test_csv.py`: use `CsvConnector.method()` instead of `function_name()`
-- `tests/unit/connectors/test_json.py`: use `JsonConnector.method()` instead of `function_name()`
-
-## Changes to examples
-
-Update `agentic_patterns/examples/connectors/json_connector_example.py`: use `JsonConnector.method()` instead of `function_name()`.
-
-## Resulting consistency (chapter = code)
-
-| Concept | FileConnector | CsvConnector | JsonConnector |
-|---|---|---|---|
-| Schema | -- | `headers` | `keys` |
-| Head | `head(n=10)` | `head(n=10)` | `head(json_path, n=10)` |
-| Tail | `tail(n=10)` | `tail(n=10)` | `tail(json_path, n=10)` |
-| Point read | `read` | `read_row` | `get` |
-| Search | `find` | `find` | -- |
-| Full write | `write` | -- | -- |
-| Append | `append` | `append` | `append` |
-| Point write | `edit` | `update_cell` | `set` |
-| Row/object write | -- | `update_row` | `merge` |
-| Delete | `delete` | `delete` | `delete` |
-| Validate | -- | -- | `validate` |
-| List | `list` | -- | -- |
+| Concept       | FileConnector | CsvConnector      | JsonConnector     |
+|---------------|---------------|-------------------|-------------------|
+| Schema        | --            | `headers`         | `keys`            |
+| Head          | `head(n=10)`  | `head(n=10)`      | `head(jp, n=10)`  |
+| Tail          | `tail(n=10)`  | `tail(n=10)`      | `tail(jp, n=10)`  |
+| Point read    | `read`        | `read_row`        | `get`             |
+| Text search   | `find`        | `find` (inherited)| `find` (inherited)|
+| Column search | --            | `find_rows`       | --                |
+| Full write    | `write`       | `write` (inh.)    | `write` (inh.)    |
+| Append        | `append`      | `append`          | `append`          |
+| Point write   | `edit`        | `update_cell`     | `set`             |
+| Row/obj write | --            | `update_row`      | `merge`           |
+| Delete file   | `delete`      | `delete` (inh.)   | `delete` (inh.)   |
+| Delete data   | --            | `delete_rows`     | `delete_key`      |
+| Validate      | --            | --                | `validate`        |
+| List          | `list`        | `list` (inh.)     | `list` (inh.)     |

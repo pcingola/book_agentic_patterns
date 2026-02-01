@@ -86,13 +86,13 @@ def parse_csv(path: Path, id_field: str = "id", label_field: str = "label", deli
         label = row.get(label_field, term_id).strip()
         synonyms = []
         for sf in (synonym_fields or []):
-            val = row.get(sf, "").strip()
+            val = (row.get(sf) or "").strip()
             if val:
                 synonyms.extend(s.strip() for s in val.split("|") if s.strip())
-        definition = row.get(definition_field, "").strip() if definition_field else None
+        definition = (row.get(definition_field) or "").strip() if definition_field else None
         parents = []
         if parent_field:
-            pval = row.get(parent_field, "").strip()
+            pval = (row.get(parent_field) or "").strip()
             if pval:
                 parents = [p.strip() for p in pval.split("|") if p.strip()]
         terms.append(VocabularyTerm(id=term_id, label=label, synonyms=synonyms, definition=definition or None, parents=parents))

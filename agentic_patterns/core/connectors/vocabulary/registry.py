@@ -5,7 +5,7 @@ from pathlib import Path
 
 import yaml
 
-from agentic_patterns.core.connectors.vocabulary.config import VOCABULARIES_YAML_PATH
+from agentic_patterns.core.connectors.vocabulary.config import VOCABULARIES_YAML_PATH, VOCABULARY_CACHE_DIR
 from agentic_patterns.core.connectors.vocabulary.models import VocabularyConfig, VocabularyInfo
 from agentic_patterns.core.connectors.vocabulary.strategy_enum import StrategyEnum
 from agentic_patterns.core.connectors.vocabulary.strategy_rag import StrategyRag
@@ -32,7 +32,7 @@ def get_vocabulary(name: str) -> Strategy:
         configs = get_configs()
         if name in configs:
             from agentic_patterns.core.connectors.vocabulary.loader import load_vocabulary
-            load_vocabulary(configs[name])
+            load_vocabulary(configs[name], base_dir=VOCABULARY_CACHE_DIR)
         else:
             raise KeyError(f"Vocabulary '{name}' not registered. Available: {list(_registry.keys()) + list(configs.keys())}")
     return _registry[name]
@@ -50,7 +50,7 @@ def load_all(config_path: Path | None = None, base_dir: Path | None = None) -> N
     for config in _configs.values():
         if config.name not in _registry:
             try:
-                load_vocabulary(config, base_dir)
+                load_vocabulary(config, base_dir or VOCABULARY_CACHE_DIR)
             except Exception:
                 logger.exception("Failed to load vocabulary: %s", config.name)
 

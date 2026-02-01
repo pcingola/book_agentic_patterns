@@ -2,35 +2,26 @@
 
 import fnmatch
 from pathlib import Path, PurePosixPath
-from typing import Any
 
+from agentic_patterns.core.connectors.base import Connector
 from agentic_patterns.core.context.processors import count_lines, detect_encoding, read_line_range
 from agentic_patterns.core.context.reader import read_file_as_string
-from agentic_patterns.core.tools.permissions import ToolPermission, tool_permission
-from agentic_patterns.core.workspace import WorkspaceError, container_to_host_path
+from agentic_patterns.core.workspace import WorkspaceError, workspace_to_host_path
 
 
-def _translate_path(path: str, ctx: Any) -> Path | str:
-    """Translate sandbox path to host path, returning error string on failure."""
-    try:
-        return container_to_host_path(PurePosixPath(path), ctx)
-    except WorkspaceError as e:
-        return f"[Error] {e}"
+class FileConnector(Connector):
+    """File operations with workspace sandbox isolation."""
 
+    def _translate_path(self, path: str) -> Path | str:
+        """Translate sandbox path to host path, returning error string on failure."""
+        try:
+            return workspace_to_host_path(PurePosixPath(path))
+        except WorkspaceError as e:
+            return f"[Error] {e}"
 
-class FileConnector:
-    """Agent-facing file operations with workspace sandbox isolation.
-
-    All methods are static because there is no instance state yet. When we add
-    backend adapters (S3, GCS, etc.) or per-connector config, switch to __init__
-    + instance methods.
-    """
-
-    @staticmethod
-    @tool_permission(ToolPermission.WRITE)
-    def append(path: str, content: str, ctx: Any = None) -> str:
+    def append(self, path: str, content: str) -> str:
         """Append content to the end of a file."""
-        host_path = _translate_path(path, ctx)
+        host_path = self._translate_path(path)
         if isinstance(host_path, str):
             return host_path
 
@@ -44,11 +35,9 @@ class FileConnector:
         except OSError as e:
             return f"[Error] Failed to append to file: {e}"
 
-    @staticmethod
-    @tool_permission(ToolPermission.WRITE)
-    def delete(path: str, ctx: Any = None) -> str:
+    def delete(self, path: str) -> str:
         """Delete a file."""
-        host_path = _translate_path(path, ctx)
+        host_path = self._translate_path(path)
         if isinstance(host_path, str):
             return host_path
 
@@ -61,11 +50,9 @@ class FileConnector:
         except OSError as e:
             return f"[Error] Failed to delete file: {e}"
 
-    @staticmethod
-    @tool_permission(ToolPermission.WRITE)
-    def edit(path: str, start_line: int, end_line: int, new_content: str, ctx: Any = None) -> str:
+    def edit(self, path: str, start_line: int, end_line: int, new_content: str) -> str:
         """Replace lines start_line to end_line (1-indexed, inclusive) with new_content."""
-        host_path = _translate_path(path, ctx)
+        host_path = self._translate_path(path)
         if isinstance(host_path, str):
             return host_path
 
@@ -101,11 +88,9 @@ class FileConnector:
         except OSError as e:
             return f"[Error] Failed to edit file: {e}"
 
-    @staticmethod
-    @tool_permission(ToolPermission.READ)
-    def find(path: str, query: str, ctx: Any = None) -> str:
+    def find(self, path: str, query: str) -> str:
         """Search file contents for a string, returning matching lines."""
-        host_path = _translate_path(path, ctx)
+        host_path = self._translate_path(path)
         if isinstance(host_path, str):
             return host_path
 
@@ -130,11 +115,9 @@ class FileConnector:
         except OSError as e:
             return f"[Error] Failed to search file: {e}"
 
-    @staticmethod
-    @tool_permission(ToolPermission.READ)
-    def head(path: str, n: int = 10, ctx: Any = None) -> str:
+    def head(self, path: str, n: int = 10) -> str:
         """Read the first N lines of a file."""
-        host_path = _translate_path(path, ctx)
+        host_path = self._translate_path(path)
         if isinstance(host_path, str):
             return host_path
 
@@ -160,11 +143,9 @@ class FileConnector:
         except OSError as e:
             return f"[Error] Failed to read file: {e}"
 
-    @staticmethod
-    @tool_permission(ToolPermission.READ)
-    def list(path: str, pattern: str = "*", ctx: Any = None) -> str:
+    def list(self, path: str, pattern: str = "*") -> str:
         """List files matching a glob pattern."""
-        host_path = _translate_path(path, ctx)
+        host_path = self._translate_path(path)
         if isinstance(host_path, str):
             return host_path
 
@@ -192,11 +173,9 @@ class FileConnector:
         except OSError as e:
             return f"[Error] Failed to list directory: {e}"
 
-    @staticmethod
-    @tool_permission(ToolPermission.READ)
-    def read(path: str, ctx: Any = None) -> str:
+    def read(self, path: str) -> str:
         """Read entire file with automatic truncation for large files."""
-        host_path = _translate_path(path, ctx)
+        host_path = self._translate_path(path)
         if isinstance(host_path, str):
             return host_path
 
@@ -205,11 +184,9 @@ class FileConnector:
 
         return read_file_as_string(host_path)
 
-    @staticmethod
-    @tool_permission(ToolPermission.READ)
-    def tail(path: str, n: int = 10, ctx: Any = None) -> str:
+    def tail(self, path: str, n: int = 10) -> str:
         """Read the last N lines of a file."""
-        host_path = _translate_path(path, ctx)
+        host_path = self._translate_path(path)
         if isinstance(host_path, str):
             return host_path
 
@@ -236,11 +213,9 @@ class FileConnector:
         except OSError as e:
             return f"[Error] Failed to read file: {e}"
 
-    @staticmethod
-    @tool_permission(ToolPermission.WRITE)
-    def write(path: str, content: str, ctx: Any = None) -> str:
+    def write(self, path: str, content: str) -> str:
         """Write or overwrite a file."""
-        host_path = _translate_path(path, ctx)
+        host_path = self._translate_path(path)
         if isinstance(host_path, str):
             return host_path
 

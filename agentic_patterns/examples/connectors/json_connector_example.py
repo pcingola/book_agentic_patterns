@@ -1,8 +1,4 @@
-"""Example demonstrating JSON connector operations.
-
-This example shows how to use the JSON connector to interact with
-JSON files in an agent-friendly way with automatic structure truncation.
-"""
+"""Example demonstrating JSON connector operations."""
 
 import json
 import tempfile
@@ -13,6 +9,8 @@ from agentic_patterns.core.connectors.json import JsonConnector
 
 def main():
     """Demonstrate JSON connector operations."""
+    connector = JsonConnector()
+
     with tempfile.TemporaryDirectory() as temp_dir:
         workspace_root = Path(temp_dir) / "default_user" / "default_session"
         workspace_root.mkdir(parents=True)
@@ -42,46 +40,46 @@ def main():
             print("=" * 60)
 
             print("\n1. Head of root (first 5 keys):")
-            print(JsonConnector.head("/workspace/config.json", "$", n=5))
+            print(connector.head("/workspace/config.json", "$", n=5))
 
             print("\n2. Tail of users array:")
-            print(JsonConnector.tail("/workspace/config.json", "$.users", n=1))
+            print(connector.tail("/workspace/config.json", "$.users", n=1))
 
             print("\n3. Validate JSON:")
-            print(JsonConnector.validate("/workspace/config.json"))
+            print(connector.validate("/workspace/config.json"))
 
             print("\n4. List keys at root:")
-            print(JsonConnector.keys("/workspace/config.json", "$"))
+            print(connector.keys("/workspace/config.json", "$"))
 
             print("\n5. List keys in app.features:")
-            print(JsonConnector.keys("/workspace/config.json", "$.app.features"))
+            print(connector.keys("/workspace/config.json", "$.app.features"))
 
             print("\n6. Get rollout percent:")
-            print(JsonConnector.get("/workspace/config.json", "$.app.features.rollout.percent"))
+            print(connector.get("/workspace/config.json", "$.app.features.rollout.percent"))
 
             print("\n7. Get rollout config:")
-            print(JsonConnector.get("/workspace/config.json", "$.app.features.rollout"))
+            print(connector.get("/workspace/config.json", "$.app.features.rollout"))
 
             print("\n8. Get first user:")
-            print(JsonConnector.get("/workspace/config.json", "$.users[0]"))
+            print(connector.get("/workspace/config.json", "$.users[0]"))
 
             print("\n9. Update rollout percent to 75:")
-            print(JsonConnector.set("/workspace/config.json", "$.app.features.rollout.percent", "75"))
+            print(connector.set("/workspace/config.json", "$.app.features.rollout.percent", "75"))
 
             print("\n10. Add new feature 'beta':")
-            print(JsonConnector.set("/workspace/config.json", "$.app.features.beta", '{"enabled": true, "users": []}'))
+            print(connector.set("/workspace/config.json", "$.app.features.beta", '{"enabled": true, "users": []}'))
 
             print("\n11. Merge updates into rollout config:")
-            print(JsonConnector.merge("/workspace/config.json", "$.app.features.rollout", '{"percent": 100, "complete": true}'))
+            print(connector.merge("/workspace/config.json", "$.app.features.rollout", '{"percent": 100, "complete": true}'))
 
             print("\n12. Add new user:")
-            print(JsonConnector.append("/workspace/config.json", "$.users", '{"id": "u-003", "name": "Charlie", "role": "user"}'))
+            print(connector.append("/workspace/config.json", "$.users", '{"id": "u-003", "name": "Charlie", "role": "user"}'))
 
             print("\n13. Delete darkMode feature:")
-            print(JsonConnector.delete("/workspace/config.json", "$.app.features.darkMode"))
+            print(connector.delete_key("/workspace/config.json", "$.app.features.darkMode"))
 
             print("\n14. Head of final state:")
-            print(JsonConnector.head("/workspace/config.json", "$", n=10))
+            print(connector.head("/workspace/config.json", "$", n=10))
 
         finally:
             workspace_module.WORKSPACE_DIR = original_workspace_dir

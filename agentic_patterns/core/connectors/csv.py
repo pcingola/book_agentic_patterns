@@ -1,39 +1,27 @@
 """CSV connector for reading and writing CSV files in the workspace sandbox.
 
-All read operations use the CSV processor for automatic column/cell truncation to
-handle wide files (e.g., genomics data with 20,000+ columns).
+Inherits generic file operations from FileConnector and overrides/adds
+CSV-aware methods. Read operations use the CSV processor for automatic
+column/cell truncation to handle wide files.
 """
 
 import csv
 import io
-from pathlib import Path, PurePosixPath
-from typing import Any
-
+from agentic_patterns.core.connectors.file import FileConnector
 from agentic_patterns.core.context.processors.csv_processor import _detect_delimiter, process_csv
-from agentic_patterns.core.tools.permissions import ToolPermission, tool_permission
-from agentic_patterns.core.workspace import WorkspaceError, container_to_host_path
 
 
-def _translate_path(path: str, ctx: Any) -> Path | str:
-    """Translate sandbox path to host path, returning error string on failure."""
-    try:
-        return container_to_host_path(PurePosixPath(path), ctx)
-    except WorkspaceError as e:
-        return f"[Error] {e}"
+class CsvConnector(FileConnector):
+    """CSV operations with workspace sandbox isolation.
 
-
-class CsvConnector:
-    """Agent-facing CSV operations with workspace sandbox isolation.
-
-    All methods are static because there is no instance state yet. When we add
-    backend adapters or per-connector config, switch to __init__ + instance methods.
+    Inherited from FileConnector: delete, edit, find, list, read, write.
+    Overridden: append, head, tail.
+    Added: delete_rows, find_rows, headers, read_row, update_cell, update_row.
     """
 
-    @staticmethod
-    @tool_permission(ToolPermission.WRITE)
-    def append(path: str, values: dict[str, str] | list[str], ctx: Any = None) -> str:
+    def append(self, path: str, values: dict[str, str] | list[str]) -> str:
         """Append a new row to the end of the CSV."""
-        host_path = _translate_path(path, ctx)
+        host_path = self._translate_path(path)
         if isinstance(host_path, str):
             return host_path
 
@@ -49,7 +37,6 @@ class CsvConnector:
                     header = next(reader)
                 except StopIteration:
                     return "[Error] Empty CSV file"
-
                 row_count = sum(1 for _ in reader)
 
             if isinstance(values, dict):
@@ -68,15 +55,12 @@ class CsvConnector:
                 csv_writer.writerow(new_row)
 
             return f"Appended 1 row to {path} (now {row_count + 1} rows)"
-
         except Exception as e:
             return f"[Error] {e}"
 
-    @staticmethod
-    @tool_permission(ToolPermission.WRITE)
-    def delete(path: str, column: str | int, value: str, ctx: Any = None) -> str:
+    def delete_rows(self, path: str, column: str | int, value: str) -> str:
         """Delete rows matching a condition."""
-        host_path = _translate_path(path, ctx)
+        host_path = self._translate_path(path)
         if isinstance(host_path, str):
             return host_path
 
@@ -93,17 +77,9 @@ class CsvConnector:
                 except StopIteration:
                     return "[Error] Empty CSV file"
 
-                col_idx: int
-                if isinstance(column, int):
-                    col_idx = column
-                    if col_idx < 0 or col_idx >= len(header):
-                        return f"[Error] Column index {col_idx} out of range (0-{len(header) - 1})"
-                else:
-                    try:
-                        col_idx = header.index(column)
-                    except ValueError:
-                        return f"[Error] Column '{column}' not found. Available columns: {', '.join(header)}"
-
+                col_idx = self._resolve_column(header, column)
+                if isinstance(col_idx, str):
+                    return col_idx
                 rows = list(reader)
 
             original_count = len(rows)
@@ -118,20 +94,16 @@ class CsvConnector:
             csv_writer = csv.writer(output, delimiter=delimiter, lineterminator="\n")
             csv_writer.writerow(header)
             csv_writer.writerows(filtered_rows)
-
             host_path.write_text(output.getvalue())
 
             col_name = header[col_idx] if isinstance(column, int) else column
             return f"Deleted {deleted_count} row(s) where {col_name}='{value}' from {path}"
-
         except Exception as e:
             return f"[Error] {e}"
 
-    @staticmethod
-    @tool_permission(ToolPermission.READ)
-    def find(path: str, column: str | int, value: str, limit: int = 10, ctx: Any = None) -> str:
+    def find_rows(self, path: str, column: str | int, value: str, limit: int = 10) -> str:
         """Find rows where a column matches a value with automatic truncation."""
-        host_path = _translate_path(path, ctx)
+        host_path = self._translate_path(path)
         if isinstance(host_path, str):
             return host_path
 
@@ -151,16 +123,9 @@ class CsvConnector:
                 except StopIteration:
                     return "[Error] Empty CSV file"
 
-                col_idx: int
-                if isinstance(column, int):
-                    col_idx = column
-                    if col_idx < 0 or col_idx >= len(header):
-                        return f"[Error] Column index {col_idx} out of range (0-{len(header) - 1})"
-                else:
-                    try:
-                        col_idx = header.index(column)
-                    except ValueError:
-                        return f"[Error] Column '{column}' not found. Available columns: {', '.join(header)}"
+                col_idx = self._resolve_column(header, column)
+                if isinstance(col_idx, str):
+                    return col_idx
 
                 matching_rows = []
                 for row_num, row in enumerate(reader, start=1):
@@ -193,15 +158,12 @@ class CsvConnector:
             finally:
                 if temp_file.exists():
                     temp_file.unlink()
-
         except Exception as e:
             return f"[Error] {e}"
 
-    @staticmethod
-    @tool_permission(ToolPermission.READ)
-    def head(path: str, n: int = 10, ctx: Any = None) -> str:
+    def head(self, path: str, n: int = 10) -> str:
         """Read first N rows with automatic column/cell truncation."""
-        host_path = _translate_path(path, ctx)
+        host_path = self._translate_path(path)
         if isinstance(host_path, str):
             return host_path
 
@@ -214,14 +176,11 @@ class CsvConnector:
         result = process_csv(host_path, start_row=0, end_row=n)
         if not result.success:
             return f"[Error] Failed to read CSV: {result.content}"
-
         return result.content
 
-    @staticmethod
-    @tool_permission(ToolPermission.READ)
-    def headers(path: str, ctx: Any = None) -> str:
+    def headers(self, path: str) -> str:
         """Get CSV column headers with automatic truncation for wide tables."""
-        host_path = _translate_path(path, ctx)
+        host_path = self._translate_path(path)
         if isinstance(host_path, str):
             return host_path
 
@@ -250,11 +209,9 @@ class CsvConnector:
         except Exception as e:
             return f"[Error] {e}"
 
-    @staticmethod
-    @tool_permission(ToolPermission.READ)
-    def read_row(path: str, row_number: int, ctx: Any = None) -> str:
+    def read_row(self, path: str, row_number: int) -> str:
         """Read a specific row by 1-indexed row number with automatic column truncation."""
-        host_path = _translate_path(path, ctx)
+        host_path = self._translate_path(path)
         if isinstance(host_path, str):
             return host_path
 
@@ -273,11 +230,9 @@ class CsvConnector:
 
         return f"[Row {row_number}]\n{result.content}"
 
-    @staticmethod
-    @tool_permission(ToolPermission.READ)
-    def tail(path: str, n: int = 10, ctx: Any = None) -> str:
+    def tail(self, path: str, n: int = 10) -> str:
         """Read last N rows with automatic column/cell truncation."""
-        host_path = _translate_path(path, ctx)
+        host_path = self._translate_path(path)
         if isinstance(host_path, str):
             return host_path
 
@@ -296,7 +251,6 @@ class CsvConnector:
                     header = next(reader)
                 except StopIteration:
                     return "[Error] Empty CSV file"
-
                 all_rows = list(reader)
 
             total_rows = len(all_rows)
@@ -324,15 +278,12 @@ class CsvConnector:
             finally:
                 if temp_file.exists():
                     temp_file.unlink()
-
         except Exception as e:
             return f"[Error] {e}"
 
-    @staticmethod
-    @tool_permission(ToolPermission.WRITE)
-    def update_cell(path: str, row_number: int, column: str | int, value: str, ctx: Any = None) -> str:
+    def update_cell(self, path: str, row_number: int, column: str | int, value: str) -> str:
         """Update a single cell value."""
-        host_path = _translate_path(path, ctx)
+        host_path = self._translate_path(path)
         if isinstance(host_path, str):
             return host_path
 
@@ -355,17 +306,9 @@ class CsvConnector:
                 if len(header) > 1000:
                     return f"[Warning] File has {len(header)} columns. For extremely wide files, consider using specialized tools."
 
-                col_idx: int
-                if isinstance(column, int):
-                    col_idx = column
-                    if col_idx < 0 or col_idx >= len(header):
-                        return f"[Error] Column index {col_idx} out of range (0-{len(header) - 1})"
-                else:
-                    try:
-                        col_idx = header.index(column)
-                    except ValueError:
-                        return f"[Error] Column '{column}' not found. Available columns: {', '.join(header)}"
-
+                col_idx = self._resolve_column(header, column)
+                if isinstance(col_idx, str):
+                    return col_idx
                 rows = list(reader)
 
             if row_number > len(rows):
@@ -377,20 +320,16 @@ class CsvConnector:
             csv_writer = csv.writer(output, delimiter=delimiter, lineterminator="\n")
             csv_writer.writerow(header)
             csv_writer.writerows(rows)
-
             host_path.write_text(output.getvalue())
 
             col_name = header[col_idx] if isinstance(column, int) else column
             return f"Updated row {row_number}, column '{col_name}' to '{value}' in {path}"
-
         except Exception as e:
             return f"[Error] {e}"
 
-    @staticmethod
-    @tool_permission(ToolPermission.WRITE)
-    def update_row(path: str, key_column: str | int, key_value: str, updates: dict[str, str], ctx: Any = None) -> str:
+    def update_row(self, path: str, key_column: str | int, key_value: str, updates: dict[str, str]) -> str:
         """Update an entire row by matching a key column."""
-        host_path = _translate_path(path, ctx)
+        host_path = self._translate_path(path)
         if isinstance(host_path, str):
             return host_path
 
@@ -410,19 +349,12 @@ class CsvConnector:
                 except StopIteration:
                     return "[Error] Empty CSV file"
 
-                key_col_idx: int
-                if isinstance(key_column, int):
-                    key_col_idx = key_column
-                    if key_col_idx < 0 or key_col_idx >= len(header):
-                        return f"[Error] Key column index {key_col_idx} out of range (0-{len(header) - 1})"
-                else:
-                    try:
-                        key_col_idx = header.index(key_column)
-                    except ValueError:
-                        return f"[Error] Key column '{key_column}' not found. Available columns: {', '.join(header)}"
+                key_col_idx = self._resolve_column(header, key_column)
+                if isinstance(key_col_idx, str):
+                    return key_col_idx
 
                 update_indices = {}
-                for col_name, _ in updates.items():
+                for col_name in updates:
                     try:
                         update_indices[col_name] = header.index(col_name)
                     except ValueError:
@@ -445,11 +377,21 @@ class CsvConnector:
             csv_writer = csv.writer(output, delimiter=delimiter, lineterminator="\n")
             csv_writer.writerow(header)
             csv_writer.writerows(rows)
-
             host_path.write_text(output.getvalue())
 
             key_col_name = header[key_col_idx] if isinstance(key_column, int) else key_column
             return f"Updated {updated_count} row(s) where {key_col_name}='{key_value}' in {path}"
-
         except Exception as e:
             return f"[Error] {e}"
+
+    @staticmethod
+    def _resolve_column(header: list[str], column: str | int) -> int | str:
+        """Resolve column name or index to index. Returns error string on failure."""
+        if isinstance(column, int):
+            if column < 0 or column >= len(header):
+                return f"[Error] Column index {column} out of range (0-{len(header) - 1})"
+            return column
+        try:
+            return header.index(column)
+        except ValueError:
+            return f"[Error] Column '{column}' not found. Available columns: {', '.join(header)}"

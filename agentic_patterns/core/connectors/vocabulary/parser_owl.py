@@ -14,7 +14,7 @@ RDF = "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
 RDFS = "http://www.w3.org/2000/01/rdf-schema#"
 OBO_IN_OWL = "http://www.geneontology.org/formats/oboInOwl#"
 SKOS = "http://www.w3.org/2004/02/skos/core#"
-IAO_DEFINITION = "http://purl.obolibrary.org/obo/IAO_0000115"
+OBO = "http://purl.obolibrary.org/obo/"
 
 
 def parse_owl(path: Path) -> list[VocabularyTerm]:
@@ -40,7 +40,7 @@ def _parse_class(cls: ET.Element) -> VocabularyTerm | None:
 
     term_id = _uri_to_id(about)
     label = _text(cls, f"{{{RDFS}}}label") or term_id
-    definition = _text(cls, f"{{{IAO_DEFINITION}}}") or _text(cls, f"{{{SKOS}}}definition")
+    definition = _text(cls, f"{{{OBO}}}IAO_0000115") or _text(cls, f"{{{SKOS}}}definition")
 
     synonyms: list[str] = []
     for tag in [f"{{{OBO_IN_OWL}}}hasExactSynonym", f"{{{OBO_IN_OWL}}}hasRelatedSynonym", f"{{{OBO_IN_OWL}}}hasBroadSynonym", f"{{{OBO_IN_OWL}}}hasNarrowSynonym", f"{{{SKOS}}}altLabel"]:

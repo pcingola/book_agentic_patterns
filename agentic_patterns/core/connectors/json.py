@@ -1,27 +1,19 @@
 """JSON connector for reading and writing JSON files in the workspace sandbox.
 
-All read operations use the JSON processor for automatic structure truncation to
-handle deeply nested structures, large arrays, and large objects.
+Inherits generic file operations from FileConnector and overrides/adds
+JSON-aware methods. Read operations use the JSON processor for automatic
+structure truncation to handle deeply nested structures.
 """
 
 import json
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 from typing import Any
 
 from jsonpath_ng import parse as jsonpath_parse
 from jsonpath_ng.exceptions import JsonPathParserError
 
+from agentic_patterns.core.connectors.file import FileConnector
 from agentic_patterns.core.context.processors.json_processor import process_json
-from agentic_patterns.core.tools.permissions import ToolPermission, tool_permission
-from agentic_patterns.core.workspace import WorkspaceError, container_to_host_path
-
-
-def _translate_path(path: str, ctx: Any) -> Path | str:
-    """Translate sandbox path to host path, returning error string on failure."""
-    try:
-        return container_to_host_path(PurePosixPath(path), ctx)
-    except WorkspaceError as e:
-        return f"[Error] {e}"
 
 
 def _parse_jsonpath(json_path: str) -> tuple[Any, str]:
@@ -151,18 +143,17 @@ def _format_sliced(sliced: Any, n: int, total: int, from_end: bool, json_path: s
     return formatted
 
 
-class JsonConnector:
-    """Agent-facing JSON operations with workspace sandbox isolation.
+class JsonConnector(FileConnector):
+    """JSON operations with workspace sandbox isolation.
 
-    All methods are static because there is no instance state yet. When we add
-    backend adapters or per-connector config, switch to __init__ + instance methods.
+    Inherited from FileConnector: delete (file), edit, find, list, read (raw), write.
+    Overridden: append, head, tail.
+    Added: delete_key, get, keys, merge, set, validate.
     """
 
-    @staticmethod
-    @tool_permission(ToolPermission.WRITE)
-    def append(path: str, json_path: str, value: str, ctx: Any = None) -> str:
+    def append(self, path: str, json_path: str, value: str) -> str:
         """Append a value to an array at a specific JSONPath."""
-        host_path = _translate_path(path, ctx)
+        host_path = self._translate_path(path)
         if isinstance(host_path, str):
             return host_path
 
@@ -200,11 +191,9 @@ class JsonConnector:
 
         return f"Appended value to {json_path} in {path} (now {len(target)} items)"
 
-    @staticmethod
-    @tool_permission(ToolPermission.WRITE)
-    def delete(path: str, json_path: str, ctx: Any = None) -> str:
+    def delete_key(self, path: str, json_path: str) -> str:
         """Delete a key at a specific JSONPath."""
-        host_path = _translate_path(path, ctx)
+        host_path = self._translate_path(path)
         if isinstance(host_path, str):
             return host_path
 
@@ -238,11 +227,9 @@ class JsonConnector:
 
         return f"Deleted {json_path} from {path}"
 
-    @staticmethod
-    @tool_permission(ToolPermission.READ)
-    def get(path: str, json_path: str, ctx: Any = None) -> str:
+    def get(self, path: str, json_path: str) -> str:
         """Get a value or subtree using JSONPath syntax."""
-        host_path = _translate_path(path, ctx)
+        host_path = self._translate_path(path)
         if isinstance(host_path, str):
             return host_path
 
@@ -277,11 +264,9 @@ class JsonConnector:
         finally:
             tmp_path.unlink()
 
-    @staticmethod
-    @tool_permission(ToolPermission.READ)
-    def head(path: str, json_path: str = "$", n: int = 10, ctx: Any = None) -> str:
+    def head(self, path: str, json_path: str = "$", n: int = 10) -> str:
         """Return the first N keys or elements at a JSONPath."""
-        host_path = _translate_path(path, ctx)
+        host_path = self._translate_path(path)
         if isinstance(host_path, str):
             return host_path
 
@@ -306,11 +291,9 @@ class JsonConnector:
         sliced, total = _slice_value(value, n, from_end=False)
         return _format_sliced(sliced, n, total, from_end=False, json_path=json_path)
 
-    @staticmethod
-    @tool_permission(ToolPermission.READ)
-    def keys(path: str, json_path: str = "$", ctx: Any = None) -> str:
+    def keys(self, path: str, json_path: str = "$") -> str:
         """List keys at a specific path in the JSON structure."""
-        host_path = _translate_path(path, ctx)
+        host_path = self._translate_path(path)
         if isinstance(host_path, str):
             return host_path
 
@@ -348,11 +331,9 @@ class JsonConnector:
             type_name = type(value).__name__
             return f"[Value at {json_path} is type: {type_name}]"
 
-    @staticmethod
-    @tool_permission(ToolPermission.WRITE)
-    def merge(path: str, json_path: str, updates: str, ctx: Any = None) -> str:
+    def merge(self, path: str, json_path: str, updates: str) -> str:
         """Merge updates into an object at a specific JSONPath without replacing it entirely."""
-        host_path = _translate_path(path, ctx)
+        host_path = self._translate_path(path)
         if isinstance(host_path, str):
             return host_path
 
@@ -393,11 +374,9 @@ class JsonConnector:
 
         return f"Merged {len(parsed_updates)} keys into {json_path} in {path}"
 
-    @staticmethod
-    @tool_permission(ToolPermission.WRITE)
-    def set(path: str, json_path: str, value: str, ctx: Any = None) -> str:
+    def set(self, path: str, json_path: str, value: str) -> str:
         """Set a value at a specific JSONPath, preserving the rest of the file."""
-        host_path = _translate_path(path, ctx)
+        host_path = self._translate_path(path)
         if isinstance(host_path, str):
             return host_path
 
@@ -441,11 +420,9 @@ class JsonConnector:
         value_preview = value if len(value) <= 50 else f"{value[:47]}..."
         return f"Updated {json_path} = {value_preview} in {path}"
 
-    @staticmethod
-    @tool_permission(ToolPermission.READ)
-    def tail(path: str, json_path: str = "$", n: int = 10, ctx: Any = None) -> str:
+    def tail(self, path: str, json_path: str = "$", n: int = 10) -> str:
         """Return the last N keys or elements at a JSONPath."""
-        host_path = _translate_path(path, ctx)
+        host_path = self._translate_path(path)
         if isinstance(host_path, str):
             return host_path
 
@@ -470,11 +447,9 @@ class JsonConnector:
         sliced, total = _slice_value(value, n, from_end=True)
         return _format_sliced(sliced, n, total, from_end=True, json_path=json_path)
 
-    @staticmethod
-    @tool_permission(ToolPermission.READ)
-    def validate(path: str, ctx: Any = None) -> str:
+    def validate(self, path: str) -> str:
         """Validate JSON syntax and structure."""
-        host_path = _translate_path(path, ctx)
+        host_path = self._translate_path(path)
         if isinstance(host_path, str):
             return host_path
 

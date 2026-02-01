@@ -165,50 +165,51 @@ class TestVocabularyConnector(unittest.TestCase):
         reset()
         register_vocabulary("biotypes", StrategyEnum("biotypes", get_toy_enum_terms()))
         register_vocabulary("so", StrategyTree("so", get_toy_tree_terms()))
+        self.connector = VocabularyConnector()
 
     def test_lookup(self) -> None:
-        result = VocabularyConnector.lookup("biotypes", "protein_coding")
+        result = self.connector.lookup("biotypes", "protein_coding")
         assert "Protein coding" in result
 
     def test_search(self) -> None:
-        result = VocabularyConnector.search("so", "gene")
+        result = self.connector.search("so", "gene")
         assert "gene" in result
 
     def test_children(self) -> None:
-        result = VocabularyConnector.children("so", "SO:0000704")
+        result = self.connector.children("so", "SO:0000704")
         assert "protein_coding_gene" in result
 
     def test_validate_valid(self) -> None:
-        result = VocabularyConnector.validate("biotypes", "miRNA")
+        result = self.connector.validate("biotypes", "miRNA")
         assert "Valid" in result
 
     def test_validate_invalid(self) -> None:
-        result = VocabularyConnector.validate("biotypes", "nonexistent")
+        result = self.connector.validate("biotypes", "nonexistent")
         assert "Invalid" in result
 
     def test_list_vocabularies(self) -> None:
-        result = VocabularyConnector.list_vocabularies()
+        result = self.connector.list_vocabularies()
         assert "biotypes" in result
         assert "so" in result
 
     def test_info(self) -> None:
-        result = VocabularyConnector.info("biotypes")
+        result = self.connector.info("biotypes")
         assert "enum" in result
 
     def test_error_on_missing_vocab(self) -> None:
-        result = VocabularyConnector.lookup("nonexistent", "x")
+        result = self.connector.lookup("nonexistent", "x")
         assert "[Error]" in result
 
     def test_relationships(self) -> None:
-        result = VocabularyConnector.relationships("so", "SO:0000316")
+        result = self.connector.relationships("so", "SO:0000316")
         assert "part_of" in result
 
     def test_ancestors(self) -> None:
-        result = VocabularyConnector.ancestors("so", "SO:0001217")
+        result = self.connector.ancestors("so", "SO:0001217")
         assert "gene" in result
 
     def test_roots(self) -> None:
-        result = VocabularyConnector.roots("so")
+        result = self.connector.roots("so")
         assert "sequence_feature" in result
 
 

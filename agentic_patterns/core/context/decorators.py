@@ -143,7 +143,7 @@ def context_result(config_name: str = "default"):
             ...
     """
     def decorator(func):
-        def _process_result(result: str, ctx: Any) -> str:
+        def _process_result(result: str) -> str:
             config = get_truncation_config(config_name)
 
             if not isinstance(result, str) or len(result) <= config.threshold:
@@ -155,22 +155,20 @@ def context_result(config_name: str = "default"):
             path = f"/workspace/results/{filename}"
 
             from agentic_patterns.core.workspace import write_to_workspace
-            write_to_workspace(path, result, ctx)
+            write_to_workspace(path, result)
 
             preview = _truncate_by_type(result, content_type, config)
             return f"Results saved to {path} ({len(result)} chars)\n\nPreview:\n{preview}"
 
         @wraps(func)
         async def async_wrapper(*args, **kwargs):
-            ctx = kwargs.get("ctx")
             result = await func(*args, **kwargs)
-            return _process_result(result, ctx)
+            return _process_result(result)
 
         @wraps(func)
         def sync_wrapper(*args, **kwargs):
-            ctx = kwargs.get("ctx")
             result = func(*args, **kwargs)
-            return _process_result(result, ctx)
+            return _process_result(result)
 
         if asyncio.iscoroutinefunction(func):
             return async_wrapper

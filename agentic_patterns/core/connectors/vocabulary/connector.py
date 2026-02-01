@@ -1,10 +1,8 @@
-"""VocabularyConnector: agent-facing vocabulary and ontology operations."""
+"""VocabularyConnector: vocabulary and ontology operations."""
 
-from typing import Any
-
+from agentic_patterns.core.connectors.base import Connector
 from agentic_patterns.core.connectors.vocabulary.models import VocabularyTerm
 from agentic_patterns.core.connectors.vocabulary.registry import get_vocabulary, list_vocabularies as _list_vocabularies
-from agentic_patterns.core.tools.permissions import ToolPermission, tool_permission
 
 
 def _format_terms(terms: list[VocabularyTerm]) -> str:
@@ -19,12 +17,10 @@ def _format_relationships(rels: dict[str, list[str]]) -> str:
     return "\n".join(f"{rel_type}: {', '.join(ids)}" for rel_type, ids in rels.items())
 
 
-class VocabularyConnector:
-    """Agent-facing vocabulary operations. Static methods, string returns."""
+class VocabularyConnector(Connector):
+    """Vocabulary operations. String returns for agent consumption."""
 
-    @staticmethod
-    @tool_permission(ToolPermission.READ)
-    def ancestors(vocab_name: str, term_code: str, max_depth: int = 10, ctx: Any = None) -> str:
+    def ancestors(self, vocab_name: str, term_code: str, max_depth: int = 10) -> str:
         """Get ancestor chain to root."""
         try:
             backend = get_vocabulary(vocab_name)
@@ -32,9 +28,7 @@ class VocabularyConnector:
         except Exception as e:
             return f"[Error] {e}"
 
-    @staticmethod
-    @tool_permission(ToolPermission.READ)
-    def children(vocab_name: str, term_code: str, ctx: Any = None) -> str:
+    def children(self, vocab_name: str, term_code: str) -> str:
         """Get direct children of a term."""
         try:
             backend = get_vocabulary(vocab_name)
@@ -42,9 +36,7 @@ class VocabularyConnector:
         except Exception as e:
             return f"[Error] {e}"
 
-    @staticmethod
-    @tool_permission(ToolPermission.READ)
-    def descendants(vocab_name: str, term_code: str, max_depth: int = 10, ctx: Any = None) -> str:
+    def descendants(self, vocab_name: str, term_code: str, max_depth: int = 10) -> str:
         """Get all descendants (subtree)."""
         try:
             backend = get_vocabulary(vocab_name)
@@ -52,9 +44,7 @@ class VocabularyConnector:
         except Exception as e:
             return f"[Error] {e}"
 
-    @staticmethod
-    @tool_permission(ToolPermission.READ)
-    def info(vocab_name: str, ctx: Any = None) -> str:
+    def info(self, vocab_name: str) -> str:
         """Get vocabulary metadata."""
         try:
             backend = get_vocabulary(vocab_name)
@@ -62,9 +52,7 @@ class VocabularyConnector:
         except Exception as e:
             return f"[Error] {e}"
 
-    @staticmethod
-    @tool_permission(ToolPermission.READ)
-    def list_vocabularies(ctx: Any = None) -> str:
+    def list_vocabularies(self) -> str:
         """List all available vocabularies."""
         try:
             infos = _list_vocabularies()
@@ -74,9 +62,7 @@ class VocabularyConnector:
         except Exception as e:
             return f"[Error] {e}"
 
-    @staticmethod
-    @tool_permission(ToolPermission.READ)
-    def lookup(vocab_name: str, term_code: str, ctx: Any = None) -> str:
+    def lookup(self, vocab_name: str, term_code: str) -> str:
         """Look up a term by its code/ID."""
         try:
             backend = get_vocabulary(vocab_name)
@@ -85,9 +71,7 @@ class VocabularyConnector:
         except Exception as e:
             return f"[Error] {e}"
 
-    @staticmethod
-    @tool_permission(ToolPermission.READ)
-    def parent(vocab_name: str, term_code: str, ctx: Any = None) -> str:
+    def parent(self, vocab_name: str, term_code: str) -> str:
         """Get direct parent(s) of a term."""
         try:
             backend = get_vocabulary(vocab_name)
@@ -95,9 +79,7 @@ class VocabularyConnector:
         except Exception as e:
             return f"[Error] {e}"
 
-    @staticmethod
-    @tool_permission(ToolPermission.READ)
-    def related(vocab_name: str, term_code: str, relation_type: str, ctx: Any = None) -> str:
+    def related(self, vocab_name: str, term_code: str, relation_type: str) -> str:
         """Get terms connected by a specific relation type."""
         try:
             backend = get_vocabulary(vocab_name)
@@ -105,9 +87,7 @@ class VocabularyConnector:
         except Exception as e:
             return f"[Error] {e}"
 
-    @staticmethod
-    @tool_permission(ToolPermission.READ)
-    def relationships(vocab_name: str, term_code: str, ctx: Any = None) -> str:
+    def relationships(self, vocab_name: str, term_code: str) -> str:
         """Get all typed relationships for a term."""
         try:
             backend = get_vocabulary(vocab_name)
@@ -115,9 +95,7 @@ class VocabularyConnector:
         except Exception as e:
             return f"[Error] {e}"
 
-    @staticmethod
-    @tool_permission(ToolPermission.READ)
-    def roots(vocab_name: str, ctx: Any = None) -> str:
+    def roots(self, vocab_name: str) -> str:
         """Get top-level terms."""
         try:
             backend = get_vocabulary(vocab_name)
@@ -125,9 +103,7 @@ class VocabularyConnector:
         except Exception as e:
             return f"[Error] {e}"
 
-    @staticmethod
-    @tool_permission(ToolPermission.READ)
-    def search(vocab_name: str, query: str, max_results: int = 10, ctx: Any = None) -> str:
+    def search(self, vocab_name: str, query: str, max_results: int = 10) -> str:
         """Search for terms matching a query."""
         try:
             backend = get_vocabulary(vocab_name)
@@ -135,9 +111,7 @@ class VocabularyConnector:
         except Exception as e:
             return f"[Error] {e}"
 
-    @staticmethod
-    @tool_permission(ToolPermission.READ)
-    def siblings(vocab_name: str, term_code: str, ctx: Any = None) -> str:
+    def siblings(self, vocab_name: str, term_code: str) -> str:
         """Get terms sharing the same parent."""
         try:
             backend = get_vocabulary(vocab_name)
@@ -145,9 +119,7 @@ class VocabularyConnector:
         except Exception as e:
             return f"[Error] {e}"
 
-    @staticmethod
-    @tool_permission(ToolPermission.READ)
-    def subtree(vocab_name: str, term_code: str, max_depth: int = 3, ctx: Any = None) -> str:
+    def subtree(self, vocab_name: str, term_code: str, max_depth: int = 3) -> str:
         """Get hierarchical view for browsing."""
         try:
             backend = get_vocabulary(vocab_name)
@@ -155,9 +127,7 @@ class VocabularyConnector:
         except Exception as e:
             return f"[Error] {e}"
 
-    @staticmethod
-    @tool_permission(ToolPermission.READ)
-    def suggest(vocab_name: str, text: str, max_results: int = 10, ctx: Any = None) -> str:
+    def suggest(self, vocab_name: str, text: str, max_results: int = 10) -> str:
         """Semantic suggestions (RAG strategy only)."""
         try:
             backend = get_vocabulary(vocab_name)
@@ -167,9 +137,7 @@ class VocabularyConnector:
         except Exception as e:
             return f"[Error] {e}"
 
-    @staticmethod
-    @tool_permission(ToolPermission.READ)
-    def validate(vocab_name: str, term_code: str, ctx: Any = None) -> str:
+    def validate(self, vocab_name: str, term_code: str) -> str:
         """Validate a term code. Returns validity and suggestion if invalid."""
         try:
             backend = get_vocabulary(vocab_name)

@@ -95,13 +95,13 @@ def _parse(config: VocabularyConfig, source_path: Path) -> list[VocabularyTerm]:
         case SourceFormat.OWL:
             return parse_owl(source_path)
         case SourceFormat.JSON_FLAT:
-            return parse_json_flat(source_path, id_field=opts.get("id_field", "id"), label_field=opts.get("label_field", "label"), definition_field=opts.get("definition_field", "definition"))
+            return parse_json_flat(source_path, id_field=opts.get("id_field", "id"), label_field=opts.get("label_field", "label"), definition_field=opts.get("definition_field") or "definition")
         case SourceFormat.JSON_HIERARCHICAL:
             return parse_json_hierarchical(source_path, id_field=opts.get("id_field", "id"), label_field=opts.get("label_field", "label"))
         case SourceFormat.CSV:
-            return parse_csv(source_path, id_field=opts.get("id_field", "id"), label_field=opts.get("label_field", "label"), delimiter=",")
+            return parse_csv(source_path, id_field=opts.get("id_field", "id"), label_field=opts.get("label_field", "label"), definition_field=opts.get("definition_field", "definition"), delimiter=",")
         case SourceFormat.TSV:
-            return parse_csv(source_path, id_field=opts.get("id_field", "id"), label_field=opts.get("label_field", "label"), delimiter="\t")
+            return parse_csv(source_path, id_field=opts.get("id_field", "id"), label_field=opts.get("label_field", "label"), definition_field=opts.get("definition_field", "definition"), delimiter="\t")
         case SourceFormat.MESH_XML:
             return parse_mesh_xml(source_path)
         case SourceFormat.GMT:

@@ -1,19 +1,11 @@
 """SQL connector example -- demonstrates schema discovery, query execution, and row lookup."""
 
 import asyncio
-from pathlib import Path
 
-from agentic_patterns.core.connectors.sql.config import DATABASE_CACHE_DIR, DBS_YAML_PATH
+from agentic_patterns.core.connectors.sql.config import DBS_YAML_PATH
+from agentic_patterns.core.connectors.sql.connector import SqlConnector
 from agentic_patterns.core.connectors.sql.db_connection_config import DbConnectionConfigs
 from agentic_patterns.core.connectors.sql.db_infos import DbInfos
-from agentic_patterns.core.connectors.sql.inspection.schema_extractor import DbSchemaExtractor
-from agentic_patterns.core.connectors.sql.operations import (
-    db_execute_sql_op,
-    db_get_row_by_id_op,
-    db_list_op,
-    db_list_tables_op,
-    db_show_schema_op,
-)
 
 
 DB_ID = "bookstore"
@@ -28,27 +20,23 @@ def setup():
 
 async def main():
     setup()
+    connector = SqlConnector()
 
-    # List databases
     print("=== Available Databases ===")
-    print(await db_list_op())
+    print(await connector.list_databases())
 
-    # List tables
     print("\n=== Tables ===")
-    print(await db_list_tables_op(DB_ID))
+    print(await connector.list_tables(DB_ID))
 
-    # Show schema
     print("\n=== Schema ===")
-    print(await db_show_schema_op(DB_ID))
+    print(await connector.show_schema(DB_ID))
 
-    # Execute a query
     print("\n=== Query: Top 5 books by price ===")
-    result = await db_execute_sql_op(DB_ID, "SELECT title, price FROM books ORDER BY price DESC LIMIT 5")
+    result = await connector.execute_sql(DB_ID, "SELECT title, price FROM books ORDER BY price DESC LIMIT 5")
     print(result)
 
-    # Get row by ID with related data
     print("\n=== Book #1 with related author ===")
-    row = await db_get_row_by_id_op(DB_ID, "books", "1", fetch_related=True)
+    row = await connector.get_row_by_id(DB_ID, "books", "1", fetch_related=True)
     print(row)
 
 

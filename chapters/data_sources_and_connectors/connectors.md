@@ -4,6 +4,18 @@ Agents are only as useful as the data they can reliably read and safely change, 
 
 A connector, in the agent sense, is a tool surface that turns an external system into a few stable verbs the agent can call directly. The key design constraint is that the verbs must be generic enough to work across many backends, but opinionated enough to provide real leverage (validation, previews, schema discovery, safe writes, and bounded reads). A raw "HTTP request tool" is too generic to be dependable, while a "SQL connector" is generic in a useful way because SQL is itself a strong abstraction and most databases provide the same introspection and query semantics.
 
+### Connectors are not tools
+
+It is worth making a distinction that is easy to miss: connectors and tools are different things, even though they often end up wired together.
+
+A **connector** is a library-agnostic abstraction that defines *what operations* an agent can perform against a data source -- read, write, query, validate, discover schema -- along with the safety constraints around those operations (bounded reads, sandbox isolation, permission checks). Connectors do not know anything about PydanticAI, LangChain, CrewAI, or MCP. They are plain Python classes with typed methods that could be called from a script, a test, or an API endpoint with no agent framework present at all.
+
+A **tool** is the framework-specific wrapper that registers a connector method so that a particular agent runtime can discover and invoke it. In PydanticAI a tool is a decorated async function added to an `Agent`; in LangChain it is a `Tool` or `StructuredTool` object; in MCP it is a server-side handler exposed over JSON-RPC. The tool layer handles serialization, schema advertisement, error formatting, and whatever protocol the framework requires.
+
+This separation matters for three practical reasons. First, it keeps connector logic testable without spinning up an agent or mocking an LLM -- you call the method directly and assert on the result. Second, it makes connectors portable: the same `FileConnector` or `SqlConnector` can be exposed as a PydanticAI tool today and as an MCP server tool tomorrow, with only a thin adapter changing. Third, it prevents framework lock-in from leaking into data-access code, which tends to be the most stable and most reused part of an agentic system.
+
+Throughout this chapter, the code examples show connector methods (the abstraction). The chapter on tools and the chapter on MCP show how those same methods get wrapped into framework-specific tools.
+
 In practice, five connector archetypes cover the majority of day-to-day enterprise use cases for agents: file/object storage connectors, SQL connectors, OpenAPI/REST connectors, graph/relationship connectors, and controlled vocabulary/ontology connectors.
 
 ### File and object-storage connectors

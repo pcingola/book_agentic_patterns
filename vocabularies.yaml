@@ -1,0 +1,109 @@
+vocabularies:
+
+  # --- Enum strategy (< 100 terms) ---
+
+  ensembl_biotypes:
+    strategy: enum
+    source: ensembl_biotypes.json
+    source_format: json_flat
+
+  # --- Tree strategy (< 1K terms) ---
+
+  sequence_ontology:
+    strategy: tree
+    source: so.obo
+    source_format: obo
+
+  cell_ontology:
+    strategy: tree
+    source: cl.obo
+    source_format: obo
+
+  obi:
+    strategy: tree
+    source: obi.owl
+    source_format: owl
+
+  wikipathways:
+    strategy: tree
+    source: wikipathways.gmt
+    source_format: gmt
+
+  reactome:
+    strategy: tree
+    source: reactome.gmt
+    source_format: gmt
+
+  # --- RAG strategy (1K+ terms) ---
+
+  disease_ontology:
+    strategy: rag
+    source: doid.obo
+    source_format: obo
+    collection: disease_ontology
+
+  hpo:
+    strategy: rag
+    source: hp.obo
+    source_format: obo
+    collection: hpo
+
+  mesh:
+    strategy: rag
+    source: mesh_desc.xml
+    source_format: mesh_xml
+    collection: mesh
+
+  hgnc:
+    strategy: rag
+    source: hgnc_complete_set.txt
+    source_format: tsv
+    collection: hgnc
+    parser_options:
+      id_field: hgnc_id
+      label_field: symbol
+      definition_field: name
+
+  gene_ontology:
+    strategy: rag
+    source: go.obo
+    source_format: obo
+    collection: gene_ontology
+
+  efo:
+    strategy: rag
+    source: efo.owl
+    source_format: owl
+    collection: efo
+
+  chebi:
+    strategy: rag
+    source: chebi.obo
+    source_format: obo
+    collection: chebi
+
+  ndc:
+    strategy: rag
+    source: ndc.json
+    source_format: json_flat
+    collection: ndc
+    parser_options:
+      id_field: product_ndc
+      label_field: brand_name
+      definition_field: generic_name
+
+  unii:
+    strategy: rag
+    source: unii.tsv
+    source_format: tsv
+    collection: unii
+    parser_options:
+      id_field: UNII
+      label_field: PT
+      definition_field: RN
+
+  ncit:
+    strategy: rag
+    source: ncit.obo
+    source_format: obo
+    collection: ncit

@@ -17,12 +17,11 @@ hierarchies (parents, children, ancestors, descendants), and exploring relations
 in biomedical and scientific vocabularies."""
 
 
-def create_vocabulary_agent(vocab_names: list[str] | None = None) -> Agent:
-    """Create a vocabulary agent with tools bound to available vocabularies.
+_connector = VocabularyConnector()
 
-    If vocab_names is provided, only those vocabularies are mentioned in instructions.
-    Otherwise, all registered vocabularies are listed.
-    """
+
+def create_vocabulary_agent(vocab_names: list[str] | None = None) -> Agent:
+    """Create a vocabulary agent with tools bound to available vocabularies."""
     instructions = _build_instructions(vocab_names)
     tools = _get_tools()
     return get_agent(system_prompt=SYSTEM_PROMPT, instructions=instructions, tools=tools)
@@ -52,51 +51,51 @@ def _get_tools() -> list:
 
     async def vocab_lookup(vocab_name: str, term_code: str) -> str:
         """Look up a term by its code/ID in a vocabulary."""
-        return VocabularyConnector.lookup(vocab_name, term_code)
+        return _connector.lookup(vocab_name, term_code)
 
     async def vocab_search(vocab_name: str, query: str, max_results: int = 10) -> str:
         """Search for terms matching a text query."""
-        return VocabularyConnector.search(vocab_name, query, max_results)
+        return _connector.search(vocab_name, query, max_results)
 
     async def vocab_validate(vocab_name: str, term_code: str) -> str:
         """Validate whether a term code exists. Suggests corrections if invalid."""
-        return VocabularyConnector.validate(vocab_name, term_code)
+        return _connector.validate(vocab_name, term_code)
 
     async def vocab_suggest(vocab_name: str, text: str, max_results: int = 10) -> str:
         """Get semantic suggestions for free text (RAG vocabularies only)."""
-        return VocabularyConnector.suggest(vocab_name, text, max_results)
+        return _connector.suggest(vocab_name, text, max_results)
 
     async def vocab_parent(vocab_name: str, term_code: str) -> str:
         """Get direct parent(s) of a term."""
-        return VocabularyConnector.parent(vocab_name, term_code)
+        return _connector.parent(vocab_name, term_code)
 
     async def vocab_children(vocab_name: str, term_code: str) -> str:
         """Get direct children of a term."""
-        return VocabularyConnector.children(vocab_name, term_code)
+        return _connector.children(vocab_name, term_code)
 
     async def vocab_ancestors(vocab_name: str, term_code: str, max_depth: int = 10) -> str:
         """Get ancestor chain to root."""
-        return VocabularyConnector.ancestors(vocab_name, term_code, max_depth)
+        return _connector.ancestors(vocab_name, term_code, max_depth)
 
     async def vocab_descendants(vocab_name: str, term_code: str, max_depth: int = 10) -> str:
         """Get all descendants up to max_depth."""
-        return VocabularyConnector.descendants(vocab_name, term_code, max_depth)
+        return _connector.descendants(vocab_name, term_code, max_depth)
 
     async def vocab_relationships(vocab_name: str, term_code: str) -> str:
         """Get all typed relationships for a term."""
-        return VocabularyConnector.relationships(vocab_name, term_code)
+        return _connector.relationships(vocab_name, term_code)
 
     async def vocab_related(vocab_name: str, term_code: str, relation_type: str) -> str:
         """Get terms connected by a specific relation type."""
-        return VocabularyConnector.related(vocab_name, term_code, relation_type)
+        return _connector.related(vocab_name, term_code, relation_type)
 
     async def vocab_info(vocab_name: str) -> str:
         """Get metadata about a vocabulary."""
-        return VocabularyConnector.info(vocab_name)
+        return _connector.info(vocab_name)
 
     async def vocab_list() -> str:
         """List all available vocabularies."""
-        return VocabularyConnector.list_vocabularies()
+        return _connector.list_vocabularies()
 
     return [
         vocab_lookup, vocab_search, vocab_validate, vocab_suggest,
