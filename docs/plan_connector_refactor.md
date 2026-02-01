@@ -20,9 +20,32 @@ Phase 2 (base class, inheritance, instance methods, SqlConnector) -- DONE.
 11. All tests updated to use instances (223 tests pass)
 12. Examples updated: `json_connector_example.py`, `sql_connector_example.py`, `example_file_connector.ipynb`
 
-## What Remains
+## Phase 3: Separate Connectors from Agent/Tool Code
 
-Nothing -- all items complete.
+Connectors are pure data-access abstractions. Agent creation, tool wrappers, and framework-specific code (PydanticAI) must live outside `connectors/`.
+
+### Moves
+
+| What | From | To |
+|---|---|---|
+| Vocabulary agent factory | `connectors/vocabulary/agent.py` | `core/agents/vocabulary.py` |
+| NL2SQL tool wrappers | `connectors/sql/nl2sql/tools.py` | `core/tools/nl2sql.py` |
+| NL2SQL agent + prompts | `connectors/sql/nl2sql/agent.py`, `prompts.py` | `core/agents/nl2sql/` |
+| DB catalog agent | `connectors/sql/db_catalog/agent.py` | `core/agents/db_catalog.py` |
+
+### Stays in `connectors/sql/`
+
+Schema inspection (`inspection/`), annotation (`annotation/`), and CLI (`cli/`) stay. They prepare metadata for the connector -- not agent code, even though annotation uses LLMs internally.
+
+### Additional cleanup
+
+- Add a `Strategy` Protocol class in `vocabulary/strategy.py` defining the shared interface (`lookup`, `search`, `validate`, `suggest`, `parent`, `children`, `siblings`, `ancestors`, `descendants`, `roots`, `relationships`, `related`, `subtree`, `info`). Have `StrategyEnum`, `StrategyTree`, and `StrategyRag` implement it. Update `registry.py` type annotations to use `Strategy` instead of bare dicts/Any.
+- Remove empty `nl2sql/` and `db_catalog/` directories from `connectors/sql/` after moves.
+- Update all imports across examples, tests, and agents.
+
+### Status
+
+TODO.
 
 ## Class Hierarchy
 

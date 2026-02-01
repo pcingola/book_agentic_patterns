@@ -14,7 +14,7 @@ The workspace module provides functions to translate between these two views:
 
 ```python
 sandbox_path = "/workspace/reports/analysis.json"
-host_path = container_to_host_path(PurePosixPath(sandbox_path), ctx)
+host_path = workspace_to_host_path(PurePosixPath(sandbox_path), ctx)
 
 print(f"Agent sees:    {sandbox_path}")
 print(f"Actual file:   {host_path}")
@@ -100,8 +100,8 @@ bob_ctx = {"user_id": "bob", "session_id": "session_001"}
 
 write_to_workspace("/workspace/secret.txt", "Bob's private data", bob_ctx)
 
-bob_path = container_to_host_path(PurePosixPath("/workspace/secret.txt"), bob_ctx)
-alice_path = container_to_host_path(PurePosixPath("/workspace/secret.txt"), ctx)
+bob_path = workspace_to_host_path(PurePosixPath("/workspace/secret.txt"), bob_ctx)
+alice_path = workspace_to_host_path(PurePosixPath("/workspace/secret.txt"), ctx)
 
 print(f"Bob's file:   {bob_path}")
 print(f"Alice's file: {alice_path}")
@@ -115,7 +115,7 @@ The workspace enforces security boundaries through path validation. Attempts to 
 
 ```python
 try:
-    container_to_host_path(PurePosixPath("/workspace/../../../etc/passwd"), ctx)
+    workspace_to_host_path(PurePosixPath("/workspace/../../../etc/passwd"), ctx)
 except WorkspaceError as e:
     print(f"Blocked: {e}")
 ```

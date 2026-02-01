@@ -59,7 +59,7 @@ The edit operation uses 1-indexed, inclusive line ranges. When the agent calls `
 The final cell translates the sandbox path to the host filesystem and reads the file directly, confirming that the agent's operations produced a real artifact:
 
 ```python
-host_path = container_to_host_path(PurePosixPath("/workspace/notes.md"), ctx)
+host_path = workspace_to_host_path(PurePosixPath("/workspace/notes.md"), ctx)
 print(host_path.read_text())
 ```
 
