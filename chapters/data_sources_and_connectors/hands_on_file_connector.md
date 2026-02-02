@@ -4,35 +4,30 @@ The FileConnector gives agents the ability to operate on files through the works
 
 This hands-on walks through `example_file_connector.ipynb`, where an agent creates a markdown file, reads it back, edits a specific line, and verifies the result.
 
-## Wrapping Connector Methods as Agent Tools
+## Setting Up the Connector and Tools
 
-FileConnector is instantiated with a `ctx` dict for workspace path translation. The agent framework calls tools with only the parameters the model specifies -- the model should not see or manage `ctx`. The standard solution is the closure pattern: a factory function captures the connector instance and returns inner functions that close over it.
+The FileConnector requires user and session context for workspace path translation, but this context is managed through Python's contextvars mechanism rather than explicit parameters. First, set the user session, then instantiate the connector and bind its methods directly as tools:
 
 ```python
-ctx = {"user_id": "demo", "session_id": "file_connector_demo"}
-file = FileConnector(ctx)
+set_user_session("demo", "file_connector_demo")
 
-def make_file_tools(file):
-    def file_write(path: str, content: str) -> str:
-        """Write content to a file. Creates parent directories as needed."""
-        return file.write(path, content)
+connector = FileConnector()
 
-    def file_read(path: str) -> str:
-        """Read a file."""
-        return file.read(path)
-
-    def file_edit(path: str, start_line: int, end_line: int, new_content: str) -> str:
-        """Replace lines start_line to end_line (1-indexed, inclusive) with new_content."""
-        return file.edit(path, start_line, end_line, new_content)
-
-    # ... more tools ...
-
-    return [file_write, file_read, file_edit, ...]
+tools = [
+    connector.append,
+    connector.delete,
+    connector.edit,
+    connector.find,
+    connector.head,
+    connector.list,
+    connector.read,
+    connector.write,
+]
 ```
 
-Each inner function has a clear signature and docstring that the model can reason about. The docstring matters: it is the model's only description of what the tool does. The `ctx` is held by the connector instance, invisible to the model.
+Each method already has a clear signature and docstring that the model can reason about. The docstring matters: it is the model's only description of what the tool does. The user and session context is retrieved automatically from contextvars inside the connector, so the model never sees or manages it.
 
-This pattern appears throughout the codebase whenever tools need runtime context. It was introduced in the workspace hands-on and applies identically here.
+This pattern keeps the tool surface clean while maintaining proper workspace isolation. The connector handles all path translation internally by reading the current user and session from the context.
 
 ## The Agent in Action
 
@@ -52,18 +47,18 @@ agent_run, nodes = await run_agent(agent, prompt, verbose=True)
 
 The `verbose=True` flag prints each step the agent takes, so you can see the tool calls and their results as they happen. The agent typically proceeds in order: calls `file_write` to create the file, `file_read` to verify, `file_edit` to modify line 3, and `file_read` again for the final content.
 
-The edit operation uses 1-indexed, inclusive line ranges. When the agent calls `file_edit("/workspace/notes.md", 3, 3, "- Agreed on weekly sync every Monday")`, it replaces exactly line 3 with the new content. The connector validates that `start_line` and `end_line` are within bounds and returns an informative message describing what changed.
+The edit operation uses 1-indexed, inclusive line ranges. When the agent calls the `edit` tool with `("/workspace/notes.md", 3, 3, "- Agreed on weekly sync every Monday")`, it replaces exactly line 3 with the new content. The connector validates that `start_line` and `end_line` are within bounds and returns an informative message describing what changed.
 
 ## Verifying on Disk
 
 The final cell translates the sandbox path to the host filesystem and reads the file directly, confirming that the agent's operations produced a real artifact:
 
 ```python
-host_path = workspace_to_host_path(PurePosixPath("/workspace/notes.md"), ctx)
+host_path = workspace_to_host_path(PurePosixPath("/workspace/notes.md"))
 print(host_path.read_text())
 ```
 
-This confirms the round-trip: the agent wrote through the sandbox, and we can read the result from the host path. The file persists after the agent conversation ends, available for subsequent agents, tools, or human inspection.
+The `workspace_to_host_path()` function retrieves the current user and session from contextvars, then translates the sandbox path to the actual host filesystem location. This confirms the round-trip: the agent wrote through the sandbox, and we can read the result from the host path. The file persists after the agent conversation ends, available for subsequent agents, tools, or human inspection.
 
 ## FileConnector Operations
 
@@ -73,4 +68,4 @@ All operations return strings: either the requested content or a status message 
 
 ## Key Takeaways
 
-The FileConnector bridges agents and the filesystem through workspace sandbox isolation. The connector instance holds runtime context, and the closure pattern wraps instance methods into tool functions without exposing context to the model. Operations return strings for both success and failure, keeping the agent loop resilient.
+The FileConnector bridges agents and the filesystem through workspace sandbox isolation. User and session context is managed through contextvars, allowing connector methods to be bound directly as agent tools without explicit context parameters. The model sees only the logical operations (read, write, edit), while workspace path translation happens automatically inside the connector. Operations return strings for both success and failure, keeping the agent loop resilient.

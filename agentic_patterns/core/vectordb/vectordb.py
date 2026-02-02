@@ -21,8 +21,16 @@ class PydanticAIEmbeddingFunction(EmbeddingFunction):
         self._config_path = config_path
         self._embedder = get_embedder(embedding_config, config_path)
 
-    def name(self) -> str:
-        return f"pydantic-ai-{self._embedding_config or 'default'}"
+    @staticmethod
+    def name() -> str:
+        return "pydantic-ai"
+
+    def get_config(self) -> dict[str, str | None]:
+        return {"embedding_config": self._embedding_config, "config_path": str(self._config_path) if self._config_path else None}
+
+    @staticmethod
+    def build_from_config(config: dict[str, str | None]) -> "PydanticAIEmbeddingFunction":
+        return PydanticAIEmbeddingFunction(embedding_config=config.get("embedding_config"), config_path=config.get("config_path"))
 
     def __call__(self, input: Documents) -> Embeddings:
         loop = asyncio.get_event_loop()

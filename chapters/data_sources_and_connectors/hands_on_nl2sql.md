@@ -22,7 +22,7 @@ The `create_nl2sql_agent()` factory does several things in a single call. It loo
 nl2sql_agent = create_nl2sql_agent(db_id="bookstore")
 ```
 
-The agent receives two tools. `db_execute_sql_tool` generates SQL from the user's question, validates it (SELECT-only, single statement), executes it, and writes results to a CSV file in the workspace. `db_get_row_by_id_tool` fetches a single row by primary key for detailed inspection. Both tools are created through the closure pattern discussed in the FileConnector hands-on -- they capture the `db_id` so the model never sees or manages database identifiers directly.
+The agent receives two tools. `db_execute_sql_tool` generates SQL from the user's question, validates it (SELECT-only, single statement), executes it, and writes results to a CSV file in the workspace. `db_get_row_by_id_tool` fetches a single row by primary key for detailed inspection. Both tools are created using the closure pattern: inner functions that capture the `db_id` from the enclosing scope, so the model never sees or manages database identifiers directly.
 
 The schema embedded in the instructions is the annotated version produced by the offline annotation pipeline. It includes table descriptions, column explanations, enum values, and sample data. This rich context is what allows the model to generate accurate SQL without querying the database catalog at runtime.
 
@@ -57,7 +57,7 @@ csv_tools = [
 csv_agent = get_agent(tools=csv_tools)
 ```
 
-The CsvConnector operates on CSV files through workspace paths, just like the FileConnector operates on text files. Its methods -- `head`, `find_rows`, `headers`, `delete_rows`, `read_row` -- are already tool-compatible static or bound methods decorated with `@tool_permission()`. Unlike the FileConnector example, CsvConnector methods do not require a closure wrapper because they do not carry instance-level context.
+The CsvConnector operates on CSV files through workspace paths, just like the FileConnector operates on text files. Its methods -- `head`, `find_rows`, `headers`, `delete_rows`, `read_row` -- are already tool-compatible bound methods decorated with `@tool_permission()`. Like the FileConnector, these methods can be bound directly as tools without any wrapper functions.
 
 The CSV agent prompt asks it to inspect the file that the SQL agent created:
 

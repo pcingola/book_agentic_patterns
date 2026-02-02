@@ -47,7 +47,7 @@ file.edit("docs/runbook.md", start_line=40, end_line=55, new_content=patch)
 file.delete("notes/obsolete.md")
 ```
 
-The bounded read methods (`head`/`tail`, present in all three format connectors) are not a convenience; they are what makes file connectors workable for agents at scale. Object stores and blob APIs explicitly support metadata reads and range reads (or equivalent headers), which lets a tool implement preview and partial retrieval efficiently. ([AWS Documentation][1])
+The bounded read methods (`head`/`tail`, present in all three format connectors) are not a convenience; they are what makes file connectors workable for agents at scale. Object stores and blob APIs explicitly support metadata reads and range reads (or equivalent headers), which lets a tool implement preview and partial retrieval efficiently. ([AWS Documentation][3])
 
 A common trap is over-generalizing editing. Agents frequently need to make small changes, but arbitrary in-place mutation is not uniformly supported across object stores. The connector should therefore define edits in terms of safe, portable behavior: read the smallest necessary slice, apply a patch deterministically, and write back with concurrency control (ETag / version preconditions) so the agent does not overwrite someone else’s update.
 
@@ -136,7 +136,7 @@ This is one of the rare places where “generic” remains very effective: the c
 
 HTTP APIs can be too generic to be reliable for agents unless the connector gives the agent meaningful structure: what endpoints exist, what parameters are required, what schemas are expected, how authentication works, and how pagination or idempotency is handled.
 
-OpenAPI is the standard mechanism for supplying that structure. When an API is described with OpenAPI, a connector can list endpoints, describe the request/response shapes, validate inputs, and normalize error handling and pagination without embedding service-specific code in the agent. ([OpenAPI Initiative Publications][2])
+OpenAPI is the standard mechanism for supplying that structure. When an API is described with OpenAPI, a connector can list endpoints, describe the request/response shapes, validate inputs, and normalize error handling and pagination without embedding service-specific code in the agent. ([OpenAPI Initiative Publications][1])
 
 A practical agent-facing surface looks like this:
 
@@ -155,7 +155,7 @@ for page in api.paginate("GET /tickets", params={"status": "open"}, page_size=20
     process(page.items)
 ```
 
-The design goal is to avoid a “generic API connector” that is just `http_get(url)` and `http_post(url, body)`. Those primitives push complexity onto the agent, which then must infer required fields, handle pagination styles, encode authentication correctly, and interpret error responses. By contrast, an OpenAPI-driven connector can make the agent reliably productive by turning undocumented details into discoverable tool affordances, and by ensuring that calls are validated before they hit production services. ([OpenAPI Initiative Publications][2])
+The design goal is to avoid a “generic API connector” that is just `http_get(url)` and `http_post(url, body)`. Those primitives push complexity onto the agent, which then must infer required fields, handle pagination styles, encode authentication correctly, and interpret error responses. By contrast, an OpenAPI-driven connector can make the agent reliably productive by turning undocumented details into discoverable tool affordances, and by ensuring that calls are validated before they hit production services. ([OpenAPI Initiative Publications][1])
 
 ### Graph and relationship connectors
 
@@ -260,21 +260,3 @@ Controlled vocabulary connectors are especially important when agents perform wr
 Conceptually, this connector sits between schema and semantics. SQL schemas define *what shape* data can take; vocabularies define *what meanings* are allowed. Treating vocabularies as first-class connectors acknowledges that meaning is shared infrastructure, not incidental metadata.
 
 This archetype makes explicit how agents stay aligned with organizational language, policies, and domain standards -- something that cannot be reliably achieved through generic file or database access alone.
-
-## References
-
-1. OpenAPI Initiative. *OpenAPI Specification v3.1.0*. Specification, 2021. ([OpenAPI Initiative Publications][2])
-2. OpenAPI Initiative. *OpenAPI Specification 3.1.0 Released*. OpenAPI Initiative Blog, 2021. ([OpenAPI Initiative][3])
-3. Amazon Web Services. *Amazon S3 API Reference: HeadObject*. AWS Documentation. ([AWS Documentation][1])
-4. Amazon Web Services. *Amazon S3 API Reference: GetObject*. AWS Documentation. ([AWS Documentation][4])
-5. Amazon Web Services. *Amazon S3 API Reference: PutObject*. AWS Documentation. ([AWS Documentation][5])
-6. Google Cloud. *Cloud Storage JSON API: Objects: get*. Google Cloud Documentation. ([Google Cloud Documentation][6])
-7. Microsoft. *Specifying the range header for Blob service operations*. Microsoft Learn, 2023. ([Microsoft Learn][7])
-
-[1]: https://docs.aws.amazon.com/AmazonS3/latest/API/API_HeadObject.html?utm_source=chatgpt.com "HeadObject - Amazon Simple Storage Service"
-[2]: https://spec.openapis.org/oas/v3.1.0.html?utm_source=chatgpt.com "OpenAPI Specification v3.1.0"
-[3]: https://www.openapis.org/blog/2021/02/18/openapi-specification-3-1-released?utm_source=chatgpt.com "OpenAPI Specification 3.1.0 Released"
-[4]: https://docs.aws.amazon.com/AmazonS3/latest/API/API_GetObject.html?utm_source=chatgpt.com "GetObject - Amazon Simple Storage Service"
-[5]: https://docs.aws.amazon.com/AmazonS3/latest/API/API_PutObject.html?utm_source=chatgpt.com "PutObject - Amazon Simple Storage Service"
-[6]: https://docs.cloud.google.com/storage/docs/json_api/v1/objects/get?utm_source=chatgpt.com "Objects: get | Cloud Storage"
-[7]: https://learn.microsoft.com/en-us/rest/api/storageservices/specifying-the-range-header-for-blob-service-operations?utm_source=chatgpt.com "Specify the range header for Blob service operations"

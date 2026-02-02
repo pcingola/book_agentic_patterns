@@ -249,7 +249,7 @@ Into: Introduction to section, what we are building and how
 - CodeAct
 - Run skills
 - Run sub-agents
-- Workspace
+- Workspace / Userspace
 - Basic MCPs:
   - mcp-todo
   - mcp-file-edit

@@ -2,12 +2,6 @@
 
 NL2SQL is the execution pattern in which an agent translates a natural language question into a validated, read-only SQL query, executes it safely, and returns results in a form suitable for both human inspection and downstream processing.
 
-### Historical perspective
-
-Research on translating natural language into database queries predates modern language models by several decades. Early systems in the 1970s and 1980s, such as LUNAR and CHAT-80, relied on hand-crafted rules and domain-specific grammars. These approaches demonstrated the feasibility of natural language interfaces to databases but were expensive to build and brittle outside narrowly defined schemas.
-
-From the late 2000s onward, statistical and neural semantic parsing reframed NL2SQL as a supervised learning problem: mapping text directly to formal query representations. Public datasets such as GeoQuery and WikiSQL enabled broader experimentation, while encoder–decoder architectures improved generalization across schemas. The recent emergence of large language models shifted the emphasis again. Instead of training a specialized parser per database, modern systems condition a general-purpose model with rich schema context, examples, and execution constraints. As a result, NL2SQL has become a practical and reliable execution mode in production agentic systems, provided it is embedded in a defensively designed pipeline.
-
 ### The NL2SQL execution pattern
 
 NL2SQL should be understood as a controlled execution pipeline rather than a simple text-to-SQL transformation. The database is a high-impact tool, and the schema is the primary grounding mechanism that constrains the model’s reasoning.
@@ -74,7 +68,7 @@ Embedding enum values directly in schema comments, along with short explanations
 
 Even with a high-quality schema, generated SQL must be treated as untrusted input. NL2SQL systems therefore apply multiple validation layers before execution.
 
-At a minimum, only read-only queries are permitted, and multiple statements are rejected, but this is a dangerous becaus harmfull code may still be possible. A simple syntactic validation step can catch common violations:
+At a minimum, only read-only queries are permitted, and multiple statements are rejected, but syntactic validation alone is insufficient because harmful queries may still be possible. A simple syntactic validation step can catch common violations:
 
 ```python
 query = query.strip()
@@ -114,10 +108,3 @@ This design supports auditing, user-specific permissions, and credential rotatio
 Successful NL2SQL systems usually adopt a layered architecture. Database-specific logic is isolated behind abstract interfaces, while business logic operates on standardized result types. This separation allows the same NL2SQL agent to work across multiple databases with minimal changes.
 
 Equally important is minimizing runtime complexity. Schema extraction, annotation, enum detection, and example query generation are expensive operations that belong in offline pipelines. At runtime, the agent should rely entirely on cached metadata and focus on reasoning, validation, and execution.
-
-### References
-
-1. Woods, W. A. *Progress in Natural Language Understanding: An Application to Lunar Geology*. AFIPS Conference Proceedings, 1973.
-2. Zelle, J., Mooney, R. *Learning to Parse Database Queries Using Inductive Logic Programming*. AAAI, 1996.
-3. Zhong, V., et al. *Seq2SQL: Generating Structured Queries from Natural Language using Reinforcement Learning*. arXiv, 2017.
-4. Yu, T., et al. *Spider: A Large-Scale Human-Labeled Dataset for Complex and Cross-Domain Semantic Parsing and Text-to-SQL Task*. EMNLP, 2018.
