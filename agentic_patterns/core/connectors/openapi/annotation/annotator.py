@@ -4,6 +4,7 @@ import json
 import re
 
 from agentic_patterns.core.agents.agents import get_agent, run_agent
+from agentic_patterns.core.connectors.openapi.config import CATEGORIZATION_BATCH_SIZE
 from agentic_patterns.core.connectors.openapi.extraction.spec_extractor import ApiSpecExtractor
 from agentic_patterns.core.connectors.openapi.models import ApiInfo
 from agentic_patterns.core.prompt import get_prompt
@@ -74,53 +75,50 @@ class ApiSpecAnnotator:
             api_info.description = result.result.output.strip()
 
     async def _categorize_endpoints(self, api_info: ApiInfo) -> None:
-        """Categorize endpoints into logical groups using LLM."""
-        if self._verbose:
-            print(f"  Categorizing {len(api_info.endpoints)} endpoints for {api_info.api_id}")
+        """Categorize endpoints into logical groups using LLM, in batches."""
+        total = len(api_info.endpoints)
+        categorization: dict[str, str] = {}
 
-        # Build endpoints list for categorization
-        endpoints_list = []
-        for endpoint in api_info.endpoints:
-            endpoints_list.append(
+        for batch_start in range(0, total, CATEGORIZATION_BATCH_SIZE):
+            batch = api_info.endpoints[batch_start:batch_start + CATEGORIZATION_BATCH_SIZE]
+            batch_end = min(batch_start + CATEGORIZATION_BATCH_SIZE, total)
+            print(f"  [{batch_start + 1}-{batch_end}/{total}] categorizing endpoints...")
+
+            endpoints_list = [
                 {
-                    "operation_id": endpoint.operation_id,
-                    "method": endpoint.method,
-                    "path": endpoint.path,
-                    "summary": endpoint.summary,
-                    "tags": endpoint.tags,
+                    "operation_id": e.operation_id,
+                    "method": e.method,
+                    "path": e.path,
+                    "summary": e.summary,
+                    "tags": e.tags,
                 }
+                for e in batch
+            ]
+
+            prompt = get_prompt(
+                "openapi/annotation/endpoint_categorization",
+                endpoints_list=json.dumps(endpoints_list, indent=2),
             )
 
-        prompt = get_prompt(
-            "openapi/annotation/endpoint_categorization",
-            endpoints_list=json.dumps(endpoints_list, indent=2),
-        )
+            agent = get_agent(system_prompt="You are an API documentation expert.")
+            result, _ = await run_agent(agent, prompt, verbose=self._debug)
 
-        agent = get_agent(system_prompt="You are an API documentation expert.")
-        result, _ = await run_agent(agent, prompt, verbose=self._debug)
+            if result:
+                try:
+                    output = result.result.output.strip()
+                    json_match = re.search(r"```(?:json)?\s*\n(.*?)```", output, re.DOTALL)
+                    if json_match:
+                        output = json_match.group(1).strip()
+                    categorization.update(json.loads(output))
+                except json.JSONDecodeError as e:
+                    print(f"  WARNING: Failed to parse categorization JSON for batch: {e}")
+                    for endpoint in batch:
+                        if endpoint.operation_id not in categorization:
+                            categorization[endpoint.operation_id] = endpoint.tags[0] if endpoint.tags else "Uncategorized"
 
-        if result:
-            try:
-                # Parse JSON response -- extract JSON from markdown code blocks or raw text
-                output = result.result.output.strip()
-                json_match = re.search(r"```(?:json)?\s*\n(.*?)```", output, re.DOTALL)
-                if json_match:
-                    output = json_match.group(1).strip()
-
-                categorization = json.loads(output)
-
-                # Apply categories to endpoints
-                for endpoint in api_info.endpoints:
-                    if endpoint.operation_id in categorization:
-                        endpoint.category = categorization[endpoint.operation_id]
-                    else:
-                        endpoint.category = "Uncategorized"
-
-            except json.JSONDecodeError as e:
-                print(f"WARNING: Failed to parse categorization JSON: {e}")
-                # Fallback: use tags or set to Uncategorized
-                for endpoint in api_info.endpoints:
-                    endpoint.category = endpoint.tags[0] if endpoint.tags else "Uncategorized"
+        # Apply categories
+        for endpoint in api_info.endpoints:
+            endpoint.category = categorization.get(endpoint.operation_id, endpoint.tags[0] if endpoint.tags else "Uncategorized")
 
     async def _annotate_endpoint_descriptions(self, api_info: ApiInfo) -> None:
         """Generate endpoint descriptions for endpoints missing them."""

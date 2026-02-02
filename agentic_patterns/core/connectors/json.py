@@ -121,6 +121,28 @@ def _delete_at_path(data: dict | list, json_path: str) -> tuple[bool, str]:
     return True, None
 
 
+def _describe_schema(value: Any, path: str = "$", max_depth: int = 4, _depth: int = 0) -> list[str]:
+    """Walk JSON structure and return type descriptions per path."""
+    lines = []
+    indent = "  " * _depth
+    if isinstance(value, dict):
+        lines.append(f"{indent}{path} (object, {len(value)} keys)")
+        if _depth < max_depth:
+            for key in list(value.keys())[:30]:
+                child_path = f"{path}.{key}"
+                lines.extend(_describe_schema(value[key], child_path, max_depth, _depth + 1))
+            if len(value) > 30:
+                lines.append(f"{indent}  ... and {len(value) - 30} more keys")
+    elif isinstance(value, list):
+        lines.append(f"{indent}{path} (array, {len(value)} items)")
+        if _depth < max_depth and len(value) > 0:
+            lines.extend(_describe_schema(value[0], f"{path}[0]", max_depth, _depth + 1))
+    else:
+        type_name = type(value).__name__ if value is not None else "null"
+        lines.append(f"{indent}{path} ({type_name})")
+    return lines
+
+
 def _slice_value(value: Any, n: int, from_end: bool = False) -> tuple[Any, int]:
     """Slice first/last N keys or elements from a dict or list."""
     if isinstance(value, dict):
@@ -267,6 +289,43 @@ class JsonConnector(FileConnector):
             tmp_path.unlink()
 
     @context_result()
+    def query(self, path: str, json_path: str, max_results: int = 20) -> str:
+        """Query JSON using extended JSONPath with filters. Examples: $.body[?name =~ "breast"], $.items[?(@.age > 30)]."""
+        host_path = self._translate_path(path)
+        if isinstance(host_path, str):
+            return host_path
+
+        if not host_path.exists():
+            return f"[Error] File not found: {path}"
+
+        try:
+            with open(host_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        except json.JSONDecodeError as e:
+            return f"[Error] Invalid JSON: {e}"
+        except Exception as e:
+            return f"[Error] Failed to read file: {e}"
+
+        try:
+            from jsonpath_ng.ext import parse as ext_parse
+            parsed = ext_parse(json_path)
+        except Exception as e:
+            return f"[Error] Invalid JSONPath expression '{json_path}': {e}"
+
+        matches = parsed.find(data)
+        if not matches:
+            return f"No matches found for: {json_path}"
+
+        total = len(matches)
+        values = [m.value for m in matches[:max_results]]
+        result = json.dumps(values, ensure_ascii=False, indent=2)
+        if total > max_results:
+            result += f"\n\n[Showing {max_results} of {total} matches]"
+        else:
+            result = f"[{total} match{'es' if total != 1 else ''}]\n{result}"
+        return result
+
+    @context_result()
     def head(self, path: str, json_path: str = "$", n: int = 10) -> str:
         """Return the first N keys or elements at a JSONPath."""
         host_path = self._translate_path(path)
@@ -377,6 +436,30 @@ class JsonConnector(FileConnector):
             return f"[Error] Failed to write file: {e}"
 
         return f"Merged {len(parsed_updates)} keys into {json_path} in {path}"
+
+    def schema(self, path: str, json_path: str = "$", max_depth: int = 4) -> str:
+        """Show the structure of a JSON file: keys, types, nesting, and array sizes."""
+        host_path = self._translate_path(path)
+        if isinstance(host_path, str):
+            return host_path
+
+        if not host_path.exists():
+            return f"[Error] File not found: {path}"
+
+        try:
+            with open(host_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        except json.JSONDecodeError as e:
+            return f"[Error] Invalid JSON: {e}"
+        except Exception as e:
+            return f"[Error] Failed to read file: {e}"
+
+        value, error = _get_value_at_path(data, json_path)
+        if error:
+            return error
+
+        lines = _describe_schema(value, json_path, max_depth)
+        return "\n".join(lines)
 
     def set(self, path: str, json_path: str, value: str) -> str:
         """Set a value at a specific JSONPath, preserving the rest of the file."""

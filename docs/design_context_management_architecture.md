@@ -124,7 +124,7 @@ Each user session gets a dedicated directory: `<DATA_DIR>/workspaces/<user_id>/<
 
 ### Path Conversion
 
-`container_to_host_path()` converts sandbox paths to host filesystem paths. `host_to_container_path()` does the reverse. Both validate that paths remain within the workspace root to prevent path traversal attacks.
+`workspace_to_host_path()` converts sandbox paths to host filesystem paths. `host_to_workspace_path()` does the reverse. Both validate that paths remain within the workspace root to prevent path traversal attacks.
 
 ### Usage Pattern
 

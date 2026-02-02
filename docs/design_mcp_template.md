@@ -64,11 +64,11 @@ If a tool module is not imported, its tools will not be available.
 agent_path = "/workspace/result.csv"
 
 # Convert to host path for file operations
-host_path = container_to_host_path(PurePosixPath(agent_path), ctx)
+host_path = workspace_to_host_path(PurePosixPath(agent_path), ctx)
 # Returns: PosixPath('/data/workspaces/user123/session456/result.csv')
 
 # Convert back for returning to agent
-sandbox_path = host_to_container_path(host_path)
+sandbox_path = host_to_workspace_path(host_path)
 # Returns: '/workspace/result.csv'
 ```
 
@@ -124,7 +124,7 @@ async def query_database(sql: str, output_file: str, ctx: Context) -> str:
     df = execute_query(sql)
 
     # Convert sandbox path to host path
-    host_path = container_to_host_path(PurePosixPath(output_file), ctx)
+    host_path = workspace_to_host_path(PurePosixPath(output_file), ctx)
 
     # Save to file
     df.to_csv(host_path, index=False)
@@ -136,7 +136,7 @@ async def query_database(sql: str, output_file: str, ctx: Context) -> str:
 
 **Key Requirements:**
 - MUST save to file using `output_file` parameter
-- MUST convert paths using `container_to_host_path()`
+- MUST convert paths using `workspace_to_host_path()`
 - MUST return sandbox path, NOT host path
 - SHOULD include preview/summary
 
@@ -178,7 +178,7 @@ async def query_patient_data(sql: str, output_file: str, ctx: Context) -> str:
     """Query patient database."""
     # Query and save
     df = query_database(sql)
-    host_path = container_to_host_path(PurePosixPath(output_file), ctx)
+    host_path = workspace_to_host_path(PurePosixPath(output_file), ctx)
     df.to_csv(host_path, index=False)
 
     # Flag as private
@@ -510,7 +510,7 @@ source "$SCRIPT_DIR/config.sh"
 df = query_large_dataset(sql)
 
 # Convert and save
-result_file = container_to_host_path(PurePosixPath(output_file), ctx)
+result_file = workspace_to_host_path(PurePosixPath(output_file), ctx)
 df.to_csv(result_file, index=False)
 
 # Return path + preview
@@ -645,10 +645,10 @@ MCP servers should focus on single functionality:
 ### 16.1 Path Handling
 ```python
 # Agent path -> Host path
-host_path = container_to_host_path(PurePosixPath(agent_path), ctx)
+host_path = workspace_to_host_path(PurePosixPath(agent_path), ctx)
 
 # Host path -> Agent path
-agent_path = host_to_container_path(host_path)
+agent_path = host_to_workspace_path(host_path)
 ```
 
 ### 16.2 State Management
@@ -675,7 +675,7 @@ df = pd.read_csv(path)  # FileNotFoundError
 
 ### 16.5 Large Data
 ```python
-host_path = container_to_host_path(PurePosixPath(output_file), ctx)
+host_path = workspace_to_host_path(PurePosixPath(output_file), ctx)
 df.to_csv(host_path)
 preview = df.head().to_string()
 return f"Saved to '{output_file}'\n{preview}"
@@ -683,7 +683,7 @@ return f"Saved to '{output_file}'\n{preview}"
 
 ### 16.6 Private Data
 ```python
-host_path = container_to_host_path(PurePosixPath(output_file), ctx)
+host_path = workspace_to_host_path(PurePosixPath(output_file), ctx)
 df.to_csv(host_path)
 PrivateData(ctx).add_private_dataset(output_file)
 return f"Saved to '{output_file}'"

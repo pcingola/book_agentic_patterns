@@ -31,7 +31,14 @@ class ApiConnectionConfigs:
     def get(cls) -> "ApiConnectionConfigs":
         if cls._instance is None:
             cls._instance = cls()
+            cls._instance._auto_load()
         return cls._instance
+
+    def _auto_load(self) -> None:
+        """Auto-load from apis.yaml if available."""
+        from agentic_patterns.core.connectors.openapi.config import APIS_YAML_PATH
+        if APIS_YAML_PATH.exists():
+            self.load_from_yaml(APIS_YAML_PATH)
 
     def add(self, config: ApiConnectionConfig) -> None:
         self._configs[config.api_id] = config

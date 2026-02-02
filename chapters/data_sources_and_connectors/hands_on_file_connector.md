@@ -6,11 +6,9 @@ This hands-on walks through `example_file_connector.ipynb`, where an agent creat
 
 ## Setting Up the Connector and Tools
 
-The FileConnector requires user and session context for workspace path translation, but this context is managed through Python's contextvars mechanism rather than explicit parameters. First, set the user session, then instantiate the connector and bind its methods directly as tools:
+The FileConnector requires user and session context for workspace path translation, but this context is managed through Python's contextvars mechanism rather than explicit parameters. Instantiate the connector and bind its methods directly as tools:
 
 ```python
-set_user_session("demo", "file_connector_demo")
-
 connector = FileConnector()
 
 tools = [
@@ -25,9 +23,7 @@ tools = [
 ]
 ```
 
-Each method already has a clear signature and docstring that the model can reason about. The docstring matters: it is the model's only description of what the tool does. The user and session context is retrieved automatically from contextvars inside the connector, so the model never sees or manages it.
-
-This pattern keeps the tool surface clean while maintaining proper workspace isolation. The connector handles all path translation internally by reading the current user and session from the context.
+Each method already has a clear signature and docstring that the model can reason about. The docstring matters: it is the model's only description of what the tool does. The connector handles all path translation internally by reading the current user and session from contextvars, so the model never sees or manages it.
 
 ## The Agent in Action
 
@@ -68,4 +64,4 @@ All operations return strings: either the requested content or a status message 
 
 ## Key Takeaways
 
-The FileConnector bridges agents and the filesystem through workspace sandbox isolation. User and session context is managed through contextvars, allowing connector methods to be bound directly as agent tools without explicit context parameters. The model sees only the logical operations (read, write, edit), while workspace path translation happens automatically inside the connector. Operations return strings for both success and failure, keeping the agent loop resilient.
+The FileConnector bridges agents and the filesystem through workspace sandbox isolation. Connector methods are bound directly as agent tools without explicit context parameters. The model sees only the logical operations (read, write, edit), while workspace path translation happens automatically inside the connector. Operations return strings for both success and failure, keeping the agent loop resilient.

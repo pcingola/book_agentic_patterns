@@ -12,6 +12,8 @@
 
 [Hands-On: NL2SQL with CSV Post-Processing](./hands_on_nl2sql.md)
 
+[Hands-On: OpenAPI Connector](./hands_on_openapi.md)
+
 [Hands-On: Controlled Vocabularies](./hands_on_vocabulary.md)
 
 [References](./references.md)

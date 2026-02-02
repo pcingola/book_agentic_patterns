@@ -517,7 +517,7 @@ SecretsManager stores encryption keys in user home directory with 0600 permissio
 All file operations are scoped to /workspace directory. Path validation prevents directory traversal:
 
 ```python
-csv_path = container_to_host_path(PurePosixPath(output_file), ctx=ctx)
+csv_path = workspace_to_host_path(PurePosixPath(output_file), ctx=ctx)
 if csv_path is None:
     raise AixToolError("Invalid file path")
 ```

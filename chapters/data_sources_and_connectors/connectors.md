@@ -260,3 +260,6 @@ Controlled vocabulary connectors are especially important when agents perform wr
 Conceptually, this connector sits between schema and semantics. SQL schemas define *what shape* data can take; vocabularies define *what meanings* are allowed. Treating vocabularies as first-class connectors acknowledges that meaning is shared infrastructure, not incidental metadata.
 
 This archetype makes explicit how agents stay aligned with organizational language, policies, and domain standards -- something that cannot be reliably achieved through generic file or database access alone.
+
+[1]: https://spec.openapis.org/oas/v3.1.0.html
+[3]: https://docs.aws.amazon.com/AmazonS3/latest/API/API_HeadObject.html
