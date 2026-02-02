@@ -317,7 +317,7 @@ wheels = [
 [[package]]
 name = "book-agentic-patterns"
 version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "chromadb" },
     { name = "dotenv" },
@@ -330,6 +330,7 @@ dependencies = [
     { name = "pandas" },
     { name = "pydantic-ai" },
     { name = "pyyaml" },
+    { name = "requests" },
 ]
 
 [package.metadata]
@@ -345,6 +346,7 @@ requires-dist = [
     { name = "pandas", specifier = ">=3.0.0" },
     { name = "pydantic-ai", specifier = ">=1.39.0" },
     { name = "pyyaml", specifier = ">=6.0.0" },
+    { name = "requests", specifier = ">=2.32.0" },
 ]
 
 [[package]]

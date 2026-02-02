@@ -1,0 +1,36 @@
+# API connection configurations for OpenAPI connector
+#
+# This file defines API connections that can be used by agents through the OpenAPI connector.
+# Each API requires:
+# - spec_source: URL or file path to the OpenAPI 3.x specification
+# - base_url: Base URL for API requests (overrides the spec's servers section)
+#
+# The base_url allows environment-specific overrides:
+# - Use different URLs for dev/staging/prod environments
+# - Point to localhost for local testing even if spec specifies production
+# - Override outdated or incorrect server URLs in the spec
+# If not specified in config, falls back to the spec's servers[0].url
+#
+# Environment variables can be used with ${VAR} syntax.
+# Relative file paths are resolved relative to this file's directory.
+
+apis:
+  # Example: Swagger Petstore API (public demo API)
+  petstore:
+    spec_source: https://petstore3.swagger.io/api/v3/openapi.json
+    base_url: https://petstore3.swagger.io/api/v3
+
+  # cBioPortal: Cancer genomics data (public API)
+  cbioportal:
+    spec_source: https://www.cbioportal.org/api/v3/api-docs
+    base_url: https://www.cbioportal.org
+
+  # Example: Local API with file-based spec
+  # local_api:
+  #   spec_source: specs/my_api.yaml  # Relative path
+  #   base_url: http://localhost:8000
+
+  # Example: With environment variables
+  # production_api:
+  #   spec_source: ${API_SPEC_URL}
+  #   base_url: ${API_BASE_URL}

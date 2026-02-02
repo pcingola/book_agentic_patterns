@@ -16,10 +16,17 @@ dependencies = [
     "pandas>=3.0.0",
     "pydantic-ai>=1.39.0",
     "pyyaml>=6.0.0",
+    "requests>=2.32.0",
 ]
 
 [project.scripts]
+annotate-schema = "agentic_patterns.core.connectors.sql.cli.annotate_schema:main_sync"
 doctors = "agentic_patterns.core.doctors.__main__:main_sync"
+evals = "agentic_patterns.core.evals.__main__:main_sync"
+ingest-openapi = "agentic_patterns.core.connectors.openapi.cli.ingest:main_sync"
+
+[tool.uv]
+package = true
 
 [tool.setuptools]
 packages = ["agentic_patterns"]

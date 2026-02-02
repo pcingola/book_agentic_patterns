@@ -63,6 +63,10 @@ async def main() -> int:
     return 0 if success else 1
 
 
-if __name__ == "__main__":
+def main_sync() -> None:
     sys.path.insert(0, str(Path.cwd()))
     sys.exit(asyncio.run(main()))
+
+
+if __name__ == "__main__":
+    main_sync()
