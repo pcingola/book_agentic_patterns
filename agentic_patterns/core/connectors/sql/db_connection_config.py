@@ -20,7 +20,7 @@ class DbConnectionConfig(BaseModel):
     dbname: str = ""
     user: str = ""
     password: str = ""
-    schema: str = "main"
+    db_schema: str = "main"
 
     def __str__(self) -> str:
         return f"DbConnectionConfig(db_id={self.db_id!r}, type={self.type.value}, dbname={self.dbname!r})"
@@ -59,15 +59,19 @@ class DbConnectionConfigs:
         if not data or "databases" not in data:
             raise ValueError("Invalid dbs.yaml format: missing 'databases' key")
         for db_id, db_data in data["databases"].items():
+            db_type = DatabaseType(db_data["type"].lower())
+            dbname = db_data.get("dbname", "")
+            if db_type == DatabaseType.SQLITE and dbname and not Path(dbname).is_absolute():
+                dbname = str(yaml_path.parent / dbname)
             self._configs[db_id] = DbConnectionConfig(
                 db_id=db_id,
-                type=DatabaseType(db_data["type"].lower()),
+                type=db_type,
                 host=db_data.get("host", ""),
                 port=int(db_data.get("port", 0)),
-                dbname=db_data.get("dbname", ""),
+                dbname=dbname,
                 user=db_data.get("user", ""),
                 password=db_data.get("password", ""),
-                schema=db_data.get("schema", "main"),
+                db_schema=db_data.get("schema", "main"),
             )
 
     def __len__(self) -> int:

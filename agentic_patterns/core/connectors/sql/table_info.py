@@ -1,10 +1,7 @@
 """Table information model."""
 
-from __future__ import annotations
-
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
-
-from pydantic import BaseModel, Field
 
 from agentic_patterns.core.connectors.sql.column_info import ColumnInfo
 from agentic_patterns.core.connectors.sql.foreign_key_info import ForeignKeyInfo
@@ -14,19 +11,18 @@ if TYPE_CHECKING:
     from agentic_patterns.core.connectors.sql.db_info import DbInfo
 
 
-class TableInfo(BaseModel):
+@dataclass
+class TableInfo:
     """Database table information."""
 
-    model_config = {"arbitrary_types_allowed": True}
-
     name: str
-    columns: list[ColumnInfo] = Field(default_factory=list)
-    foreign_keys: list[ForeignKeyInfo] = Field(default_factory=list)
-    indexes: list[IndexInfo] = Field(default_factory=list)
+    columns: list[ColumnInfo] = field(default_factory=list)
+    foreign_keys: list[ForeignKeyInfo] = field(default_factory=list)
+    indexes: list[IndexInfo] = field(default_factory=list)
     is_view: bool = False
     description: str = ""
     sample_data_csv: str = ""
-    db: "DbInfo | None" = Field(default=None, exclude=True, repr=False)
+    db: "DbInfo | None" = field(default=None, repr=False, compare=False)
 
     def __str__(self) -> str:
         pk = self.get_primary_key_column()
@@ -72,8 +68,8 @@ class TableInfo(BaseModel):
             columns=[],
             foreign_keys=[ForeignKeyInfo.from_dict(fk) for fk in data.get("foreign_keys", [])],
             indexes=[IndexInfo.from_dict(idx) for idx in data.get("indexes", [])],
+            db=db,
         )
-        table.db = db
         table.columns = [ColumnInfo.from_dict(col, table=table) for col in data["columns"]]
         return table
 

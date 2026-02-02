@@ -1,23 +1,21 @@
 """Database information model."""
 
 import json
+from dataclasses import dataclass, field
 from pathlib import Path
-
-from pydantic import BaseModel, Field
 
 from agentic_patterns.core.connectors.sql.table_info import TableInfo
 
 
-class DbInfo(BaseModel):
+@dataclass
+class DbInfo:
     """Database information including all tables and description."""
-
-    model_config = {"arbitrary_types_allowed": True}
 
     db_id: str
     description: str = ""
-    tables: list[TableInfo] = Field(default_factory=list)
-    example_queries: list[dict[str, str]] = Field(default_factory=list)
-    cache_file_path: Path | None = Field(default=None, exclude=True)
+    tables: list[TableInfo] = field(default_factory=list)
+    example_queries: list[dict[str, str]] = field(default_factory=list)
+    cache_file_path: Path | None = field(default=None, repr=False, compare=False)
 
     def __str__(self) -> str:
         desc_preview = self.description[:50] + "..." if len(self.description) > 50 else self.description

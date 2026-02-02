@@ -1,7 +1,5 @@
 """Database metadata and operations registry."""
 
-from __future__ import annotations
-
 from typing import TYPE_CHECKING
 
 from agentic_patterns.core.connectors.sql.config import DATABASE_CACHE_DIR, DB_INFO_EXT

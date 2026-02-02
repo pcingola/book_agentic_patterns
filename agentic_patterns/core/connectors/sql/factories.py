@@ -25,7 +25,7 @@ def create_schema_inspector(db_id: str, connection: DbConnection) -> DbSchemaIns
     match config.type:
         case DatabaseType.SQLITE:
             from agentic_patterns.core.connectors.sql.inspection.sqlite.schema_inspector import DbSchemaInspectorSqlite
-            return DbSchemaInspectorSqlite(connection=connection.connect(), schema=config.schema)
+            return DbSchemaInspectorSqlite(connection=connection.connect(), schema=config.db_schema)
         case DatabaseType.POSTGRES:
             raise NotImplementedError("Postgres support not yet implemented")
         case _:

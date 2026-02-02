@@ -1,19 +1,15 @@
 """Column information model."""
 
-from __future__ import annotations
-
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
-
-from pydantic import BaseModel, Field
 
 if TYPE_CHECKING:
     from agentic_patterns.core.connectors.sql.table_info import TableInfo
 
 
-class ColumnInfo(BaseModel):
+@dataclass
+class ColumnInfo:
     """Database column information."""
-
-    model_config = {"arbitrary_types_allowed": True}
 
     name: str
     data_type: str
@@ -24,7 +20,7 @@ class ColumnInfo(BaseModel):
     is_unique: bool = False
     is_enum: bool | None = None
     enum_values: list[str] | None = None
-    table: "TableInfo | None" = Field(default=None, exclude=True, repr=False)
+    table: "TableInfo | None" = field(default=None, repr=False, compare=False)
 
     def __str__(self) -> str:
         flags = []
@@ -46,7 +42,7 @@ class ColumnInfo(BaseModel):
 
     @classmethod
     def from_dict(cls, data: dict, table: "TableInfo | None" = None) -> "ColumnInfo":
-        col = cls(
+        return cls(
             name=data["name"],
             data_type=data["data_type"],
             is_nullable=data["is_nullable"],
@@ -56,9 +52,8 @@ class ColumnInfo(BaseModel):
             is_unique=data.get("is_unique", False),
             is_enum=data.get("is_enum"),
             enum_values=data.get("enum_values"),
+            table=table,
         )
-        col.table = table
-        return col
 
     def to_dict(self) -> dict:
         return {

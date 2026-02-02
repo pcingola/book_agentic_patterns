@@ -1,9 +1,10 @@
 """Index information model."""
 
-from pydantic import BaseModel
+from dataclasses import dataclass
 
 
-class IndexInfo(BaseModel):
+@dataclass
+class IndexInfo:
     """Database index information."""
 
     name: str

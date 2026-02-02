@@ -26,8 +26,9 @@ def _get_host_root() -> Path:
 
 def workspace_to_host_path(sandbox_path: PurePosixPath) -> Path:
     """Convert a sandbox path (/workspace/...) to a host filesystem path."""
-    path_str = str(sandbox_path)
-    if not path_str.startswith(SANDBOX_PREFIX):
+    if not sandbox_path.is_absolute():
+        sandbox_path = PurePosixPath(SANDBOX_PREFIX) / sandbox_path
+    elif not sandbox_path.is_relative_to(SANDBOX_PREFIX):
         raise WorkspaceError(f"Invalid sandbox path: must start with {SANDBOX_PREFIX}")
 
     relative = sandbox_path.relative_to(SANDBOX_PREFIX)
@@ -50,9 +51,9 @@ def host_to_workspace_path(host_path: Path) -> PurePosixPath:
         if len(parts) < 2:
             raise WorkspaceError(f"Invalid workspace path structure: {host_path}")
         # Skip user_id and session_id parts
-        actual_relative = Path(*parts[2:]) if len(parts) > 2 else Path(".")
-        result = f"{SANDBOX_PREFIX}/{actual_relative.as_posix()}"
-        return PurePosixPath(result.rstrip("/."))
+        if len(parts) > 2:
+            return PurePosixPath(SANDBOX_PREFIX) / PurePosixPath(*parts[2:])
+        return PurePosixPath(SANDBOX_PREFIX)
     except ValueError:
         raise WorkspaceError(f"Path {host_path} is outside workspace")
 
@@ -101,7 +102,7 @@ def store_result(content: str | bytes, content_type: str) -> str:
     extensions = {"json": ".json", "csv": ".csv", "txt": ".txt", "md": ".md", "xml": ".xml", "yaml": ".yaml"}
     ext = extensions.get(content_type.lower(), ".txt")
     filename = f"result_{uuid4().hex[:8]}{ext}"
-    path = f"/workspace/results/{filename}"
+    path = str(PurePosixPath(SANDBOX_PREFIX) / "results" / filename)
     write_to_workspace(path, content)
     return path
 

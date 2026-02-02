@@ -1,15 +1,16 @@
 """Foreign key information model."""
 
-from pydantic import BaseModel
+from dataclasses import dataclass, field
 
 
-class ForeignKeyInfo(BaseModel):
+@dataclass
+class ForeignKeyInfo:
     """Database foreign key constraint information."""
 
-    name: str | None = None
     columns: list[str]
     referenced_table: str
     referenced_columns: list[str]
+    name: str | None = None
     on_delete: str | None = None
     on_update: str | None = None
 
