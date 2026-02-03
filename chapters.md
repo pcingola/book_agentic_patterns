@@ -224,9 +224,6 @@ These are all about how agents manage information over time.
 - [ ] Controlled vocabularies
   - [ ] Enums: Small controlled vocabularies
   - [ ] Ontologies: RAG / Tree search / Beam search
-- [ ] CodeIndex
-- [ ] Document consistency
-- [ ] Knowledge updating and reconciliation
 
 ### Chapter: UI
 
