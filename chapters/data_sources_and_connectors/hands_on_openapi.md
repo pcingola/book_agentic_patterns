@@ -60,7 +60,7 @@ result, nodes = await run_agent(agent, query, verbose=True)
 
 With `verbose=True`, you can observe the agent's reasoning. It typically calls `openapi_list_apis` first to confirm the API exists, then `openapi_list_endpoints` or `openapi_show_api_summary` to find the right endpoint, then `openapi_show_endpoint_details` to understand the parameters, and finally `openapi_call_endpoint` to make the HTTP request and save the response to the specified file. The agent follows the same discovery-then-action pattern a developer would: orient, inspect, then execute.
 
-The `call_endpoint` tool uses the `@context_result()` decorator, which means large API responses are saved to the workspace file in full while only a truncated preview is returned to the agent context. This keeps the conversation manageable even when the API returns hundreds of records.
+The `call_endpoint` tool uses the `@context_result()` decorator (covered in detail in the Context & Memory chapter). This decorator intercepts tool return values and, when the result exceeds a configurable size threshold, saves the full content to a file in the workspace and returns only a truncated preview to the agent. The agent sees enough data to reason about the structure and contents, while the complete result remains available on disk for downstream processing or human inspection. This pattern is essential for tools that may return unbounded data -- API responses, query results, file contents -- where injecting the full output into the conversation would exhaust context limits or degrade model performance.
 
 ## Chaining with the JsonConnector
 

@@ -19,6 +19,7 @@ tools = [
     connector.head,
     connector.list,
     connector.read,
+    connector.tail,
     connector.write,
 ]
 ```

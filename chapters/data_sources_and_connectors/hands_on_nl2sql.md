@@ -59,6 +59,8 @@ csv_agent = get_agent(tools=csv_tools)
 
 The CsvConnector operates on CSV files through workspace paths, just like the FileConnector operates on text files. Its methods -- `head`, `find_rows`, `headers`, `delete_rows`, `read_row` -- are already tool-compatible bound methods decorated with `@tool_permission()`. Like the FileConnector, these methods can be bound directly as tools without any wrapper functions.
 
+Note that this example focuses on read operations. The CsvConnector also provides write operations (`update_cell`, `update_row`, `append`) for modifying CSV data in place, which would be useful in workflows where the agent needs to transform or correct data before passing it downstream.
+
 The CSV agent prompt asks it to inspect the file that the SQL agent created:
 
 ```python
