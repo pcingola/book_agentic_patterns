@@ -155,7 +155,7 @@ for page in api.paginate("GET /tickets", params={"status": "open"}, page_size=20
     process(page.items)
 ```
 
-The design goal is to avoid a “generic API connector” that is just `http_get(url)` and `http_post(url, body)`. Those primitives push complexity onto the agent, which then must infer required fields, handle pagination styles, encode authentication correctly, and interpret error responses. By contrast, an OpenAPI-driven connector can make the agent reliably productive by turning undocumented details into discoverable tool affordances, and by ensuring that calls are validated before they hit production services. ([OpenAPI Initiative Publications][1])
+The design goal is to avoid a “generic API connector” that is just `http_get(url)` and `http_post(url, body)`. Those primitives push complexity onto the agent, which then must infer required fields, handle pagination styles, encode authentication correctly, and interpret error responses. By contrast, an OpenAPI-driven connector can make the agent reliably productive by turning undocumented details into discoverable tool affordances, and by ensuring that calls are validated before they hit production services. ([OpenAPI Initiative Publications][1], [OpenAPI Initiative Blog][2])
 
 ### Graph and relationship connectors
 
@@ -206,6 +206,8 @@ By requiring explicit depth limits and start/end nodes, the connector ensures th
 Importantly, graph connectors for agents are almost always read-heavy. Mutation operations (adding or removing nodes or edges) are far less common and typically subject to strict governance, because graph structure often encodes critical organizational or security knowledge. When writes are supported, they should be explicit, heavily validated, and rarely part of autonomous agent workflows.
 
 Graph connectors are especially valuable in enterprise environments for system dependency analysis, IAM and authorization reasoning, ownership and escalation paths, and data lineage or provenance tracking. Including this connector archetype closes one of the few remaining gaps not covered by file, SQL, or OpenAPI connectors, while still respecting the core design principle: expose only those abstractions that agents can use reliably and safely.
+
+This book does not include a graph connector implementation. The pattern is described here because it completes the connector taxonomy and because the design principles (bounded traversal, schema discovery, read-heavy access) directly mirror those of the other archetypes. A production implementation would follow the same structure shown for SQL and OpenAPI connectors: an abstract interface, a backend-specific adapter, and thin tool wrappers.
 
 In practice, this makes the graph connector a specialized but high-leverage addition. It does not replace SQL or file access, but complements them in domains where relationships, not records, are the primary unit of meaning.
 
@@ -262,4 +264,5 @@ Conceptually, this connector sits between schema and semantics. SQL schemas defi
 This archetype makes explicit how agents stay aligned with organizational language, policies, and domain standards -- something that cannot be reliably achieved through generic file or database access alone.
 
 [1]: https://spec.openapis.org/oas/v3.1.0.html
+[2]: https://www.openapis.org/blog/2021/02/18/openapi-specification-3-1-released
 [3]: https://docs.aws.amazon.com/AmazonS3/latest/API/API_HeadObject.html
