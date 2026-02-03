@@ -225,7 +225,7 @@ These are all about how agents manage information over time.
   - [ ] Enums: Small controlled vocabularies
   - [ ] Ontologies: RAG / Tree search / Beam search
 
-### Chapter: UI
+### Chapter: [User Interface](chapters/ui/chapter.md)
 
 - [ ] Chainlit
 - [ ] AGUI

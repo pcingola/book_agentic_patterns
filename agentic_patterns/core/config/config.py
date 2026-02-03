@@ -26,3 +26,11 @@ WORKSPACE_DIR = Path(get_variable_env("WORKSPACE_DIR") or DATA_DIR / "workspaces
 SANDBOX_PREFIX = "/workspace"
 DEFAULT_USER_ID = "default_user"
 DEFAULT_SESSION_ID = "default_session"
+
+# UI
+USER_DATABASE_FILE = Path(get_variable_env("USER_DATABASE_FILE") or MAIN_PROJECT_DIR / "users.json")
+
+# Chainlit
+CHAINLIT_DATA_LAYER_DB = Path(get_variable_env("CHAINLIT_DATA_LAYER_DB") or DATA_DIR / "chainlit.db")
+CHAINLIT_FILE_STORAGE_DIR = Path(get_variable_env("CHAINLIT_FILE_STORAGE_DIR") or DATA_DIR / "chainlit_files")
+CHAINLIT_SCHEMA_FILE = Path(get_variable_env("CHAINLIT_SCHEMA_FILE") or DATA_DIR / "sql" / "chainlit_data_layer.sql")

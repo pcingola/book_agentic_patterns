@@ -5,11 +5,14 @@ description = "Agentic patterns"
 readme = "README.md"
 requires-python = ">=3.12.2"
 dependencies = [
+    "aiosqlite>=0.21.0",
+    "chainlit>=2.9.6",
     "chromadb>=1.4.1",
     "dotenv>=0.9.9",
     "fasta2a>=0.6.0",
     "fastapi>=0.128.0",
     "fastmcp>=2.14.2",
+    "greenlet>=3.3.1",
     "ipykernel>=7.1.0",
     "jsonpath-ng>=1.7.0",
     "openai>=2.14.0",
@@ -17,10 +20,12 @@ dependencies = [
     "pydantic-ai>=1.39.0",
     "pyyaml>=6.0.0",
     "requests>=2.32.0",
+    "sqlalchemy>=2.0.0",
 ]
 
 [project.scripts]
 annotate-schema = "agentic_patterns.core.connectors.sql.cli.annotate_schema:main_sync"
+manage-users = "agentic_patterns.core.ui.cli:main"
 doctors = "agentic_patterns.core.doctors.__main__:main_sync"
 evals = "agentic_patterns.core.evals.__main__:main_sync"
 ingest-openapi = "agentic_patterns.core.connectors.openapi.cli.ingest:main_sync"
