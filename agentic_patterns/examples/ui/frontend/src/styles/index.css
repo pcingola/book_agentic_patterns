@@ -1,0 +1,65 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+.app-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+header input {
+  padding: 0.5rem;
+  width: 300px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+main {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.chat-panel {
+  flex: 2;
+  border-right: 1px solid #e0e0e0;
+}
+
+.state-panel {
+  flex: 1;
+  padding: 1rem;
+  background: #f9f9f9;
+  overflow: auto;
+}
+
+.state-panel h2 {
+  margin-bottom: 1rem;
+  font-size: 1rem;
+  color: #666;
+}
+
+.state-panel pre {
+  font-family: monospace;
+  font-size: 0.875rem;
+  white-space: pre-wrap;
+}
+
+.state-panel .empty {
+  color: #999;
+  font-style: italic;
+}
