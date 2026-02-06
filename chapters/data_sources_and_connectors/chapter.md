@@ -6,7 +6,7 @@
 
 [NL2SQL](./nl2sql.md)
 
-[Handling Private Data in the Workspace](./private_data.md)
+[Private Data](./private_data.md)
 
 [Hands-On: Introduction](./hands_on_intro.md)
 

@@ -1,4 +1,4 @@
-## Handling Private Data in the Workspace
+## Private Data
 
 When an agent connects to an external data source, the data it retrieves may be public, internal, confidential, or secret. A SQL query against a patient database, a file download from a regulated share, or an API call returning financial records can all introduce sensitive content into the workspace without any explicit warning. Once that content is present, every subsequent tool call becomes a potential exfiltration vector. An agent that helpfully summarizes query results into a Slack message, uploads a CSV to an external analytics service, or passes workspace content to an MCP server with outbound connectivity has just leaked data that should never have left the organization's boundary.
 
