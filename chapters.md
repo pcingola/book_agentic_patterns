@@ -203,11 +203,10 @@ These are all about how agents manage information over time.
 
 ### Chapter: [Data Sources & Connectors](chapters/data_sources_and_connectors/chapter.md)
 
-- [ ] Introduction
-- [ ] Connector patterns
-- [ ] OpenApi / REST APIs
-- [ ] File based connectors (CSV, Excel, JSON, XML, etc)
-- [ ] SaaS connectors (e.g. Google Sheets, Salesforce, etc)
+- [x] Introduction
+- [x] Connector patterns
+- [x] OpenApi / REST APIs
+- [x] File based connectors (CSV, Excel, JSON, XML, etc)
 - [x] NL2SQL
   - [x] BEST PRACTICE: Create table definitions (off-line)
   - [x] BEST PRACTICE: Use comments to explain fields
@@ -220,16 +219,15 @@ These are all about how agents manage information over time.
   - [x] BEST PRACTICE: Write results to file (csv), show back sample + file path (in workspace)
   - [x] BEST PRACTICE: Read only access
   - [x] BEST PRACTICE: Access "on behalf" of users (use secrets manager to handle credentials)
-  - [ ] BEST PRACTICE: Data source selection (which database should I use for this quesiton / user request?)
-- [ ] Controlled vocabularies
-  - [ ] Enums: Small controlled vocabularies
-  - [ ] Ontologies: RAG / Tree search / Beam search
+  - [x] BEST PRACTICE: Data source selection (which database should I use for this quesiton / user request?)
+- [x] Controlled vocabularies
+  - [x] Enums: Small controlled vocabularies
+  - [x] Ontologies: RAG / Tree search / Beam search
 
 ### Chapter: [User Interface](chapters/ui/chapter.md)
 
-- [ ] Chainlit
-- [ ] AGUI
-- [ ] ...(google's new protocol)
+- [x] Chainlit
+- [x] AGUI
 - [ ] Session ID -> MCP / A2A tracking
 - [ ] File uploads
 - [ ] Error / Cancellation propagation: Tool, MCP, A2A, Agent, UI
