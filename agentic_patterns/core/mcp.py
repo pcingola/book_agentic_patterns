@@ -2,14 +2,18 @@
 
 import os
 import re
+from collections.abc import Callable
 from pathlib import Path
 
 import yaml
+from fastmcp.server.dependencies import get_access_token
+from fastmcp.server.middleware import Middleware
 from mcp.server.fastmcp import FastMCP
 from pydantic import BaseModel, Field
 from pydantic_ai.mcp import MCPServerStreamableHTTP
 
-from agentic_patterns.core.config.config import MAIN_PROJECT_DIR
+from agentic_patterns.core.config.config import DEFAULT_SESSION_ID, MAIN_PROJECT_DIR
+from agentic_patterns.core.user_session import set_user_session
 
 
 class MCPClientConfig(BaseModel):
@@ -91,7 +95,7 @@ def _load_mcp_settings(config_path: Path | str | None = None) -> MCPSettings:
     return MCPSettings(mcp_servers=mcp_servers)
 
 
-def get_mcp_client(name: str, config_path: Path | str | None = None) -> MCPServerStreamableHTTP:
+def get_mcp_client(name: str, config_path: Path | str | None = None, bearer_token: str | None = None) -> MCPServerStreamableHTTP:
     """Create MCP client from config.yaml by name."""
     settings = _load_mcp_settings(config_path)
     config = settings.get(name)
@@ -99,7 +103,8 @@ def get_mcp_client(name: str, config_path: Path | str | None = None) -> MCPServe
     if not isinstance(config, MCPClientConfig):
         raise ValueError(f"MCP config '{name}' is not a client config (type={config.type})")
 
-    return MCPServerStreamableHTTP(url=config.url, timeout=config.read_timeout)
+    headers = {"Authorization": f"Bearer {bearer_token}"} if bearer_token else None
+    return MCPServerStreamableHTTP(url=config.url, timeout=config.read_timeout, headers=headers)
 
 
 def get_mcp_clients(names: list[str], config_path: Path | str | None = None) -> list[MCPServerStreamableHTTP]:
@@ -116,3 +121,23 @@ def get_mcp_server(name: str, config_path: Path | str | None = None) -> FastMCP:
         raise ValueError(f"MCP config '{name}' is not a server config (type={config.type})")
 
     return FastMCP(name=config.name, instructions=config.instructions)
+
+
+def create_process_tool_call(get_token: Callable[[], str | None]):
+    """Factory that returns a process_tool_call callback injecting a Bearer token into MCP calls."""
+    async def process_tool_call(ctx, tool_name, args):
+        token = get_token()
+        if token:
+            args.setdefault("_metadata", {})["authorization"] = f"Bearer {token}"
+        return args
+    return process_tool_call
+
+
+class AuthSessionMiddleware(Middleware):
+    """FastMCP middleware that sets user session from the access token claims."""
+
+    async def on_request(self, context, call_next):
+        token = get_access_token()
+        if token:
+            set_user_session(token.claims["sub"], token.claims.get("session_id", DEFAULT_SESSION_ID))
+        return await call_next(context)

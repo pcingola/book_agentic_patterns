@@ -1,199 +1,215 @@
 ## Error propagation, cancellation, and human-in-the-loop
 
-When a user-facing run spans multiple layers—UI, main agent, sub-agents, inter-agent protocols, and tool runtimes—basic UI semantics such as errors, cancellation, and user input become distributed concerns. Each layer introduces its own execution model, failure modes, and lifecycle, and the UI must present a coherent experience without exposing this internal topology.
+When an agent run spans multiple layers -- tools, sub-agents, inter-agent protocols, and a user-facing frontend -- three concerns that feel simple in a monolithic application become distributed problems: errors, cancellation, and human interaction. Each layer in the stack encodes these signals in its own way. A tool protocol may represent failure as a structured response field. An inter-agent protocol may represent it as a task state transition. An agent framework may represent it as a language-level exception. A UI protocol may represent it as an interrupted event stream. None of these representations are equivalent, yet they all describe "something went wrong", "stop what you are doing", or "I need input before I can continue".
 
-Throughout this section we will use the same concrete execution chain as a running example:
+The challenge is translation at boundaries. When a tool error crosses into an agent framework, it must become something the framework can act on (retry, abort, ask the user). When a sub-agent failure crosses into a coordinator, it must become something the coordinator model can reason about. When all recovery options are exhausted, the failure must reach the UI as a clean terminal signal rather than a stream that silently dies. This section walks through what each layer in our stack provides -- MCP, A2A, PydanticAI, AG-UI -- where the translation gaps are, and how the project bridges them. Earlier chapters covered MCP tool errors (Tools chapter), A2A task lifecycle (A2A chapter), and MCP elicitation (MCP Features chapter); the focus here is on what happens when these layers are stacked.
 
-**tool → MCP server → MCP client → sub-agent → A2A → main agent → UI (AG-UI)**
 
-The goal is not to prescribe a single “correct” implementation, but to show where semantic mismatches arise and how to structure translation layers so that UI behavior remains predictable.
+### Error representations across the stack
 
-### Error propagation
+#### MCP
 
-A practical error strategy starts by acknowledging that MCP, A2A, and Pydantic-AI do not mean the same thing by “tool failure”, and AG-UI expects a clean run-level termination signal (RunError) once recovery is no longer possible. In MCP, tool failures can surface either as JSON-RPC protocol errors (unknown tool, invalid arguments, server error) or as successful JSON-RPC responses whose tool result is marked with isError: true for execution failures. In A2A, failure is typically represented as a task reaching a terminal failed state rather than as an exception thrown across a call boundary. In Pydantic-AI, by contrast, exceptions raised by tools generally end the run unless the exception is a ModelRetry, which explicitly asks the model to try again; moreover, both the agent’s retries setting and the run context’s max_retries can allow repeated tool-call attempts.
+MCP defines two error paths, covered in the Tools chapter. Protocol errors are standard JSON-RPC error responses (unknown tool, invalid arguments, internal error) that indicate the call never executed. Tool execution errors are successful JSON-RPC responses whose result carries `isError: true`, indicating the tool ran and failed. ([MCP Spec][1])
 
-These differences become visible in a common “stacked delegation” scenario: a main agent delegates work to a sub-agent over A2A, the sub-agent calls a tool exposed by a FastMCP server, and the tool throws an exception. FastMCP provides middleware intended to convert server exceptions into MCP error responses, but the result still arrives at the client as an MCP-level error shape that must be interpreted and mapped upstream. If the sub-agent simply “raises whatever it got”, the main agent may interpret the failure as a generic exception and either abort immediately or, worse, trigger a retry policy intended for model/tool-call correction rather than for remote service failures.
+In FastMCP, when a tool function raises an unhandled exception, the `ToolManager` catches it and re-raises a `ToolError`. The server's low-level handler converts `ToolError` into a `CallToolResult` with `isError: true` and the error message as text content. The `mask_error_details` setting controls whether the original exception message reaches the client: when enabled, the client sees only `"Error calling tool 'x'"` without the underlying cause. When a tool explicitly raises `ToolError`, the message always reaches the client regardless of masking. ([FastMCP][2])
 
-In a single-process application, an error is usually an exception that unwinds the call stack. In a distributed agentic system, that assumption no longer holds. Failures cross protocol boundaries, process boundaries, and abstraction layers, and each layer encodes failure differently.
+A tool error result looks like this on the wire:
 
-At the most general level, three questions must be answered at every boundary:
-
-First, how is failure represented at this layer: as an exception, a structured response, or a state transition?
-Second, does this failure imply that execution should stop, or can it be retried or recovered from?
-Third, how should this failure be surfaced to the user-facing UI?
-
-These questions become concrete when we follow a failure from the bottom of the stack upward.
-
-#### Generic failure flow in a tool → MCP → A2A → agent → UI pipeline
-
-Consider a tool invoked by a sub-agent. The tool may fail due to invalid input, business logic errors, resource exhaustion, or transient infrastructure problems. That failure is first observed inside the tool runtime. From there, it must be encoded into MCP, propagated to the sub-agent, forwarded over A2A to the main agent, and finally translated into a UI-level outcome.
-
-At the MCP boundary, failures are not uniformly “exceptions”. The protocol distinguishes between protocol-level errors (for example, unknown tool, invalid arguments, server errors) and tool execution failures that are returned as successful responses but explicitly marked as errors. Both represent failure, but they carry different semantics: protocol errors indicate a failure to even perform the call, while execution errors indicate that the call ran and failed.
-
-At the A2A boundary, failure is modeled primarily as a task lifecycle outcome. A sub-agent does not “throw” an exception to its caller; instead, the task transitions into a terminal failed state, optionally carrying a message or metadata describing the reason. This is a deliberate design choice: failure is an outcome, not a transport error.
-
-At the agent framework boundary, failure is often represented again as an exception or as a control signal to the planner. At this point, the system must decide whether the failure is local and recoverable, or global and fatal to the current run.
-
-Finally, at the UI boundary, protocols such as AG-UI expect a clean run-level signal indicating that execution has completed successfully, failed, or was canceled. Once recovery is no longer possible, the UI must receive a definitive termination event rather than a stream that silently stops.
-
-The core challenge is that none of these representations are equivalent, even though they all describe “something went wrong”.
-
-#### Why naïve propagation fails
-
-If each layer simply forwards “whatever it got”, several pathologies appear.
-
-A deterministic tool execution failure may be misinterpreted by the agent framework as a transient error and retried repeatedly, wasting tokens and time.
-A protocol-level MCP error may be collapsed into a generic exception, losing the distinction between “bad call” and “tool ran and failed”.
-A sub-agent task failure may be treated as an infrastructure failure rather than as a meaningful domain outcome.
-The UI may receive an abrupt disconnect instead of a structured run error, leaving the user without feedback.
-
-These problems are amplified when retries are involved, because retries exist at multiple layers and were designed independently.
-
-#### A general design principle: translate at boundaries
-
-A robust approach is to treat each protocol boundary as a translation point where the current protocol's error representation is mapped directly into the next protocol's native types. There is no need for an intermediate error abstraction; each protocol already defines how failure looks. The work is deciding which native type on the receiving side best captures the intent.
-
-At each boundary, the same three decisions apply:
-
-Is this failure retryable? If so, use the receiving protocol's retry mechanism (e.g., `ModelRetry` in PydanticAI).
-Is it a terminal failure? Map it to the receiving protocol's terminal error (e.g., an exception that ends the agent run, or a `RunError` in AG-UI).
-Is it a state that requires external input? Use the receiving protocol's pause mechanism (e.g., `input-required` in A2A, or a prompt event in AG-UI).
-
-This translation happens at every boundary, always in the same direction: from the lower-level protocol's representation toward the higher-level one.
-
-#### Mapping concrete frameworks onto this model
-
-At the MCP layer, the frameworks already handle normalization. FastMCP converts server-side exceptions into MCP error responses and enforces tool timeouts at the server boundary. On the client side, PydanticAI manages MCP tool dispatch internally: when a tool returns an error, the model observes the failure and can decide whether to try a different approach or report the problem. The retry semantics built into PydanticAI (via `retries` and `ModelRetry`) already implement a form of boundary-level normalization for direct tool calls. There is no reason to rewrite this layer.
-
-The gap appears at the A2A boundary, where sub-agent failures arrive as task state transitions rather than exceptions. The main agent needs explicit logic to interpret those outcomes and decide what to do.
-
-```python
-from pydantic_ai import ModelRetry, RunContext
-
-async def delegate_to_subagent(ctx: RunContext, request: str) -> str:
-    """A2A delegation tool registered on the main agent."""
-    task = await a2a_client.send_and_observe(request)
-
-    match task.status:
-        case "completed":
-            return task.result
-        case "failed":
-            if task.metadata.get("retryable", False):
-                raise ModelRetry(task.error_message)
-            raise RuntimeError(f"Sub-agent failed: {task.error_message}")
-        case "cancelled":
-            raise RuntimeError("Sub-agent task was cancelled")
+```json
+{
+  "content": [
+    {"type": "text", "text": "Error calling tool 'fetch_data': connection refused"}
+  ],
+  "isError": true
+}
 ```
 
-Below this boundary, FastMCP and PydanticAI handle MCP error normalization internally. If a tool on the MCP server raises an exception, FastMCP converts it into an MCP error response; PydanticAI receives that error and presents it to the model, which can retry or report the failure. What reaches the A2A layer is already a task outcome, not a raw exception.
+#### PydanticAI
 
-At the main agent boundary, the delegation tool above translates A2A task outcomes directly into PydanticAI signals. A completed task returns its result. A failed task with `retryable` metadata raises `ModelRetry`, giving the model a chance to reformulate; otherwise it raises an exception that ends the run. This is the layer where conscious retry decisions matter most, because the main agent has enough context to judge whether retrying is worthwhile.
+PydanticAI draws a sharp line between two kinds of tool failure. `ModelRetry` means "the model made a fixable mistake -- give it the error message and let it try again with different arguments". Any other exception means "something is genuinely broken -- abort the run". The tool manager only catches `ModelRetry` (and `ValidationError` for argument validation); everything else propagates up uncaught and ends the agent run.
 
-Finally, when the main agent determines that no further recovery is possible, the failure must be translated into a run-level error for the UI. AG-UI expects a clean terminal signal indicating failure, not a partial stream that simply stops. The agent exception is caught at the AG-UI adapter and emitted as a `RunError` event.
+```python
+from pydantic_ai import Agent, ModelRetry, RunContext
 
-#### Summary
+agent = Agent("openai:gpt-4o")
 
-The important lesson is not that any single framework is “right” or “wrong”, but that each was designed with different assumptions. MCP separates protocol and execution errors. A2A treats failure as a task outcome. Agent frameworks introduce retries and planning semantics. UI protocols expect clean lifecycle transitions. Without explicit normalization at boundaries, these assumptions collide.
+@agent.tool
+async def lookup_user(ctx: RunContext, email: str) -> str:
+    if not email.endswith("@example.com"):
+        # Recoverable: the model picked a bad argument, let it retry
+        raise ModelRetry(f"Invalid domain in {email}. Only @example.com is allowed.")
+
+    user = db.find_by_email(email)
+    if user is None:
+        # Fatal: the database is unreachable or the data is missing.
+        # Don't let the model waste tokens retrying -- end the run.
+        raise ValueError(f"No user found for {email}")
+
+    return f"User: {user.name}, role: {user.role}"
+```
+
+At the run level, PydanticAI defines the `AgentRunError` hierarchy for failures that are not tool-specific: `UnexpectedModelBehavior` for malformed model responses, `UsageLimitExceeded` for token/request limits, `ModelHTTPError` for provider API failures (4xx/5xx), and `FallbackExceptionGroup` when all fallback models fail. ([PydanticAI Exceptions][4])
+
+PydanticAI also handles MCP tool errors internally, but with a different policy. When an MCP tool returns a result with `isError: true`, the MCP toolset raises `ModelRetry` with the error text. Similarly, when the MCP server returns a JSON-RPC protocol error (`McpError`), the toolset also raises `ModelRetry`. In other words, all MCP tool failures become retries -- the model always gets a second chance. ([PydanticAI MCP][3])
+
+This creates a subtle inconsistency worth being aware of. Consider the same `ValueError` raised in two contexts: as a direct PydanticAI tool, it ends the run immediately. As an MCP tool, FastMCP catches it, wraps it in a `ToolError`, the server converts that to `isError: true`, PydanticAI's MCP toolset sees the error flag, and raises `ModelRetry` -- giving the model a chance to retry. Same exception, same tool logic, different behavior depending on the deployment boundary. The MCP path is more forgiving because it has no way to distinguish "bad arguments the model could fix" from "infrastructure failure that will never recover" -- everything is flattened into `isError: true`. When moving tools between direct registration and MCP servers, keep this asymmetry in mind: you may need to add explicit `ModelRetry` raises in the direct version to match the retry behavior you relied on through MCP.
+
+#### A2A
+
+A2A uses the same two-level error model as MCP but expressed differently, as covered in the A2A chapter. Protocol errors follow JSON-RPC conventions: standard codes `-32700` through `-32603` for parse/request/method/params/internal errors, plus A2A-specific codes in the `-32001` to `-32009` range for domain errors like `TaskNotFoundError` (`-32001`), `TaskNotCancelableError` (`-32002`), and `VersionNotSupportedError` (`-32009`). ([A2A Spec][5])
+
+Execution failures surface as task state transitions rather than exceptions. When a sub-agent's work fails, the task enters the terminal `failed` state with an optional `message` in the `TaskStatus` describing what went wrong. In FastA2A, the worker catches any unhandled exception from the agent run and transitions the task to `failed`, using the exception message as the status message.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "result": {
+    "id": "task-abc-123",
+    "status": {
+      "state": "failed",
+      "message": {"role": "agent", "parts": [{"kind": "text", "text": "Database connection refused"}]}
+    }
+  }
+}
+```
+
+This design is deliberate: failure is an outcome of the task lifecycle, not a transport-level exception. The caller inspects the task state rather than catching an exception across a process boundary.
+
+#### AG-UI
+
+PydanticAI's `AGUIAdapter` runs the agent via `run_stream()` and converts agent events into AG-UI SSE events. When the agent run completes normally, the stream ends with a `RunFinished` event. When the run raises an exception, the adapter catches it and terminates the SSE stream. The frontend observes this as a stream that ends without a `RunFinished` event -- there is no structured `RunError` object in the AG-UI event vocabulary. The frontend must therefore treat an abnormally terminated stream as a failed run. ([PydanticAI AG-UI][6])
+
+
+### Bridging the A2A boundary
+
+The A2A boundary is where the project needs explicit translation logic, because A2A task outcomes arrive as state transitions but PydanticAI expects either return values or exceptions. The project's `create_a2a_tool()` in `agentic_patterns/core/a2a/tool.py` bridges this gap.
+
+The delegation tool calls `A2AClientExtended.send_and_observe()`, which returns a `tuple[TaskStatus, dict | None]` -- the `TaskStatus` enum and the raw task dict. It then uses `match` to translate each outcome into a formatted string that the coordinator model can parse:
+
+```python
+match status:
+    case TaskStatus.COMPLETED:
+        text = extract_text(task) or "Task completed"
+        return f"[COMPLETED] {text}"
+    case TaskStatus.INPUT_REQUIRED:
+        question = extract_question(task)
+        return f"[INPUT_REQUIRED:task_id={task['id']}] {question}"
+    case TaskStatus.FAILED:
+        msg = task["status"].get("message") if task else "Unknown error"
+        return f"[FAILED] {msg}"
+    case TaskStatus.CANCELLED:
+        return "[CANCELLED] Task was cancelled"
+    case TaskStatus.TIMEOUT:
+        return "[TIMEOUT] Task timed out"
+```
+
+The design choice is to return formatted strings rather than raising exceptions. The `[COMPLETED]`, `[FAILED]`, `[INPUT_REQUIRED:task_id=xyz]`, `[CANCELLED]`, and `[TIMEOUT]` prefixes are conventions the coordinator model interprets through its system prompt. A `[FAILED]` result does not crash the coordinator -- the model can decide whether to try a different sub-agent, reformulate the request, or report the failure to the user.
+
+When should this boundary raise `ModelRetry` or `RuntimeError` instead of returning a string? If a sub-agent failure is potentially recoverable (wrong parameters, ambiguous request the coordinator could reformulate), `ModelRetry` lets the LLM try a different approach. If the failure is permanent (service down, authentication failure), a `RuntimeError` ends the run cleanly rather than wasting tokens on retries. The current implementation favors returning strings for all outcomes, giving the coordinator maximum flexibility, but a stricter variant could raise exceptions for clearly permanent failures.
+
 
 ### Cancellation
 
-#### Cancellation as a distributed control signal
+#### MCP
 
-Cancellation is often treated as a UI concern, but in an agentic stack it is a cross-cutting control signal that must propagate through the same layers as execution itself. A user clicking "Cancel" in the UI should ideally stop the main agent, any delegated sub-agents, and any in-flight tool calls.
+MCP supports best-effort cancellation of in-flight requests via the `notifications/cancelled` notification, which carries the `requestId` and an optional `reason` string. Receivers may ignore the notification if the request is unknown, already completed, or not cancelable. The `initialize` request must not be cancelled. For task-augmented requests (the experimental tasks feature), `tasks/cancel` must be used instead of `notifications/cancelled`. ([MCP Spec][7])
 
-As with errors, each layer supports cancellation differently.
+#### A2A
 
-At the protocol level, MCP supports best-effort cancellation of in-flight requests via cancellation notifications. These notifications may arrive too late and are explicitly allowed to be ignored if the operation has already completed.
+A2A provides the `CancelTask` JSON-RPC method, which takes a task ID and transitions the task to the `canceled` state. The operation returns `TaskNotCancelableError` (`-32002`) for tasks already in a terminal state (`completed`, `failed`, `canceled`, `rejected`). Once canceled, the task must remain in `canceled` state even if execution continues internally -- the protocol treats cancellation as a commitment, not a suggestion. ([A2A Spec][8])
 
-At the inter-agent level, A2A provides an explicit task cancellation request that transitions a task into a canceled state. This is a semantic cancellation: the task is no longer expected to produce a result.
+#### Project integration
 
-At the agent level, cancellation is usually implemented cooperatively, by checking a cancellation token between awaited operations.
-
-At the UI level, AG-UI needs to reflect cancellation as a distinct terminal outcome, not as an error.
-
-#### Coordinating cancellation across layers
-
-A robust design treats cancellation as both a local and a remote concern. Locally, the main agent maintains a cancellation token that is checked at safe boundaries. Remotely, the agent issues best-effort cancellation requests to any downstream components that may still be running.
+The project's `A2AClientExtended.send_and_observe()` accepts an `is_cancelled` callback that is checked on each poll iteration. When the callback returns `True`, the client calls `cancel_task()` and returns `(TaskStatus.CANCELLED, None)` without waiting for the server to acknowledge:
 
 ```python
-class CancelToken:
-    def __init__(self):
-        self.cancelled = False
-
-    def cancel(self):
-        self.cancelled = True
-
-    def check(self):
-        if self.cancelled:
-            raise Cancelled()
-
-
-async def run_agent_with_cancellation(run_id, request):
-    token = CancelToken()
-    active_task_id = None
-
-    ui.on_cancel(run_id, lambda: (
-        token.cancel(),
-        active_task_id and a2a.cancel_task(active_task_id),
-    ))
-
-    try:
-        token.check()
-        active_task_id = await a2a.send("sub-agent", request)
-
-        async for update in a2a.stream(active_task_id):
-            token.check()
-            ui.emit(update)
-
-        ui.emit_run_finished(run_id)
-    except Cancelled:
-        ui.emit_run_cancelled(run_id)
+if is_cancelled and is_cancelled():
+    logger.info(f"[A2A] Task {task_id} cancelled by user")
+    await self.cancel_task(task_id)
+    return (TaskStatus.CANCELLED, None)
 ```
 
-This pattern acknowledges that cancellation is inherently racy. A tool may finish just as a cancellation arrives. A sub-agent may already have produced a result. The system must tolerate these races and converge on a single user-visible outcome.
+This pattern composes across layers. A coordinator agent can pass its own cancellation signal through to sub-agents by providing an `is_cancelled` callback when creating the A2A tool via `create_a2a_tool()`. The callback bridges whatever cancellation mechanism the outer layer uses (a flag, a threading event, a frontend disconnect) into the A2A polling loop.
 
-### Human in the loop
+#### AG-UI
 
-#### Human input as a first-class execution state
+When the frontend disconnects the SSE stream, the server-side `StreamingResponse` loses its consumer. The ASGI framework can detect this (the send channel raises an exception), which propagates up through the adapter. If the adapter is currently awaiting sub-agent results, the cancellation callback can trigger, propagating the disconnect downstream as A2A task cancellations.
 
-Human-in-the-loop interactions are the mirror image of cancellation. Instead of stopping execution, the system pauses and waits for external input. As with errors and cancellation, the challenge is to expose this pause cleanly at the UI level without leaking architectural details.
 
-A2A models this explicitly: a task can enter an input-required state. Execution is suspended, not failed, and can resume when new input is sent to the same task. This is a semantic pause, not a timeout or error.
+### Human-in-the-loop
 
-At the UI level, AG-UI naturally supports this interaction style by allowing agents to emit events that request user input and then continue streaming once input is provided.
+Three mechanisms at three layers provide structured human interaction, each designed for different communication boundaries.
 
-#### Bridging sub-agent questions to the UI
+#### MCP elicitation
 
-The complication arises when the request for input originates in a sub-agent. The user should not be aware that a delegated agent is asking the question, nor should the UI need to know how to route responses through A2A.
+MCP elicitation, introduced in the MCP Features chapter, allows servers to request structured input from the user via the `elicitation/create` method. Form mode collects data through a flat JSON Schema, and URL mode directs the user to an external URL for sensitive interactions (credentials, OAuth flows) where the data must not pass through the MCP client. ([MCP Spec][9])
 
-The main agent therefore acts as a router. When it observes a sub-agent task entering an input-required state, it emits a UI-level prompt event and records a correlation between that prompt and the underlying task. When the user responds, the main agent uses that correlation to forward the answer back to the correct sub-agent task.
+The response uses a three-action model: `accept` (with data for form mode), `decline`, or `cancel`. This gives the server enough information to distinguish between "user provided input", "user explicitly refused", and "user dismissed without deciding".
 
-```python
-prompt_routes = {}
-
-def handle_subagent_update(run_id, task_update):
-    if task_update.state == "input-required":
-        prompt_id = new_id()
-        prompt_routes[(run_id, prompt_id)] = task_update.task_id
-        ui.emit_prompt(run_id, prompt_id, task_update.question)
-
-def handle_user_response(run_id, prompt_id, answer):
-    task_id = prompt_routes[(run_id, prompt_id)]
-    a2a.send(task_id, answer)
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "elicitation/create",
+  "params": {
+    "mode": "form",
+    "message": "Please provide your database credentials",
+    "requestedSchema": {
+      "type": "object",
+      "properties": {
+        "host": {"type": "string"},
+        "port": {"type": "integer", "minimum": 1, "maximum": 65535}
+      },
+      "required": ["host", "port"]
+    }
+  }
+}
 ```
 
-This approach keeps the UI experience linear and conversational while preserving the correct continuation semantics inside the agentic system.
+#### A2A input-required
 
-#### Interaction with retries and timeouts
+A2A models human interaction as a task state. When an agent needs clarification, the task enters `input-required` -- an interrupted state, not a terminal one. In blocking mode, `input-required` breaks the blocking wait, returning control to the client. The client then sends a new message with the same `taskId` and `contextId` to continue the conversation. ([A2A Spec][10])
 
-One subtle integration issue is that agent frameworks often treat long delays as failures or trigger retries. If a sub-agent is legitimately waiting for human input, that waiting period must not be confused with a hung tool or a transient error. In practice, this means treating “input required” as an explicit state that suppresses retries and timeouts until the user responds.
+This mechanism is broader than MCP elicitation: it represents any situation where the remote agent cannot proceed without external input, whether that input comes from a human, another system, or the coordinating agent itself. The task remains in `input-required` until a new message arrives or the task is cancelled.
+
+#### Project integration
+
+The project's `create_a2a_tool()` returns `[INPUT_REQUIRED:task_id=xyz] question` when a sub-agent task enters the `input-required` state. The coordinator's system prompt, built by `build_coordinator_prompt()`, instructs the model to handle this:
+
+```
+When you see [INPUT_REQUIRED:task_id=...], ask the user for the
+required information and call the tool again with the same task_id
+to continue.
+```
+
+The coordinator model reads the question, presents it to the user through the normal chat flow, and when the user responds, calls the delegation tool again with the same `task_id` and the user's answer as the `prompt`. The `send_and_observe()` method sends this as a continuation message on the existing task, and the sub-agent resumes.
+
+#### Interaction with timeouts
+
+When a task is legitimately waiting for human input, that waiting time must not be confused with a hung operation. The `input-required` state breaks the polling loop in `send_and_observe()` immediately (it is handled alongside terminal states in the `match` block), so the timeout counter does not accumulate during the period the user is thinking. The timeout only applies to the active polling phases when the task is in `working` state.
+
 
 ### References
 
-1. Model Context Protocol Contributors. *Tools*. Model Context Protocol Specification, 2025. [https://modelcontextprotocol.io/specification/2025-06-18/server/tools](https://modelcontextprotocol.io/specification/2025-06-18/server/tools)
-2. Model Context Protocol Contributors. *Cancellation*. Model Context Protocol Specification, 2025. [https://modelcontextprotocol.io/specification/2025-06-18/basic/utilities/cancellation](https://modelcontextprotocol.io/specification/2025-06-18/basic/utilities/cancellation)
-3. A2A Protocol Contributors. *Task Lifecycle and States*. Agent-to-Agent Protocol Documentation, 2025. [https://agent2agent.info/docs/concepts/task/](https://agent2agent.info/docs/concepts/task/)
-4. Pydantic Services Inc. *ModelRetry and retry semantics*. Pydantic-AI Documentation, 2024–2025. [https://ai.pydantic.dev/api/exceptions/](https://ai.pydantic.dev/api/exceptions/)
-5. Pydantic Services Inc. *FastA2A*. Pydantic-AI Documentation, 2024–2025. [https://ai.pydantic.dev/api/fasta2a/](https://ai.pydantic.dev/api/fasta2a/)
-6. FastMCP Contributors. *Server error handling and timeouts*. FastMCP Documentation, 2025. [https://gofastmcp.com/python-sdk/fastmcp-server-middleware-error_handling](https://gofastmcp.com/python-sdk/fastmcp-server-middleware-error_handling)
-7. AG-UI Contributors. *Events and run lifecycle*. AG-UI Documentation, 2025. [https://docs.ag-ui.com/concepts/events](https://docs.ag-ui.com/concepts/events)
+1. Model Context Protocol Contributors. *Tools*. Model Context Protocol Specification, 2025. [https://modelcontextprotocol.io/specification/2025-11-25/server/tools](https://modelcontextprotocol.io/specification/2025-11-25/server/tools)
+2. FastMCP Contributors. *Exceptions*. FastMCP Documentation, 2025. [https://gofastmcp.com/python-sdk/fastmcp-exceptions](https://gofastmcp.com/python-sdk/fastmcp-exceptions)
+3. Pydantic Services Inc. *MCP toolset*. Pydantic AI Documentation, 2025. [https://ai.pydantic.dev/mcp/](https://ai.pydantic.dev/mcp/)
+4. Pydantic Services Inc. *Exceptions*. Pydantic AI Documentation, 2025. [https://ai.pydantic.dev/api/exceptions/](https://ai.pydantic.dev/api/exceptions/)
+5. A2A Protocol Contributors. *JSON-RPC Protocol Binding*. A2A Specification, 2025. [https://a2a-protocol.org/latest/specification/](https://a2a-protocol.org/latest/specification/)
+6. Pydantic Services Inc. *Agent-User Interaction (AG-UI) Protocol*. Pydantic AI Documentation, 2025. [https://ai.pydantic.dev/ui/ag-ui/](https://ai.pydantic.dev/ui/ag-ui/)
+7. Model Context Protocol Contributors. *Cancellation*. Model Context Protocol Specification, 2025. [https://modelcontextprotocol.io/specification/2025-11-25/basic/utilities/cancellation](https://modelcontextprotocol.io/specification/2025-11-25/basic/utilities/cancellation)
+8. A2A Protocol Contributors. *Protocol Operations*. A2A Specification, 2025. [https://a2a-protocol.org/latest/specification/](https://a2a-protocol.org/latest/specification/)
+9. Model Context Protocol Contributors. *Elicitation*. Model Context Protocol Specification, 2025. [https://modelcontextprotocol.io/specification/2025-11-25/client/elicitation](https://modelcontextprotocol.io/specification/2025-11-25/client/elicitation)
+10. A2A Protocol Contributors. *Task Lifecycle and States*. A2A Specification, 2025. [https://a2a-protocol.org/latest/specification/](https://a2a-protocol.org/latest/specification/)
+
+[1]: https://modelcontextprotocol.io/specification/2025-11-25/server/tools "MCP Tools"
+[2]: https://gofastmcp.com/python-sdk/fastmcp-exceptions "FastMCP Exceptions"
+[3]: https://ai.pydantic.dev/mcp/ "PydanticAI MCP"
+[4]: https://ai.pydantic.dev/api/exceptions/ "PydanticAI Exceptions"
+[5]: https://a2a-protocol.org/latest/specification/ "A2A Specification"
+[6]: https://ai.pydantic.dev/ui/ag-ui/ "PydanticAI AG-UI"
+[7]: https://modelcontextprotocol.io/specification/2025-11-25/basic/utilities/cancellation "MCP Cancellation"
+[8]: https://a2a-protocol.org/latest/specification/ "A2A Specification"
+[9]: https://modelcontextprotocol.io/specification/2025-11-25/client/elicitation "MCP Elicitation"
+[10]: https://a2a-protocol.org/latest/specification/ "A2A Specification"

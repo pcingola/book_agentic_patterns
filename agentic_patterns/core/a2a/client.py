@@ -29,6 +29,8 @@ class A2AClientExtended:
     def __init__(self, config: A2AClientConfig):
         self._config = config
         self._client = A2AClient(base_url=config.url)
+        if config.bearer_token:
+            self._client.http_client.headers["Authorization"] = f"Bearer {config.bearer_token}"
 
     async def get_agent_card(self) -> dict:
         """Fetch agent card from /.well-known/agent-card.json"""

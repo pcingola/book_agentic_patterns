@@ -17,6 +17,7 @@ class A2AClientConfig(BaseModel):
     poll_interval: float = Field(default=1.0)
     max_retries: int = Field(default=3)
     retry_delay: float = Field(default=1.0)
+    bearer_token: str | None = Field(default=None)
 
 
 class A2ASettings(BaseModel):

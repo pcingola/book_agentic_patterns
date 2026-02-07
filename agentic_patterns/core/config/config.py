@@ -28,6 +28,10 @@ SANDBOX_PREFIX = "/workspace"
 DEFAULT_USER_ID = "default_user"
 DEFAULT_SESSION_ID = "default_session"
 
+# JWT
+JWT_SECRET = get_variable_env("JWT_SECRET") or "dev-secret-change-in-production"
+JWT_ALGORITHM = get_variable_env("JWT_ALGORITHM") or "HS256"
+
 # UI
 USER_DATABASE_FILE = Path(get_variable_env("USER_DATABASE_FILE") or MAIN_PROJECT_DIR / "users.json")
 
