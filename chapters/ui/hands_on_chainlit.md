@@ -44,13 +44,13 @@ agent = get_agent()
 @cl.on_message
 async def on_message(message: cl.Message):
     user_message = message.content
-    ret, nodes = await run_agent(agent, user_message)
+    ret, nodes = await run_agent(agent, user_message, verbose=True)
     output = ret.result.output
     msg = cl.Message(content=output if output else "No response from the agent.")
     await msg.send()
 ```
 
-The agent is created at module level and reused across all requests. Each message is passed to `run_agent`, which returns the agent's response. This version has no memory: each message is processed independently without context from previous turns.
+The agent is created at module level and reused across all requests. Each message is passed to `run_agent` with `verbose=True` so execution steps are logged to the console. This version has no memory: each message is processed independently without context from previous turns.
 
 Creating the agent at module level works for stateless agents. The agent itself doesn't store conversation history; it processes each input fresh. This is sufficient for single-turn interactions like answering questions or performing one-shot tasks.
 
@@ -138,7 +138,7 @@ Chainlit displays these as clickable buttons in the chat interface. Clicking a s
 
 #### Chat Resume
 
-When a user returns to a previous chat thread, the `@cl.on_chat_resume` handler (registered by `register_all()`) restores the conversation history:
+When a user returns to a previous chat thread, the `@cl.on_chat_resume` handler restores the conversation history. This handler is registered internally by `register_all()`:
 
 ```python
 @cl.on_chat_resume

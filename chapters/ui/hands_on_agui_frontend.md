@@ -13,15 +13,27 @@ The `App` component creates an `HttpAgent` pointing at the backend URL. The agen
 ```tsx
 import { HttpAgent } from '@ag-ui/client'
 import type { State } from '@ag-ui/core'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ChatPanel } from './components/ChatPanel'
 import { StatePanel } from './components/StatePanel'
 
 const DEFAULT_BACKEND_URL = 'http://localhost:8000'
 
+function getInitialDark(): boolean {
+  const stored = localStorage.getItem('theme')
+  if (stored) return stored === 'dark'
+  return window.matchMedia('(prefers-color-scheme: dark)').matches
+}
+
 export default function App() {
   const [backendUrl, setBackendUrl] = useState(DEFAULT_BACKEND_URL)
   const [agentState, setAgentState] = useState<Record<string, unknown> | null>(null)
+  const [dark, setDark] = useState(getInitialDark)
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', dark)
+    localStorage.setItem('theme', dark ? 'dark' : 'light')
+  }, [dark])
 
   const agent = useMemo(() => new HttpAgent({ url: backendUrl }), [backendUrl])
 
@@ -35,6 +47,9 @@ export default function App() {
           onChange={(e) => setBackendUrl(e.target.value)}
           placeholder="Backend URL"
         />
+        <button className="theme-toggle" onClick={() => setDark(!dark)} title="Toggle dark mode">
+          {dark ? '\u2600' : '\u263E'}
+        </button>
       </header>
       <main>
         <ChatPanel agent={agent} backendUrl={backendUrl} onStateChange={(s: State) => setAgentState(s as Record<string, unknown>)} />
@@ -45,7 +60,7 @@ export default function App() {
 }
 ```
 
-`HttpAgent` manages the conversation internally -- it tracks messages and state, builds the `RunAgentInput` payload, and parses the SSE event stream. The header input lets you change the backend URL at runtime, so you can switch between v1, v2, and v3 without restarting.
+`HttpAgent` manages the conversation internally -- it tracks messages and state, builds the `RunAgentInput` payload, and parses the SSE event stream. The header includes a text input that lets you change the backend URL at runtime (so you can switch between v1, v2, and v3 without restarting) and a dark-mode toggle that persists the preference to `localStorage`.
 
 ### ChatPanel Component
 

@@ -22,8 +22,6 @@
 
 [Hands-On: AG-UI Frontend](./hands_on_agui_frontend.md)
 
-[Hands-On: AG-UI File Upload](./hands_on_agui_file_upload.md)
-
-[Hands-On: AG-UI User Feedback](./hands_on_agui_feedback.md)
+[Hands-On: AG-UI Side-Channels](./hands_on_agui_side_channels.md)
 
 [References](./references.md)

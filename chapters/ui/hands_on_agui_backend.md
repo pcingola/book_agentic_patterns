@@ -151,7 +151,7 @@ app = AGUIApp(agent, deps=StateDeps(CalculatorState()))
 
 ### Core Library Helpers
 
-The core library in `agentic_patterns/core/ui/agui/` provides two shortcuts. `create_agui_app()` combines agent creation and AG-UI wrapping into one call, using the same `config.yaml` model configurations. `tool_return_with_state()` reduces the boilerplate of constructing `ToolReturn` with state snapshots and custom events:
+The core library in `agentic_patterns/core/ui/agui/` provides shortcuts for common patterns. The examples above stay explicit for clarity, but your own code can use these to reduce boilerplate. `create_agui_app()` combines agent creation and AG-UI wrapping into one call, using the same `config.yaml` model configurations. `tool_return_with_state()` reduces the boilerplate of constructing `ToolReturn` with state snapshots and custom events:
 
 ```python
 from agentic_patterns.core.ui.agui.events import tool_return_with_state
