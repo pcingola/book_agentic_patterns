@@ -1,5 +1,29 @@
 # To do
 
+
+
+
+- UI, user/session: JWT 
+- UI, Error propagation: SKILL is WRONG (tool-> MCP -> A2A -> Agent -> UI)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ## Text
 
 - A2A: How can an agent connect to the servers

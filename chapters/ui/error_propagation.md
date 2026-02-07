@@ -1,10 +1,10 @@
 ## Error propagation, cancellation, and human-in-the-loop
 
-When a user-facing run spans multiple layers—UI, main agent, skill execution, sub-agents, inter-agent protocols, and tool runtimes—basic UI semantics such as errors, cancellation, and user input become distributed concerns. Each layer introduces its own execution model, failure modes, and lifecycle, and the UI must present a coherent experience without exposing this internal topology.
+When a user-facing run spans multiple layers—UI, main agent, sub-agents, inter-agent protocols, and tool runtimes—basic UI semantics such as errors, cancellation, and user input become distributed concerns. Each layer introduces its own execution model, failure modes, and lifecycle, and the UI must present a coherent experience without exposing this internal topology.
 
 Throughout this section we will use the same concrete execution chain as a running example:
 
-**tool → MCP server → MCP client → sub-agent → A2A → skill → main agent → UI (AG-UI)**
+**tool → MCP server → MCP client → sub-agent → A2A → main agent → UI (AG-UI)**
 
 The goal is not to prescribe a single “correct” implementation, but to show where semantic mismatches arise and how to structure translation layers so that UI behavior remains predictable.
 
@@ -12,7 +12,7 @@ The goal is not to prescribe a single “correct” implementation, but to show 
 
 A practical error strategy starts by acknowledging that MCP, A2A, and Pydantic-AI do not mean the same thing by “tool failure”, and AG-UI expects a clean run-level termination signal (RunError) once recovery is no longer possible. In MCP, tool failures can surface either as JSON-RPC protocol errors (unknown tool, invalid arguments, server error) or as successful JSON-RPC responses whose tool result is marked with isError: true for execution failures. In A2A, failure is typically represented as a task reaching a terminal failed state rather than as an exception thrown across a call boundary. In Pydantic-AI, by contrast, exceptions raised by tools generally end the run unless the exception is a ModelRetry, which explicitly asks the model to try again; moreover, both the agent’s retries setting and the run context’s max_retries can allow repeated tool-call attempts.
 
-These differences become visible in a common “stacked delegation” scenario: a main agent runs a Skill, delegates work to a sub-agent over A2A, the sub-agent calls a tool exposed by a FastMCP server, and the tool throws an exception. FastMCP provides middleware intended to convert server exceptions into MCP error responses, but the result still arrives at the client as an MCP-level error shape that must be interpreted and mapped upstream. If the sub-agent simply “raises whatever it got”, the main agent may interpret the failure as a generic exception and either abort immediately or, worse, trigger a retry policy intended for model/tool-call correction rather than for remote service failures.
+These differences become visible in a common “stacked delegation” scenario: a main agent delegates work to a sub-agent over A2A, the sub-agent calls a tool exposed by a FastMCP server, and the tool throws an exception. FastMCP provides middleware intended to convert server exceptions into MCP error responses, but the result still arrives at the client as an MCP-level error shape that must be interpreted and mapped upstream. If the sub-agent simply “raises whatever it got”, the main agent may interpret the failure as a generic exception and either abort immediately or, worse, trigger a retry policy intended for model/tool-call correction rather than for remote service failures.
 
 In a single-process application, an error is usually an exception that unwinds the call stack. In a distributed agentic system, that assumption no longer holds. Failures cross protocol boundaries, process boundaries, and abstraction layers, and each layer encodes failure differently.
 
@@ -26,7 +26,7 @@ These questions become concrete when we follow a failure from the bottom of the 
 
 #### Generic failure flow in a tool → MCP → A2A → agent → UI pipeline
 
-Consider a tool invoked by a sub-agent. The tool may fail due to invalid input, business logic errors, resource exhaustion, or transient infrastructure problems. That failure is first observed inside the tool runtime. From there, it must be encoded into MCP, propagated to the sub-agent, forwarded over A2A to the main agent executing a Skill, and finally translated into a UI-level outcome.
+Consider a tool invoked by a sub-agent. The tool may fail due to invalid input, business logic errors, resource exhaustion, or transient infrastructure problems. That failure is first observed inside the tool runtime. From there, it must be encoded into MCP, propagated to the sub-agent, forwarded over A2A to the main agent, and finally translated into a UI-level outcome.
 
 At the MCP boundary, failures are not uniformly “exceptions”. The protocol distinguishes between protocol-level errors (for example, unknown tool, invalid arguments, server errors) and tool execution failures that are returned as successful responses but explicitly marked as errors. Both represent failure, but they carry different semantics: protocol errors indicate a failure to even perform the call, while execution errors indicate that the call ran and failed.
 
@@ -49,75 +49,47 @@ The UI may receive an abrupt disconnect instead of a structured run error, leavi
 
 These problems are amplified when retries are involved, because retries exist at multiple layers and were designed independently.
 
-#### A general design principle: normalize failures at boundaries
+#### A general design principle: translate at boundaries
 
-A robust approach is to treat each protocol boundary as a translation point. Instead of propagating raw failures, each boundary maps failures into a normalized internal representation that preserves intent while discarding protocol-specific noise.
+A robust approach is to treat each protocol boundary as a translation point where the current protocol's error representation is mapped directly into the next protocol's native types. There is no need for an intermediate error abstraction; each protocol already defines how failure looks. The work is deciding which native type on the receiving side best captures the intent.
 
-Conceptually, the system benefits from an internal failure envelope that answers four questions:
+At each boundary, the same three decisions apply:
 
-Where did the failure originate?
-What kind of failure is it (protocol, execution, logical)?
-Is it retryable at this layer?
-What message is safe and useful to surface upstream?
+Is this failure retryable? If so, use the receiving protocol's retry mechanism (e.g., `ModelRetry` in PydanticAI).
+Is it a terminal failure? Map it to the receiving protocol's terminal error (e.g., an exception that ends the agent run, or a `RunError` in AG-UI).
+Is it a state that requires external input? Use the receiving protocol's pause mechanism (e.g., `input-required` in A2A, or a prompt event in AG-UI).
 
-This normalization happens multiple times, but always in the same direction: from lower-level, more technical representations toward higher-level, more semantic ones.
-
-```python
-class FailureEnvelope(Exception):
-    def __init__(self, *, source, kind, message, retryable, details=None):
-        self.source = source
-        self.kind = kind            # protocol | execution | logical
-        self.message = message
-        self.retryable = retryable
-        self.details = details or {}
-```
+This translation happens at every boundary, always in the same direction: from the lower-level protocol's representation toward the higher-level one.
 
 #### Mapping concrete frameworks onto this model
 
-At the MCP layer, the normalization step distinguishes between protocol errors and execution errors and assigns retryability explicitly. FastMCP, for example, converts server-side exceptions into MCP error responses and enforces tool timeouts at the server boundary. Those timeouts are infrastructure failures and are often retryable, while execution failures usually are not.
+At the MCP layer, the frameworks already handle normalization. FastMCP converts server-side exceptions into MCP error responses and enforces tool timeouts at the server boundary. On the client side, PydanticAI manages MCP tool dispatch internally: when a tool returns an error, the model observes the failure and can decide whether to try a different approach or report the problem. The retry semantics built into PydanticAI (via `retries` and `ModelRetry`) already implement a form of boundary-level normalization for direct tool calls. There is no reason to rewrite this layer.
+
+The gap appears at the A2A boundary, where sub-agent failures arrive as task state transitions rather than exceptions. The main agent needs explicit logic to interpret those outcomes and decide what to do.
 
 ```python
-def call_tool_via_mcp(tool_name, args):
-    response = mcp.call_tool(tool_name, args)
+from pydantic_ai import ModelRetry, RunContext
 
-    if response.protocol_error:
-        raise FailureEnvelope(
-            source=f"mcp:{tool_name}",
-            kind="protocol",
-            message=response.protocol_error.message,
-            retryable=is_transient(response.protocol_error),
-        )
+async def delegate_to_subagent(ctx: RunContext, request: str) -> str:
+    """A2A delegation tool registered on the main agent."""
+    task = await a2a_client.send_and_observe(request)
 
-    if response.result.is_error:
-        raise FailureEnvelope(
-            source=f"mcp:{tool_name}",
-            kind="execution",
-            message=response.result.content,
-            retryable=False,
-        )
-
-    return response.result.content
+    match task.status:
+        case "completed":
+            return task.result
+        case "failed":
+            if task.metadata.get("retryable", False):
+                raise ModelRetry(task.error_message)
+            raise RuntimeError(f"Sub-agent failed: {task.error_message}")
+        case "cancelled":
+            raise RuntimeError("Sub-agent task was cancelled")
 ```
 
-At the sub-agent boundary, this normalized failure should not escape as an exception. Instead, the sub-agent should translate it into a task-level outcome. In FastA2A-style servers, this typically means marking the task as failed and attaching a human-readable explanation. This aligns with the A2A model, where failure is an explicit state rather than an exception crossing the wire.
+Below this boundary, FastMCP and PydanticAI handle MCP error normalization internally. If a tool on the MCP server raises an exception, FastMCP converts it into an MCP error response; PydanticAI receives that error and presents it to the model, which can retry or report the failure. What reaches the A2A layer is already a task outcome, not a raw exception.
 
-At the main agent boundary, the same failure envelope can now drive planning decisions. Here is where agent-specific behavior becomes relevant. In frameworks like Pydantic-AI, raising a generic exception usually ends the run, while raising a `ModelRetry` explicitly asks the model to attempt a corrected tool call. This is powerful, but dangerous if applied indiscriminately.
+At the main agent boundary, the delegation tool above translates A2A task outcomes directly into PydanticAI signals. A completed task returns its result. A failed task with `retryable` metadata raises `ModelRetry`, giving the model a chance to reformulate; otherwise it raises an exception that ends the run. This is the layer where conscious retry decisions matter most, because the main agent has enough context to judge whether retrying is worthwhile.
 
-The key point is that retries should be a conscious decision made after normalization, not an accidental side effect of exception handling.
-
-```python
-def skill_tool_wrapper(args):
-    try:
-        return call_tool_via_mcp("analyze_data", args)
-    except FailureEnvelope as e:
-        if e.retryable:
-            # Ask the model to reason and try again
-            raise ModelRetry(e.message)
-        # Non-retryable: propagate upward
-        raise
-```
-
-Finally, when the main agent determines that no further recovery is possible, the failure must be translated into a run-level error for the UI. AG-UI expects a clean terminal signal indicating failure, not a partial stream that simply stops. The internal failure envelope is reduced one last time into a stable, user-facing error message.
+Finally, when the main agent determines that no further recovery is possible, the failure must be translated into a run-level error for the UI. AG-UI expects a clean terminal signal indicating failure, not a partial stream that simply stops. The agent exception is caught at the AG-UI adapter and emitted as a `RunError` event.
 
 #### Summary
 
@@ -127,7 +99,7 @@ The important lesson is not that any single framework is “right” or “wrong
 
 #### Cancellation as a distributed control signal
 
-Cancellation is often treated as a UI concern, but in an agentic stack it is a cross-cutting control signal that must propagate through the same layers as execution itself. A user clicking “Cancel” in the UI should ideally stop the skill, the main agent, any delegated sub-agents, and any in-flight tool calls.
+Cancellation is often treated as a UI concern, but in an agentic stack it is a cross-cutting control signal that must propagate through the same layers as execution itself. A user clicking "Cancel" in the UI should ideally stop the main agent, any delegated sub-agents, and any in-flight tool calls.
 
 As with errors, each layer supports cancellation differently.
 
@@ -135,7 +107,7 @@ At the protocol level, MCP supports best-effort cancellation of in-flight reques
 
 At the inter-agent level, A2A provides an explicit task cancellation request that transitions a task into a canceled state. This is a semantic cancellation: the task is no longer expected to produce a result.
 
-At the agent and skill level, cancellation is usually implemented cooperatively, by checking a cancellation token between awaited operations.
+At the agent level, cancellation is usually implemented cooperatively, by checking a cancellation token between awaited operations.
 
 At the UI level, AG-UI needs to reflect cancellation as a distinct terminal outcome, not as an error.
 
@@ -156,7 +128,7 @@ class CancelToken:
             raise Cancelled()
 
 
-async def run_skill_with_cancellation(run_id, request):
+async def run_agent_with_cancellation(run_id, request):
     token = CancelToken()
     active_task_id = None
 

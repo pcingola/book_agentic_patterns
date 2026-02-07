@@ -18,4 +18,6 @@
 
 [Hands-On: Controlled Vocabularies](./hands_on_vocabulary.md)
 
+[Hands-On: Private Data Guardrails](./hands_on_private_data.md)
+
 [References](./references.md)

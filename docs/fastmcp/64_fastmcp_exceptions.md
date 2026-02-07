@@ -1,0 +1,45 @@
+# `fastmcp.exceptions`
+
+Custom exceptions for FastMCP.
+
+## Classes
+
+### `FastMCPError` <sup><a href="https://github.com/jlowin/fastmcp/blob/main/src/fastmcp/exceptions.py#L6"><Icon icon="github" /></a></sup>
+
+Base error for FastMCP.
+
+### `ValidationError` <sup><a href="https://github.com/jlowin/fastmcp/blob/main/src/fastmcp/exceptions.py#L10"><Icon icon="github" /></a></sup>
+
+Error in validating parameters or return values.
+
+### `ResourceError` <sup><a href="https://github.com/jlowin/fastmcp/blob/main/src/fastmcp/exceptions.py#L14"><Icon icon="github" /></a></sup>
+
+Error in resource operations.
+
+### `ToolError` <sup><a href="https://github.com/jlowin/fastmcp/blob/main/src/fastmcp/exceptions.py#L18"><Icon icon="github" /></a></sup>
+
+Error in tool operations.
+
+### `PromptError` <sup><a href="https://github.com/jlowin/fastmcp/blob/main/src/fastmcp/exceptions.py#L22"><Icon icon="github" /></a></sup>
+
+Error in prompt operations.
+
+### `InvalidSignature` <sup><a href="https://github.com/jlowin/fastmcp/blob/main/src/fastmcp/exceptions.py#L26"><Icon icon="github" /></a></sup>
+
+Invalid signature for use with FastMCP.
+
+### `ClientError` <sup><a href="https://github.com/jlowin/fastmcp/blob/main/src/fastmcp/exceptions.py#L30"><Icon icon="github" /></a></sup>
+
+Error in client operations.
+
+### `NotFoundError` <sup><a href="https://github.com/jlowin/fastmcp/blob/main/src/fastmcp/exceptions.py#L34"><Icon icon="github" /></a></sup>
+
+Object not found.
+
+### `DisabledError` <sup><a href="https://github.com/jlowin/fastmcp/blob/main/src/fastmcp/exceptions.py#L38"><Icon icon="github" /></a></sup>
+
+Object is disabled.
+
+### `AuthorizationError` <sup><a href="https://github.com/jlowin/fastmcp/blob/main/src/fastmcp/exceptions.py#L42"><Icon icon="github" /></a></sup>
+
+Error when authorization check fails.

@@ -1,0 +1,231 @@
+# Client Transports
+Source: https://gofastmcp.com/clients/transports
+
+Configure how clients connect to and communicate with MCP servers.
+
+<VersionBadge />
+
+Transports handle the underlying connection between your client and MCP servers. While the client can automatically select a transport based on what you pass to it, instantiating transports explicitly gives you full control over configuration.
+
+## STDIO Transport
+
+STDIO transport communicates with MCP servers through subprocess pipes. When using STDIO, your client launches and manages the server process, controlling its lifecycle and environment.
+
+<Warning>
+  STDIO servers run in isolated environments by default. They do not inherit your shell's environment variables. You must explicitly pass any configuration the server needs.
+</Warning>
+
+```python theme={"theme":{"light":"snazzy-light","dark":"dark-plus"}}
+from fastmcp import Client
+from fastmcp.client.transports import StdioTransport
+
+transport = StdioTransport(
+    command="python",
+    args=["my_server.py", "--verbose"],
+    env={"API_KEY": "secret", "LOG_LEVEL": "DEBUG"},
+    cwd="/path/to/server"
+)
+client = Client(transport)
+```
+
+For convenience, the client can infer STDIO transport from file paths, though this limits configuration options:
+
+```python theme={"theme":{"light":"snazzy-light","dark":"dark-plus"}}
+from fastmcp import Client
+
+client = Client("my_server.py")  # Limited - no configuration options
+```
+
+### Environment Variables
+
+Since STDIO servers do not inherit your environment, you need strategies for passing configuration.
+
+**Selective forwarding** passes only the variables your server needs:
+
+```python theme={"theme":{"light":"snazzy-light","dark":"dark-plus"}}
+import os
+from fastmcp.client.transports import StdioTransport
+
+required_vars = ["API_KEY", "DATABASE_URL", "REDIS_HOST"]
+env = {var: os.environ[var] for var in required_vars if var in os.environ}
+
+transport = StdioTransport(command="python", args=["server.py"], env=env)
+client = Client(transport)
+```
+
+**Loading from .env files** keeps configuration separate from code:
+
+```python theme={"theme":{"light":"snazzy-light","dark":"dark-plus"}}
+from dotenv import dotenv_values
+from fastmcp.client.transports import StdioTransport
+
+env = dotenv_values(".env")
+transport = StdioTransport(command="python", args=["server.py"], env=env)
+client = Client(transport)
+```
+
+### Session Persistence
+
+STDIO transports maintain sessions across multiple client contexts by default (`keep_alive=True`). This reuses the same subprocess for multiple connections, improving performance.
+
+```python theme={"theme":{"light":"snazzy-light","dark":"dark-plus"}}
+from fastmcp.client.transports import StdioTransport
+
+transport = StdioTransport(command="python", args=["server.py"])
+client = Client(transport)
+
+async def efficient_multiple_operations():
+    async with client:
+        await client.ping()
+
+    async with client:  # Reuses the same subprocess
+        await client.call_tool("process_data", {"file": "data.csv"})
+```
+
+For complete isolation between connections, disable session persistence:
+
+```python theme={"theme":{"light":"snazzy-light","dark":"dark-plus"}}
+transport = StdioTransport(command="python", args=["server.py"], keep_alive=False)
+```
+
+## HTTP Transport
+
+<VersionBadge />
+
+HTTP transport connects to MCP servers running as web services. This is the recommended transport for production deployments.
+
+```python theme={"theme":{"light":"snazzy-light","dark":"dark-plus"}}
+from fastmcp import Client
+from fastmcp.client.transports import StreamableHttpTransport
+
+transport = StreamableHttpTransport(
+    url="https://api.example.com/mcp",
+    headers={
+        "Authorization": "Bearer your-token-here",
+        "X-Custom-Header": "value"
+    }
+)
+client = Client(transport)
+```
+
+FastMCP also provides authentication helpers:
+
+```python theme={"theme":{"light":"snazzy-light","dark":"dark-plus"}}
+from fastmcp import Client
+from fastmcp.client.auth import BearerAuth
+
+client = Client(
+    "https://api.example.com/mcp",
+    auth=BearerAuth("your-token-here")
+)
+```
+
+### SSE Transport
+
+Server-Sent Events transport is maintained for backward compatibility. Use Streamable HTTP for new deployments unless you have specific infrastructure requirements.
+
+```python theme={"theme":{"light":"snazzy-light","dark":"dark-plus"}}
+from fastmcp.client.transports import SSETransport
+
+transport = SSETransport(
+    url="https://api.example.com/sse",
+    headers={"Authorization": "Bearer token"}
+)
+client = Client(transport)
+```
+
+## In-Memory Transport
+
+In-memory transport connects directly to a FastMCP server instance within the same Python process. This eliminates both subprocess management and network overhead, making it ideal for testing.
+
+```python theme={"theme":{"light":"snazzy-light","dark":"dark-plus"}}
+from fastmcp import FastMCP, Client
+import os
+
+mcp = FastMCP("TestServer")
+
+@mcp.tool
+def greet(name: str) -> str:
+    prefix = os.environ.get("GREETING_PREFIX", "Hello")
+    return f"{prefix}, {name}!"
+
+client = Client(mcp)
+
+async with client:
+    result = await client.call_tool("greet", {"name": "World"})
+```
+
+<Note>
+  Unlike STDIO transports, in-memory servers share the same memory space and environment variables as your client code.
+</Note>
+
+## Multi-Server Configuration
+
+<VersionBadge />
+
+Connect to multiple servers defined in a configuration dictionary:
+
+```python theme={"theme":{"light":"snazzy-light","dark":"dark-plus"}}
+from fastmcp import Client
+
+config = {
+    "mcpServers": {
+        "weather": {
+            "url": "https://weather.example.com/mcp",
+            "transport": "http"
+        },
+        "assistant": {
+            "command": "python",
+            "args": ["./assistant.py"],
+            "env": {"LOG_LEVEL": "INFO"}
+        }
+    }
+}
+
+client = Client(config)
+
+async with client:
+    # Tools are namespaced by server
+    weather = await client.call_tool("weather_get_forecast", {"city": "NYC"})
+    answer = await client.call_tool("assistant_ask", {"question": "What?"})
+```
+
+### Tool Transformations
+
+FastMCP supports tool transformations within the configuration. You can change names, descriptions, tags, and arguments for tools from a server.
+
+```python theme={"theme":{"light":"snazzy-light","dark":"dark-plus"}}
+config = {
+    "mcpServers": {
+        "weather": {
+            "url": "https://weather.example.com/mcp",
+            "transport": "http",
+            "tools": {
+                "weather_get_forecast": {
+                    "name": "miami_weather",
+                    "description": "Get the weather for Miami",
+                    "arguments": {
+                        "city": {
+                            "default": "Miami",
+                            "hide": True,
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+```
+
+To filter tools by tag, use `include_tags` or `exclude_tags` at the server level:
+
+```python theme={"theme":{"light":"snazzy-light","dark":"dark-plus"}}
+config = {
+    "mcpServers": {
+        "weather": {
+            "url": "https://weather.example.com/mcp",
+            "include_tags": ["forecast"]  # Only tools with this tag
+        }
+    }
+}
+```

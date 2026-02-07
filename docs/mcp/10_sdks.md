@@ -1,0 +1,55 @@
+# SDKs
+Source: https://modelcontextprotocol.io/docs/sdk
+
+Official SDKs for building with Model Context Protocol
+
+Build MCP servers and clients using our official SDKs. SDKs are classified into tiers based on feature completeness, protocol support, and maintenance commitment. Learn more about [SDK tiers](/community/sdk-tiers).
+
+## Available SDKs
+
+<CardGroup>
+  <Card title="TypeScript" icon="square-js" href="https://github.com/modelcontextprotocol/typescript-sdk" />
+
+  <Card title="Python" icon="python" href="https://github.com/modelcontextprotocol/python-sdk" />
+
+  <Card title="Go" icon="golang" href="https://github.com/modelcontextprotocol/go-sdk" />
+
+  <Card title="Kotlin" icon="square-k" href="https://github.com/modelcontextprotocol/kotlin-sdk" />
+
+  <Card title="Swift" icon="swift" href="https://github.com/modelcontextprotocol/swift-sdk" />
+
+  <Card title="Java" icon="java" href="https://github.com/modelcontextprotocol/java-sdk" />
+
+  <Card title="C#" icon="square-c" href="https://github.com/modelcontextprotocol/csharp-sdk" />
+
+  <Card title="Ruby" icon="gem" href="https://github.com/modelcontextprotocol/ruby-sdk" />
+
+  <Card title="Rust" icon="rust" href="https://github.com/modelcontextprotocol/rust-sdk" />
+
+  <Card title="PHP" icon="php" href="https://github.com/modelcontextprotocol/php-sdk" />
+</CardGroup>
+
+## Getting Started
+
+Each SDK provides the same functionality but follows the idioms and best practices of its language. All SDKs support:
+
+* Creating MCP servers that expose tools, resources, and prompts
+* Building MCP clients that can connect to any MCP server
+* Local and remote transport protocols
+* Protocol compliance with type safety
+
+Visit the SDK page for your chosen language to find installation instructions, documentation, and examples.
+
+## Next Steps
+
+Ready to start building with MCP? Choose your path:
+
+<CardGroup>
+  <Card title="Build a Server" icon="server" href="/docs/develop/build-server">
+    Learn how to create your first MCP server
+  </Card>
+
+  <Card title="Build a Client" icon="computer" href="/docs/develop/build-client">
+    Create applications that connect to MCP servers
+  </Card>
+</CardGroup>
