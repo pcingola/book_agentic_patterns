@@ -175,7 +175,7 @@ These are all about how agents manage information over time.
 - [x] Hands-on: A2A Coordinator Agent
 - [x] References
 
-### Chapter: [Skills & Sub-Agents](chapters/skills_and_sub_agents/chapter.md)
+### Chapter: [Skills, Sub-Agents & Tasks](chapters/skills_and_sub_agents/chapter.md)
 
 - [x] Introduction
 - [x] Sub-agents
@@ -185,6 +185,8 @@ These are all about how agents manage information over time.
 - [x] Comparison: Sub-agents, Skills, MCP, and A2A
 - [x] Hands-on: Fixed Sub-Agents
 - [x] Hands-on: Dynamic Sub-Agents
+- [x] Tasks
+- [x] Hands-on: Tasks
 - [x] Hands-on: Skills
 - [x] References
 
@@ -255,7 +257,7 @@ Into: Introduction to section, what we are building and how
 
 Production infrastructure for running agent-generated code safely.
 
-- [x] MCP-Sandbox
+- [x] Sandbox
   - [x] BEST PRACTICE: Sandboxed using containers
   - [x] BEST PRACTICE: Limit execution time (timeout)
   - [x] BEST PRACTICE: Limit resource usage (CPU, memory)

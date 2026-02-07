@@ -4,6 +4,8 @@ from enum import Enum
 
 from pydantic import BaseModel, Field
 
+from agentic_patterns.core.tasks.state import TaskState
+
 
 class EventType(str, Enum):
     STATE_CHANGE = "state_change"
@@ -22,7 +24,7 @@ class TaskEvent(BaseModel):
 class Task(BaseModel):
     """A unit of work submitted to the broker and executed by a worker."""
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    state: str = "pending"
+    state: TaskState = TaskState.PENDING
     input: str
     result: str | None = None
     error: str | None = None
@@ -32,4 +34,4 @@ class Task(BaseModel):
     metadata: dict = Field(default_factory=dict)
 
     def __str__(self) -> str:
-        return f"Task(id={self.id[:8]}, state={self.state}, input={self.input[:40]})"
+        return f"Task(id={self.id[:8]}, state={self.state.value}, input={self.input[:40]})"

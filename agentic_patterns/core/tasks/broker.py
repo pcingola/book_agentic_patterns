@@ -14,9 +14,9 @@ logger = logging.getLogger(__name__)
 class TaskBroker:
     """Coordination layer for task submission, observation, and dispatch."""
 
-    def __init__(self, store: TaskStore | None = None, poll_interval: float = 0.5) -> None:
+    def __init__(self, store: TaskStore | None = None, poll_interval: float = 0.5, model=None) -> None:
         self._store = store or TaskStoreJson()
-        self._worker = Worker(self._store)
+        self._worker = Worker(self._store, model=model)
         self._poll_interval = poll_interval
         self._dispatch_task: asyncio.Task | None = None
         self._callbacks: dict[str, list[tuple[set[TaskState], Callable[[Task], Coroutine[Any, Any, None]]]]] = {}
@@ -48,7 +48,7 @@ class TaskBroker:
     async def cancel(self, task_id: str) -> Task | None:
         """Cancel a pending or running task."""
         task = await self._store.get(task_id)
-        if task is None or task.state in {s.value for s in TERMINAL_STATES}:
+        if task is None or task.state in TERMINAL_STATES:
             return task
         updated = await self._store.update_state(task_id, TaskState.CANCELLED)
         await self._store.add_event(task_id, TaskEvent(task_id=task_id, event_type=EventType.STATE_CHANGE, payload={"state": TaskState.CANCELLED.value}))
@@ -74,7 +74,7 @@ class TaskBroker:
             for event in new_events:
                 yield event
             seen = len(task.events)
-            if task.state in {s.value for s in TERMINAL_STATES}:
+            if task.state in TERMINAL_STATES:
                 return
             await asyncio.sleep(self._poll_interval)
 
@@ -84,7 +84,7 @@ class TaskBroker:
             task = await self._store.get(task_id)
             if task is None:
                 return None
-            if task.state in {s.value for s in TERMINAL_STATES}:
+            if task.state in TERMINAL_STATES:
                 return task
             await asyncio.sleep(self._poll_interval)
 
@@ -112,7 +112,7 @@ class TaskBroker:
         if task is None:
             return
         for states, callback in self._callbacks.get(task_id, []):
-            if TaskState(task.state) in states:
+            if task.state in states:
                 try:
                     await callback(task)
                 except Exception:

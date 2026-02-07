@@ -1,5 +1,4 @@
 import asyncio
-import json
 import logging
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
@@ -80,7 +79,7 @@ class TaskStoreJson(TaskStore):
             tasks = []
             for path in self._dir.glob("*.json"):
                 task = Task.model_validate_json(path.read_text())
-                if task.state == state.value:
+                if task.state == state:
                     tasks.append(task)
             return sorted(tasks, key=lambda t: t.created_at)
 
@@ -93,7 +92,7 @@ class TaskStoreJson(TaskStore):
             task = self._read(task_id)
             if task is None:
                 return None
-            task.state = state.value
+            task.state = state
             if result is not None:
                 task.result = result
             if error is not None:

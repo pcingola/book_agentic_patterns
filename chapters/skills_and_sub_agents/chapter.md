@@ -1,4 +1,4 @@
-# Chapter: Skills & Sub-Agents
+# Chapter: Skills, Sub-Agents & Tasks
 
 [Introduction](./introduction.md)
 
@@ -17,6 +17,10 @@
 [Hands-On: Fixed Sub-Agents](./hands_on_sub_agents_fixed.md)
 
 [Hands-On: Dynamic Sub-Agents](./hands_on_sub_agents_dynamic.md)
+
+[Tasks](./tasks.md)
+
+[Hands-On: Tasks](./hands_on_tasks.md)
 
 [Hands-On: Skills](./hands_on_skills.md)
 

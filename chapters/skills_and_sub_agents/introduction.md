@@ -6,6 +6,8 @@ When an agent accumulates too many tools, instructions, or conversation history,
 
 **Skills** split capability definitions. Instead of loading all instructions upfront, capabilities are packaged so agents discover what exists (cheap), activate what they need (medium cost), and load detailed resources only when required (expensive). The agent starts lean and adds context incrementally.
 
-These patterns often work together. A coordinator agent might delegate a task to a sub-agent, and that sub-agent activates a skill to perform its work. The sub-agent provides context isolation; the skill provides packaged instructions and tools.
+**Tasks** add lifecycle management. Sub-agents are fire-and-forget -- the coordinator calls, awaits, and moves on. When work is long-running, needs observation, or should survive restarts, the task lifecycle wraps sub-agent execution with durable state, event streams, and explicit control (polling, streaming, cancellation).
 
-The rest of this chapter covers sub-agents first (the runtime decomposition pattern), then skills (the capability packaging pattern), and finally compares both to MCP and A2A to clarify when each is appropriate.
+These patterns often work together. A coordinator agent might delegate a task to a sub-agent, and that sub-agent activates a skill to perform its work. The sub-agent provides context isolation; the skill provides packaged instructions and tools. The task lifecycle adds durability and observability when needed.
+
+The rest of this chapter covers sub-agents first (the runtime decomposition pattern), then the task lifecycle (durable sub-agent execution), then skills (the capability packaging pattern), and finally compares all to MCP and A2A to clarify when each is appropriate.
