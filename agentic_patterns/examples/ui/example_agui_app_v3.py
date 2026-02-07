@@ -26,50 +26,48 @@ class CalculatorState(BaseModel):
     history: list[str] = []
     last_result: int | None = None
 
-
-async def add(ctx: RunContext[StateDeps[CalculatorState]], a: int, b: int) -> ToolReturn:
-    """Add two numbers and update the state."""
-    result = a + b
+def update_state_with_result(ctx: RunContext[StateDeps[CalculatorState]], operation: str, a: int, b: int, result: int) -> ToolReturn:
+    """Helper function to update state and emit events after a calculation."""
     state = ctx.deps.state
-    state.history.append(f"{a} + {b} = {result}")
+    state.history.append(f"{a} {operation} {b} = {result}")
     state.last_result = result
     return ToolReturn(
         return_value=f"Result: {result}",
         metadata=[
             StateSnapshotEvent(type=EventType.STATE_SNAPSHOT, snapshot=state),
-            CustomEvent(type=EventType.CUSTOM, name='calculation_complete', value={'operation': 'add', 'result': result}),
+            CustomEvent(type=EventType.CUSTOM, name='calculation_complete', value={'operation': operation, 'result': result}),
         ],
     )
+
+async def add(ctx: RunContext[StateDeps[CalculatorState]], a: int, b: int) -> ToolReturn:
+    """Add two numbers and update the state."""
+    result = a + b
+    return update_state_with_result(ctx, 'add', a, b, result)
 
 
 async def sub(ctx: RunContext[StateDeps[CalculatorState]], a: int, b: int) -> ToolReturn:
     """Subtract two numbers and update the state."""
     result = a - b
-    state = ctx.deps.state
-    state.history.append(f"{a} - {b} = {result}")
-    state.last_result = result
-    return ToolReturn(
-        return_value=f"Result: {result}",
-        metadata=[
-            StateSnapshotEvent(type=EventType.STATE_SNAPSHOT, snapshot=state),
-            CustomEvent(type=EventType.CUSTOM, name='calculation_complete', value={'operation': 'sub', 'result': result}),
-        ],
-    )
+    return update_state_with_result(ctx, 'sub', a, b, result)
 
 
 async def mul(ctx: RunContext[StateDeps[CalculatorState]], a: int, b: int) -> ToolReturn:
     """Multiply two numbers and update the state."""
     result = a * b
-    state = ctx.deps.state
-    state.history.append(f"{a} * {b} = {result}")
-    state.last_result = result
-    return ToolReturn(
-        return_value=f"Result: {result}",
-        metadata=[
-            StateSnapshotEvent(type=EventType.STATE_SNAPSHOT, snapshot=state),
-            CustomEvent(type=EventType.CUSTOM, name='calculation_complete', value={'operation': 'mul', 'result': result}),
-        ],
-    )
+    return update_state_with_result(ctx, 'mul', a, b, result)
+
+
+async def div(ctx: RunContext[StateDeps[CalculatorState]], a: int, b: int) -> ToolReturn:
+    """Divide two numbers and update the state."""
+    if b == 0:
+        return ToolReturn(
+            return_value="Error: Division by zero is undefined.",
+            metadata=[
+                CustomEvent(type=EventType.CUSTOM, name='calculation_error', value={'operation': 'div', 'error': 'division_by_zero'}),
+            ],
+        )
+    result = a // b  # Integer division
+    return update_state_with_result(ctx, 'div', a, b, result)
 
 
 async def show_history(ctx: RunContext[StateDeps[CalculatorState]]) -> str:

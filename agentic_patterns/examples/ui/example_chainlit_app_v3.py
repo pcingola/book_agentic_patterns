@@ -68,6 +68,20 @@ async def sub(a: int, b: int) -> int:
     logger.info(f"Subtracting {a} - {b}")
     return a - b
 
+@cl.step(type="tool")
+async def mul(a: int, b: int) -> int:
+    """Multiply two numbers"""
+    logger.info(f"Multiplying {a} * {b}")
+    return a * b
+
+@cl.step(type="tool")
+async def div(a: int, b: int) -> int:
+    """Divide two numbers, round to nearest integer"""
+    logger.info(f"Dividing {a} / {b}")
+    if b == 0:
+        raise ValueError("Cannot divide by zero")
+    return int(a / b)
+
 
 @cl.set_starters  # type: ignore
 async def set_starters(user: str | None, language: str | None) -> list[cl.Starter]:
@@ -86,7 +100,7 @@ async def on_chat_start():
     setup_user_session()
 
     # Initialize the agent with our tools
-    agent = get_agent(tools=[add, sub])
+    agent = get_agent(tools=[add, sub, mul, div])
     cl.user_session.set(AGENT, agent)
 
     # Reset history for new chat
