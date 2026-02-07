@@ -123,6 +123,30 @@ All scripts in `scripts/` follow the `config.sh` pattern (sets PROJECT_DIR, load
 
 **apis.yaml**: OpenAPI connector configuration. Defines API specs with `id`, `name`, `spec_url` (URL or file path), and optional `base_url` override. Supports `${VAR}` environment variable expansion.
 
+## Reference Documentation (`docs/`)
+
+The `docs/` directory contains reference documentation for the key technologies used in this project. Consult these when working on related topics.
+
+`docs/pydantic-ai.md` -- PydanticAI framework: agents, dependencies, tools, model providers, graphs, evals, MCP integration. This is the primary AI framework used throughout the project.
+
+`docs/mcp.md` -- Model Context Protocol (MCP) specification: architecture, clients/servers, SDKs, tools, prompts, resources, sampling, security, registry publishing.
+
+`docs/fastmcp.md` -- FastMCP 3.0 (Python MCP library): server implementation, client usage, middleware, authentication, deployment, CLI, and service integrations.
+
+`docs/a2a_specification.md` -- Agent-to-Agent (A2A) Protocol v1.0 RC: agent discovery, protocol operations, data models, JSON-RPC/gRPC/HTTP bindings, security, and relationship to MCP.
+
+`docs/agui.md` -- AG-UI (Agent-User Interaction) Protocol: event-based protocol for connecting AI agents to user-facing applications. Covers concepts (agents, architecture, events, messages, middleware, serialization, state, tools), SDK references (JavaScript and Python), quickstart guides, and draft proposals.
+
+`docs/mcp_template.md` -- Design guide for building production FastMCP servers: component architecture, tool registration, workspace/session isolation, large data handling, middleware, authentication, Docker setup.
+
+`docs/mcp_sql.md` -- Design document for the NL2SQL MCP system: five-layer architecture, schema extraction, AI-powered enum detection, NL2SQL agents, database-agnostic design, security patterns.
+
+`docs/mcp_repl.md` -- Design document for MCP REPL (Jupyter-like notebook as MCP server): process isolation, namespace serialization, state persistence, async execution, session management.
+
+`docs/skills_specification.md` -- Agent Skills specification: overview, integration approaches, SKILL.md format, directory structure, progressive disclosure, validation.
+
+Each index file (`*.md`) links to detailed section files in corresponding subdirectories (`a2a_specification/`, `agui/`, `fastmcp/`, `mcp/`, `pydantic-ai/`, `skills_specification/`). Original unprocessed source files are in `docs/original/`.
+
 ## Additional Conventions
 
 **Tests**: In `tests/` directory at root with `unit/` and `integration/` subdirectories. Run via `scripts/test.sh` (uses pytest).
