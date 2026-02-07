@@ -6,6 +6,8 @@
 
 [Error propagation, cancellation, and human-in-the-loop](./error_propagation.md)
 
+[Session propagation](./session_propagation.md)
+
 [Hands-On: Chainlit](./hands_on_chainlit.md)
 
 [Hands-On: AG-UI Introduction](./hands_on_agui_intro.md)
