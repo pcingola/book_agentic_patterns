@@ -21,6 +21,7 @@ DATA_DB_DIR = Path(get_variable_env("DATA_DB_DIR") or DATA_DIR / "db")
 LOGS_DIR = MAIN_PROJECT_DIR / "logs"
 PROMPTS_DIR = Path(get_variable_env("PROMPTS_DIR") or MAIN_PROJECT_DIR / "prompts")
 WORKSPACE_DIR = Path(get_variable_env("WORKSPACE_DIR") or DATA_DIR / "workspaces")
+PRIVATE_DATA_DIR = Path(get_variable_env("PRIVATE_DATA_DIR") or DATA_DIR / "private_data")
 
 # Workspace defaults
 SANDBOX_PREFIX = "/workspace"

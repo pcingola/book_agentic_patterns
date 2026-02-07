@@ -1,10 +1,10 @@
 ## Private Data
 
-When an agent connects to an external data source, the data it retrieves may be public, internal, confidential, or secret. A SQL query against a patient database, a file download from a regulated share, or an API call returning financial records can all introduce sensitive content into the workspace without any explicit warning. Once that content is present, every subsequent tool call becomes a potential exfiltration vector. An agent that helpfully summarizes query results into a Slack message, uploads a CSV to an external analytics service, or passes workspace content to an MCP server with outbound connectivity has just leaked data that should never have left the organization's boundary.
+When an agent connects to an external data source, the data it retrieves may be public, internal, confidential, or secret. A SQL query against a patient database, a file download from a regulated share, or an API call returning financial records can all introduce sensitive content into the session. That content ends up in two places: in the workspace as files (a CSV export, a downloaded document), and in the LLM's context window as tool results. Both are exfiltration vectors. A workspace file can be uploaded by a subsequent tool call. A tool result sitting in context can be passed as an argument to the next tool the agent decides to call -- the agent reads the balance from one tool's output and writes it into the body of a notification email. No file needs to exist on disk for the leak to happen; the data flows directly through the context window from one tool call to the next.
 
 The fundamental problem is not that agents are malicious. It is that agents are *eager*. They optimize for task completion and will use any available tool to get there. If a tool exists that sends data to an external endpoint, the agent will eventually use it when it seems like the right next step. Prompt-level instructions ("do not share confidential data") are insufficient because they are advisory, not enforceable: the model can misinterpret them, ignore them under pressure from a persuasive user prompt, or simply not recognize that a particular tool call constitutes data leakage.
 
-Reliable data protection therefore requires a mechanism that operates below the prompt level, at the infrastructure layer where tools are registered, filtered, and executed. The approach described here is deliberately simple: tag the session's workspace as "private" whenever sensitive data enters it, and use that tag to enforce guardrails that block unsafe operations regardless of what the agent or the user requests.
+Reliable data protection therefore requires a mechanism that operates below the prompt level, at the infrastructure layer where tools are registered, filtered, and executed. The approach described here is deliberately simple: tag the session as "private" whenever sensitive data enters it -- whether that data lands in the workspace or only passes through the context window -- and use that tag to enforce guardrails that block unsafe operations regardless of what the agent or the user requests.
 
 ### Sensitivity levels
 
@@ -22,7 +22,11 @@ class DataSensitivity(str, Enum):
 
 ### Tagging the workspace
 
-The implementation stores the private-data state as a JSON file (`.private_data`) inside the session's workspace directory. This is the same directory that the workspace isolation system already manages per user and session, so no new infrastructure is required. If the file does not exist, the session contains no private data and all tools operate normally.
+The implementation stores the private-data state as a JSON file (`.private_data`) in a dedicated directory (`PRIVATE_DATA_DIR`) that mirrors the workspace directory structure per user and session but is located outside the agent's workspace. If the file does not exist, the session contains no private data and all tools operate normally.
+
+This separation is important. The agent has read/write access to its own workspace through the file connector and workspace tools. If the compliance flag lived inside the workspace, the agent could delete or modify it -- either through direct manipulation (an agent tricked into running a cleanup operation) or through a prompt injection attack that instructs the agent to remove the `.private_data` file before exfiltrating data. Storing the flag outside the workspace means the agent has no tool that can reach it. The compliance state is managed exclusively by server-side code (connectors, the `PrivateData` class) that runs in the host process, not by the agent itself.
+
+In production systems, file-based persistence would be replaced by a database or a Redis cache. A relational database provides transactional guarantees and audit logging. A Redis cache provides low-latency reads that scale well when multiple services need to check the compliance state of a session on every tool invocation. The file-based approach used here is sufficient for development and single-process deployments, but any system handling real sensitive data at scale should use a centralized store that supports concurrent access, replication, and access control.
 
 ```python
 pd = PrivateData(user_id="alice", session_id="analysis-42")
@@ -47,21 +51,18 @@ The tagging is typically performed by connectors themselves. When a SQL connecto
 
 The tag alone does not prevent anything. It is a signal that downstream enforcement layers consume. The two primary enforcement points are tool filtering and connectivity control.
 
-Tool filtering uses the permission system introduced in the tools chapter. Every tool is annotated with permission requirements (`READ`, `WRITE`, `CONNECT`), and the tool execution layer can filter or block tools based on session state. When the session is tagged as private, tools that carry the `CONNECT` permission -- those that establish outbound connections to external services -- are removed from the agent's available tool set or wrapped with runtime checks that raise an error if invoked.
+Tool filtering uses the permission system introduced in the tools chapter. Every tool is annotated with permission requirements (`READ`, `WRITE`, `CONNECT`). The `@tool_permission` decorator automatically checks the session's private data state on every invocation of a CONNECT tool. When the session is tagged as private, any tool that carries the `CONNECT` permission raises `ToolPermissionError` before its function body executes. No additional wiring is required -- the decorator handles it.
 
 ```python
-from agentic_patterns.core.compliance.private_data import PrivateData
-from agentic_patterns.core.tools.permissions import (
-    ToolPermission, filter_tools_by_permission,
-)
+@tool_permission(ToolPermission.WRITE, ToolPermission.CONNECT)
+def send_payment_notification(email: str, amount: float) -> bool:
+    """Send payment notification to external email."""
+    return True
 
-pd = PrivateData()
-if pd.has_private_data:
-    # Strip tools that would send data outside the organization
-    tools = filter_tools_by_permission(tools, granted={ToolPermission.READ, ToolPermission.WRITE})
+# If the session has private data, calling this tool raises ToolPermissionError
 ```
 
-This is a hard enforcement. The agent cannot circumvent it by rephrasing its request or by being instructed by the user to "ignore security rules." The tools simply do not exist in the agent's tool set once the session is private. From the agent's perspective, it is as if the external API connector was never configured.
+This is a hard enforcement. The agent cannot circumvent it by rephrasing its request or by being instructed by the user to "ignore security rules."
 
 Connectivity control operates at a lower level, typically in the execution sandbox or container that hosts the agent's code execution environment. When the session is private, the sandbox can be switched to a network configuration that blocks all outbound connections, or routes them through a proxy that only allows whitelisted destinations (internal company servers, trusted services with zero-data-retention agreements). This is discussed further in the chapter on execution infrastructure.
 

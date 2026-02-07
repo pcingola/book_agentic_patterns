@@ -1,10 +1,11 @@
 """Private data management for agent sessions.
 
 Tracks whether a session's workspace contains private/confidential data.
-The state is persisted as a JSON file (`.private_data`) inside the session's
-workspace directory. When the flag is set, downstream guardrails can block
-tools that would leak data outside trusted boundaries (external APIs, MCP
-servers with outbound connectivity, etc.).
+The state is persisted as a JSON file (`.private_data`) inside a separate
+directory (PRIVATE_DATA_DIR) outside the agent's workspace, so the agent
+cannot tamper with the compliance flag. When the flag is set, downstream
+guardrails can block tools that would leak data outside trusted boundaries
+(external APIs, MCP servers with outbound connectivity, etc.).
 
 All modifications save to disk immediately.
 """
@@ -14,7 +15,7 @@ import logging
 from enum import Enum
 from pathlib import Path
 
-from agentic_patterns.core.config.config import WORKSPACE_DIR
+from agentic_patterns.core.config.config import PRIVATE_DATA_DIR
 from agentic_patterns.core.user_session import get_session_id, get_user_id
 
 logger = logging.getLogger(__name__)
@@ -33,9 +34,9 @@ class DataSensitivity(str, Enum):
 class PrivateData:
     """Manages the private-data flag and dataset registry for a session.
 
-    The information is stored in a JSON file named `.private_data` within the
-    session's workspace directory. If the file does not exist, there is no
-    private data.
+    The information is stored in a JSON file named `.private_data` within a
+    dedicated directory outside the agent's workspace. If the file does not
+    exist, there is no private data.
 
     All mutations persist immediately.
     """
@@ -47,8 +48,6 @@ class PrivateData:
         self._private_datasets: list[str] = []
         self._sensitivity: str = DataSensitivity.CONFIDENTIAL.value
         self.load()
-
-    # -- dataset management ---------------------------------------------------
 
     def add_private_dataset(self, dataset_name: str, sensitivity: DataSensitivity = DataSensitivity.CONFIDENTIAL) -> None:
         """Register a dataset as private. Idempotent."""
@@ -64,8 +63,6 @@ class PrivateData:
 
     def has_private_dataset(self, dataset_name: str) -> bool:
         return dataset_name in self._private_datasets
-
-    # -- flag management ------------------------------------------------------
 
     @property
     def has_private_data(self) -> bool:
@@ -83,10 +80,8 @@ class PrivateData:
     def sensitivity(self) -> DataSensitivity:
         return DataSensitivity(self._sensitivity)
 
-    # -- persistence ----------------------------------------------------------
-
     def _get_path(self) -> Path:
-        return WORKSPACE_DIR / self._user_id / self._session_id / PRIVATE_DATA_FILENAME
+        return PRIVATE_DATA_DIR / self._user_id / self._session_id / PRIVATE_DATA_FILENAME
 
     def load(self) -> None:
         path = self._get_path()
@@ -113,23 +108,11 @@ class PrivateData:
         }
         path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
-    # -- convenience ----------------------------------------------------------
-
     def __repr__(self) -> str:
         return f"PrivateData(has_private_data={self._has_private_data}, sensitivity={self._sensitivity}, datasets={self._private_datasets})"
 
     def __str__(self) -> str:
         return self.__repr__()
-
-
-# -- module-level helpers -----------------------------------------------------
-
-def resolve_permissions(base: set["ToolPermission"]) -> set["ToolPermission"]:
-    """Return effective permissions, removing CONNECT if the session has private data."""
-    from agentic_patterns.core.tools.permissions import ToolPermission
-    if session_has_private_data():
-        return base - {ToolPermission.CONNECT}
-    return set(base)
 
 
 def mark_session_private(user_id: str | None = None, session_id: str | None = None) -> PrivateData:
@@ -145,8 +128,6 @@ def session_has_private_data(user_id: str | None = None, session_id: str | None 
     """Check whether the current session contains private data."""
     return PrivateData(user_id, session_id).has_private_data
 
-
-# -- internal -----------------------------------------------------------------
 
 _SENSITIVITY_ORDER = [s.value for s in DataSensitivity]
 
