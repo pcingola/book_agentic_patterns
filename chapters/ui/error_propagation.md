@@ -108,6 +108,10 @@ The design choice is to return formatted strings rather than raising exceptions.
 
 When should this boundary raise `ModelRetry` or `RuntimeError` instead of returning a string? If a sub-agent failure is potentially recoverable (wrong parameters, ambiguous request the coordinator could reformulate), `ModelRetry` lets the LLM try a different approach. If the failure is permanent (service down, authentication failure), a `RuntimeError` ends the run cleanly rather than wasting tokens on retries. The current implementation favors returning strings for all outcomes, giving the coordinator maximum flexibility, but a stricter variant could raise exceptions for clearly permanent failures.
 
+This reveals the same kind of inconsistency noted in the MCP section, now at the agent level. When a coordinator calls a sub-agent in-process (via `await sub_agent.run(prompt)` inside a tool function), an unhandled exception in the sub-agent propagates directly into the coordinator's tool, crashes through the tool manager, and ends the coordinator run. When the same agent runs behind A2A, the same exception is caught by FastA2A, the task transitions to `failed`, and `create_a2a_tool()` returns `[FAILED] ...` as an ordinary string -- giving the coordinator model a chance to reason about the failure, try a different approach, or report it gracefully.
+
+Same sub-agent, same error, different outcome depending on whether there is a protocol boundary between them. The A2A path is more resilient because the protocol forces every outcome through a state machine that the coordinator can inspect. The in-process path preserves Python's exception semantics, which are faster and simpler but offer the coordinator no opportunity to recover. If you need the coordinator to handle sub-agent failures gracefully in the in-process case, you must wrap the `sub_agent.run()` call in a try/except yourself and translate exceptions into return values the model can act on -- essentially reimplementing what the A2A boundary does automatically.
+
 
 ### Cancellation
 
