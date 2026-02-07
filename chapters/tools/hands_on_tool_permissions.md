@@ -96,6 +96,23 @@ The agent receives this error as a tool result and must handle it. Typically, th
 
 Runtime enforcement is useful when you want agents to be aware of their limitations. It also enables patterns where an agent might request elevated permissions from a human supervisor before proceeding with a restricted operation.
 
+## Dynamic Permission Resolution
+
+Static permission sets work when the agent's authority is known at construction time and does not change. But some guardrails depend on session state that evolves mid-conversation. The most common example is private data: an agent starts with full permissions, a connector loads confidential records, and from that point on CONNECT tools must be blocked to prevent data leakage. A static set cannot express this because the set was frozen before the sensitive data arrived.
+
+The solution is to pass a callable instead of a set to `enforce_tools_permissions`. The callable is invoked on every tool call, so it always returns the current permissions:
+
+```python
+from agentic_patterns.core.compliance.private_data import resolve_permissions
+
+base = {ToolPermission.READ, ToolPermission.WRITE, ToolPermission.CONNECT}
+enforced_tools = enforce_tools_permissions(ALL_TOOLS, granted=lambda: resolve_permissions(base))
+```
+
+`resolve_permissions` reads the current session's private data state and removes CONNECT from the base set if private data is present. Before any sensitive data enters the workspace, the callable returns the full set and CONNECT tools work normally. The moment a connector tags the session as private, the next tool invocation evaluates the callable again, finds that CONNECT has been removed, and raises `ToolPermissionError`.
+
+This approach keeps the enforcement layer unchanged: the wrapper still compares required permissions against granted permissions. The only difference is that "granted" is no longer a fixed snapshot but a live query against session state. The callable pattern is general -- any session-dependent policy can be expressed as a function that returns the appropriate permission set.
+
 ## Choosing an Approach
 
 Construction-time filtering is simpler and more secure. The agent cannot attempt unauthorized actions because it does not know about them. This is appropriate when you want a clear, hard boundary and when explaining permission limitations is not important.

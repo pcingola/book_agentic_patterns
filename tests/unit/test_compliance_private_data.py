@@ -9,8 +9,10 @@ from agentic_patterns.core.compliance.private_data import (
     PRIVATE_DATA_FILENAME,
     PrivateData,
     mark_session_private,
+    resolve_permissions,
     session_has_private_data,
 )
+from agentic_patterns.core.tools.permissions import ToolPermission
 from agentic_patterns.core.user_session import set_user_session
 
 
@@ -142,6 +144,25 @@ class TestPrivateData(unittest.TestCase):
     def test_session_has_private_data_true_after_marking(self):
         mark_session_private()
         self.assertTrue(session_has_private_data())
+
+    # -- resolve_permissions --------------------------------------------------
+
+    def test_resolve_permissions_keeps_connect_when_no_private_data(self):
+        base = {ToolPermission.READ, ToolPermission.WRITE, ToolPermission.CONNECT}
+        result = resolve_permissions(base)
+        self.assertEqual(result, {ToolPermission.READ, ToolPermission.WRITE, ToolPermission.CONNECT})
+
+    def test_resolve_permissions_removes_connect_when_private_data(self):
+        mark_session_private()
+        base = {ToolPermission.READ, ToolPermission.WRITE, ToolPermission.CONNECT}
+        result = resolve_permissions(base)
+        self.assertEqual(result, {ToolPermission.READ, ToolPermission.WRITE})
+
+    def test_resolve_permissions_does_not_mutate_input(self):
+        mark_session_private()
+        base = {ToolPermission.READ, ToolPermission.CONNECT}
+        resolve_permissions(base)
+        self.assertIn(ToolPermission.CONNECT, base)
 
 
 if __name__ == "__main__":

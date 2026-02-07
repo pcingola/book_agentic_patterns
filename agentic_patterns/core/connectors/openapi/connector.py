@@ -5,7 +5,9 @@ import json
 from datetime import datetime
 from pathlib import PurePosixPath
 
+from agentic_patterns.core.compliance.private_data import DataSensitivity, PrivateData
 from agentic_patterns.core.connectors.base import Connector
+from agentic_patterns.core.connectors.openapi.api_connection_config import ApiConnectionConfigs
 from agentic_patterns.core.connectors.openapi.api_infos import ApiInfos
 from agentic_patterns.core.context.decorators import context_result
 from agentic_patterns.core.workspace import workspace_to_host_path, write_to_workspace
@@ -71,6 +73,12 @@ class OpenApiConnector(Connector):
                 headers=headers if headers else None,
                 json=body,
             )
+
+            # Tag session when reading from sensitive sources
+            api_config = ApiConnectionConfigs.get().get_config(api_id)
+            if api_config.sensitivity != DataSensitivity.PUBLIC:
+                pd = PrivateData()
+                pd.add_private_dataset(f"api:{api_id}", api_config.sensitivity)
 
             # Format response
             status_code = response["status_code"]

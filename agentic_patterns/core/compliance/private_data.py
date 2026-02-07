@@ -124,6 +124,14 @@ class PrivateData:
 
 # -- module-level helpers -----------------------------------------------------
 
+def resolve_permissions(base: set["ToolPermission"]) -> set["ToolPermission"]:
+    """Return effective permissions, removing CONNECT if the session has private data."""
+    from agentic_patterns.core.tools.permissions import ToolPermission
+    if session_has_private_data():
+        return base - {ToolPermission.CONNECT}
+    return set(base)
+
+
 def mark_session_private(user_id: str | None = None, session_id: str | None = None) -> PrivateData:
     """Mark the current session's workspace as containing private data. Idempotent."""
     pd = PrivateData(user_id, session_id)

@@ -7,6 +7,8 @@ from pathlib import Path
 import yaml
 from pydantic import BaseModel
 
+from agentic_patterns.core.compliance.private_data import DataSensitivity
+
 
 class ApiConnectionConfig(BaseModel):
     """Configuration for a single API connection."""
@@ -14,6 +16,7 @@ class ApiConnectionConfig(BaseModel):
     api_id: str
     spec_source: str  # URL or file path
     base_url: str
+    sensitivity: DataSensitivity = DataSensitivity.PUBLIC
 
     def __str__(self) -> str:
         return f"ApiConnectionConfig(api_id={self.api_id!r}, spec_source={self.spec_source!r}, base_url={self.base_url!r})"
@@ -67,10 +70,12 @@ class ApiConnectionConfigs:
             if not spec_source.startswith(("http://", "https://")) and not Path(spec_source).is_absolute():
                 spec_source = str(yaml_path.parent / spec_source)
 
+            sensitivity = DataSensitivity(api_data["sensitivity"]) if "sensitivity" in api_data else DataSensitivity.PUBLIC
             self._configs[api_id] = ApiConnectionConfig(
                 api_id=api_id,
                 spec_source=spec_source,
                 base_url=base_url,
+                sensitivity=sensitivity,
             )
 
     def _expand_env_vars(self, value: str) -> str:

@@ -1,6 +1,10 @@
 import { HttpAgent, randomUUID } from '@ag-ui/client'
 import type { Message, State } from '@ag-ui/core'
 import { useEffect, useRef, useState } from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
+import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
 
 function getTextContent(msg: Message): string {
   if (typeof msg.content === 'string') return msg.content
@@ -56,6 +60,42 @@ export function ChatPanel({ agent, onStateChange }: ChatPanelProps) {
     }
   }
 
+  function renderAssistantContent(msg: Message) {
+    const text = getTextContent(msg)
+    const hasToolCalls = 'toolCalls' in msg && msg.toolCalls?.length
+
+    return (
+      <>
+        {text && (
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={{
+              code({ className, children, ...props }) {
+                const match = /language-(\w+)/.exec(className || '')
+                const codeString = String(children).replace(/\n$/, '')
+                if (match) {
+                  return (
+                    <SyntaxHighlighter style={oneDark} language={match[1]} PreTag="div">
+                      {codeString}
+                    </SyntaxHighlighter>
+                  )
+                }
+                return <code className={className} {...props}>{children}</code>
+              },
+            }}
+          >
+            {text}
+          </ReactMarkdown>
+        )}
+        {hasToolCalls && msg.toolCalls!.map((tc) => (
+          <div key={tc.id} className="tool-call">
+            <span className="tool-name">{tc.function.name}</span>({tc.function.arguments})
+          </div>
+        ))}
+      </>
+    )
+  }
+
   return (
     <div className="chat-panel">
       <div className="message-list">
@@ -66,16 +106,7 @@ export function ChatPanel({ agent, onStateChange }: ChatPanelProps) {
           <div key={msg.id} className={`message message-${msg.role}`}>
             <div className="message-role">{msg.role}</div>
             <div className="message-content">
-              {msg.role === 'assistant' && 'toolCalls' in msg && msg.toolCalls?.length
-                ? <>
-                    {getTextContent(msg) && <div>{getTextContent(msg)}</div>}
-                    {msg.toolCalls.map((tc) => (
-                      <div key={tc.id} className="tool-call">
-                        <span className="tool-name">{tc.function.name}</span>({tc.function.arguments})
-                      </div>
-                    ))}
-                  </>
-                : getTextContent(msg)}
+              {msg.role === 'assistant' ? renderAssistantContent(msg) : getTextContent(msg)}
             </div>
           </div>
         ))}

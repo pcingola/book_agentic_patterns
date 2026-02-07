@@ -8,6 +8,8 @@
 
 [Private Data](./private_data.md)
 
+[Hands-On: Private Data Guardrails](./hands_on_private_data.md)
+
 [Hands-On: Introduction](./hands_on_intro.md)
 
 [Hands-On: File Connector](./hands_on_file_connector.md)

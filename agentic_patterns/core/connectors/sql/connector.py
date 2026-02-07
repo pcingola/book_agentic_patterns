@@ -7,8 +7,10 @@ from pathlib import PurePosixPath
 
 import pandas as pd
 
+from agentic_patterns.core.compliance.private_data import DataSensitivity, PrivateData
 from agentic_patterns.core.connectors.base import Connector
 from agentic_patterns.core.connectors.sql.config import PREVIEW_COLUMNS, PREVIEW_ROWS
+from agentic_patterns.core.connectors.sql.db_connection_config import DbConnectionConfigs
 from agentic_patterns.core.connectors.sql.db_infos import DbInfos
 from agentic_patterns.core.connectors.sql.query_result import QUERY_RESULT_METADATA_EXT, QueryResultMetadata
 from agentic_patterns.core.connectors.sql.query_validation import validate_query
@@ -26,6 +28,12 @@ class SqlConnector(Connector):
         db_infos = DbInfos.get()
         db_ops = db_infos.get_operations(db_id)
         df = await db_ops.execute_select_query(query)
+
+        # Tag session when reading from sensitive sources
+        db_config = DbConnectionConfigs.get().get_config(db_id)
+        if db_config.sensitivity != DataSensitivity.PUBLIC:
+            pd = PrivateData()
+            pd.add_private_dataset(f"sql:{db_id}", db_config.sensitivity)
 
         if len(df) == 1 and len(df.columns) == 1:
             return f"Result: {df.iloc[0, 0]}"

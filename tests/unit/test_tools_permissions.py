@@ -8,6 +8,7 @@ from agentic_patterns.core.tools import (
     filter_tools_by_permission,
     enforce_tools_permissions,
 )
+from agentic_patterns.core.tools.permissions import enforce_tool_permission
 
 
 def plain_func():
@@ -75,6 +76,46 @@ class TestToolsPermissions(unittest.TestCase):
         with self.assertRaises(ToolPermissionError) as ctx:
             wrapped[0]()
         self.assertIn("write_func", str(ctx.exception))
+
+    def test_enforce_tool_permission_callable_allowed(self):
+        """Test that a callable returning sufficient permissions allows execution."""
+        provider = lambda: {ToolPermission.READ, ToolPermission.CONNECT}
+        wrapped = enforce_tool_permission(read_connect_func, provider)
+        self.assertEqual(wrapped(), "read_connect")
+
+    def test_enforce_tool_permission_callable_denied(self):
+        """Test that a callable returning insufficient permissions raises error."""
+        provider = lambda: {ToolPermission.READ}
+        wrapped = enforce_tool_permission(read_connect_func, provider)
+        with self.assertRaises(ToolPermissionError):
+            wrapped()
+
+    def test_enforce_tool_permission_callable_invoked_each_call(self):
+        """Test that the callable is evaluated on every invocation, not just once."""
+        call_count = 0
+
+        def provider():
+            nonlocal call_count
+            call_count += 1
+            return {ToolPermission.READ}
+
+        wrapped = enforce_tool_permission(read_func, provider)
+        wrapped()
+        wrapped()
+        self.assertEqual(call_count, 2)
+
+    def test_enforce_tool_permission_dynamic_change(self):
+        """Test that permission changes mid-conversation are respected."""
+        permissions = {ToolPermission.READ, ToolPermission.CONNECT}
+        wrapped = enforce_tool_permission(read_connect_func, lambda: permissions)
+
+        # First call succeeds
+        self.assertEqual(wrapped(), "read_connect")
+
+        # Remove CONNECT mid-conversation
+        permissions.discard(ToolPermission.CONNECT)
+        with self.assertRaises(ToolPermissionError):
+            wrapped()
 
 
 if __name__ == "__main__":

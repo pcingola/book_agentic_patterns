@@ -35,14 +35,19 @@ def filter_tools_by_permission(tools: list[Callable], granted: set[ToolPermissio
     return [t for t in tools if get_permissions(t).issubset(granted)]
 
 
-def enforce_tool_permission(func: Callable, granted: set[ToolPermission]) -> Callable:
-    """Wrap a tool with runtime permission checking. Permissions are baked into the wrapper."""
+def enforce_tool_permission(func: Callable, granted: set[ToolPermission] | Callable[[], set[ToolPermission]]) -> Callable:
+    """Wrap a tool with runtime permission checking.
+
+    granted can be a static set or a callable that returns the current set,
+    enabling dynamic resolution (e.g. revoking CONNECT mid-conversation).
+    """
     required = get_permissions(func)
 
     @wraps(func)
     def wrapper(*args, **kwargs):
-        if not required.issubset(granted):
-            missing = required - granted
+        effective = granted() if callable(granted) else granted
+        if not required.issubset(effective):
+            missing = required - effective
             raise ToolPermissionError(f"Tool '{func.__name__}' requires {missing}")
         return func(*args, **kwargs)
 
@@ -50,6 +55,6 @@ def enforce_tool_permission(func: Callable, granted: set[ToolPermission]) -> Cal
     return wrapper
 
 
-def enforce_tools_permissions(tools: list[Callable], granted: set[ToolPermission]) -> list[Callable]:
+def enforce_tools_permissions(tools: list[Callable], granted: set[ToolPermission] | Callable[[], set[ToolPermission]]) -> list[Callable]:
     """Wrap all tools with runtime permission checking."""
     return [enforce_tool_permission(t, granted) for t in tools]

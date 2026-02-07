@@ -5,6 +5,7 @@ from pathlib import Path
 import yaml
 from pydantic import BaseModel, ConfigDict
 
+from agentic_patterns.core.compliance.private_data import DataSensitivity
 from agentic_patterns.core.connectors.sql.database_type import DatabaseType
 
 
@@ -21,6 +22,7 @@ class DbConnectionConfig(BaseModel):
     user: str = ""
     password: str = ""
     db_schema: str = "main"
+    sensitivity: DataSensitivity = DataSensitivity.PUBLIC
 
     def __str__(self) -> str:
         return f"DbConnectionConfig(db_id={self.db_id!r}, type={self.type.value}, dbname={self.dbname!r})"
@@ -63,6 +65,7 @@ class DbConnectionConfigs:
             dbname = db_data.get("dbname", "")
             if db_type == DatabaseType.SQLITE and dbname and not Path(dbname).is_absolute():
                 dbname = str(yaml_path.parent / dbname)
+            sensitivity = DataSensitivity(db_data["sensitivity"]) if "sensitivity" in db_data else DataSensitivity.PUBLIC
             self._configs[db_id] = DbConnectionConfig(
                 db_id=db_id,
                 type=db_type,
@@ -72,6 +75,7 @@ class DbConnectionConfigs:
                 user=db_data.get("user", ""),
                 password=db_data.get("password", ""),
                 db_schema=db_data.get("schema", "main"),
+                sensitivity=sensitivity,
             )
 
     def __len__(self) -> int:
