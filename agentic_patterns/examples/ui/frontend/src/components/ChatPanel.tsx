@@ -16,13 +16,17 @@ function getTextContent(msg: Message): string {
 
 interface ChatPanelProps {
   agent: HttpAgent
+  backendUrl: string
   onStateChange: (state: State) => void
 }
 
-export function ChatPanel({ agent, onStateChange }: ChatPanelProps) {
+export function ChatPanel({ agent, backendUrl, onStateChange }: ChatPanelProps) {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [isRunning, setIsRunning] = useState(false)
+  const [pendingFiles, setPendingFiles] = useState<File[]>([])
+  const [feedbackGiven, setFeedbackGiven] = useState<Record<string, string>>({})
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -34,13 +38,61 @@ export function ChatPanel({ agent, onStateChange }: ChatPanelProps) {
     setMessages([])
   }, [agent])
 
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    if (e.target.files) {
+      setPendingFiles((prev) => [...prev, ...Array.from(e.target.files!)])
+    }
+    e.target.value = ''
+  }
+
+  function removeFile(index: number) {
+    setPendingFiles((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  async function submitFeedback(messageId: string, feedbackType: string) {
+    setFeedbackGiven((prev) => ({ ...prev, [messageId]: feedbackType }))
+    try {
+      await fetch(`${backendUrl}/feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ feedback_type: feedbackType }),
+      })
+    } catch (err) {
+      console.error('Feedback submission failed:', err)
+    }
+  }
+
+  async function uploadFiles(files: File[]): Promise<string> {
+    const parts: string[] = []
+    for (const file of files) {
+      const formData = new FormData()
+      formData.append('file', file)
+      const res = await fetch(`${backendUrl}/upload`, { method: 'POST', body: formData })
+      if (res.ok) {
+        const data = await res.json()
+        parts.push(`[Uploaded file: ${data.workspace_path}]\n${data.summary}`)
+      } else {
+        parts.push(`[Upload failed: ${file.name}]`)
+      }
+    }
+    return parts.join('\n\n')
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     const text = input.trim()
-    if (!text || isRunning) return
+    if ((!text && pendingFiles.length === 0) || isRunning) return
 
     setIsRunning(true)
-    agent.addMessage({ id: randomUUID(), role: 'user', content: text })
+
+    let messageText = text
+    if (pendingFiles.length > 0) {
+      const fileContext = await uploadFiles(pendingFiles)
+      messageText = fileContext + (text ? `\n\n${text}` : '')
+      setPendingFiles([])
+    }
+
+    agent.addMessage({ id: randomUUID(), role: 'user', content: messageText })
     setMessages([...agent.messages])
     setInput('')
 
@@ -108,11 +160,41 @@ export function ChatPanel({ agent, onStateChange }: ChatPanelProps) {
             <div className="message-content">
               {msg.role === 'assistant' ? renderAssistantContent(msg) : getTextContent(msg)}
             </div>
+            {msg.role === 'assistant' && (
+              <div className="feedback-buttons">
+                <button
+                  className={`feedback-btn${feedbackGiven[msg.id] === 'thumbs_up' ? ' active' : ''}`}
+                  onClick={() => submitFeedback(msg.id, 'thumbs_up')}
+                  disabled={!!feedbackGiven[msg.id]}
+                  title="Thumbs up"
+                >+1</button>
+                <button
+                  className={`feedback-btn${feedbackGiven[msg.id] === 'thumbs_down' ? ' active' : ''}`}
+                  onClick={() => submitFeedback(msg.id, 'thumbs_down')}
+                  disabled={!!feedbackGiven[msg.id]}
+                  title="Thumbs down"
+                >-1</button>
+              </div>
+            )}
           </div>
         ))}
         <div ref={messagesEndRef} />
       </div>
+      {pendingFiles.length > 0 && (
+        <div className="file-tags">
+          {pendingFiles.map((file, i) => (
+            <span key={i} className="file-tag">
+              {file.name}
+              <button type="button" onClick={() => removeFile(i)}>x</button>
+            </span>
+          ))}
+        </div>
+      )}
       <form className="input-bar" onSubmit={handleSubmit}>
+        <input type="file" ref={fileInputRef} onChange={handleFileSelect} multiple hidden />
+        <button type="button" className="attach-btn" onClick={() => fileInputRef.current?.click()} disabled={isRunning} title="Attach file">
+          +
+        </button>
         <input
           type="text"
           value={input}
@@ -120,7 +202,7 @@ export function ChatPanel({ agent, onStateChange }: ChatPanelProps) {
           placeholder="Type a message..."
           disabled={isRunning}
         />
-        <button type="submit" disabled={isRunning || !input.trim()}>
+        <button type="submit" disabled={isRunning || (!input.trim() && pendingFiles.length === 0)}>
           Send
         </button>
       </form>

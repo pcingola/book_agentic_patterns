@@ -228,12 +228,12 @@ These are all about how agents manage information over time.
 
 - [x] Chainlit
 - [x] AGUI
-- [x] Session ID -> MCP / A2A tracking
-- [ ] File uploads: Workspace and sampling the file (context management)
+- [x] Session propagation: MCP / A2A tracking
+- [x] File uploads: Workspace and sampling the file (context management)
 - [x] Cancellation and error propagation: Tool, MCP, A2A, Agent, UI
   - [x] MCP error handling and retry different than tool error handling
   - [x] Retries in tools vs MCP (PydanticAI vs FastMCP)
-- [ ] User feedback: Session thumb up/down, report errors, etc.
+- [x] User feedback: Session thumb up/down, report errors, etc.
 
 ### Section: Production, Scaling & Enterprise
 

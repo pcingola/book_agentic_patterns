@@ -1,6 +1,4 @@
-# UI
-
-## AGUI
+## AG-UI
 
 AG-UI is an event-stream protocol that standardizes how an agent backend and a user-facing application stay in sync during an interactive run. ([AG-UI][1])
 
@@ -119,16 +117,6 @@ app = AGUIApp(agent)  # expose the agent via AG-UI
 
 Once you have this boundary, you can iterate on the UI independently: a chat UI, a copilot sidebar, a document editor with inline suggestions, or a workflow dashboard can all be clients of the same agent backend, as long as they interpret the same event stream semantics. ([AG-UI][1])
 
-## References (references.md)
-
-1. AG-UI Protocol Contributors. *AG-UI Overview (Introduction)*. AG-UI Documentation, 2025. [https://docs.ag-ui.com/introduction](https://docs.ag-ui.com/introduction) ([AG-UI][1])
-2. AG-UI Protocol Contributors. *MCP, A2A, and AG-UI*. AG-UI Documentation, 2025. [https://docs.ag-ui.com/agentic-protocols](https://docs.ag-ui.com/agentic-protocols) ([AG-UI][7])
-3. AG-UI Protocol Contributors. *Build applications*. AG-UI Documentation, 2025. [https://docs.ag-ui.com/quickstart/applications](https://docs.ag-ui.com/quickstart/applications) ([AG-UI][9])
-4. AG-UI Protocol Contributors. *Events*. AG-UI Documentation, 2025. [https://docs.ag-ui.com/concepts/events](https://docs.ag-ui.com/concepts/events) ([AG-UI][3])
-5. Pydantic Services Inc. *Agent-User Interaction (AG-UI) Protocol*. Pydantic AI Documentation, 2025. [https://ai.pydantic.dev/ui/ag-ui/](https://ai.pydantic.dev/ui/ag-ui/) ([Pydantic AI][4])
-6. Pydantic Services Inc. *UI Event Streams*. Pydantic AI Documentation, 2025. [https://ai.pydantic.dev/ui/overview/](https://ai.pydantic.dev/ui/overview/) ([Pydantic AI][10])
-7. Chainlit Contributors. *Overview*. Chainlit Documentation, 2024. [https://docs.chainlit.io/get-started/overview](https://docs.chainlit.io/get-started/overview) ([Chainlit][2])
-
 [1]: https://docs.ag-ui.com/ "AG-UI Overview - Agent User Interaction Protocol"
 [2]: https://docs.chainlit.io/get-started/overview?utm_source=chatgpt.com "Chainlit: Overview"
 [3]: https://docs.ag-ui.com/concepts/events "Events - Agent User Interaction Protocol"
@@ -137,5 +125,3 @@ Once you have this boundary, you can iterate on the UI independently: a chat UI,
 [6]: https://ai.pydantic.dev/api/ag_ui/?utm_source=chatgpt.com "pydantic_ai.ag_ui"
 [7]: https://docs.ag-ui.com/agentic-protocols?utm_source=chatgpt.com "MCP, A2A, and AG-UI - Agent User Interaction Protocol"
 [8]: https://ai.pydantic.dev/api/ui/ag_ui/?utm_source=chatgpt.com "pydantic_ai.ui.ag_ui"
-[9]: https://docs.ag-ui.com/quickstart/applications "Build applications - Agent User Interaction Protocol"
-[10]: https://ai.pydantic.dev/ui/overview/ "Overview - Pydantic AI"

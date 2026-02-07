@@ -7,7 +7,7 @@ import chainlit as cl
 
 @cl.on_message
 async def on_message(message: cl.Message):
-    # Get user mesaage
+    # Get user message
     user_message = message.content
     # Repeat message
     msg = cl.Message(content=f"Echo:\n{user_message}")

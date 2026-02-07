@@ -16,6 +16,7 @@ from pathlib import Path
 import chainlit as cl
 
 from agentic_patterns.core.agents import get_agent, run_agent
+from agentic_patterns.core.compliance.private_data import DataSensitivity, PrivateData
 from agentic_patterns.core.context import read_file_as_string
 from agentic_patterns.core.ui.chainlit.handlers import HISTORY, register_all, setup_user_session
 from agentic_patterns.core.workspace import write_to_workspace_async
@@ -45,6 +46,10 @@ async def process_uploaded_files(files: list) -> str:
         # Read file content and save to workspace
         file_content = Path(file.path).read_bytes()
         await write_to_workspace_async(workspace_path, file_content)
+
+        # Tag as private data
+        pd = PrivateData()
+        pd.add_private_dataset(f"upload:{filename}", DataSensitivity.CONFIDENTIAL)
 
         # Get summarized content using context reader
         summary = read_file_as_string(file.path)

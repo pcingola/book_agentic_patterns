@@ -37,7 +37,7 @@ export default function App() {
         />
       </header>
       <main>
-        <ChatPanel agent={agent} onStateChange={(s: State) => setAgentState(s as Record<string, unknown>)} />
+        <ChatPanel agent={agent} backendUrl={backendUrl} onStateChange={(s: State) => setAgentState(s as Record<string, unknown>)} />
         <StatePanel state={agentState} />
       </main>
     </div>
@@ -58,10 +58,11 @@ import { useEffect, useRef, useState } from 'react'
 
 interface ChatPanelProps {
   agent: HttpAgent
+  backendUrl: string
   onStateChange: (state: State) => void
 }
 
-export function ChatPanel({ agent, onStateChange }: ChatPanelProps) {
+export function ChatPanel({ agent, backendUrl, onStateChange }: ChatPanelProps) {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [isRunning, setIsRunning] = useState(false)

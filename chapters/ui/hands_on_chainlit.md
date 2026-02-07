@@ -2,7 +2,7 @@
 
 This hands-on demonstrates how to wrap a PydanticAI agent in a Chainlit web interface. The examples progress from a minimal echo application to a full agent with authentication, conversation persistence, and tool visualization. The code is in `example_chainlit_app_v1.py`, `example_chainlit_app_v2.py`, and `example_chainlit_app_v3.py`.
 
-## Running Chainlit Applications
+### Running Chainlit Applications
 
 Chainlit applications are Python files run with the `chainlit` command:
 
@@ -12,7 +12,7 @@ chainlit run example_chainlit_app_v1.py
 
 This starts a local web server and opens the chat interface in your browser. The application reloads automatically when you save changes to the file.
 
-## Echo Application
+### Echo Application
 
 The first example (`example_chainlit_app_v1.py`) shows the minimal Chainlit structure:
 
@@ -30,7 +30,7 @@ The `@cl.on_message` decorator registers a handler that Chainlit calls whenever 
 
 This pattern separates the UI framework from the application logic. Chainlit handles the websocket communication, message rendering, and session management. The developer provides handlers that process messages and produce responses.
 
-## Adding an Agent
+### Adding an Agent
 
 The second example (`example_chainlit_app_v2.py`) integrates a PydanticAI agent:
 
@@ -43,8 +43,8 @@ agent = get_agent()
 @cl.on_message
 async def on_message(message: cl.Message):
     user_message = message.content
-    ret = await run_agent(agent, user_message)
-    output = ret[0]
+    ret, nodes = await run_agent(agent, user_message)
+    output = ret.result.output
     msg = cl.Message(content=output if output else "No response from the agent.")
     await msg.send()
 ```
@@ -53,11 +53,11 @@ The agent is created at module level and reused across all requests. Each messag
 
 Creating the agent at module level works for stateless agents. The agent itself doesn't store conversation history; it processes each input fresh. This is sufficient for single-turn interactions like answering questions or performing one-shot tasks.
 
-## Full Application with Authentication and Persistence
+### Full Application with Authentication and Persistence
 
 The third example (`example_chainlit_app_v3.py`) adds authentication, conversation persistence, chat resume, and starters. These features require setup before running.
 
-### Setup: User Database
+#### Setup: User Database
 
 Create users with the CLI:
 
@@ -69,7 +69,7 @@ manage-users list
 
 The `manage-users` command manages a JSON-based user database at `users.json`. Each user has a username, hashed password, and role.
 
-### Setup: JWT Secret
+#### Setup: JWT Secret
 
 Chainlit requires a JWT secret for authentication sessions:
 
@@ -83,7 +83,7 @@ Add the output to your `.env` file:
 CHAINLIT_AUTH_SECRET=your_generated_secret_here
 ```
 
-### Setup: Chainlit Config
+#### Setup: Chainlit Config
 
 Enable authentication in `.chainlit/config.toml`:
 
@@ -92,7 +92,7 @@ Enable authentication in `.chainlit/config.toml`:
 enable_auth = true
 ```
 
-### Registering Handlers
+#### Registering Handlers
 
 The application registers authentication, data layer, and chat resume handlers at startup:
 
@@ -104,7 +104,7 @@ register_all()
 
 This single call sets up three Chainlit callbacks. The `@cl.password_auth_callback` authenticates users against the JSON database. The `@cl.data_layer` configures SQLite storage for chat threads. The `@cl.on_chat_resume` restores conversation history when users return to previous chats.
 
-### User and Session Tracking
+#### User and Session Tracking
 
 The application tracks the authenticated user and session for downstream code:
 
@@ -119,7 +119,7 @@ async def on_chat_start():
 
 The `setup_user_session()` function extracts the user identifier and thread ID from Chainlit's context and stores them in context variables. This allows workspace operations, logging, and other downstream code to access user/session information without passing it explicitly through every function call.
 
-### Starters
+#### Starters
 
 Starters provide quick-start message suggestions shown to users on new chats:
 
@@ -135,7 +135,7 @@ async def set_starters(user: str | None, language: str | None) -> list[cl.Starte
 
 Chainlit displays these as clickable buttons in the chat interface. Clicking a starter sends its message as if the user had typed it. The function receives the authenticated user and browser language, allowing dynamic starters based on user preferences or roles.
 
-### Chat Resume
+#### Chat Resume
 
 When a user returns to a previous chat thread, the `@cl.on_chat_resume` handler (registered by `register_all()`) restores the conversation history:
 
@@ -153,7 +153,7 @@ async def on_chat_resume(thread):
 
 The data layer stores all chat threads in SQLite. When a user selects a previous thread from the sidebar, Chainlit calls this handler with the thread data. The handler reconstructs the history list from the stored steps so the agent has context from the previous conversation.
 
-## Session State and Conversation History
+### Session State and Conversation History
 
 The `@cl.on_chat_start` decorator registers a handler called once when a new chat session begins. This is where per-session initialization belongs: creating agents, loading user preferences, or establishing connections.
 
@@ -184,7 +184,7 @@ async def on_message(message: cl.Message):
 
 The history accumulates all messages exchanged in the session. Each turn appends the user message, runs the agent with the full history, appends the agent's response, and stores the updated history. This gives the agent context from previous turns, enabling multi-turn conversations where the agent can reference earlier exchanges.
 
-## Tool Visualization with Steps
+### Tool Visualization with Steps
 
 The third example also demonstrates Chainlit's step visualization for tool calls:
 
@@ -212,9 +212,9 @@ agent = get_agent(tools=[add, sub])
 
 When the agent decides to call `add` or `sub`, the Chainlit context is active (since the call originates from within the `@cl.on_message` handler), so the step visualization works automatically. The agent framework calls the tool, the decorator creates the step, and the result flows back to the model.
 
-## File Upload Support
+### File Upload Support
 
-The third example also handles file uploads. When users attach files to their messages, the application saves them to the workspace and includes a summarized version in the agent's context:
+The third example handles file uploads following the save-summarize-tag pattern described in the [File Uploads](./file_uploads.md) section. Chainlit provides uploaded files through `message.elements`, where each file object has a `name` (original filename) and a `path` (temporary location on disk). The handler saves each file to the workspace, tags the session as private, and generates a summarized representation for the agent's context:
 
 ```python
 async def process_uploaded_files(files: list) -> str:
@@ -229,15 +229,14 @@ async def process_uploaded_files(files: list) -> str:
         file_content = Path(file.path).read_bytes()
         await write_to_workspace_async(workspace_path, file_content)
 
+        pd = PrivateData()
+        pd.add_private_dataset(f"upload:{filename}", DataSensitivity.CONFIDENTIAL)
+
         summary = read_file_as_string(file.path)
         file_contexts.append(f"[File: {workspace_path}]\n{summary}")
 
     return "\n\n".join(file_contexts)
 ```
-
-Chainlit provides uploaded files through `message.elements`. Each file object has a `name` (original filename), a `path` (temporary location on disk), and content that can be read directly. The function performs two operations for each file: it saves the file to the workspace for later access, and it uses `read_file_as_string` from the context module to generate a summarized representation.
-
-The context reader detects file types and applies appropriate processing. Code files get syntax-aware truncation, CSVs show structure with sample rows, JSON is formatted with depth limits, and documents have text extracted. This prevents large files from overwhelming the agent's context window while still providing useful information.
 
 In the message handler, the file context is appended to the user's message:
 
@@ -247,9 +246,9 @@ if file_context:
     user_message = f"{user_message}\n\n{file_context}"
 ```
 
-The agent receives both the user's text and the file summaries in a single message. The workspace path is included so the agent knows where to find the full file if needed.
+The agent receives both the user's text and the file summaries in a single message. The workspace path is included so the agent can access the full file with tools when needed.
 
-## Key Takeaways
+### Key Takeaways
 
 Chainlit applications are defined by lifecycle handlers: `@cl.on_chat_start` for session initialization, `@cl.on_message` for processing user input, and `@cl.on_chat_resume` for restoring previous conversations.
 
@@ -265,4 +264,4 @@ Conversation history must be maintained explicitly. Append each user message and
 
 The `@cl.step` decorator makes tool calls visible in the UI. Apply it to tool functions and they appear as expandable steps during agent execution.
 
-File uploads are accessed via `message.elements`. Save files to the workspace for persistence and use the context reader to generate summaries that fit within context limits.
+File uploads are accessed via `message.elements`. Save files to the workspace, tag the session as private, and use the context reader to generate summaries that fit within context limits.

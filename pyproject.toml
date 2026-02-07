@@ -8,6 +8,7 @@ dependencies = [
     "aiosqlite>=0.21.0",
     "chainlit>=2.9.6",
     "chromadb>=1.4.1",
+    "docker>=7.0.0",
     "dotenv>=0.9.9",
     "fasta2a>=0.6.0",
     "fastapi>=0.128.0",

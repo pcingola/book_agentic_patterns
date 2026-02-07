@@ -194,19 +194,6 @@ The coordinator model reads the question, presents it to the user through the no
 When a task is legitimately waiting for human input, that waiting time must not be confused with a hung operation. The `input-required` state breaks the polling loop in `send_and_observe()` immediately (it is handled alongside terminal states in the `match` block), so the timeout counter does not accumulate during the period the user is thinking. The timeout only applies to the active polling phases when the task is in `working` state.
 
 
-### References
-
-1. Model Context Protocol Contributors. *Tools*. Model Context Protocol Specification, 2025. [https://modelcontextprotocol.io/specification/2025-11-25/server/tools](https://modelcontextprotocol.io/specification/2025-11-25/server/tools)
-2. FastMCP Contributors. *Exceptions*. FastMCP Documentation, 2025. [https://gofastmcp.com/python-sdk/fastmcp-exceptions](https://gofastmcp.com/python-sdk/fastmcp-exceptions)
-3. Pydantic Services Inc. *MCP toolset*. Pydantic AI Documentation, 2025. [https://ai.pydantic.dev/mcp/](https://ai.pydantic.dev/mcp/)
-4. Pydantic Services Inc. *Exceptions*. Pydantic AI Documentation, 2025. [https://ai.pydantic.dev/api/exceptions/](https://ai.pydantic.dev/api/exceptions/)
-5. A2A Protocol Contributors. *JSON-RPC Protocol Binding*. A2A Specification, 2025. [https://a2a-protocol.org/latest/specification/](https://a2a-protocol.org/latest/specification/)
-6. Pydantic Services Inc. *Agent-User Interaction (AG-UI) Protocol*. Pydantic AI Documentation, 2025. [https://ai.pydantic.dev/ui/ag-ui/](https://ai.pydantic.dev/ui/ag-ui/)
-7. Model Context Protocol Contributors. *Cancellation*. Model Context Protocol Specification, 2025. [https://modelcontextprotocol.io/specification/2025-11-25/basic/utilities/cancellation](https://modelcontextprotocol.io/specification/2025-11-25/basic/utilities/cancellation)
-8. A2A Protocol Contributors. *Protocol Operations*. A2A Specification, 2025. [https://a2a-protocol.org/latest/specification/](https://a2a-protocol.org/latest/specification/)
-9. Model Context Protocol Contributors. *Elicitation*. Model Context Protocol Specification, 2025. [https://modelcontextprotocol.io/specification/2025-11-25/client/elicitation](https://modelcontextprotocol.io/specification/2025-11-25/client/elicitation)
-10. A2A Protocol Contributors. *Task Lifecycle and States*. A2A Specification, 2025. [https://a2a-protocol.org/latest/specification/](https://a2a-protocol.org/latest/specification/)
-
 [1]: https://modelcontextprotocol.io/specification/2025-11-25/server/tools "MCP Tools"
 [2]: https://gofastmcp.com/python-sdk/fastmcp-exceptions "FastMCP Exceptions"
 [3]: https://ai.pydantic.dev/mcp/ "PydanticAI MCP"

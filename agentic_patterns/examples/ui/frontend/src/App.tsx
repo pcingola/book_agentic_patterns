@@ -39,7 +39,7 @@ export default function App() {
         </button>
       </header>
       <main>
-        <ChatPanel agent={agent} onStateChange={(s: State) => setAgentState(s as Record<string, unknown>)} />
+        <ChatPanel agent={agent} backendUrl={backendUrl} onStateChange={(s: State) => setAgentState(s as Record<string, unknown>)} />
         <StatePanel state={agentState} />
       </main>
     </div>

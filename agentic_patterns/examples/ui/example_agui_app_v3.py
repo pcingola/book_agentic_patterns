@@ -57,19 +57,6 @@ async def mul(ctx: RunContext[StateDeps[CalculatorState]], a: int, b: int) -> To
     return update_state_with_result(ctx, 'mul', a, b, result)
 
 
-async def div(ctx: RunContext[StateDeps[CalculatorState]], a: int, b: int) -> ToolReturn:
-    """Divide two numbers and update the state."""
-    if b == 0:
-        return ToolReturn(
-            return_value="Error: Division by zero is undefined.",
-            metadata=[
-                CustomEvent(type=EventType.CUSTOM, name='calculation_error', value={'operation': 'div', 'error': 'division_by_zero'}),
-            ],
-        )
-    result = a // b  # Integer division
-    return update_state_with_result(ctx, 'div', a, b, result)
-
-
 async def show_history(ctx: RunContext[StateDeps[CalculatorState]]) -> str:
     """Show the calculation history."""
     state = ctx.deps.state
