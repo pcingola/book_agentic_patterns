@@ -4,4 +4,4 @@
 
 [REPL](./repl.md)
 
-
+[Kill Switch](./kill_switch.md)

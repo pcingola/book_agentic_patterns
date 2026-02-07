@@ -1,12 +1,13 @@
 ## Hands-On: Chainlit
 
-This hands-on demonstrates how to wrap a PydanticAI agent in a Chainlit web interface. The examples progress from a minimal echo application to a full agent with authentication, conversation persistence, and tool visualization. The code is in `example_chainlit_app_v1.py`, `example_chainlit_app_v2.py`, and `example_chainlit_app_v3.py`.
+This hands-on demonstrates how to wrap a PydanticAI agent in a Chainlit web interface. The examples progress from a minimal echo application to a full agent with authentication, conversation persistence, and tool visualization. The code is in `agentic_patterns/examples/ui/`: `example_chainlit_app_v1.py`, `example_chainlit_app_v2.py`, and `example_chainlit_app_v3.py`.
 
 ### Running Chainlit Applications
 
 Chainlit applications are Python files run with the `chainlit` command:
 
 ```bash
+cd agentic_patterns/examples/ui
 chainlit run example_chainlit_app_v1.py
 ```
 
@@ -112,7 +113,7 @@ The application tracks the authenticated user and session for downstream code:
 @cl.on_chat_start
 async def on_chat_start():
     setup_user_session()
-    agent = get_agent(tools=[add, sub])
+    agent = get_agent(tools=[add, sub, mul, div])
     cl.user_session.set(AGENT, agent)
     cl.user_session.set(HISTORY, [])
 ```
@@ -198,6 +199,18 @@ async def add(a: int, b: int) -> int:
 async def sub(a: int, b: int) -> int:
     """Subtract two numbers"""
     return a - b
+
+@cl.step(type="tool")
+async def mul(a: int, b: int) -> int:
+    """Multiply two numbers"""
+    return a * b
+
+@cl.step(type="tool")
+async def div(a: int, b: int) -> int:
+    """Divide two numbers, round to nearest integer"""
+    if b == 0:
+        raise ValueError("Cannot divide by zero")
+    return int(a / b)
 ```
 
 The `@cl.step` decorator wraps the function so that each invocation appears as a collapsible step in the Chainlit UI. When the agent calls these tools during execution, users see the tool name, and can expand the step to see the result. This provides visibility into the agent's intermediate actions without requiring custom logging or tracing infrastructure.
@@ -207,10 +220,10 @@ The `type="tool"` parameter categorizes the step for visual styling. Other types
 These decorated functions are passed directly to the agent:
 
 ```python
-agent = get_agent(tools=[add, sub])
+agent = get_agent(tools=[add, sub, mul, div])
 ```
 
-When the agent decides to call `add` or `sub`, the Chainlit context is active (since the call originates from within the `@cl.on_message` handler), so the step visualization works automatically. The agent framework calls the tool, the decorator creates the step, and the result flows back to the model.
+When the agent decides to call any of these tools, the Chainlit context is active (since the call originates from within the `@cl.on_message` handler), so the step visualization works automatically. The agent framework calls the tool, the decorator creates the step, and the result flows back to the model.
 
 ### File Upload Support
 

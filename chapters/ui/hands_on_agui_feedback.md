@@ -4,7 +4,7 @@ User feedback follows the same side-channel pattern as file uploads. AG-UI has n
 
 ### The /feedback endpoint
 
-The v5 backend extends v4 by adding a `/feedback` route alongside the existing `/upload` route:
+The v5 backend extends v4 (same tool set: `add`, `sub`, `mul`, `show_history`) by adding a `/feedback` route alongside the existing `/upload` route:
 
 ```python
 from agentic_patterns.core.feedback import FeedbackType, add_feedback

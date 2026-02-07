@@ -51,7 +51,7 @@ Many agentic applications need more than chat history: drafts, selections, form 
 
 A useful mental model is to treat shared state as a small application store that either side can patch, with those patches flowing as events. When implemented carefully, this enables patterns like “agent edits the user’s document while the user types”, “agent proposes a diff the UI can accept/reject”, or “agent maintains a structured plan the UI visualizes”.
 
-In Pydantic AI’s integration, the incoming state is carried as part of the run input, and you can validate/shape it as a typed model on the server side so you do not accept arbitrary frontend state blindly:
+In Pydantic AI's integration, the incoming state is carried as part of the run input, and you can validate/shape it as a typed model on the server side so you do not accept arbitrary frontend state blindly. PydanticAI provides `StateDeps`, a generic wrapper that pairs a Pydantic model (the state) with the agent's dependency injection system. Wrapping a state model as `StateDeps[MyState]` makes the state accessible through `RunContext` inside tool functions, and PydanticAI's AG-UI adapter automatically serializes state changes back into the event stream as snapshots. ([Pydantic AI][4])
 
 ```python
 class DocState(BaseModel):
@@ -118,10 +118,10 @@ app = AGUIApp(agent)  # expose the agent via AG-UI
 Once you have this boundary, you can iterate on the UI independently: a chat UI, a copilot sidebar, a document editor with inline suggestions, or a workflow dashboard can all be clients of the same agent backend, as long as they interpret the same event stream semantics. ([AG-UI][1])
 
 [1]: https://docs.ag-ui.com/ "AG-UI Overview - Agent User Interaction Protocol"
-[2]: https://docs.chainlit.io/get-started/overview?utm_source=chatgpt.com "Chainlit: Overview"
+[2]: https://docs.chainlit.io/get-started/overview "Chainlit: Overview"
 [3]: https://docs.ag-ui.com/concepts/events "Events - Agent User Interaction Protocol"
 [4]: https://ai.pydantic.dev/ui/ag-ui/ "AG-UI - Pydantic AI"
 [5]: https://docs.ag-ui.com/quickstart/introduction "Introduction - Agent User Interaction Protocol"
-[6]: https://ai.pydantic.dev/api/ag_ui/?utm_source=chatgpt.com "pydantic_ai.ag_ui"
-[7]: https://docs.ag-ui.com/agentic-protocols?utm_source=chatgpt.com "MCP, A2A, and AG-UI - Agent User Interaction Protocol"
-[8]: https://ai.pydantic.dev/api/ui/ag_ui/?utm_source=chatgpt.com "pydantic_ai.ui.ag_ui"
+[6]: https://ai.pydantic.dev/ui/overview/ "UI Event Streams - Pydantic AI"
+[7]: https://docs.ag-ui.com/agentic-protocols "MCP, A2A, and AG-UI - Agent User Interaction Protocol"
+[8]: https://ai.pydantic.dev/api/ui/ag_ui/ "pydantic_ai.ui.ag_ui"

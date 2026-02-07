@@ -4,7 +4,7 @@ AG-UI is a text-message protocol. Messages flow between frontend and backend as 
 
 ### The /upload endpoint
 
-The v4 backend extends v3 (calculator with state) by adding an `/upload` route. Since `AGUIApp` inherits from Starlette, it accepts a `routes` parameter for additional endpoints:
+The v4 backend extends v3 (calculator with state) by adding an `/upload` route and dropping `clear_history` from the tool set -- the remaining tools are `add`, `sub`, `mul`, and `show_history`. Since `AGUIApp` inherits from Starlette, it accepts a `routes` parameter for additional endpoints:
 
 ```python
 from starlette.routing import Route
@@ -20,7 +20,7 @@ app = AGUIApp(
 The upload handler implements the same save-summarize-tag pattern described in the file uploads section. It receives a multipart form with a single `file` field:
 
 ```python
-from agentic_patterns.core.compliance.private_data import PrivateData
+from agentic_patterns.core.compliance.private_data import DataSensitivity, PrivateData
 from agentic_patterns.core.context.reader import read_file_as_string
 from agentic_patterns.core.workspace import write_to_workspace_async, workspace_to_host_path
 
@@ -40,7 +40,7 @@ async def upload_handler(request: Request) -> JSONResponse:
     await write_to_workspace_async(sandbox_path, content)
 
     # 2. Tag as private data
-    PrivateData().add_private_dataset(filename)
+    PrivateData().add_private_dataset(f"upload:{filename}", DataSensitivity.CONFIDENTIAL)
 
     # 3. Summarize with context reader
     host_path = workspace_to_host_path(PurePosixPath(sandbox_path))

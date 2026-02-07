@@ -27,3 +27,4 @@
 25. A2A Protocol Contributors. *JSON-RPC Protocol Binding*. A2A Specification, 2025. [https://a2a-protocol.org/latest/specification/](https://a2a-protocol.org/latest/specification/)
 26. A2A Protocol Contributors. *Protocol Operations*. A2A Specification, 2025. [https://a2a-protocol.org/latest/specification/](https://a2a-protocol.org/latest/specification/)
 27. A2A Protocol Contributors. *Task Lifecycle and States*. A2A Specification, 2025. [https://a2a-protocol.org/latest/specification/](https://a2a-protocol.org/latest/specification/)
+28. FastMCP Contributors. *Authentication*. FastMCP Documentation, 2025. [https://gofastmcp.com/servers/auth](https://gofastmcp.com/servers/auth)

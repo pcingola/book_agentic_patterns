@@ -18,12 +18,13 @@ class ContainerConfig(BaseModel):
     working_dir: str = "/workspace"
     network_mode: NetworkMode = NetworkMode.FULL
     environment: dict[str, str] = {}
+    read_only_mounts: dict[str, str] = {}
     user: str = "nobody"
 
     def __str__(self) -> str:
         return f"ContainerConfig(image={self.image}, network={self.network_mode.value}, cpu={self.cpu_limit}, mem={self.memory_limit})"
 
 
-def create_default_config(network_mode: NetworkMode) -> ContainerConfig:
+def create_default_config(network_mode: NetworkMode, read_only_mounts: dict[str, str] | None = None) -> ContainerConfig:
     """Create a ContainerConfig with the given network mode and default settings."""
-    return ContainerConfig(network_mode=network_mode)
+    return ContainerConfig(network_mode=network_mode, read_only_mounts=read_only_mounts or {})

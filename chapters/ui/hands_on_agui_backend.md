@@ -107,7 +107,7 @@ async def add(ctx: RunContext[StateDeps[CalculatorState]], a: int, b: int) -> To
 
 The `ToolReturn` carries both the return value (what the LLM sees) and metadata events (what the frontend sees). `StateSnapshotEvent` tells the frontend to update its local state with the new snapshot. `CustomEvent` signals a domain-specific action the frontend can interpret however it wants.
 
-The `sub` and `mul` tools follow the same pattern. Two additional tools handle history:
+The `sub` and `mul` tools follow the same pattern. The actual code in `example_agui_app_v3.py` extracts the repeated state-update-and-event logic into an `update_state_with_result()` helper to avoid duplication across the three arithmetic tools. Two additional tools handle history:
 
 ```python
 async def show_history(ctx: RunContext[StateDeps[CalculatorState]]) -> str:

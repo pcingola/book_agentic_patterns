@@ -23,7 +23,7 @@ from pydantic_ai.ui import StateDeps
 from pydantic_ai.ui.ag_ui.app import AGUIApp
 
 from agentic_patterns.core.agents.agents import get_agent
-from agentic_patterns.core.compliance.private_data import PrivateData
+from agentic_patterns.core.compliance.private_data import DataSensitivity, PrivateData
 from agentic_patterns.core.context.reader import read_file_as_string
 from agentic_patterns.core.feedback import FeedbackType, add_feedback
 from agentic_patterns.core.workspace import write_to_workspace_async, workspace_to_host_path
@@ -103,7 +103,7 @@ async def upload_handler(request: Request) -> JSONResponse:
     sandbox_path = f"{UPLOAD_PREFIX}/{filename}"
 
     await write_to_workspace_async(sandbox_path, content)
-    PrivateData().add_private_dataset(filename)
+    PrivateData().add_private_dataset(f"upload:{filename}", DataSensitivity.CONFIDENTIAL)
     host_path = workspace_to_host_path(PurePosixPath(sandbox_path))
     summary = read_file_as_string(host_path)
 

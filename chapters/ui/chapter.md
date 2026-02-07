@@ -1,5 +1,7 @@
 # User Interface
 
+[Introduction](./introduction.md)
+
 [ChainLit](./chainlit.md)
 
 [AG-UI](./agui.md)

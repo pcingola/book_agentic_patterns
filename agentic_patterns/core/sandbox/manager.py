@@ -26,8 +26,9 @@ class SandboxManager:
     private data run in containers with no network access (network_mode="none").
     """
 
-    def __init__(self) -> None:
+    def __init__(self, read_only_mounts: dict[str, str] | None = None) -> None:
         self._client: docker.DockerClient | None = None
+        self._read_only_mounts: dict[str, str] = read_only_mounts or {}
         self._sessions: dict[tuple[str, str], Session] = {}
 
     @property
@@ -87,6 +88,10 @@ class SandboxManager:
         """Create and start a Docker container for the session."""
         session.data_dir.mkdir(parents=True, exist_ok=True)
 
+        volumes = {str(session.data_dir): {"bind": config.working_dir, "mode": "rw"}}
+        for host_path, container_path in config.read_only_mounts.items():
+            volumes[host_path] = {"bind": container_path, "mode": "ro"}
+
         container = self.client.containers.run(
             image=config.image,
             name=session.container_name,
@@ -98,7 +103,7 @@ class SandboxManager:
             nano_cpus=int(config.cpu_limit * 1e9),
             mem_limit=config.memory_limit,
             environment=config.environment,
-            volumes={str(session.data_dir): {"bind": config.working_dir, "mode": "rw"}},
+            volumes=volumes,
         )
 
         session.container_id = container.id
@@ -119,7 +124,7 @@ class SandboxManager:
     def _new_session(self, user_id: str, session_id: str) -> Session:
         """Create a brand new session with container."""
         network_mode = get_network_mode(user_id, session_id)
-        config = create_default_config(network_mode)
+        config = create_default_config(network_mode, self._read_only_mounts)
         data_dir = WORKSPACE_DIR / user_id / session_id
 
         session = Session(
@@ -138,7 +143,7 @@ class SandboxManager:
         """Stop old container and create a new one with updated network mode."""
         self._remove_container(session.container_id)
         network_mode = get_network_mode(session.user_id, session.session_id)
-        config = create_default_config(network_mode)
+        config = create_default_config(network_mode, self._read_only_mounts)
         self._create_container(session, config)
 
     def _remove_container(self, container_id: str) -> None:

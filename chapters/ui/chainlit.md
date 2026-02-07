@@ -1,16 +1,16 @@
 ## Chainlit
 
-Chainlit is a lightweight framework for wrapping an agent or LLM workflow in a chat-oriented web UI, optimized for fast iteration and debugging during early development.
+Chainlit is a lightweight framework for wrapping an agent or LLM workflow in a chat-oriented web UI, optimized for fast iteration and debugging during early development. ([Chainlit][1])
 
 ### A UI framework optimized for conversational prototypes
 
-Chainlit fills a role similar to Streamlit, but is purpose-built for conversational and agentic systems. The primary interaction model is a chat session, where messages, partial outputs, and intermediate execution steps are first-class concepts. The UI natively supports token streaming, progress visualization, rich attachments, and structured user inputs, all of which are essential when prototyping agents whose behavior unfolds over time rather than in a single request–response cycle.
+Chainlit fills a role similar to Streamlit, but is purpose-built for conversational and agentic systems. The primary interaction model is a chat session, where messages, partial outputs, and intermediate execution steps are first-class concepts. The UI natively supports token streaming, progress visualization, rich attachments, and structured user inputs, all of which are essential when prototyping agents whose behavior unfolds over time rather than in a single request–response cycle. ([Chainlit][1])
 
 Internally, Chainlit runs as an asynchronous web application that communicates with the browser via websockets. This allows the UI to update incrementally as tokens are generated or tools are executed, rather than waiting for a full response to complete. For agent development, this low-latency feedback loop significantly improves debuggability and iteration speed.
 
 ### Programming model and chat lifecycle
 
-A Chainlit application is defined by registering asynchronous lifecycle hooks. Developers do not manage an HTTP server directly; instead, they provide handlers that Chainlit invokes at well-defined moments in the chat lifecycle, such as when a session starts or when the user sends a message.
+A Chainlit application is defined by registering asynchronous lifecycle hooks. Developers do not manage an HTTP server directly; instead, they provide handlers that Chainlit invokes at well-defined moments in the chat lifecycle, such as when a session starts or when the user sends a message. ([Chainlit][2])
 
 A minimal structure initializes per-session state and delegates each user message to an agent or orchestration function:
 
@@ -31,7 +31,7 @@ This model keeps UI concerns separate from agent logic and aligns naturally with
 
 ### Messages and token streaming
 
-The `Message` abstraction represents content sent to the user. Messages can be created eagerly, updated later, and populated incrementally via token streaming. Streaming is especially valuable during prototyping, as it exposes latency sources and makes partial progress visible.
+The `Message` abstraction represents content sent to the user. Messages can be created eagerly, updated later, and populated incrementally via token streaming. ([Chainlit][3]) Streaming is especially valuable during prototyping, as it exposes latency sources and makes partial progress visible. ([Chainlit][4])
 
 ```python
 @cl.on_message
@@ -48,7 +48,7 @@ This pattern applies equally to direct model calls and to more complex agent pip
 
 ### Steps: exposing intermediate agent behavior
 
-In agentic systems, the intermediate reasoning and tool usage often matter as much as the final answer. Chainlit provides the `Step` abstraction to surface these intermediate units of work directly in the UI. Steps are visible execution blocks that can represent retrieval, tool calls, planning phases, or sub-agent invocations.
+In agentic systems, the intermediate reasoning and tool usage often matter as much as the final answer. Chainlit provides the `Step` abstraction to surface these intermediate units of work directly in the UI. ([Chainlit][5]) Steps are visible execution blocks that can represent retrieval, tool calls, planning phases, or sub-agent invocations. ([Chainlit][6])
 
 While steps can be created explicitly, the idiomatic and recommended approach is to define them using the `@cl.step` decorator. In this model, a step corresponds to an asynchronous function, and Chainlit manages the step lifecycle automatically.
 
@@ -93,7 +93,7 @@ For agent prototypes, steps provide a lightweight execution trace that is often 
 
 ### Session state and conversational context
 
-Agents typically require memory and configuration, but web applications must avoid global state. Chainlit provides per-session storage via `user_session`, which is scoped to a single chat thread. This is where agent instances, tool clients, caches, or per-user configuration are usually stored.
+Agents typically require memory and configuration, but web applications must avoid global state. Chainlit provides per-session storage via `user_session`, which is scoped to a single chat thread. ([Chainlit][7]) This is where agent instances, tool clients, caches, or per-user configuration are usually stored.
 
 ```python
 @cl.on_chat_start
@@ -117,12 +117,25 @@ Chainlit is most effective when treated as a thin UI layer over an existing agen
 
 However, when agent actions map cleanly to tools or sub-operations, the decorator-based step model often leads to simpler and more readable code. Tool calls, retrieval functions, and even sub-agent invocations can be expressed as decorated steps, producing a clear and structured execution trace with minimal UI glue.
 
-Chainlit also offers first-party integrations with popular agent frameworks such as LangChain, LangGraph, and LlamaIndex, where callbacks automatically translate intermediate execution events into steps. These integrations are particularly useful for quickly visualizing agent behavior when adopting an existing framework.
+Chainlit also offers first-party integrations with popular agent frameworks such as LangChain, LangGraph, and LlamaIndex, where callbacks automatically translate intermediate execution events into steps. ([Chainlit][8], [Chainlit][9]) These integrations are particularly useful for quickly visualizing agent behavior when adopting an existing framework.
 
-Finally, Chainlit includes support for Model Context Protocol (MCP), enabling agents to connect to external tool providers through standardized interfaces. This allows developers to assemble tool-augmented prototypes without tightly coupling the UI to specific tool implementations.
+Finally, Chainlit includes support for Model Context Protocol (MCP), enabling agents to connect to external tool providers through standardized interfaces. ([Chainlit][10]) This allows developers to assemble tool-augmented prototypes without tightly coupling the UI to specific tool implementations.
 
 ### Deployment and operational considerations
 
-Because Chainlit relies on websockets, deployments typically require infrastructure that supports persistent connections and, in many cases, session affinity so that a client remains routed to the same backend instance. Chainlit can also be served under a subpath, which is useful when embedding it into a larger application.
+Because Chainlit relies on websockets, deployments typically require infrastructure that supports persistent connections and, in many cases, session affinity so that a client remains routed to the same backend instance. ([Chainlit][11]) Chainlit can also be served under a subpath, which is useful when embedding it into a larger application.
 
-Authentication is optional but supported. Applications can be made private by enabling authentication and configuring token signing, and OAuth integration is available when users should authenticate via an existing identity provider.
+Authentication is optional but supported. Applications can be made private by enabling authentication and configuring token signing, and OAuth integration is available when users should authenticate via an existing identity provider. ([Chainlit][12])
+
+[1]: https://docs.chainlit.io/get-started/overview "Chainlit: Overview"
+[2]: https://docs.chainlit.io/concepts/chat-lifecycle "Chainlit: Chat Life Cycle"
+[3]: https://docs.chainlit.io/api-reference/message "Chainlit: Message"
+[4]: https://docs.chainlit.io/advanced-features/streaming "Chainlit: Streaming"
+[5]: https://docs.chainlit.io/concepts/step "Chainlit: Step"
+[6]: https://docs.chainlit.io/api-reference/step-class "Chainlit: Step Class"
+[7]: https://docs.chainlit.io/concepts/user-session "Chainlit: User Session"
+[8]: https://docs.chainlit.io/integrations/langchain "Chainlit: LangChain and LangGraph Integration"
+[9]: https://docs.chainlit.io/integrations/llama-index "Chainlit: LlamaIndex Integration"
+[10]: https://docs.chainlit.io/advanced-features/mcp "Chainlit: Model Context Protocol (MCP)"
+[11]: https://docs.chainlit.io/deploy/overview "Chainlit: Deployment Overview"
+[12]: https://docs.chainlit.io/authentication/overview "Chainlit: Authentication Overview"

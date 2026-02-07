@@ -28,7 +28,7 @@ The secret (`JWT_SECRET`) and algorithm (`JWT_ALGORITHM`) are read from environm
 
 ### Crossing the MCP boundary
 
-When PydanticAI calls an MCP tool, it goes through the `MCPServerStreamableHTTP` client, which makes an HTTP request to the MCP server. PydanticAI provides a `process_tool_call` callback that runs before each MCP tool invocation, receiving the run context, tool name, and arguments. The project uses this hook to inject the Bearer token.
+When PydanticAI calls an MCP tool, it goes through the `MCPServerStreamableHTTP` client, which makes an HTTP request to the MCP server. PydanticAI provides a `process_tool_call` callback that runs before each MCP tool invocation, receiving the run context, tool name, and arguments. ([PydanticAI][1]) The project uses this hook to inject the Bearer token.
 
 The `create_process_tool_call` factory in `mcp.py` takes a `get_token` callable (a function that returns the current JWT, typically reading from the agent's dependencies or contextvars) and returns a callback that attaches the token to the MCP call metadata:
 
@@ -42,7 +42,7 @@ def create_process_tool_call(get_token: Callable[[], str | None]):
     return process_tool_call
 ```
 
-On the server side, FastMCP provides built-in JWT verification (`JWTVerifier`) and dependency injection for the access token (`get_access_token()`). But verifying the token is not enough -- the server also needs to call `set_user_session()` so that workspace, connectors, and every other piece of code that reads from `contextvars` sees the right identity. The project's `AuthSessionMiddleware` handles this. It is a FastMCP middleware that runs on every request, reads the verified token claims, and sets the session:
+On the server side, FastMCP provides built-in JWT verification (`JWTVerifier`) and dependency injection for the access token (`get_access_token()`). ([FastMCP][2]) But verifying the token is not enough -- the server also needs to call `set_user_session()` so that workspace, connectors, and every other piece of code that reads from `contextvars` sees the right identity. The project's `AuthSessionMiddleware` handles this. It is a FastMCP middleware that runs on every request, reads the verified token claims, and sets the session:
 
 ```python
 class AuthSessionMiddleware(Middleware):
@@ -61,7 +61,7 @@ The effect is that an MCP tool function that calls `workspace_to_host_path()` or
 
 ### Crossing the A2A boundary
 
-A2A delegation follows the same pattern with different plumbing. The `A2AClientConfig` accepts an optional `bearer_token` field, and when present, `A2AClientExtended.__init__` sets the `Authorization` header on the underlying `httpx` client:
+A2A delegation follows the same pattern with different plumbing. ([A2A][3]) The `A2AClientConfig` accepts an optional `bearer_token` field, and when present, `A2AClientExtended.__init__` sets the `Authorization` header on the underlying `httpx` client:
 
 ```python
 class A2AClientExtended:
@@ -106,3 +106,7 @@ UI (login)
 The `user_session.py` module also provides a convenience function `set_user_session_from_token(token)` that combines decoding and session setting in one call. This is useful for entry points that receive a raw token string rather than structured claims -- for example, an A2A server handler that reads the `Authorization` header directly, or a script that needs to impersonate a user for batch processing.
 
 The reason this works with so little code is that we are not building an authentication system. MCP and A2A are HTTP-based protocols, and HTTP has had authorization headers since 1996. FastMCP provides JWT verification out of the box. PydanticAI provides the `process_tool_call` hook for injecting metadata into MCP calls. The `httpx` client that A2A uses supports custom headers natively. The only project-specific code is the glue: generating the token (`auth.py`), managing the `contextvars` (`user_session.py`), and the middleware that bridges tokens back to `contextvars` at each server boundary. Everything else is standard HTTP machinery that these libraries already support.
+
+[1]: https://ai.pydantic.dev/mcp/ "PydanticAI: MCP toolset"
+[2]: https://gofastmcp.com/servers/auth "FastMCP: Authentication"
+[3]: https://a2a-protocol.org/latest/specification/ "A2A Specification"
