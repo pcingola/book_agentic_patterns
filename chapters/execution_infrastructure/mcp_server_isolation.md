@@ -1,6 +1,6 @@
 ## MCP Server Isolation
 
-MCP servers deserve the same network isolation treatment as code-execution sandboxes. When your agent connects to an MCP server -- particularly one you did not write -- every tool call is an opportunity for arbitrary code to run on the server side. A tool that fetches data from an external API, sends an email, or posts to a webhook can exfiltrate private data just as easily as a line of Python in a REPL sandbox. Running MCP servers inside Docker containers and applying the kill switch pattern from the previous section closes this gap.
+MCP servers deserve the same network isolation treatment as code-execution sandboxes. When your agent connects to an MCP server -- particularly one you did not write -- every tool call is an opportunity for arbitrary code to run on the server side. A tool that fetches data from an external API, sends an email, or posts to a webhook can exfiltrate private data just as easily as a line of Python in a REPL sandbox. Running MCP servers inside Docker containers and applying the network isolation pattern from the Sandbox section closes this gap.
 
 ### Two containers, one server
 
@@ -81,7 +81,7 @@ The `get_mcp_client()` factory returns `MCPServerPrivateData` when `url_isolated
 
 ```python
 def get_mcp_client(name, config_path=None, bearer_token=None):
-    config = _load_mcp_settings(config_path).get(name)
+    config = load_mcp_settings(config_path).get(name)
     headers = {"Authorization": f"Bearer {bearer_token}"} if bearer_token else None
     if config.url_isolated:
         return MCPServerPrivateData(
@@ -108,7 +108,7 @@ services:
     volumes: [workspace:/workspace]
 ```
 
-For CONFIDENTIAL data where proxied access is acceptable, the isolated instance can use the same Envoy sidecar pattern described in the kill switch section, attaching it to an internal Docker network with the proxy as the only gateway.
+For CONFIDENTIAL data where proxied access is acceptable, the isolated instance can use the same Envoy sidecar pattern described in the Sandbox section, attaching it to an internal Docker network with the proxy as the only gateway.
 
 ### When to use this pattern
 

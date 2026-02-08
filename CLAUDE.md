@@ -118,7 +118,7 @@ Code examples organized by chapter (Jupyter notebooks and Python scripts):
 
 ## Chapters
 
-Chapters in `chapters/`: foundations, core_patterns, tools, context_memory, orchestration, rag, mcp, a2a, skills_and_sub_agents, evals, execution_infrastructure, data_sources_and_connectors, ui. Each contains `chapter.md` index linking to section files and hands-on exercises. Master index in `chapters.md` at root. The execution_infrastructure chapter covers: Sandbox, REPL, Kill Switch, MCP Server Isolation, Skill Sandbox, and Hands-On MCP Server Isolation.
+Chapters in `chapters/`: foundations, core_patterns, tools, context_memory, orchestration, rag, mcp, a2a, skills_and_sub_agents, evals, execution_infrastructure, data_sources_and_connectors, ui. Each contains `chapter.md` index linking to section files and hands-on exercises. Master index in `chapters.md` at root. The execution_infrastructure chapter covers: Sandbox, REPL, MCP Server Isolation, Skill Sandbox, and Hands-On MCP Server Isolation.
 
 ## Scripts
 

