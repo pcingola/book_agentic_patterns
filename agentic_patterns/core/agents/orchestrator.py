@@ -16,7 +16,7 @@ from agentic_patterns.core.a2a.client import A2AClientExtended, get_a2a_client
 from agentic_patterns.core.a2a.tool import build_coordinator_prompt, create_a2a_tool
 from agentic_patterns.core.agents.agents import get_agent, run_agent
 from agentic_patterns.core.agents.models import get_model
-from agentic_patterns.core.mcp import MCPClientConfig, _load_mcp_settings
+from agentic_patterns.core.mcp import MCPClientConfig, load_mcp_settings
 from agentic_patterns.core.skills.models import Skill, SkillMetadata
 from agentic_patterns.core.skills.registry import SkillRegistry
 from agentic_patterns.core.skills.tools import list_available_skills
@@ -57,7 +57,7 @@ class AgentSpec(BaseModel):
 
         mcp_servers: list[MCPClientConfig] = []
         if mcp_server_names:
-            settings = _load_mcp_settings(config_path)
+            settings = load_mcp_settings(config_path)
             for mcp_name in mcp_server_names:
                 config = settings.get(mcp_name)
                 if isinstance(config, MCPClientConfig):

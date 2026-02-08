@@ -48,13 +48,14 @@ When `url_isolated` is not set, the client always uses `url` regardless of priva
 
 Private data can appear at any point during a session -- a tool call might load sensitive records, or a compliance check might flag content that arrived in the conversation. The MCP client must be able to switch to the isolated instance mid-session, between any two tool calls, without tearing down and reopening connections.
 
-The solution is `MCPClientPrivateData`, a wrapper that holds two `MCPServerStreamableHTTP` instances -- one for the normal URL, one for the isolated URL -- and opens both when the context is entered. Every call (`list_tools`, `call_tool`, etc.) is delegated through a `_target()` method that checks `session_has_private_data()`. The moment private data appears, all subsequent calls route to the isolated instance. The switch is a one-way ratchet: once triggered, it never reverts, matching the sensitivity escalation semantics in `PrivateData`.
+The solution is `MCPServerPrivateData`, which extends `MCPServerStrict` (itself a subclass of PydanticAI's `MCPServerStreamableHTTP`) so it is a drop-in replacement in any toolset list. It holds two `MCPServerStrict` instances -- one for the normal URL, one for the isolated URL -- and opens both when the context is entered. Every call (`list_tools`, `call_tool`, etc.) is delegated through a `_target()` method that checks `session_has_private_data()`. The moment private data appears, all subsequent calls route to the isolated instance. The switch is a one-way ratchet: once triggered, it never reverts, matching the sensitivity escalation semantics in `PrivateData`.
 
 ```python
-class MCPClientPrivateData:
+class MCPServerPrivateData(MCPServerStrict):
     def __init__(self, url: str, url_isolated: str, **kwargs):
-        self._normal = MCPServerStreamableHTTP(url=url, **kwargs)
-        self._isolated = MCPServerStreamableHTTP(url=url_isolated, **kwargs)
+        super().__init__(url=url, **kwargs)
+        self._normal = MCPServerStrict(url=url, **kwargs)
+        self._isolated = MCPServerStrict(url=url_isolated, **kwargs)
         self._is_isolated = False
 
     def _target(self) -> MCPServerStreamableHTTP:
@@ -76,18 +77,18 @@ class MCPClientPrivateData:
 
 Both connections are alive for the entire session. There is no reconnection or context teardown at the switch point -- `_target()` simply starts returning the isolated instance instead of the normal one. From PydanticAI's perspective, nothing changed; the toolset object is the same, it just routes internally.
 
-The `get_mcp_client()` factory returns `MCPClientPrivateData` when `url_isolated` is present in config, and a plain `MCPServerStreamableHTTP` otherwise. Callers do not need to know which variant they got:
+The `get_mcp_client()` factory returns `MCPServerPrivateData` when `url_isolated` is present in config, and a plain `MCPServerStrict` otherwise. Callers do not need to know which variant they got:
 
 ```python
 def get_mcp_client(name, config_path=None, bearer_token=None):
     config = _load_mcp_settings(config_path).get(name)
     headers = {"Authorization": f"Bearer {bearer_token}"} if bearer_token else None
     if config.url_isolated:
-        return MCPClientPrivateData(
+        return MCPServerPrivateData(
             url=config.url, url_isolated=config.url_isolated,
             timeout=config.read_timeout, headers=headers,
         )
-    return MCPServerStreamableHTTP(url=config.url, timeout=config.read_timeout, headers=headers)
+    return MCPServerStrict(url=config.url, timeout=config.read_timeout, headers=headers)
 ```
 
 ### Deploying the containers
