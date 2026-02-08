@@ -63,7 +63,7 @@ The core library provides reusable infrastructure for building AI agentic system
 
 **auth.py**: JWT token generation and validation for cross-layer identity propagation. `create_token(user_id, session_id)` encodes claims with HS256 shared secret. `decode_token(token)` validates and returns claims. Secret and algorithm read from `JWT_SECRET` / `JWT_ALGORITHM` env vars in `config.py`.
 
-**mcp/**: MCP configuration, error classification, server toolsets, middleware, and factory functions. Split into: `config.py` (`MCPClientConfig`, `MCPServerConfig`, `MCPSettings`, `load_mcp_settings` with `${VAR}` env expansion from YAML), `errors.py` (`ToolRetryError` for LLM retries, `ToolFatalError` with `[FATAL]` prefix to abort runs), `servers.py` (`MCPServerStrict` extends `MCPServerStreamableHTTP` intercepting fatal errors; `MCPServerPrivateData` extends `MCPServerStrict` with dual-instance isolation switching via `_target()` and `session_has_private_data()` one-way ratchet), `middleware.py` (`AuthSessionMiddleware` reads access token claims and calls `set_user_session()`), `factories.py` (`create_mcp_server()` with `AuthSessionMiddleware` pre-wired, `get_mcp_client()` returns `MCPServerPrivateData` or `MCPServerStrict` from config, `create_process_tool_call()` for Bearer token injection). `__init__.py` re-exports all public names.
+**mcp/**: MCP configuration, error classification, server toolsets, middleware, and factory functions. Refactored from a single file into a modular directory. `config.py` (`MCPClientConfig` with optional `url_isolated` field, `MCPServerConfig`, `MCPSettings`, `load_mcp_settings` with `${VAR}` env expansion from YAML). `errors.py` (`ToolRetryError` for LLM retries, `ToolFatalError` with `[FATAL]` prefix to abort runs). `servers.py` (`MCPServerStrict` extends `MCPServerStreamableHTTP` intercepting fatal errors; `MCPServerPrivateData` holds dual server instances -- normal and isolated -- and routes calls based on `session_has_private_data()` with one-way ratchet). `middleware.py` (`AuthSessionMiddleware` reads access token claims and calls `set_user_session()`). `factories.py` (`create_mcp_server()` with `AuthSessionMiddleware` pre-wired, `get_mcp_client()` returns `MCPServerPrivateData` when `url_isolated` is configured or `MCPServerStrict` otherwise, `get_mcp_clients()` for batch creation, `create_process_tool_call()` for Bearer token injection). `__init__.py` re-exports all public names for backward compatibility.
 
 **skills/**: Skill library for agent capabilities with progressive disclosure pattern. `models.py` defines `SkillMetadata` (lightweight info: name, description, path) and `Skill` (full skill with frontmatter, body, script/reference/asset paths). `registry.py` provides `SkillRegistry` with `discover()` to scan skill directories and cache metadata (cheap), `list_all()` to return cached metadata for system prompt injection, and `get()` to lazy-load full skill on activation (expensive). Skills are defined in directories containing a `SKILL.md` file with YAML frontmatter (name, description) and markdown body. Optional `scripts/`, `references/`, and `assets/` subdirectories hold supporting files. `tools.py` exposes `list_available_skills()` for compact one-liner listings and `get_skill_instructions()` for returning the SKILL.md body only (per spec, resources are tier 3 and loaded separately).
 
@@ -87,7 +87,7 @@ The core library provides reusable infrastructure for building AI agentic system
 
 ## MCP Template (`agentic_patterns/mcp/template/`)
 
-Reference implementation of a production MCP server and client demonstrating requirements 1-8 from `docs/mcp_requirements.md`. `server.py` uses `create_mcp_server()` with `AuthSessionMiddleware` pre-wired. `tools.py` registers four tools showing `@tool_permission`, `@context_result()`, workspace path translation, `ToolRetryError`/`ToolFatalError`, and `PrivateData` flagging. `client.py` connects via `get_mcp_client()` and exercises the tools.
+Reference implementation of a production MCP server demonstrating requirements 1-9 and 11 from `docs/mcp_requirements.md`. `server.py` uses `create_mcp_server()` with `AuthSessionMiddleware` pre-wired. `tools.py` registers four tools showing `@tool_permission`, `@context_result()`, workspace path translation, `ToolRetryError`/`ToolFatalError`, `PrivateData` flagging, and `ctx.info()` logging. The interactive client example is in `agentic_patterns/examples/execution_infrastructure/example_mcp_isolation.ipynb`.
 
 ### Key Patterns
 
@@ -108,6 +108,7 @@ Code examples organized by chapter (Jupyter notebooks and Python scripts):
 - `orchestration/` - Delegation, workflows, graphs, hand-off
 - `rag/` - Document loading, querying, embeddings
 - `mcp/` - MCP client (HTTP/stdio), MCP servers, features
+- `execution_infrastructure/` - MCP isolation notebook
 - `a2a/` - A2A servers and clients (v1, v2)
 - `evals/` - Evaluation examples, doctors analysis, skills (skill-bad, skill-good subdirectories)
 - `connectors/` - JSON connector, SQL connector, NL2SQL agent examples
@@ -117,7 +118,7 @@ Code examples organized by chapter (Jupyter notebooks and Python scripts):
 
 ## Chapters
 
-Chapters in `chapters/`: foundations, core_patterns, tools, context_memory, orchestration, rag, mcp, a2a, skills_and_sub_agents, evals, execution_infrastructure, data_sources_and_connectors, ui. Each contains `chapter.md` index linking to section files and hands-on exercises. Master index in `chapters.md` at root. The execution_infrastructure chapter covers: Sandbox, REPL, Kill Switch, MCP Server Isolation, Hands-on MCP Server Isolation, and Skill Sandbox.
+Chapters in `chapters/`: foundations, core_patterns, tools, context_memory, orchestration, rag, mcp, a2a, skills_and_sub_agents, evals, execution_infrastructure, data_sources_and_connectors, ui. Each contains `chapter.md` index linking to section files and hands-on exercises. Master index in `chapters.md` at root. The execution_infrastructure chapter covers: Sandbox, REPL, Kill Switch, MCP Server Isolation, Skill Sandbox, and Hands-On MCP Server Isolation.
 
 ## Scripts
 

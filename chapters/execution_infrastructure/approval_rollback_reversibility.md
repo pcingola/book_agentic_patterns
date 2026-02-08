@@ -1,2 +1,0 @@
-## Approval, Rollback, and Reversibility
-
