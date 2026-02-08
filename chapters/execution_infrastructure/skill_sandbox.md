@@ -16,17 +16,29 @@ The result is two distinct zones inside the container. `/workspace` is the agent
 
 ### Wiring Skills to the Sandbox
 
-The `SandboxManager` receives read-only mounts at construction time. A skill registry maps each skill name to a host directory containing a `scripts/` subdirectory. These are passed as read-only mounts so that every container in every session sees the same skill scripts at the same container paths.
-
-The `run_skill_script` tool function bridges the two systems. It looks up the skill in the registry, resolves the script name to a container path under `/skills/{skill_name}/scripts/{script_name}`, and dispatches execution via `SandboxManager.execute_command`. Python scripts are invoked with `python`, shell scripts with `bash`. The tool returns the exit code and combined output.
+The `create_skill_sandbox_manager()` factory builds a `SandboxManager` with read-only mounts derived from the skill registry. It iterates over all discovered skills, maps each skill's `scripts/` directory to a container path under `/skills/{skill_name}/scripts/`, and passes the result as read-only mounts:
 
 ```python
-container_path = f"/skills/{skill.path.name}/scripts/{script_name}"
+def create_skill_sandbox_manager(registry: SkillRegistry) -> SandboxManager:
+    read_only_mounts = {}
+    for meta in registry.list_all():
+        scripts_dir = meta.path / "scripts"
+        if scripts_dir.exists():
+            read_only_mounts[str(scripts_dir)] = f"{SKILLS_CONTAINER_ROOT}/{meta.path.name}/scripts"
+    return SandboxManager(read_only_mounts=read_only_mounts)
+```
+
+Every container created by this manager -- across all sessions -- sees the same skill scripts at the same container paths.
+
+The `run_skill_script` function bridges the skill registry and the sandbox. It looks up the skill by name, resolves the script to a container path, and dispatches execution via `SandboxManager.execute_command`:
+
+```python
+container_path = f"{SKILLS_CONTAINER_ROOT}/{skill.path.name}/scripts/{script_name}"
 command = f"python {container_path} {args}" if script_name.endswith(".py") else f"bash {container_path} {args}"
 return manager.execute_command(user_id, session_id, command)
 ```
 
-Because `execute_command` calls `get_or_create_session` internally, skill execution benefits from the same lifecycle management, network isolation, and workspace persistence described in previous sections. If the session already has a container, the command runs there. If not, a new container is created with both the writable workspace and the read-only skill mounts. If PrivateData triggers a network ratchet mid-conversation, the recreated container preserves both mount types.
+Because `execute_command` calls `get_or_create_session` internally, skill execution benefits from the same lifecycle management, network isolation, and workspace persistence described in previous sections. If the session already has a container, the command runs there. If not, a new container is created with both the writable workspace and the read-only skill mounts. If `PrivateData` triggers a network ratchet mid-conversation, the recreated container preserves both mount types.
 
 ### Why Read-Only Matters
 

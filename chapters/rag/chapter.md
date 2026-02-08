@@ -18,8 +18,8 @@
 
 [Hands-On: Introduction](./hands_on_intro.md)
 
-[Simple Document Ingestion and Retrieval](./hands_on_simple_rag.md)
+[Hands-On: Simple Document Ingestion and Retrieval](./hands_on_simple_rag.md)
 
-[Advanced Document Ingestion and Retrieval](./hands_on_advanced_rag.md)
+[Hands-On: Advanced Document Ingestion and Retrieval](./hands_on_advanced_rag.md)
 
 [References](./references.md)

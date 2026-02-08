@@ -7,12 +7,14 @@ from agentic_patterns.core.skills.registry import SkillRegistry
 SKILLS_CONTAINER_ROOT = "/skills"
 
 
-def list_available_skills(registry: SkillRegistry) -> str:
-    """Returns a compact one-liner per skill (name + description)."""
-    skills = registry.list_all()
-    if not skills:
-        return "No skills available."
-    return "\n".join(str(skill) for skill in skills)
+def create_skill_sandbox_manager(registry: SkillRegistry) -> SandboxManager:
+    """Create a SandboxManager with read-only mounts for all discovered skills."""
+    read_only_mounts = {}
+    for meta in registry.list_all():
+        scripts_dir = meta.path / "scripts"
+        if scripts_dir.exists():
+            read_only_mounts[str(scripts_dir)] = f"{SKILLS_CONTAINER_ROOT}/{meta.path.name}/scripts"
+    return SandboxManager(read_only_mounts=read_only_mounts)
 
 
 def get_skill_instructions(registry: SkillRegistry, name: str) -> str | None:
@@ -21,6 +23,14 @@ def get_skill_instructions(registry: SkillRegistry, name: str) -> str | None:
     if not skill:
         return None
     return skill.body
+
+
+def list_available_skills(registry: SkillRegistry) -> str:
+    """Returns a compact one-liner per skill (name + description)."""
+    skills = registry.list_all()
+    if not skills:
+        return "No skills available."
+    return "\n".join(str(skill) for skill in skills)
 
 
 def run_skill_script(manager: SandboxManager, registry: SkillRegistry, user_id: str, session_id: str, skill_name: str, script_name: str, args: str = "") -> tuple[int, str]:

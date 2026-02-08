@@ -2,12 +2,6 @@
 
 The REPL pattern enables an agent to iteratively execute code in a shared, stateful environment, providing immediate feedback while preserving the illusion of a continuous execution context.
 
-### Historical perspective
-
-The REPL (Read-Eval-Print Loop) is one of the oldest interaction models in computing. It emerged in the 1960s with interactive Lisp systems, where programmers could incrementally define functions, evaluate expressions, and inspect results without recompiling entire programs. This interactive style strongly influenced later environments such as Smalltalk workspaces and, decades later, Python and MATLAB shells.
-
-In the context of AI systems, early program synthesis and symbolic reasoning tools already relied on REPL-like loops to test hypotheses and refine partial solutions. More recently, the rise of notebook environments and agentic systems has renewed interest in REPL semantics as a way to let models explore, test, and refine code through execution. The key research shift has been from "single-shot" code generation to **execution-aware reasoning**, where intermediate results guide subsequent steps.
-
 ### The REPL pattern in agentic systems
 
 In an agent setting, a REPL is not merely a convenience for developers; it is a reasoning primitive. The agent alternates between generating code, executing it, observing outputs or errors, and deciding what to do next. This loop allows the agent to ground abstract reasoning in concrete runtime behavior.
@@ -131,25 +125,13 @@ Persistence also enables secondary capabilities. The notebook can be exported to
 
 ### Best practices distilled
 
-Several best practices consistently emerge when implementing REPLs for agents:
+Several best practices consistently emerge when implementing REPLs for agents.
 
-* Prefer process-level isolation over threads for safety and control.
-* Add a sandbox layer (bubblewrap, containers, or similar) beyond simple subprocess isolation.
-* Use pickle-based IPC through the filesystem for subprocess communication.
-* Serialize only data, not execution artifacts; replay imports and functions explicitly.
-* Provide actionable feedback when objects cannot persist across cells.
-* Treat outputs as structured, typed objects with separate storage for binary data.
-* Capture the last expression's value to match the interactive notebook convention.
-* Make execution asynchronous at the API level via thread offloading.
-* Persist state frequently to support recovery and reproducibility.
-* Impose explicit limits on execution time and resource usage.
-* Consider data-driven security policies such as automatic network isolation for sensitive sessions.
+Prefer process-level isolation over threads for safety and control, and add a sandbox layer (bubblewrap, containers, or similar) beyond simple subprocess isolation. Use pickle-based IPC through the filesystem for subprocess communication, serializing only data -- not execution artifacts -- and replaying imports and functions explicitly. When objects cannot persist across cells, provide actionable feedback so the agent or user knows how to recover.
+
+Treat outputs as structured, typed objects with separate storage for binary data, and capture the last expression's value to match the interactive notebook convention. Make execution asynchronous at the API level via thread offloading so the host process remains responsive.
+
+Persist state frequently to support recovery and reproducibility. Impose explicit limits on execution time and resource usage. Consider data-driven security policies such as automatic network isolation for sensitive sessions.
 
 Together, these patterns allow agents to reason *through execution* without compromising system stability.
 
-### References
-
-1. McCarthy, J. *LISP 1.5 Programmer's Manual*. MIT Press, 1962.
-2. Abelson, H., Sussman, G. J., Sussman, J. *Structure and Interpretation of Computer Programs*. MIT Press, 1996.
-3. Kluyver, T. et al. *Jupyter Notebooks -- a publishing format for reproducible computational workflows*. IOS Press, 2016.
-4. Chen, M. et al. *Evaluating Large Language Models Trained on Code*. arXiv, 2021.

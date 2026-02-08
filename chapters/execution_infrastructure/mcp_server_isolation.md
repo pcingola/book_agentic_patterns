@@ -58,7 +58,7 @@ class MCPServerPrivateData(MCPServerStrict):
         self._isolated = MCPServerStrict(url=url_isolated, **kwargs)
         self._is_isolated = False
 
-    def _target(self) -> MCPServerStreamableHTTP:
+    def _target(self) -> MCPServerStrict:
         if not self._is_isolated:
             self._is_isolated = session_has_private_data()
         return self._isolated if self._is_isolated else self._normal

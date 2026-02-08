@@ -1,6 +1,6 @@
 ## Hands-On: MCP Server Isolation
 
-This hands-on walks through `example_mcp_isolation.ipynb`, where an agent connects to a template MCP server through the `MCPServerPrivateData` client. The notebook demonstrates the dual-instance isolation pattern: before private data enters the session, tool calls route to the normal server instance; after a tool flags the session as containing sensitive data, all subsequent calls switch to the isolated instance. The switch is a one-way ratchet that never reverts within the session.
+This hands-on walks through `example_mcp_isolation.ipynb`, where an agent connects to a template MCP server through the `MCPServerPrivateData` client. The notebook demonstrates the dual-instance isolation pattern described in the previous section: before private data enters the session, tool calls route to the normal server instance; after a tool flags the session as containing sensitive data, all subsequent calls switch to the isolated instance.
 
 The notebook also exercises several production MCP server requirements in a single flow: workspace path translation, `@context_result()` for large results, `@tool_permission` decorators, error classification with `ToolRetryError`, and server-to-client log forwarding via `ctx.info()`.
 
@@ -13,7 +13,7 @@ fastmcp run agentic_patterns/mcp/template/server.py:mcp --transport http --port 
 fastmcp run agentic_patterns/mcp/template/server.py:mcp --transport http --port 8001
 ```
 
-In production, these would be two Docker containers from the same image -- one on the bridge network, one with `network_mode: "none"`. For the notebook, two local processes on different ports simulate the same topology without Docker.
+In production, these would be two Docker containers from the same image -- one on the bridge network, one with `network_mode: "none"` (as shown in the MCP Server Isolation section). For the notebook, two local processes on different ports simulate the same topology without Docker.
 
 ## The Template Server
 
@@ -112,29 +112,6 @@ def _target(self) -> MCPServerStrict:
     return self._isolated if self._is_isolated else self._normal
 ```
 
-The check is cheap -- `session_has_private_data()` reads a contextvar and a file -- and it runs on every tool call. Once the flag flips, `_is_isolated` stays `True` forever; the conditional short-circuits and never checks the file again. This is the one-way ratchet: escalation from normal to isolated is automatic, but there is no path back within the session.
+The check is cheap -- `session_has_private_data()` reads a contextvar and a file -- and it runs on every tool call. Once the flag flips, `_is_isolated` stays `True` forever; the conditional short-circuits and never checks the file again.
 
 Both connections are opened at `__aenter__` and closed at `__aexit__`. There is no reconnection at the switch point. PydanticAI sees the same toolset object throughout the session; the routing change is entirely internal.
-
-## Production Deployment
-
-In production, the two server instances run as Docker containers from the same image with different network configurations:
-
-```yaml
-services:
-  data-tools:
-    image: my-mcp-server:latest
-    networks: [bridge]
-    volumes: [workspace:/workspace]
-
-  data-tools-isolated:
-    image: my-mcp-server:latest
-    network_mode: "none"
-    volumes: [workspace:/workspace]
-```
-
-Tools in the isolated container that attempt external connections (HTTP requests, database calls to remote hosts, webhook posts) fail with network errors. This is the intended behavior: the network block acts as a safety net independent of application-level permission checks. Even if `@tool_permission(CONNECT)` has a bug, or a tool reaches an external service through a code path that was not tagged with CONNECT, the container-level network isolation prevents data from leaving.
-
-## Key Takeaways
-
-`MCPServerPrivateData` provides transparent client-side switching between normal and isolated MCP server instances based on session sensitivity. The `get_mcp_client()` factory selects the right client variant based on whether `url_isolated` is configured, so callers do not need conditional logic. The switch is a one-way ratchet triggered by `PrivateData` tagging, matching the escalation semantics used across the compliance layer. In production, the two instances are Docker containers with different network policies, providing defense-in-depth that does not depend on the correctness of application-level permission checks.

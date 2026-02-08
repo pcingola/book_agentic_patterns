@@ -62,7 +62,7 @@ Cell:
   - id: str (UUID)
   - cell_number: int
   - code: str
-  - state: CellState (IDLE | RUNNING | SUCCESS | ERROR | TIMEOUT)
+  - state: CellState (IDLE | RUNNING | COMPLETED | ERROR | TIMEOUT)
   - outputs: list[CellOutput]
   - execution_count: int | None
   - execution_time: float | None
