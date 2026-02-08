@@ -63,13 +63,13 @@ class SqlConnector(Connector):
         db_info = db_infos.get_db_info(db_id)
         table = db_info.get_table(table_name)
         if table is None:
-            return json.dumps({"error": f"Table '{table_name}' not found in database schema"})
+            raise ValueError(f"Table '{table_name}' not found in database schema")
 
         db_ops = db_infos.get_operations(db_id)
         base_data = await db_ops.fetch_row_by_id(table, row_id)
         if base_data is None:
             pk_column = table.get_primary_key_column()
-            return json.dumps({"error": f"No row found with {pk_column}={row_id}"})
+            raise ValueError(f"No row found with {pk_column}={row_id}")
 
         if not fetch_related:
             return json.dumps(base_data, indent=2, default=str)
