@@ -66,9 +66,8 @@ class TestJsonConnector(unittest.TestCase):
 
     def test_head_json_file_not_found(self):
         """Test head with non-existent file."""
-        result = self.connector.head("/workspace/nonexistent.json")
-        self.assertIn("[Error]", result)
-        self.assertIn("not found", result)
+        with self.assertRaises(FileNotFoundError):
+            self.connector.head("/workspace/nonexistent.json")
 
     def test_tail_json_root_object(self):
         """Test tail on root object returns last N keys."""
@@ -110,9 +109,8 @@ class TestJsonConnector(unittest.TestCase):
     def test_get_json_not_found(self):
         """Test getting non-existent path."""
         sandbox_path = self._create_json_file("test.json", {"key": "value"})
-        result = self.connector.get(sandbox_path, "$.nonexistent")
-        self.assertIn("[Error]", result)
-        self.assertIn("not found", result)
+        with self.assertRaises(KeyError):
+            self.connector.get(sandbox_path, "$.nonexistent")
 
     def test_keys_json_object(self):
         """Test listing keys of an object."""
@@ -149,7 +147,6 @@ class TestJsonConnector(unittest.TestCase):
         file_path = self.workspace_root / "invalid.json"
         file_path.write_text('{"key": "value",}')  # Trailing comma - invalid JSON
         result = self.connector.validate("/workspace/invalid.json")
-        self.assertIn("[Error]", result)
         self.assertIn("Invalid JSON", result)
 
     def test_set_json_primitive(self):
@@ -157,7 +154,6 @@ class TestJsonConnector(unittest.TestCase):
         sandbox_path = self._create_json_file("config.json", {"features": {"rollout": {"percent": 50}}})
         result = self.connector.set(sandbox_path, "$.features.rollout.percent", "75")
         self.assertIn("Updated", result)
-        self.assertNotIn("[Error]", result)
 
         with open(self.workspace_root / "config.json", "r") as f:
             data = json.load(f)
@@ -176,23 +172,20 @@ class TestJsonConnector(unittest.TestCase):
     def test_set_json_root_rejected(self):
         """Test that setting root is rejected."""
         sandbox_path = self._create_json_file("test.json", {"key": "value"})
-        result = self.connector.set(sandbox_path, "$", '{"new": "value"}')
-        self.assertIn("[Error]", result)
-        self.assertIn("root", result.lower())
+        with self.assertRaises(ValueError):
+            self.connector.set(sandbox_path, "$", '{"new": "value"}')
 
     def test_set_json_wildcard_rejected(self):
         """Test that wildcard paths are rejected."""
         sandbox_path = self._create_json_file("users.json", {"users": [{"status": "active"}, {"status": "active"}]})
-        result = self.connector.set(sandbox_path, "$.users[*].status", '"inactive"')
-        self.assertIn("[Error]", result)
-        self.assertIn("Wildcard", result)
+        with self.assertRaises(ValueError):
+            self.connector.set(sandbox_path, "$.users[*].status", '"inactive"')
 
     def test_set_json_invalid_json(self):
         """Test setting with invalid JSON value."""
         sandbox_path = self._create_json_file("test.json", {"key": "value"})
-        result = self.connector.set(sandbox_path, "$.key", "not valid json")
-        self.assertIn("[Error]", result)
-        self.assertIn("Invalid JSON", result)
+        with self.assertRaises(json.JSONDecodeError):
+            self.connector.set(sandbox_path, "$.key", "not valid json")
 
     def test_delete_json_key(self):
         """Test deleting a key."""
@@ -208,23 +201,20 @@ class TestJsonConnector(unittest.TestCase):
     def test_delete_json_root_rejected(self):
         """Test that deleting root is rejected."""
         sandbox_path = self._create_json_file("test.json", {"key": "value"})
-        result = self.connector.delete_key(sandbox_path, "$")
-        self.assertIn("[Error]", result)
-        self.assertIn("root", result.lower())
+        with self.assertRaises(ValueError):
+            self.connector.delete_key(sandbox_path, "$")
 
     def test_delete_json_wildcard_rejected(self):
         """Test that wildcard deletes are rejected."""
         sandbox_path = self._create_json_file("users.json", {"users": [{"temp": True}, {"temp": True}]})
-        result = self.connector.delete_key(sandbox_path, "$.users[*].temp")
-        self.assertIn("[Error]", result)
-        self.assertIn("Wildcard", result)
+        with self.assertRaises(ValueError):
+            self.connector.delete_key(sandbox_path, "$.users[*].temp")
 
     def test_delete_json_not_found(self):
         """Test deleting non-existent key."""
         sandbox_path = self._create_json_file("test.json", {"key": "value"})
-        result = self.connector.delete_key(sandbox_path, "$.nonexistent")
-        self.assertIn("[Error]", result)
-        self.assertIn("not found", result)
+        with self.assertRaises(KeyError):
+            self.connector.delete_key(sandbox_path, "$.nonexistent")
 
     def test_append_json(self):
         """Test appending to an array."""
@@ -241,16 +231,14 @@ class TestJsonConnector(unittest.TestCase):
     def test_append_json_not_array(self):
         """Test appending to non-array."""
         sandbox_path = self._create_json_file("test.json", {"notArray": {"key": "value"}})
-        result = self.connector.append(sandbox_path, "$.notArray", '"value"')
-        self.assertIn("[Error]", result)
-        self.assertIn("not an array", result)
+        with self.assertRaises(TypeError):
+            self.connector.append(sandbox_path, "$.notArray", '"value"')
 
     def test_append_json_invalid_value(self):
         """Test appending with invalid JSON value."""
         sandbox_path = self._create_json_file("test.json", {"arr": []})
-        result = self.connector.append(sandbox_path, "$.arr", "not json")
-        self.assertIn("[Error]", result)
-        self.assertIn("Invalid JSON", result)
+        with self.assertRaises(json.JSONDecodeError):
+            self.connector.append(sandbox_path, "$.arr", "not json")
 
     def test_merge_json(self):
         """Test merging into an object."""
@@ -268,23 +256,20 @@ class TestJsonConnector(unittest.TestCase):
     def test_merge_json_not_object(self):
         """Test merging into non-object."""
         sandbox_path = self._create_json_file("test.json", {"notObject": [1, 2, 3]})
-        result = self.connector.merge(sandbox_path, "$.notObject", '{"key": "value"}')
-        self.assertIn("[Error]", result)
-        self.assertIn("not an object", result)
+        with self.assertRaises(TypeError):
+            self.connector.merge(sandbox_path, "$.notObject", '{"key": "value"}')
 
     def test_merge_json_invalid_updates(self):
         """Test merging with invalid JSON updates."""
         sandbox_path = self._create_json_file("test.json", {"obj": {}})
-        result = self.connector.merge(sandbox_path, "$.obj", "not json")
-        self.assertIn("[Error]", result)
-        self.assertIn("Invalid JSON", result)
+        with self.assertRaises(json.JSONDecodeError):
+            self.connector.merge(sandbox_path, "$.obj", "not json")
 
     def test_merge_json_updates_not_dict(self):
         """Test merging with non-object updates."""
         sandbox_path = self._create_json_file("test.json", {"obj": {}})
-        result = self.connector.merge(sandbox_path, "$.obj", '"string value"')
-        self.assertIn("[Error]", result)
-        self.assertIn("must be a JSON object", result)
+        with self.assertRaises(TypeError):
+            self.connector.merge(sandbox_path, "$.obj", '"string value"')
 
     def test_bracket_notation(self):
         """Test JSONPath with bracket notation."""

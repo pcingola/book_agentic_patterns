@@ -119,7 +119,6 @@ Retrieval-Augmented Generation: embeddings, vector databases, document ingestion
 - [x] Hands-on: Simple Document Ingestion and Retrieval -- Foundational RAG with paragraph chunking, Chroma storage, and similarity retrieval
 - [x] Hands-on: Advanced Document Ingestion and Retrieval -- Semantic chunking with LLM boundary detection, query expansion, and re-ranking
 - [x] References
-- [ ] BEST PRACTICE: Doctors / reviewer (TODO)
 
 ### Chapter: [Context & Memory](chapters/context_memory/chapter.md)
 

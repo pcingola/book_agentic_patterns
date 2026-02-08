@@ -61,9 +61,8 @@ class TestCsvConnector(unittest.TestCase):
 
     def test_head_csv_file_not_found(self):
         """Test head with non-existent file."""
-        result = self.connector.head("/workspace/nonexistent.csv")
-        self.assertIn("[Error]", result)
-        self.assertIn("not found", result.lower())
+        with self.assertRaises(FileNotFoundError):
+            self.connector.head("/workspace/nonexistent.csv")
 
     def test_tail_csv_basic(self):
         """Test basic CSV tail."""
@@ -96,8 +95,8 @@ class TestCsvConnector(unittest.TestCase):
         """Test reading row beyond file length."""
         sandbox_path = self._create_csv("test.csv", [["name", "age"], ["Alice", "30"]])
 
-        result = self.connector.read_row(sandbox_path, row_number=10)
-        self.assertIn("[Error]", result)
+        with self.assertRaises(IndexError):
+            self.connector.read_row(sandbox_path, row_number=10)
 
     def test_get_csv_headers(self):
         """Test getting CSV headers."""
@@ -204,9 +203,8 @@ class TestCsvConnector(unittest.TestCase):
         """Test appending row with missing column value."""
         sandbox_path = self._create_csv("test.csv", [["name", "age"], ["Alice", "30"]])
 
-        result = self.connector.append(sandbox_path, values={"name": "Bob"})
-        self.assertIn("[Error]", result)
-        self.assertIn("Missing value", result)
+        with self.assertRaises(ValueError):
+            self.connector.append(sandbox_path, values={"name": "Bob"})
 
     def test_delete_csv(self):
         """Test deleting rows."""
