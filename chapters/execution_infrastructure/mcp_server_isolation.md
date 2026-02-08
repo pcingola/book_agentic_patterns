@@ -46,26 +46,49 @@ When `url_isolated` is not set, the client always uses `url` regardless of priva
 
 ### Client-side switching
 
-The `get_mcp_client()` function resolves the correct URL at connection time by checking the session's private data status:
+Private data can appear at any point during a session -- a tool call might load sensitive records, or a compliance check might flag content that arrived in the conversation. The MCP client must be able to switch to the isolated instance mid-session, between any two tool calls, without tearing down and reopening connections.
+
+The solution is `MCPClientPrivateData`, a wrapper that holds two `MCPServerStreamableHTTP` instances -- one for the normal URL, one for the isolated URL -- and opens both when the context is entered. Every call (`list_tools`, `call_tool`, etc.) is delegated through a `_target()` method that checks `session_has_private_data()`. The moment private data appears, all subsequent calls route to the isolated instance. The switch is a one-way ratchet: once triggered, it never reverts, matching the sensitivity escalation semantics in `PrivateData`.
 
 ```python
-def get_mcp_client(
-    name: str,
-    config_path: Path | str | None = None,
-    bearer_token: str | None = None,
-) -> MCPServerStreamableHTTP:
-    settings = _load_mcp_settings(config_path)
-    config = settings.get(name)
+class MCPClientPrivateData:
+    def __init__(self, url: str, url_isolated: str, **kwargs):
+        self._normal = MCPServerStreamableHTTP(url=url, **kwargs)
+        self._isolated = MCPServerStreamableHTTP(url=url_isolated, **kwargs)
+        self._is_isolated = False
 
-    url = config.url
-    if config.url_isolated and session_has_private_data(*get_user_session()):
-        url = config.url_isolated
+    def _target(self) -> MCPServerStreamableHTTP:
+        if not self._is_isolated:
+            self._is_isolated = session_has_private_data()
+        return self._isolated if self._is_isolated else self._normal
 
-    headers = {"Authorization": f"Bearer {bearer_token}"} if bearer_token else None
-    return MCPServerStreamableHTTP(url=url, timeout=config.read_timeout, headers=headers)
+    async def __aenter__(self):
+        await self._normal.__aenter__()
+        await self._isolated.__aenter__()
+        return self
+
+    async def __aexit__(self, *args):
+        await self._isolated.__aexit__(*args)
+        await self._normal.__aexit__(*args)
+
+    # Every toolset method delegates to _target()
 ```
 
-Because PydanticAI creates a new MCP connection context for each agent run, the switch happens naturally between turns. When private data enters the session mid-conversation, the next agent run picks up the isolated URL automatically. No container recreation or connection teardown is needed on the client side -- it simply points at a different endpoint.
+Both connections are alive for the entire session. There is no reconnection or context teardown at the switch point -- `_target()` simply starts returning the isolated instance instead of the normal one. From PydanticAI's perspective, nothing changed; the toolset object is the same, it just routes internally.
+
+The `get_mcp_client()` factory returns `MCPClientPrivateData` when `url_isolated` is present in config, and a plain `MCPServerStreamableHTTP` otherwise. Callers do not need to know which variant they got:
+
+```python
+def get_mcp_client(name, config_path=None, bearer_token=None):
+    config = _load_mcp_settings(config_path).get(name)
+    headers = {"Authorization": f"Bearer {bearer_token}"} if bearer_token else None
+    if config.url_isolated:
+        return MCPClientPrivateData(
+            url=config.url, url_isolated=config.url_isolated,
+            timeout=config.read_timeout, headers=headers,
+        )
+    return MCPServerStreamableHTTP(url=config.url, timeout=config.read_timeout, headers=headers)
+```
 
 ### Deploying the containers
 

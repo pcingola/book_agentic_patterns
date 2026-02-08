@@ -63,7 +63,7 @@ The core library provides reusable infrastructure for building AI agentic system
 
 **auth.py**: JWT token generation and validation for cross-layer identity propagation. `create_token(user_id, session_id)` encodes claims with HS256 shared secret. `decode_token(token)` validates and returns claims. Secret and algorithm read from `JWT_SECRET` / `JWT_ALGORITHM` env vars in `config.py`.
 
-**mcp.py**: MCP client/server configuration and auth integration. `MCPClientConfig` (`url`, `read_timeout`) and `MCPServerConfig` (`name`, `instructions`, `port`) with YAML-based settings loading and `${VAR}` environment variable expansion. `get_mcp_client()` accepts optional `bearer_token` to inject Authorization headers. `create_process_tool_call(get_token)` factory returns a callback that injects Bearer tokens into MCP tool calls (bridges PydanticAI RunContext to MCP). `AuthSessionMiddleware` (FastMCP Middleware) reads access token claims on each request and calls `set_user_session()` so downstream code works unchanged. The book's MCP Server Isolation chapter describes a dual-container pattern with `url_isolated` for network-isolated MCP servers when private data is present, but this is not yet implemented in code.
+**mcp.py**: MCP client/server configuration, auth integration, error classification, and network isolation switching. `MCPClientConfig` (`url`, `url_isolated`, `read_timeout`) and `MCPServerConfig` (`name`, `instructions`, `port`) with YAML-based settings loading and `${VAR}` environment variable expansion. Error classification: `ToolRetryError` (LLM retries with different arguments) and `ToolFatalError` (prepends `[FATAL] ` prefix, aborts the agent run). `MCPServerStreamableHTTPStrict` overrides `direct_call_tool` to intercept fatal errors and raise `RuntimeError` instead of `ModelRetry`. `MCPClientPrivateData` wraps two `MCPServerStreamableHTTPStrict` instances (normal and isolated), opens both at context entry, and routes calls through `_target()` which checks `session_has_private_data()` -- once private data appears, all subsequent calls go to the isolated instance (one-way ratchet). `create_mcp_server(name)` factory returns `FastMCP` with `AuthSessionMiddleware` pre-wired. `get_mcp_client()` returns `MCPClientPrivateData` when `url_isolated` is configured, `MCPServerStreamableHTTPStrict` otherwise. `create_process_tool_call(get_token)` factory returns a callback that injects Bearer tokens into MCP tool calls. `AuthSessionMiddleware` (FastMCP Middleware) reads access token claims on each request and calls `set_user_session()`.
 
 **skills/**: Skill library for agent capabilities with progressive disclosure pattern. `models.py` defines `SkillMetadata` (lightweight info: name, description, path) and `Skill` (full skill with frontmatter, body, script/reference/asset paths). `registry.py` provides `SkillRegistry` with `discover()` to scan skill directories and cache metadata (cheap), `list_all()` to return cached metadata for system prompt injection, and `get()` to lazy-load full skill on activation (expensive). Skills are defined in directories containing a `SKILL.md` file with YAML frontmatter (name, description) and markdown body. Optional `scripts/`, `references/`, and `assets/` subdirectories hold supporting files. `tools.py` exposes `list_available_skills()` for compact one-liner listings and `get_skill_instructions()` for returning the SKILL.md body only (per spec, resources are tier 3 and loaded separately).
 
@@ -103,7 +103,7 @@ Code examples organized by chapter (Jupyter notebooks and Python scripts):
 - `context_memory/` - Context result decorator, history compaction, prompts
 - `orchestration/` - Delegation, workflows, graphs, hand-off
 - `rag/` - Document loading, querying, embeddings
-- `mcp/` - MCP client (HTTP/stdio), MCP servers, features
+- `mcp/` - MCP client (HTTP/stdio), MCP servers, features, template server/client with production patterns
 - `a2a/` - A2A servers and clients (v1, v2)
 - `evals/` - Evaluation examples, doctors analysis, skills (skill-bad, skill-good subdirectories)
 - `connectors/` - JSON connector, SQL connector, NL2SQL agent examples
@@ -113,7 +113,7 @@ Code examples organized by chapter (Jupyter notebooks and Python scripts):
 
 ## Chapters
 
-Chapters in `chapters/`: foundations, core_patterns, tools, context_memory, orchestration, rag, mcp, a2a, skills_and_sub_agents, evals, execution_infrastructure, data_sources_and_connectors, ui. Each contains `chapter.md` index linking to section files and hands-on exercises. Master index in `chapters.md` at root. The execution_infrastructure chapter covers: Sandbox, REPL, Kill Switch, MCP Server Isolation, and Skill Sandbox.
+Chapters in `chapters/`: foundations, core_patterns, tools, context_memory, orchestration, rag, mcp, a2a, skills_and_sub_agents, evals, execution_infrastructure, data_sources_and_connectors, ui. Each contains `chapter.md` index linking to section files and hands-on exercises. Master index in `chapters.md` at root. The execution_infrastructure chapter covers: Sandbox, REPL, Kill Switch, MCP Server Isolation, Hands-on MCP Server Isolation, and Skill Sandbox.
 
 ## Scripts
 

