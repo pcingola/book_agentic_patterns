@@ -266,7 +266,9 @@ Production infrastructure for running agent-generated code safely.
   - [x] BEST PRACTICE: Use non-root user in container
   - [x] BEST PRACTICE: Limit result size (back to agent), save STDOUT, STDERR to files in workspace
 - [x] REPL
-- [x] Autonomous vs supervised execution (Human-in-the-loop), Approval, rollback, and reversibility
+- [x] Kill Switch
+- [x] MCP isiolation
+- [x] Skill sandbox
 
 ### Chapter: Research & Science Agents
 

@@ -9,3 +9,5 @@
 [MCP Server Isolation](./mcp_server_isolation.md)
 
 [Skill Sandbox](./skill_sandbox.md)
+
+[Hands-On: MCP Server Isolation](./hands_on_mcp_isolation.md)
