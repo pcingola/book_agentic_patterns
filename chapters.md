@@ -251,7 +251,6 @@ Into: Introduction to section, what we are building and how
 - Basic MCPs:
   - mcp-todo
   - mcp-file-edit
-  - mcp-sandbox
 
 ### Chapter: [Execution Infrastructure](chapters/execution_infrastructure/chapter.md)
 
@@ -268,7 +267,6 @@ Production infrastructure for running agent-generated code safely.
   - [x] BEST PRACTICE: Limit result size (back to agent), save STDOUT, STDERR to files in workspace
 - [x] REPL
 - [x] Autonomous vs supervised execution (Human-in-the-loop), Approval, rollback, and reversibility
-- [ ] Code Deployments, static and dynamic containers (Docker + Traefic)
 
 ### Chapter: Research & Science Agents
 

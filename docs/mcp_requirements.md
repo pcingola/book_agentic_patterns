@@ -1,0 +1,12 @@
+# MCP Server Requirements
+
+1. **Auth**: JWT via `AuthSessionMiddleware` -- extracts `sub`/`session_id` claims; tools access identity via `get_user_id()` / `get_session_id()` contextvars, never as parameters (`core/mcp.py`, `core/user_session.py`)
+2. **Workspace**: All file I/O goes through `workspace_to_host_path()` / `host_to_workspace_path()` -- agents see `/workspace/...`, never host paths; directories isolated per user/session (`core/workspace.py`)
+3. **Context**: Tools returning large results MUST use `@context_result()` to auto-truncate and save full output to workspace; named presets available (`"default"`, `"sql_query"`, `"log_search"`) with type-aware truncation (`core/context/`)
+4. **Permissions**: Every tool MUST declare permissions with `@tool_permission(ToolPermission.READ|WRITE|CONNECT)`; `CONNECT` tools automatically blocked when session contains private data (`core/tools/permissions.py`, `core/compliance/private_data.py`)
+5. **Compliance**: Tools reading sensitive data MUST call `PrivateData().add_private_dataset(name, sensitivity)` -- state persisted outside workspace to prevent agent tampering (`core/compliance/private_data.py`)
+6. **Connectors**: Data operations live in connectors (inherit `Connector`, no MCP/PydanticAI deps, static methods, workspace isolation, `@context_result()`); tools wrap connectors adding decorators (`core/connectors/`)
+7. **Config**: All server config MUST be in `config.yaml` under `mcp_servers` key with `${VAR}` env expansion; `.env` only for main environment variables (`core/mcp.py`, `core/config/`)
+8. **Errors**: Two-tier exceptions: retryable tool errors (user-correctable, LLM can retry) vs code bugs (let propagate) -- never wrap entire tool in catch-all (`docs/mcp_template.md`)
+9. **Docker**: Network isolation: `NetworkMode.NONE` when private data present (`core/sandbox/`)
+10. **Testing**: Use FastMCP in-memory client for unit tests; structure in `tests/unit/` and `tests/integration/`
