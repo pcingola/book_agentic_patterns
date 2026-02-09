@@ -130,7 +130,7 @@ def register_tools(mcp: FastMCP) -> None:
         tool_func = _generate_tool_function(op_name, op_config)
 
         permission = ToolPermission.READ if op_config.view_only else ToolPermission.WRITE
-        tool_func = context_result()(tool_func)
+        tool_func = context_result(save=not op_config.view_only)(tool_func)
         tool_func = tool_permission(permission)(tool_func)
         mcp.tool()(tool_func)
         setattr(mcp, f"_auto_tool_{op_name}", tool_func)

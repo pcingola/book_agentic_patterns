@@ -121,17 +121,18 @@ def _truncate_by_type(content: str, content_type: FileType, config: TruncationCo
     return content
 
 
-def context_result(config_name: str = "default"):
+def context_result(config_name: str = "default", save: bool = True):
     """Decorator for tools that may return large results.
 
     If result exceeds threshold:
     1. Auto-detect content type
-    2. Save full content to workspace
+    2. Save full content to workspace (unless save=False)
     3. Truncate according to content type
     4. Return path + truncated preview
 
     Args:
         config_name: Name of truncation config from config.yaml
+        save: Whether to save full content to workspace. Set to False for view-only operations.
 
     Usage:
         @context_result()
@@ -140,6 +141,10 @@ def context_result(config_name: str = "default"):
 
         @context_result("sql_query")
         def run_sql_query(sql: str) -> str:
+            ...
+
+        @context_result(save=False)
+        def view_only_tool() -> str:
             ...
     """
     def decorator(func):
@@ -150,15 +155,19 @@ def context_result(config_name: str = "default"):
                 return result
 
             content_type = _detect_content_type(result)
-            ext = _get_extension_for_type(content_type)
-            filename = f"result_{uuid4().hex[:8]}{ext}"
-            path = f"/workspace/results/{filename}"
-
-            from agentic_patterns.core.workspace import write_to_workspace
-            write_to_workspace(path, result)
-
             preview = _truncate_by_type(result, content_type, config)
-            return f"Results saved to {path} ({len(result)} chars)\n\nPreview:\n{preview}"
+
+            if save:
+                ext = _get_extension_for_type(content_type)
+                filename = f"result_{uuid4().hex[:8]}{ext}"
+                path = f"/workspace/results/{filename}"
+
+                from agentic_patterns.core.workspace import write_to_workspace
+                write_to_workspace(path, result)
+
+                return f"Results saved to {path} ({len(result)} chars)\n\nPreview:\n{preview}"
+
+            return f"Result truncated ({len(result)} chars total):\n{preview}"
 
         @wraps(func)
         async def async_wrapper(*args, **kwargs):
