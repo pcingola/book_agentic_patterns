@@ -236,20 +236,21 @@ Into: Introduction to section, what we are building and how
 
 ### Chapter: Core Agent (TODO)
 
-- [ ] Core agent
-- [ ] CodeAct
-- [] Run skills
-- [ ] Run sub-agents
+- [x] Core agent
+- [x] CodeAct: mcp_sandbox
+- [x] Run skills
+- [x] Run sub-agents
 - [x] Workspace / Userspace
 - [x] MCPs:
   - [x] mcp-todo
   - [x] mcp-file-edit
   - [x] mcp-data-analysis
   - [x] mcp-data-viz
-- [ ] A2A servers:
-  - [ ] a2a-nl2sql
-  - [ ] a2a-data-analysis
-  - [ ] a2a-data-viz
+- [x] A2A servers:
+  - [x] a2a-nl2sql
+  - [x] a2a-data-analysis
+  - [x] a2a-data-viz
+  - [ ] Format conversion: PPT, Word, PDF, HTML <-> Markdown
 
 ### Chapter: [Execution Infrastructure](chapters/execution_infrastructure/chapter.md)
 
@@ -264,8 +265,6 @@ Production infrastructure for running agent-generated code safely: sandbox isola
 
 ### Chapter: Research & Science Agents (TODO)
 
-- [ ] A2A: Data analysis
 - [ ] Deep research
 - [ ] Biomni
-- [ ] ....
 - [ ] Personas and simulation, Role-playing and multi-perspective reasoning. Debate and arbitration agents
