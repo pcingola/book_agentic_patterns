@@ -3,7 +3,7 @@
 import unittest
 from typing import cast
 
-from agentic_patterns.mcp.todo.models import Task, TaskList, TaskState
+from agentic_patterns.toolkits.todo.models import Task, TaskList, TaskState
 
 
 class TestTaskModel(unittest.TestCase):

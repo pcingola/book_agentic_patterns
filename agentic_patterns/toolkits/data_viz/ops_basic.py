@@ -4,8 +4,8 @@ import matplotlib.figure
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from agentic_patterns.mcp.data_viz.config import DEFAULT_FIGSIZE_HEIGHT, DEFAULT_FIGSIZE_WIDTH, DEFAULT_PALETTE, DEFAULT_STYLE
-from agentic_patterns.mcp.data_viz.models import PlotConfig
+from agentic_patterns.toolkits.data_viz.config import DEFAULT_FIGSIZE_HEIGHT, DEFAULT_FIGSIZE_WIDTH, DEFAULT_PALETTE, DEFAULT_STYLE
+from agentic_patterns.toolkits.data_viz.models import PlotConfig
 
 
 def _line_plot(df, x_column, y_columns, title=None, xlabel=None, ylabel=None, figsize_width=DEFAULT_FIGSIZE_WIDTH, figsize_height=DEFAULT_FIGSIZE_HEIGHT, style=DEFAULT_STYLE, palette=DEFAULT_PALETTE, marker=None, linewidth=1.5) -> matplotlib.figure.Figure:

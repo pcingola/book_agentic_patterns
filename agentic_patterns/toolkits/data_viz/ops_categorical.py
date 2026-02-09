@@ -4,8 +4,8 @@ import matplotlib.figure
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from agentic_patterns.mcp.data_viz.config import DEFAULT_FIGSIZE_HEIGHT, DEFAULT_FIGSIZE_WIDTH, DEFAULT_PALETTE, DEFAULT_STYLE
-from agentic_patterns.mcp.data_viz.models import PlotConfig
+from agentic_patterns.toolkits.data_viz.config import DEFAULT_FIGSIZE_HEIGHT, DEFAULT_FIGSIZE_WIDTH, DEFAULT_PALETTE, DEFAULT_STYLE
+from agentic_patterns.toolkits.data_viz.models import PlotConfig
 
 
 def _count_plot(df, column, title=None, xlabel=None, ylabel=None, figsize_width=DEFAULT_FIGSIZE_WIDTH, figsize_height=DEFAULT_FIGSIZE_HEIGHT, style=DEFAULT_STYLE, palette=DEFAULT_PALETTE, hue_column=None, orient="v") -> matplotlib.figure.Figure:
