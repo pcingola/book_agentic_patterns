@@ -174,6 +174,8 @@ The `docs/` directory contains reference documentation for the key technologies 
 
 `docs/mcp_requirements.md` -- Checklist of requirements for production MCP servers: auth, workspace, context, permissions, compliance, connectors, config, errors, Docker, testing.
 
+`docs/a2a_requirements.md` -- Requirements for A2A servers: server creation via `get_agent()`/`to_a2a()`, auth with Bearer token propagation, client config, coordination with delegation tools, resilience (retry/timeout/cancel), prompt management, testing with `MockA2AServer`. Includes template implementation plan.
+
 Each index file (`*.md`) links to detailed section files in corresponding subdirectories (`a2a_specification/`, `agui/`, `fastmcp/`, `mcp/`, `pydantic-ai/`, `skills_specification/`). Original unprocessed source files are in `docs/original/`.
 
 ## Additional Conventions

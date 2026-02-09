@@ -238,12 +238,18 @@ Into: Introduction to section, what we are building and how
 
 - [ ] Core agent
 - [ ] CodeAct
-- [ ] Run skills
+- [] Run skills
 - [ ] Run sub-agents
-- [ ] Workspace / Userspace
-- [ ] Basic MCPs:
-  - [ ] mcp-todo
-  - [ ] mcp-file-edit
+- [x] Workspace / Userspace
+- [x] MCPs:
+  - [x] mcp-todo
+  - [x] mcp-file-edit
+  - [x] mcp-data-analysis
+  - [x] mcp-data-viz
+- [ ] A2A servers:
+  - [ ] a2a-nl2sql
+  - [ ] a2a-data-analysis
+  - [ ] a2a-data-viz
 
 ### Chapter: [Execution Infrastructure](chapters/execution_infrastructure/chapter.md)
 
