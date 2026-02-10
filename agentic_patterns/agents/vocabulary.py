@@ -2,7 +2,7 @@
 
 from pydantic_ai import Agent
 
-from agentic_patterns.core.agents import get_agent
+from agentic_patterns.core.agents import AgentSpec, get_agent
 from agentic_patterns.core.connectors.vocabulary.connector import VocabularyConnector
 from agentic_patterns.core.connectors.vocabulary.registry import list_vocabularies
 
@@ -14,17 +14,22 @@ You have access to tools for looking up terms, searching, validating codes, brow
 hierarchies (parents, children, ancestors, descendants), and exploring relationships \
 in biomedical and scientific vocabularies."""
 
+DESCRIPTION = "Delegates vocabulary and ontology tasks: term lookup, code validation, hierarchy navigation."
 
 _connector = VocabularyConnector()
 
 
 def create_agent(vocab_names: list[str] | None = None) -> Agent:
     """Create a vocabulary agent with tools bound to available vocabularies."""
+    spec = get_spec(vocab_names)
+    return get_agent(system_prompt=spec.system_prompt, tools=spec.tools)
+
+
+def get_spec(vocab_names: list[str] | None = None) -> AgentSpec:
+    """Return an AgentSpec for the vocabulary agent."""
     instructions = _build_instructions(vocab_names)
-    tools = _get_tools()
-    return get_agent(
-        system_prompt=SYSTEM_PROMPT, instructions=instructions, tools=tools
-    )
+    full_prompt = SYSTEM_PROMPT + "\n\n" + instructions
+    return AgentSpec(name="vocabulary_expert", description=DESCRIPTION, system_prompt=full_prompt, tools=_get_tools())
 
 
 def _build_instructions(vocab_names: list[str] | None = None) -> str:

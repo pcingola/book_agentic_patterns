@@ -8,7 +8,7 @@ from typing import Any, Sequence
 
 import rich
 from pydantic import BaseModel, ConfigDict
-from pydantic_ai import Agent
+from pydantic_ai import Agent, RunContext
 from pydantic_ai._agent_graph import CallToolsNode
 from pydantic_ai.agent import AgentRun, AgentRunResult
 from pydantic_ai.messages import ModelMessage, TextPart, ToolCallPart
@@ -48,12 +48,14 @@ class AgentSpec(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     name: str
+    description: str | None = None
     model: Model | None = None
     system_prompt: str | None = None
     tools: list[Any] = []  # Tool | Callable - Pydantic can't validate these types
     mcp_servers: list[MCPClientConfig] = []
     a2a_clients: list[A2AClientExtended] = []
     skills: list[Skill] = []
+    sub_agents: list["AgentSpec"] = []
 
     @classmethod
     def from_config(
@@ -114,7 +116,19 @@ class AgentSpec(BaseModel):
         )
 
     def __str__(self) -> str:
-        return f"AgentSpec({self.name})"
+        counts = []
+        if self.tools:
+            counts.append(f"tools={len(self.tools)}")
+        if self.sub_agents:
+            counts.append(f"sub_agents={len(self.sub_agents)}")
+        if self.skills:
+            counts.append(f"skills={len(self.skills)}")
+        if self.mcp_servers:
+            counts.append(f"mcp={len(self.mcp_servers)}")
+        if self.a2a_clients:
+            counts.append(f"a2a={len(self.a2a_clients)}")
+        detail = ", ".join(counts)
+        return f"AgentSpec({self.name}, {detail})" if detail else f"AgentSpec({self.name})"
 
 
 class OrchestratorAgent:
@@ -173,6 +187,24 @@ class OrchestratorAgent:
                 for s in self.spec.skills
             ]
             tools.extend(get_skill_tools(registry))
+
+        # Create sub-agent delegation tool
+        if self.spec.sub_agents:
+            sub_map = {s.name: s for s in self.spec.sub_agents}
+            names = list(sub_map.keys())
+
+            async def delegate(ctx: RunContext, agent_name: str, prompt: str) -> str:
+                """Delegate a task to a sub-agent."""
+                if agent_name not in sub_map:
+                    return f"Unknown agent '{agent_name}'. Available: {', '.join(names)}"
+                sub_spec = sub_map[agent_name]
+                async with OrchestratorAgent(sub_spec) as sub:
+                    result = await sub.run(prompt)
+                ctx.usage.incr(result.usage())
+                return result.output
+
+            delegate.__doc__ = f"Delegate a task to a sub-agent. Available agents: {', '.join(names)}."
+            tools.append(delegate)
 
         # Build system prompt
         system_prompt = self._build_system_prompt(a2a_cards)
@@ -233,6 +265,13 @@ class OrchestratorAgent:
 
         if a2a_cards:
             parts.append(build_coordinator_prompt(a2a_cards))
+
+        if self.spec.sub_agents:
+            lines = ["Available sub-agents (use the `delegate` tool to call them):"]
+            for sub in self.spec.sub_agents:
+                desc = sub.description or sub.name
+                lines.append(f"- {sub.name}: {desc}")
+            parts.append("\n".join(lines))
 
         if self.spec.skills:
             registry = SkillRegistry()

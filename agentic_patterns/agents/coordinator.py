@@ -1,49 +1,24 @@
 """Coordinator agent that delegates to local sub-agents."""
 
-from pydantic_ai import RunContext
-
-from agentic_patterns.core.agents import (
-    run_agent,
-    AgentSpec,
-    OrchestratorAgent,
-)
-from agentic_patterns.agents.data_analysis import (
-    create_agent as create_data_analysis_agent,
-)
-from agentic_patterns.agents.sql import create_agent as create_sql_agent
-
-SYSTEM_PROMPT = """You coordinate tasks between specialized agents.
-
-Available agents:
-
-- ask_data_analyst: Delegates data analysis tasks (EDA, statistics, transformations, ML) on DataFrames. Use this when the user wants to analyze, transform, or model tabular data files.
-
-- ask_sql_analyst: Delegates SQL database queries. Use this when the user wants to query databases, inspect schemas, or answer questions from SQL data sources.
-
-Break the user's request into sub-tasks, delegate each to the appropriate agent, and synthesize their responses into a final answer."""
+from agentic_patterns.core.agents import AgentSpec, OrchestratorAgent
+from agentic_patterns.core.config.config import PROMPTS_DIR
+from agentic_patterns.core.prompt import load_prompt
+from agentic_patterns.agents.data_analysis import get_spec as get_data_analysis_spec
+from agentic_patterns.agents.sql import get_spec as get_sql_spec
+from agentic_patterns.agents.vocabulary import get_spec as get_vocabulary_spec
 
 
-async def ask_data_analyst(ctx: RunContext, prompt: str) -> str:
-    """Delegate a data analysis task to the Data Analysis sub-agent."""
-    agent = create_data_analysis_agent()
-    agent_run, _ = await run_agent(agent, prompt)
-    ctx.usage.incr(agent_run.result.usage())
-    return agent_run.result.output
-
-
-async def ask_sql_analyst(ctx: RunContext, prompt: str) -> str:
-    """Delegate a SQL query task to the SQL sub-agent."""
-    agent = create_sql_agent()
-    agent_run, _ = await run_agent(agent, prompt)
-    ctx.usage.incr(agent_run.result.usage())
-    return agent_run.result.output
-
-
-def create_agent() -> OrchestratorAgent:
-    """Create a coordinator agent with delegation tools for both sub-agents."""
+def create_agent(tools: list | None = None) -> OrchestratorAgent:
+    """Create a coordinator agent that delegates to sub-agents."""
+    system_prompt = load_prompt(PROMPTS_DIR / "the_complete_agent" / "agent_coordinator.md")
     spec = AgentSpec(
         name="coordinator",
-        system_prompt=SYSTEM_PROMPT,
-        tools=[ask_data_analyst, ask_sql_analyst],
+        system_prompt=system_prompt,
+        tools=tools or [],
+        sub_agents=[
+            get_data_analysis_spec(),
+            get_sql_spec(),
+            get_vocabulary_spec(),
+        ],
     )
     return OrchestratorAgent(spec)
