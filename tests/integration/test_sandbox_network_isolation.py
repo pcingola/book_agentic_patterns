@@ -78,9 +78,12 @@ class TestSandboxNetworkIsolation(unittest.TestCase):
         self.assertNotEqual(session.container_id, original_container_id)
 
     def test_workspace_survives_container_recreation(self):
-        # Write a file in the workspace
+        # Write a file in the workspace (persistent so the session is cached)
         self.manager.execute_command(
-            self.user_id, self.session_id, "echo 'important data' > /workspace/test.txt"
+            self.user_id,
+            self.session_id,
+            "echo 'important data' > /workspace/test.txt",
+            persistent=True,
         )
         session = self.manager.get_or_create_session(self.user_id, self.session_id)
         original_container_id = session.container_id
@@ -93,7 +96,10 @@ class TestSandboxNetworkIsolation(unittest.TestCase):
 
         # File should still be there in the new container
         exit_code, output = self.manager.execute_command(
-            self.user_id, self.session_id, "cat /workspace/test.txt"
+            self.user_id,
+            self.session_id,
+            "cat /workspace/test.txt",
+            persistent=True,
         )
 
         self.assertEqual(exit_code, 0)

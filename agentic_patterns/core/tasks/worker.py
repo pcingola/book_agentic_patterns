@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 from agentic_patterns.core.agents import get_agent, run_agent
@@ -36,8 +37,11 @@ class Worker:
                 "system_prompt", "You are a helpful assistant."
             )
             config_name = task.metadata.get("config_name", "default")
-            agent = get_agent(
-                model=self._model, config_name=config_name, system_prompt=system_prompt
+            agent = await asyncio.to_thread(
+                get_agent,
+                model=self._model,
+                config_name=config_name,
+                system_prompt=system_prompt,
             )
             agent_run, _ = await run_agent(agent, task.input)
 

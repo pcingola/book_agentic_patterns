@@ -229,6 +229,10 @@ The `docs/` directory contains reference documentation for the key technologies 
 
 Each index file (`*.md`) links to detailed section files in corresponding subdirectories (`a2a_specification/`, `agui/`, `fastmcp/`, `mcp/`, `pydantic-ai/`, `skills_specification/`). Original unprocessed source files are in `docs/original/`.
 
+## Notebooks
+
+**Session identity**: NEVER call `set_user_session()` in notebooks. The contextvars have defaults (`DEFAULT_USER_ID`, `DEFAULT_SESSION_ID`) configured in `core/config/config.py`. Notebooks rely on these defaults. `set_user_session()` is only called at real request boundaries (middleware, MCP handlers, etc.), never in example code.
+
 ## Additional Conventions
 
 **Tests**: In `tests/` directory at root with `unit/` and `integration/` subdirectories. Run via `scripts/test.sh` (uses pytest).

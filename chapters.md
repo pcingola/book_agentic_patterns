@@ -234,7 +234,18 @@ Chat UIs with Chainlit and AG-UI protocol, error propagation across distributed 
 
 Into: Introduction to section, what we are building and how
 
-### Chapter: Core Agent (TODO)
+### Chapter: [Execution Infrastructure](chapters/execution_infrastructure/chapter.md)
+
+Production infrastructure for running agent-generated code safely: sandbox isolation, REPL, kill switch, MCP server isolation, and skill sandboxing.
+
+- [x] Sandbox -- Process isolation (bubblewrap/subprocess) constraining code execution to prevent unauthorized filesystem and network access
+- [x] REPL -- Jupyter-like notebook pattern for iterative code execution in shared stateful environments with persistence and isolation
+- [x] Kill Switch -- Binary network isolation (Docker network_mode="none") when private data enters an agent session
+- [x] MCP Server Isolation -- Dual-container routing tool calls to isolated vs unrestricted instances based on session data sensitivity
+- [x] Skill Sandbox -- Read-only mounted container allowing execution of skill scripts while preventing modifications to the skill library
+- [x] Hands-on: MCP Server Isolation -- Interactive notebook demonstrating dual-instance MCP isolation with workspace, permissions, and private data flagging
+
+### Chapter: The Complete Agent (TODO)
 
 - [x] Core agent
 - [x] CodeAct: mcp_sandbox
@@ -252,17 +263,6 @@ Into: Introduction to section, what we are building and how
   - [x] a2a-data-analysis
   - [x] a2a-data-viz
   - [ ] Format conversion: PPT, Word, PDF, HTML <-> Markdown
-
-### Chapter: [Execution Infrastructure](chapters/execution_infrastructure/chapter.md)
-
-Production infrastructure for running agent-generated code safely: sandbox isolation, REPL, kill switch, MCP server isolation, and skill sandboxing.
-
-- [x] Sandbox -- Process isolation (bubblewrap/subprocess) constraining code execution to prevent unauthorized filesystem and network access
-- [x] REPL -- Jupyter-like notebook pattern for iterative code execution in shared stateful environments with persistence and isolation
-- [x] Kill Switch -- Binary network isolation (Docker network_mode="none") when private data enters an agent session
-- [x] MCP Server Isolation -- Dual-container routing tool calls to isolated vs unrestricted instances based on session data sensitivity
-- [x] Skill Sandbox -- Read-only mounted container allowing execution of skill scripts while preventing modifications to the skill library
-- [x] Hands-on: MCP Server Isolation -- Interactive notebook demonstrating dual-instance MCP isolation with workspace, permissions, and private data flagging
 
 ### Chapter: Research & Science Agents (TODO)
 

@@ -1,5 +1,6 @@
 """OrchestratorAgent: Full agent with tools, MCP, A2A, and skills."""
 
+import asyncio
 from contextlib import AsyncExitStack
 from pathlib import Path
 from typing import Any, Sequence
@@ -125,11 +126,10 @@ class OrchestratorAgent:
         # Build system prompt
         system_prompt = self._build_system_prompt(a2a_cards)
 
-        # Create the agent
-        self._agent = get_agent(
-            model=self.spec.model,
-            system_prompt=system_prompt,
-            tools=tools,
+        # Create the agent off the event loop -- get_agent() does synchronous
+        # file I/O (reads config.yaml) and heavy construction (Agent + instrument).
+        self._agent = await asyncio.to_thread(
+            get_agent, model=self.spec.model, system_prompt=system_prompt, tools=tools
         )
 
         return self

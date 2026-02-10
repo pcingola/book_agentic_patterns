@@ -1,6 +1,9 @@
 """Sandbox manager for Docker-based code execution with network isolation."""
 
 import logging
+import uuid
+from collections.abc import Iterator
+from contextlib import contextmanager
 
 import docker
 from docker.errors import DockerException, NotFound
@@ -16,7 +19,7 @@ from agentic_patterns.core.sandbox.container_config import (
     create_default_config,
 )
 from agentic_patterns.core.sandbox.network_mode import NetworkMode, get_network_mode
-from agentic_patterns.core.sandbox.session import Session
+from agentic_patterns.core.sandbox.session import SandboxSession
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +34,7 @@ class SandboxManager:
     def __init__(self, read_only_mounts: dict[str, str] | None = None) -> None:
         self._client: docker.DockerClient | None = None
         self._read_only_mounts: dict[str, str] = read_only_mounts or {}
-        self._sessions: dict[tuple[str, str], Session] = {}
+        self._sessions: dict[tuple[str, str], SandboxSession] = {}
 
     @property
     def client(self) -> docker.DockerClient:
@@ -49,48 +52,38 @@ class SandboxManager:
         del self._sessions[key]
         logger.info("Closed session %s:%s", user_id, session_id)
 
-    def execute_command(
-        self, user_id: str, session_id: str, command: str, timeout: int | None = None
-    ) -> tuple[int, str]:
-        """Execute a command in the session's container. Returns (exit_code, output)."""
-        session = self.get_or_create_session(user_id, session_id)
-        session.touch()
-        timeout = timeout or SANDBOX_COMMAND_TIMEOUT
-
+    @contextmanager
+    def ephemeral_session(
+        self, user_id: str, session_id: str
+    ) -> Iterator[SandboxSession]:
+        """Create a container, yield the session, destroy the container on exit."""
+        session = self._new_session(user_id, session_id, ephemeral=True)
         try:
-            container = self.client.containers.get(session.container_id)
-            result = container.exec_run(
-                cmd=["bash", "-c", command],
-                workdir=session.config.working_dir,
-                demux=True,
-            )
-            stdout = (
-                result.output[0].decode("utf-8", errors="replace")
-                if result.output[0]
-                else ""
-            )
-            stderr = (
-                result.output[1].decode("utf-8", errors="replace")
-                if result.output[1]
-                else ""
-            )
-            output = stdout + stderr
-            return result.exit_code, output
-        except NotFound:
-            logger.error(
-                "Container %s not found for session %s:%s",
-                session.container_id,
-                user_id,
-                session_id,
-            )
-            raise
-        except DockerException as e:
-            logger.error(
-                "Docker error executing command in %s:%s: %s", user_id, session_id, e
-            )
-            raise
+            yield session
+        finally:
+            self._remove_container(session.container_id)
 
-    def get_or_create_session(self, user_id: str, session_id: str) -> Session:
+    def execute_command(
+        self,
+        user_id: str,
+        session_id: str,
+        command: str,
+        timeout: int | None = None,
+        *,
+        persistent: bool = False,
+    ) -> tuple[int, str]:
+        """Execute a command in a sandbox container. Returns (exit_code, output).
+
+        persistent=False (default): create container, run, destroy.
+        persistent=True: reuse cached session across calls.
+        """
+        if persistent:
+            session = self.get_or_create_session(user_id, session_id)
+            return self._run_command(session, command, timeout)
+        with self.ephemeral_session(user_id, session_id) as session:
+            return self._run_command(session, command, timeout)
+
+    def get_or_create_session(self, user_id: str, session_id: str) -> SandboxSession:
         """Get existing session or create a new one. Checks network mode on every call."""
         key = (user_id, session_id)
         session = self._sessions.get(key)
@@ -103,7 +96,9 @@ class SandboxManager:
 
         return session
 
-    def _create_container(self, session: Session, config: ContainerConfig) -> Container:
+    def _create_container(
+        self, session: SandboxSession, config: ContainerConfig
+    ) -> Container:
         """Create and start a Docker container for the session."""
         session.data_dir.mkdir(parents=True, exist_ok=True)
 
@@ -137,7 +132,7 @@ class SandboxManager:
         )
         return container
 
-    def _ensure_network_mode(self, session: Session) -> None:
+    def _ensure_network_mode(self, session: SandboxSession) -> None:
         """Check if session's network mode matches PrivateData state; recreate if not."""
         required = get_network_mode(session.user_id, session.session_id)
         if session.network_mode == required:
@@ -150,16 +145,19 @@ class SandboxManager:
             )
             self._recreate_container(session)
 
-    def _new_session(self, user_id: str, session_id: str) -> Session:
+    def _new_session(
+        self, user_id: str, session_id: str, *, ephemeral: bool = False
+    ) -> SandboxSession:
         """Create a brand new session with container."""
         network_mode = get_network_mode(user_id, session_id)
         config = create_default_config(network_mode, self._read_only_mounts)
         data_dir = WORKSPACE_DIR / user_id / session_id
 
-        session = Session(
+        suffix = f"-{uuid.uuid4().hex[:8]}" if ephemeral else ""
+        session = SandboxSession(
             user_id=user_id,
             session_id=session_id,
-            container_name=f"{SANDBOX_CONTAINER_PREFIX}-{user_id}-{session_id}",
+            container_name=f"{SANDBOX_CONTAINER_PREFIX}-{user_id}-{session_id}{suffix}",
             network_mode=network_mode,
             config=config,
             data_dir=data_dir,
@@ -168,7 +166,7 @@ class SandboxManager:
         self._create_container(session, config)
         return session
 
-    def _recreate_container(self, session: Session) -> None:
+    def _recreate_container(self, session: SandboxSession) -> None:
         """Stop old container and create a new one with updated network mode."""
         self._remove_container(session.container_id)
         network_mode = get_network_mode(session.user_id, session.session_id)
@@ -185,3 +183,45 @@ class SandboxManager:
             pass
         except DockerException as e:
             logger.warning("Error removing container %s: %s", container_id, e)
+
+    def _run_command(
+        self, session: SandboxSession, command: str, timeout: int | None = None
+    ) -> tuple[int, str]:
+        """Execute a command in the session's container. Returns (exit_code, output)."""
+        session.touch()
+        timeout = timeout or SANDBOX_COMMAND_TIMEOUT
+
+        try:
+            container = self.client.containers.get(session.container_id)
+            result = container.exec_run(
+                cmd=["bash", "-c", command],
+                workdir=session.config.working_dir,
+                demux=True,
+            )
+            stdout = (
+                result.output[0].decode("utf-8", errors="replace")
+                if result.output[0]
+                else ""
+            )
+            stderr = (
+                result.output[1].decode("utf-8", errors="replace")
+                if result.output[1]
+                else ""
+            )
+            return result.exit_code, stdout + stderr
+        except NotFound:
+            logger.error(
+                "Container %s not found for session %s:%s",
+                session.container_id,
+                session.user_id,
+                session.session_id,
+            )
+            raise
+        except DockerException as e:
+            logger.error(
+                "Docker error executing command in %s:%s: %s",
+                session.user_id,
+                session.session_id,
+                e,
+            )
+            raise

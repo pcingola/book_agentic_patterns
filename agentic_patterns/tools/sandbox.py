@@ -1,5 +1,7 @@
 """PydanticAI agent tools for Docker sandbox -- wraps core/sandbox/."""
 
+import asyncio
+
 from agentic_patterns.core.context.decorators import context_result
 from agentic_patterns.core.sandbox.config import SANDBOX_COMMAND_TIMEOUT
 from agentic_patterns.core.sandbox.manager import SandboxManager
@@ -13,21 +15,15 @@ def get_all_tools() -> list:
     manager = SandboxManager()
 
     @tool_permission(ToolPermission.WRITE)
-    async def sandbox_close_session() -> str:
-        """Stop and remove the Docker container for the current session."""
-        manager.close_session(get_user_id(), get_session_id())
-        return "Session closed."
-
-    @tool_permission(ToolPermission.WRITE)
     @context_result()
     async def sandbox_execute(
         command: str, timeout: int = SANDBOX_COMMAND_TIMEOUT
     ) -> str:
         """Execute a shell command in the Docker sandbox. Returns exit code and output."""
-        exit_code, output = manager.execute_command(
-            get_user_id(), get_session_id(), command, timeout
+        exit_code, output = await asyncio.to_thread(
+            manager.execute_command, get_user_id(), get_session_id(), command, timeout
         )
         header = f"Exit code: {exit_code}\n"
         return header + output
 
-    return [sandbox_close_session, sandbox_execute]
+    return [sandbox_execute]

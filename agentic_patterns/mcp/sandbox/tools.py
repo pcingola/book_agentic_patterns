@@ -1,5 +1,7 @@
 """MCP Sandbox server tools -- thin wrapper delegating to core/sandbox/."""
 
+import asyncio
+
 from docker.errors import DockerException, NotFound
 from fastmcp import Context, FastMCP
 
@@ -18,17 +20,6 @@ def register_tools(mcp: FastMCP) -> None:
 
     @mcp.tool()
     @tool_permission(ToolPermission.WRITE)
-    async def close_session(ctx: Context = None) -> str:
-        """Stop and remove the Docker container for the current session."""
-        try:
-            _manager.close_session(get_user_id(), get_session_id())
-        except (DockerException, NotFound) as e:
-            raise ToolFatalError(str(e)) from e
-        await ctx.info("close_session")
-        return "Session closed."
-
-    @mcp.tool()
-    @tool_permission(ToolPermission.WRITE)
     @context_result()
     async def execute(
         command: str, timeout: int = SANDBOX_COMMAND_TIMEOUT, ctx: Context = None
@@ -40,8 +31,12 @@ def register_tools(mcp: FastMCP) -> None:
             timeout: Execution timeout in seconds.
         """
         try:
-            exit_code, output = _manager.execute_command(
-                get_user_id(), get_session_id(), command, timeout
+            exit_code, output = await asyncio.to_thread(
+                _manager.execute_command,
+                get_user_id(),
+                get_session_id(),
+                command,
+                timeout,
             )
         except NotFound as e:
             raise ToolFatalError(str(e)) from e

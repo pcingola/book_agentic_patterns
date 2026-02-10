@@ -9,7 +9,7 @@ from agentic_patterns.core.sandbox.container_config import ContainerConfig
 from agentic_patterns.core.sandbox.network_mode import NetworkMode
 
 
-class Session(BaseModel):
+class SandboxSession(BaseModel):
     """Represents an active sandbox session tied to a Docker container."""
 
     user_id: str
@@ -27,4 +27,4 @@ class Session(BaseModel):
         self.last_active_at = datetime.now(timezone.utc)
 
     def __str__(self) -> str:
-        return f"Session({self.user_id}:{self.session_id}, container={self.container_name}, network={self.network_mode.value})"
+        return f"SandboxSession({self.user_id}:{self.session_id}, container={self.container_name}, network={self.network_mode.value})"
