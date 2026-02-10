@@ -1,10 +1,8 @@
-"""Vocabulary agent: PydanticAI agent with vocabulary tools for term resolution."""
-
-from typing import Any
+"""Vocabulary agent: resolves terms across controlled vocabularies."""
 
 from pydantic_ai import Agent
 
-from agentic_patterns.core.agents import get_agent, run_agent
+from agentic_patterns.core.agents import get_agent
 from agentic_patterns.core.connectors.vocabulary.connector import VocabularyConnector
 from agentic_patterns.core.connectors.vocabulary.registry import list_vocabularies
 
@@ -20,21 +18,13 @@ in biomedical and scientific vocabularies."""
 _connector = VocabularyConnector()
 
 
-def create_vocabulary_agent(vocab_names: list[str] | None = None) -> Agent:
+def create_agent(vocab_names: list[str] | None = None) -> Agent:
     """Create a vocabulary agent with tools bound to available vocabularies."""
     instructions = _build_instructions(vocab_names)
     tools = _get_tools()
     return get_agent(
         system_prompt=SYSTEM_PROMPT, instructions=instructions, tools=tools
     )
-
-
-async def run_vocabulary_query(
-    query: str, vocab_names: list[str] | None = None, verbose: bool = False
-) -> tuple[Any, list]:
-    """Run a vocabulary query using the vocabulary agent."""
-    agent = create_vocabulary_agent(vocab_names)
-    return await run_agent(agent, query, verbose=verbose)
 
 
 def _build_instructions(vocab_names: list[str] | None = None) -> str:

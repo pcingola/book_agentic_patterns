@@ -16,10 +16,10 @@ DbConnectionConfigs.get().load_from_yaml(DBS_YAML_PATH)
 
 ## Creating the NL2SQL Agent
 
-The `create_nl2sql_agent()` factory does several things in a single call. It looks up the schema metadata for the given database identifier, loads the system prompt and instructions (which embed the full annotated schema), collects the NL2SQL tools, and returns a configured PydanticAI agent:
+The `create_agent()` factory (in `agents/nl2sql`) does several things in a single call. It looks up the schema metadata for the given database identifier, loads the system prompt and instructions (which embed the full annotated schema), collects the NL2SQL tools, and returns a configured PydanticAI agent:
 
 ```python
-nl2sql_agent = create_nl2sql_agent(db_id="bookstore")
+nl2sql_agent = create_agent(db_id="bookstore")
 ```
 
 The agent receives two tools. `db_execute_sql_tool` generates SQL from the user's question, validates it (SELECT-only, single statement), executes it, and writes results to a CSV file in the workspace. `db_get_row_by_id_tool` fetches a single row by primary key for detailed inspection. Both tools are created using the closure pattern: inner functions that capture the `db_id` from the enclosing scope, so the model never sees or manages database identifiers directly.

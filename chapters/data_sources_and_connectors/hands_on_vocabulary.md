@@ -60,7 +60,7 @@ The query "cell death" retrieves "apoptotic process" because the embedding of "c
 The final section creates an agent with vocabulary tools and gives it a multi-part natural language query:
 
 ```python
-agent = create_vocabulary_agent(vocab_names=["sequence_ontology", "gene_ontology"])
+agent = create_agent(vocab_names=["sequence_ontology", "gene_ontology"])
 
 query = (
     "I need the controlled vocabulary code for 'programmed cell death' in Gene Ontology. "
@@ -71,7 +71,7 @@ query = (
 result, nodes = await run_agent(agent, query, verbose=True)
 ```
 
-`create_vocabulary_agent()` builds a PydanticAI agent with tools wrapping every connector method: `vocab_search`, `vocab_lookup`, `vocab_ancestors`, `vocab_validate`, and others. The agent's instructions list the available vocabularies with their strategy type and term count, so the model knows which vocabulary to query for each part of the request.
+`create_agent()` (in `agents/vocabulary`) builds a PydanticAI agent with tools wrapping every connector method: `vocab_search`, `vocab_lookup`, `vocab_ancestors`, `vocab_validate`, and others. The agent's instructions list the available vocabularies with their strategy type and term count, so the model knows which vocabulary to query for each part of the request.
 
 Given this prompt, the agent typically proceeds in three steps. It searches Gene Ontology for "programmed cell death" and gets back `GO:0006915` (apoptotic process). It searches Sequence Ontology for "single nucleotide variant" and gets back `SO:0001483` (SNV). It then calls `vocab_ancestors` on `SO:0001483` to retrieve the parent chain through `sequence_alteration` up to `sequence_feature`. The agent composes these results into a final answer with the resolved codes and hierarchy.
 

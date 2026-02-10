@@ -40,7 +40,7 @@ async def ask_sql_analyst(ctx: RunContext, prompt: str) -> str:
     return agent_run.result.output
 
 
-def create_coordinator() -> OrchestratorAgent:
+def create_agent() -> OrchestratorAgent:
     """Create a coordinator agent with delegation tools for both sub-agents."""
     spec = AgentSpec(
         name="coordinator",
