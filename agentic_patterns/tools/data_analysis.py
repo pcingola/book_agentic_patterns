@@ -1,8 +1,8 @@
 """PydanticAI agent tools for data analysis -- wraps toolkits/data_analysis/."""
 
 from agentic_patterns.core.context.decorators import context_result
-from agentic_patterns.core.tools.dynamic import generate_param_docs, get_param_signature
 from agentic_patterns.core.tools.permissions import ToolPermission, tool_permission
+from agentic_patterns.tools.dynamic import generate_param_docs, get_param_signature
 from agentic_patterns.toolkits.data_analysis.executor import execute_operation, get_all_operations
 from agentic_patterns.toolkits.data_analysis.io import list_dataframe_files
 

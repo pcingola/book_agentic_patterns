@@ -3,7 +3,7 @@
 from fastmcp import Context, FastMCP
 
 from agentic_patterns.core.mcp import ToolFatalError, ToolRetryError
-from agentic_patterns.core.tools.dynamic import generate_param_docs, get_param_signature
+from agentic_patterns.tools.dynamic import generate_param_docs, get_param_signature
 from agentic_patterns.core.tools.permissions import ToolPermission, tool_permission
 from agentic_patterns.toolkits.data_viz.executor import execute_plot, get_all_operations
 from agentic_patterns.toolkits.data_viz.io import list_plot_files

@@ -25,7 +25,7 @@ agentic_patterns/toolkits/format_conversion/
     export.py             # Markdown -> PDF/Word/HTML (via pypandoc + typst)
     converter.py          # dispatch: convert(input_path, output_format) -> Path
 
-agentic_patterns/core/tools/format_conversion.py    # PydanticAI wrappers
+agentic_patterns/tools/format_conversion.py          # PydanticAI wrappers
 agentic_patterns/mcp/format_conversion/
     server.py             # FastMCP server
     tools.py              # MCP tool registration
@@ -78,7 +78,7 @@ Dispatcher:
 
 Routes by input extension + output format. Returns `str` for text outputs (MD, CSV), `Path` for binary outputs (PDF, DOCX).
 
-## Layer 2: Core Tools (`core/tools/format_conversion.py`)
+## Layer 2: Tools (`tools/format_conversion.py`)
 
 ```python
 def get_all_tools() -> list:
@@ -100,7 +100,7 @@ Thin wrapper: `register_tools(mcp)` with `ctx.info()` logging and `ToolRetryErro
 3. Create `toolkits/format_conversion/ingest.py`
 4. Create `toolkits/format_conversion/export.py`
 5. Create `toolkits/format_conversion/converter.py`
-6. Create `core/tools/format_conversion.py`
+6. Create `tools/format_conversion.py`
 7. Create `mcp/format_conversion/server.py` + `tools.py`
 8. Test with sample files
 

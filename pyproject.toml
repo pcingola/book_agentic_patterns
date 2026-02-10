@@ -33,6 +33,7 @@ dependencies = [
     "statsmodels>=0.14.0",
     "matplotlib>=3.10.8",
     "seaborn>=0.13.2",
+    "ruff>=0.15.0",
 ]
 
 [project.scripts]

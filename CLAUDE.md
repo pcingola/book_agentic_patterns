@@ -16,6 +16,7 @@ book_agentic_patterns/
 ├── agentic_patterns/   # Python code examples and core library
 │   ├── core/          # Reusable infrastructure
 │   ├── toolkits/      # Business logic (no framework dependency)
+│   ├── tools/         # PydanticAI agent tool wrappers
 │   ├── mcp/           # MCP server thin wrappers
 │   ├── examples/      # Code examples by chapter
 │   └── testing/       # Testing utilities for agents
@@ -53,7 +54,7 @@ The core library provides reusable infrastructure for building AI agentic system
 
 **vectordb/**: Embedding and vector database integration for semantic search. Supports four embedding providers (OpenAI, Ollama, SentenceTransformers, OpenRouter) with Chroma as the vector DB backend. `get_embedder()` and `get_vector_db()` use factory pattern with singleton caching. `PydanticAIEmbeddingFunction` wraps embedders for Chroma compatibility. Operations include `vdb_add()`, `vdb_query()` for similarity search, and `vdb_get_by_id()`. Configuration loaded from YAML with environment variable expansion.
 
-**tools/**: Tool management with permissions and AI-driven selection. `ToolPermission` enum (READ, WRITE, CONNECT) with `@tool_permission()` decorator for metadata attachment. `filter_tools_by_permission()` and `enforce_tool_permission()` for runtime permission enforcement. `ToolSelector` uses an agent to select relevant tools based on user query. `func_to_description()` generates tool descriptions from function signatures and docstrings. Connector-specific tool wrappers: `file.py`, `csv.py`, `json.py`, `sql.py` expose connector methods as PydanticAI tools. `nl2sql.py` provides NL2SQL-specific tool utilities. `openapi.py` provides five OpenAPI connector tools (list_apis, list_endpoints, show_api_summary, show_endpoint_details, call_endpoint). Toolkit-specific tool wrappers: `todo.py`, `data_analysis.py`, `data_viz.py`, `format_conversion.py` expose toolkit operations as PydanticAI tools via `get_all_tools()`. `dynamic.py` provides shared helpers (`get_param_signature()`, `generate_param_docs()`) for dynamically generating tool functions from operation registries, used by both PydanticAI and MCP wrappers for data_analysis and data_viz.
+**tools/**: Tool infrastructure -- permissions and AI-driven selection. `ToolPermission` enum (READ, WRITE, CONNECT) with `@tool_permission()` decorator for metadata attachment. `filter_tools_by_permission()` and `enforce_tool_permission()` for runtime permission enforcement. `ToolSelector` uses an agent to select relevant tools based on user query. `func_to_description()` generates tool descriptions from function signatures and docstrings. PydanticAI tool wrappers live in top-level `agentic_patterns/tools/`, not here.
 
 **evals/**: Evaluation framework for testing agent behavior. CLI via `python -m agentic_patterns.core.evals`. Auto-discovery of `eval_*.py` files with convention-based dataset/target/scorer detection. Custom evaluators: `OutputContainsJson` (validate JSON output), `ToolWasCalled` (verify tool execution), `NoToolErrors` (check for failures), `OutputMatchesSchema` (schema validation). `DiscoveredDataset` bundles dataset + target + scorers with filtering by module/file/dataset name.
 
@@ -89,12 +90,12 @@ The core library provides reusable infrastructure for building AI agentic system
 
 ## Toolkits (`agentic_patterns/toolkits/`)
 
-Pure Python business logic with no framework dependency. Each toolkit is a domain-specific module that can be used directly by PydanticAI agents (via `core/tools/`) or exposed through MCP servers (via `mcp/*/tools.py`). Three-layer architecture:
+Pure Python business logic with no framework dependency. Each toolkit is a domain-specific module that can be used directly by PydanticAI agents (via `tools/`) or exposed through MCP servers (via `mcp/*/tools.py`). Three-layer architecture:
 
 ```
 toolkits/*          Business logic. Pure Python: models, operations, I/O.
     |
-    +-> core/tools/*        PydanticAI agent tool wrappers (get_all_tools()).
+    +-> tools/*             PydanticAI agent tool wrappers (get_all_tools()).
     +-> mcp/*/tools.py      MCP server thin wrappers (ctx, @mcp.tool(), error conversion).
 ```
 
@@ -108,13 +109,17 @@ Connectors (`core/connectors/`) are for data source access. Toolkits are for eve
 
 **format_conversion/**: Document format conversion. `enums.py` defines `InputFormat` (CSV, DOCX, MD, PDF, PPTX, XLSX) and `OutputFormat` (CSV, DOCX, HTML, MD, PDF). `ingest.py` converts documents to Markdown/CSV using pymupdf, python-docx, python-pptx, openpyxl. `export.py` converts Markdown to PDF/DOCX/HTML via pypandoc. `converter.py` provides `convert()` dispatch function routing by input extension and output format.
 
+## Tools (`agentic_patterns/tools/`)
+
+PydanticAI agent tool wrappers -- top-level peer of `toolkits/` and `mcp/`. Each file exposes `get_all_tools()` returning plain functions passed to `Agent(tools=[...])`. Connector wrappers: `file.py`, `csv.py`, `json.py`, `sql.py`, `nl2sql.py`, `openapi.py` wrap `core/connectors/`. Toolkit wrappers: `todo.py`, `data_analysis.py`, `data_viz.py`, `format_conversion.py` wrap `toolkits/`. `dynamic.py` provides shared helpers (`get_param_signature()`, `generate_param_docs()`) for dynamically generating tool functions from operation registries, used by both PydanticAI and MCP wrappers.
+
 ## MCP Servers (`agentic_patterns/mcp/`)
 
 **template/**: Reference implementation of a production MCP server demonstrating requirements 1-9 and 11 from `docs/mcp_requirements.md`. `server.py` uses `create_mcp_server()` with `AuthSessionMiddleware` pre-wired. `tools.py` registers four tools showing `@tool_permission`, `@context_result()`, workspace path translation, `ToolRetryError`/`ToolFatalError`, `PrivateData` flagging, and `ctx.info()` logging. The interactive client example is in `agentic_patterns/examples/execution_infrastructure/example_mcp_isolation.ipynb`.
 
 **todo/**: Thin MCP wrapper for task management. `server.py` + `tools.py` only. Delegates to `toolkits/todo/operations`, adds `ctx: Context`, converts exceptions to `ToolRetryError`. Six tools: add_task, add_tasks, create_task_list, delete_task, show_task_list, update_task_status.
 
-**data_analysis/**: Thin MCP wrapper for DataFrame analysis. `server.py` + `tools.py` only. Delegates to `toolkits/data_analysis/executor`. Dynamically generates tools from the operation registry using `core/tools/dynamic` helpers. Converts `ValueError` to `ToolRetryError`, `RuntimeError` to `ToolFatalError`.
+**data_analysis/**: Thin MCP wrapper for DataFrame analysis. `server.py` + `tools.py` only. Delegates to `toolkits/data_analysis/executor`. Dynamically generates tools from the operation registry using `tools/dynamic` helpers. Converts `ValueError` to `ToolRetryError`, `RuntimeError` to `ToolFatalError`.
 
 **data_viz/**: Thin MCP wrapper for plot generation. Same pattern as data_analysis. Delegates to `toolkits/data_viz/executor`.
 
@@ -205,7 +210,7 @@ The `docs/` directory contains reference documentation for the key technologies 
 
 `docs/a2a_requirements.md` -- Requirements for A2A servers: server creation via `get_agent()`/`to_a2a()`, auth with Bearer token propagation, client config, coordination with delegation tools, resilience (retry/timeout/cancel), prompt management, testing with `MockA2AServer`. Includes template implementation plan.
 
-`docs/refactor_mcp_connectors.md` -- Design document for the toolkits refactoring: extracting business logic from MCP servers into `toolkits/`, creating PydanticAI tool wrappers in `core/tools/`, and simplifying MCP wrappers to thin delegation layers. Fully implemented.
+`docs/refactor_mcp_connectors.md` -- Design document for the toolkits refactoring: extracting business logic from MCP servers into `toolkits/`, creating PydanticAI tool wrappers in `tools/`, and simplifying MCP wrappers to thin delegation layers. Fully implemented.
 
 Each index file (`*.md`) links to detailed section files in corresponding subdirectories (`a2a_specification/`, `agui/`, `fastmcp/`, `mcp/`, `pydantic-ai/`, `skills_specification/`). Original unprocessed source files are in `docs/original/`.
 
