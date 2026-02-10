@@ -35,6 +35,20 @@ def list_available_skills(registry: SkillRegistry) -> str:
     return "\n".join(str(skill) for skill in skills)
 
 
+def get_all_tools(registry: SkillRegistry) -> list:
+    """Get skill tools for use with PydanticAI agents."""
+
+    def activate_skill(skill_name: str) -> str:
+        """Activate a skill by name to load its full instructions into context."""
+        instructions = get_skill_instructions(registry, skill_name)
+        if instructions is None:
+            return f"Skill '{skill_name}' not found. Use the skill catalog to see available skills."
+        print(f"[SKILL ACTIVATED: {skill_name}]")
+        return instructions
+
+    return [activate_skill]
+
+
 def run_skill_script(
     manager: SandboxManager,
     registry: SkillRegistry,

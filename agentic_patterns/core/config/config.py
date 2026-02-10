@@ -24,6 +24,7 @@ PRIVATE_DATA_DIR = Path(
     get_variable_env("PRIVATE_DATA_DIR") or DATA_DIR / "private_data"
 )
 FEEDBACK_DIR = Path(get_variable_env("FEEDBACK_DIR") or DATA_DIR / "feedback")
+SKILLS_DIR = Path(get_variable_env("SKILLS_DIR") or DATA_DIR / "skills")
 
 # Workspace defaults
 SANDBOX_PREFIX = "/workspace"

@@ -3,7 +3,6 @@
 from pydantic_ai import RunContext
 
 from agentic_patterns.core.agents import (
-    get_model,
     run_agent,
     AgentSpec,
     OrchestratorAgent,
@@ -44,7 +43,6 @@ def create_agent() -> OrchestratorAgent:
     """Create a coordinator agent with delegation tools for both sub-agents."""
     spec = AgentSpec(
         name="coordinator",
-        model=get_model(),
         system_prompt=SYSTEM_PROMPT,
         tools=[ask_data_analyst, ask_sql_analyst],
     )
