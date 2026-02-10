@@ -246,6 +246,7 @@ Into: Introduction to section, what we are building and how
   - [x] mcp-file-edit
   - [x] mcp-data-analysis
   - [x] mcp-data-viz
+  - [x] mcp-format-conversion
 - [x] A2A servers:
   - [x] a2a-nl2sql
   - [x] a2a-data-analysis
