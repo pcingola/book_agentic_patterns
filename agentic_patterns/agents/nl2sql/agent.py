@@ -4,8 +4,8 @@ from typing import Any
 
 from pydantic_ai import Agent
 
-from agentic_patterns.core.agents.agents import get_agent, run_agent
-from agentic_patterns.core.agents.nl2sql.prompts import get_instructions, get_system_prompt
+from agentic_patterns.core.agents import get_agent, run_agent
+from agentic_patterns.agents.nl2sql.prompts import get_instructions, get_system_prompt
 from agentic_patterns.core.connectors.sql.db_infos import DbInfos
 from agentic_patterns.tools.nl2sql import get_all_tools
 

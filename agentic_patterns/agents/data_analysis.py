@@ -1,4 +1,4 @@
-"""Data Analysis sub-agent -- local equivalent of the A2A data_analysis server."""
+"""Data Analysis agent -- local equivalent of the A2A data_analysis server."""
 
 from pydantic_ai import Agent
 
