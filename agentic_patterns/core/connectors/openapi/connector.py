@@ -110,7 +110,7 @@ class OpenApiConnector(Connector):
 
             # Write to workspace
             write_to_workspace(output_file, json.dumps(full_response, indent=2))
-            host_path = workspace_to_host_path(PurePosixPath(output_file))
+            workspace_to_host_path(PurePosixPath(output_file))
 
             # Return formatted response
             if status_code >= 400:

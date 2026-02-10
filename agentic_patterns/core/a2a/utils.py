@@ -1,10 +1,17 @@
 """Utility functions for A2A integration."""
 
+from __future__ import annotations
+
 import re
 import uuid
 from collections.abc import Callable
+from pathlib import Path
+from typing import TYPE_CHECKING
 
 from fasta2a import Skill
+
+if TYPE_CHECKING:
+    from agentic_patterns.core.skills.models import SkillMetadata
 
 
 def create_message(text: str, message_id: str | None = None) -> dict:
@@ -71,7 +78,7 @@ def card_to_skills(card: dict) -> list[Skill]:
 
 
 async def mcp_to_skills(
-    config_name: str, config_path: "Path | str | None" = None
+    config_name: str, config_path: Path | str | None = None
 ) -> list[Skill]:
     """Connect to an MCP server by config name and convert its tools to A2A Skills."""
     from agentic_patterns.core.mcp import get_mcp_client
@@ -84,6 +91,6 @@ async def mcp_to_skills(
     ]
 
 
-def skill_metadata_to_a2a_skill(meta: "SkillMetadata") -> Skill:
+def skill_metadata_to_a2a_skill(meta: SkillMetadata) -> Skill:
     """Convert a core SkillMetadata to a fasta2a Skill."""
     return Skill(id=slugify(meta.name), name=meta.name, description=meta.description)

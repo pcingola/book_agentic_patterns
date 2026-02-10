@@ -93,7 +93,7 @@ class TestCoordinatorMultiAgent(unittest.IsolatedAsyncioTestCase):
         )
         coordinator._model = model
 
-        result = await coordinator.run("What is 5 + 5?")
+        await coordinator.run("What is 5 + 5?")
 
         self.assertIn("add 5 and 5", self.math_server.received_prompts)
         self.assertEqual(len(self.text_server.received_prompts), 0)

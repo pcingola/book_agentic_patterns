@@ -17,7 +17,7 @@ class TestLoadModule(unittest.TestCase):
         self.assertTrue(hasattr(module, "dataset_one"))
 
     def test_load_module_adds_to_sys_modules(self):
-        module = load_module_from_file(TEST_DATA_DIR / "eval_sample.py")
+        load_module_from_file(TEST_DATA_DIR / "eval_sample.py")
         self.assertIn("eval_sample", sys.modules)
 
     def test_load_module_invalid_file(self):

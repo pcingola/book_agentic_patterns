@@ -303,8 +303,6 @@ class TestHistoryCompactor(unittest.IsolatedAsyncioTestCase):
             self._make_assistant_message("First assistant response " * 20),
         ]
         messages = await compactor.compact(messages)
-        initial_count = len(messages)
-
         messages.append(self._make_user_message("Second user message " * 20))
         messages.append(self._make_assistant_message("Second assistant response " * 20))
         messages = await compactor.compact(messages)

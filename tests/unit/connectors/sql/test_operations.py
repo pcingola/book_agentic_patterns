@@ -97,7 +97,7 @@ class TestSqlConnector(unittest.TestCase):
     def test_execute_select_with_output(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             out_path = Path(tmpdir) / "results.csv"
-            result = asyncio.run(
+            asyncio.run(
                 self.connector.execute_sql(
                     "test_bookstore", "SELECT * FROM books", str(out_path)
                 )

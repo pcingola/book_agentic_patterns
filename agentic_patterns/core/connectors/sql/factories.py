@@ -1,6 +1,13 @@
 """Factory functions for creating database-specific components."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from agentic_patterns.core.connectors.sql.connection import DbConnection
+
+if TYPE_CHECKING:
+    from agentic_patterns.core.connectors.sql.db_operations import DbOperations
 from agentic_patterns.core.connectors.sql.database_type import DatabaseType
 from agentic_patterns.core.connectors.sql.db_connection_config import (
     DbConnectionConfigs,
