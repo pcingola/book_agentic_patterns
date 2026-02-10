@@ -111,7 +111,7 @@ Connectors (`core/connectors/`) are for data source access. Toolkits are for eve
 
 ## Tools (`agentic_patterns/tools/`)
 
-PydanticAI agent tool wrappers -- top-level peer of `toolkits/` and `mcp/`. Each file exposes `get_all_tools()` returning plain functions passed to `Agent(tools=[...])`. Connector wrappers: `file.py`, `csv.py`, `json.py`, `sql.py`, `nl2sql.py`, `openapi.py` wrap `core/connectors/`. Toolkit wrappers: `todo.py`, `data_analysis.py`, `data_viz.py`, `format_conversion.py` wrap `toolkits/`. `dynamic.py` provides shared helpers (`get_param_signature()`, `generate_param_docs()`) for dynamically generating tool functions from operation registries, used by both PydanticAI and MCP wrappers.
+PydanticAI agent tool wrappers -- top-level peer of `toolkits/` and `mcp/`. Each file exposes `get_all_tools()` returning plain functions passed to `Agent(tools=[...])`. Connector wrappers: `file.py`, `csv.py`, `json.py`, `sql.py`, `nl2sql.py`, `openapi.py` wrap `core/connectors/`. Toolkit wrappers: `todo.py`, `data_analysis.py`, `data_viz.py`, `format_conversion.py` wrap `toolkits/`. Core infrastructure wrappers: `repl.py` (7 tools wrapping `core/repl/` -- execute_cell, rerun_cell, show_notebook, show_cell, delete_cell, clear_notebook, export_ipynb), `sandbox.py` (2 tools wrapping `core/sandbox/` -- execute, close_session). `dynamic.py` provides shared helpers (`get_param_signature()`, `generate_param_docs()`) for dynamically generating tool functions from operation registries, used by both PydanticAI and MCP wrappers.
 
 ## MCP Servers (`agentic_patterns/mcp/`)
 
@@ -124,6 +124,14 @@ PydanticAI agent tool wrappers -- top-level peer of `toolkits/` and `mcp/`. Each
 **data_viz/**: Thin MCP wrapper for plot generation. Same pattern as data_analysis. Delegates to `toolkits/data_viz/executor`.
 
 **format_conversion/**: Thin MCP wrapper for document conversion. Delegates to `toolkits/format_conversion/converter`. Single tool: `convert_document`.
+
+**file_ops/**: Thin MCP wrapper for file operations. Delegates to `core/connectors/file`.
+
+**sql/**: Thin MCP wrapper for SQL operations. Delegates to `core/connectors/sql/`.
+
+**repl/**: Thin MCP wrapper for REPL notebook execution. Delegates to `core/repl/`. Seven tools: execute_cell, rerun_cell, show_notebook, show_cell, delete_cell, clear_notebook, export_ipynb. Converts `ValueError`/`IndexError` to `ToolRetryError`.
+
+**sandbox/**: Thin MCP wrapper for Docker sandbox execution. Delegates to `core/sandbox/`. Two tools: execute, close_session. Converts `DockerException`/`NotFound` to `ToolFatalError`.
 
 ### Key Patterns
 
