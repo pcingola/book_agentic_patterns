@@ -89,7 +89,9 @@ def update_task_status(task_id: str, status: str) -> bool:
     try:
         task_state = TaskState(status)
     except ValueError:
-        raise ValueError(f"Invalid status '{status}'. Use: pending, in_progress, completed, failed")
+        raise ValueError(
+            f"Invalid status '{status}'. Use: pending, in_progress, completed, failed"
+        )
     task_list = _get_task_list()
     success = task_list.update_task_state(task_id, task_state)
     if success:

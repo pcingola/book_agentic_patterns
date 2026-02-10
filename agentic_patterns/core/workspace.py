@@ -16,6 +16,7 @@ from agentic_patterns.core.user_session import get_session_id, get_user_id
 
 class WorkspaceError(Exception):
     """Raised for user-correctable workspace errors (invalid paths, missing files, etc.)."""
+
     pass
 
 
@@ -63,7 +64,9 @@ def list_workspace_files(pattern: str) -> list[str]:
     host_root = _get_host_root()
     if not host_root.exists():
         return []
-    return [str(host_to_workspace_path(p)) for p in host_root.rglob(pattern) if p.is_file()]
+    return [
+        str(host_to_workspace_path(p)) for p in host_root.rglob(pattern) if p.is_file()
+    ]
 
 
 def read_from_workspace(sandbox_path: str) -> str:
@@ -99,7 +102,14 @@ def store_result(content: str | bytes, content_type: str) -> str:
     """Store content in workspace and return sandbox path."""
     from uuid import uuid4
 
-    extensions = {"json": ".json", "csv": ".csv", "txt": ".txt", "md": ".md", "xml": ".xml", "yaml": ".yaml"}
+    extensions = {
+        "json": ".json",
+        "csv": ".csv",
+        "txt": ".txt",
+        "md": ".md",
+        "xml": ".xml",
+        "yaml": ".yaml",
+    }
     ext = extensions.get(content_type.lower(), ".txt")
     filename = f"result_{uuid4().hex[:8]}{ext}"
     path = str(PurePosixPath(SANDBOX_PREFIX) / "results" / filename)

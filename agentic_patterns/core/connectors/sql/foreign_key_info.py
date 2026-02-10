@@ -1,6 +1,6 @@
 """Foreign key information model."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 @dataclass

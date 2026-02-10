@@ -6,12 +6,14 @@ from pydantic_ai import Agent
 from pydantic_ai.messages import ToolCallPart
 
 from agentic_patterns.core.skills.registry import SkillRegistry
-from agentic_patterns.core.skills.tools import get_skill_instructions, list_available_skills
+from agentic_patterns.core.skills.tools import (
+    get_skill_instructions,
+    list_available_skills,
+)
 from agentic_patterns.testing import ModelMock
 
 
 class TestSkillsAgentIntegration(unittest.IsolatedAsyncioTestCase):
-
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.skills_root = Path(self.temp_dir.name)
@@ -53,11 +55,15 @@ Use this skill to analyze CSV or JSON data files.
             result = get_skill_instructions(self.registry, name)
             return result if result else f"Skill '{name}' not found."
 
-        model = ModelMock(responses=[
-            ToolCallPart(tool_name="list_skills", args={}),
-            ToolCallPart(tool_name="activate_skill", args={"name": "data-analysis"}),
-            "I've loaded the data-analysis skill. It helps analyze CSV or JSON files.",
-        ])
+        model = ModelMock(
+            responses=[
+                ToolCallPart(tool_name="list_skills", args={}),
+                ToolCallPart(
+                    tool_name="activate_skill", args={"name": "data-analysis"}
+                ),
+                "I've loaded the data-analysis skill. It helps analyze CSV or JSON files.",
+            ]
+        )
 
         agent = Agent(model=model, tools=[list_skills, activate_skill])
         result = await agent.run("What skills are available and how do I analyze data?")
@@ -72,10 +78,14 @@ Use this skill to analyze CSV or JSON data files.
             result = get_skill_instructions(self.registry, name)
             return result if result else f"Skill '{name}' not found."
 
-        model = ModelMock(responses=[
-            ToolCallPart(tool_name="activate_skill", args={"name": "nonexistent-skill"}),
-            "The skill 'nonexistent-skill' was not found.",
-        ])
+        model = ModelMock(
+            responses=[
+                ToolCallPart(
+                    tool_name="activate_skill", args={"name": "nonexistent-skill"}
+                ),
+                "The skill 'nonexistent-skill' was not found.",
+            ]
+        )
 
         agent = Agent(model=model, tools=[activate_skill])
         result = await agent.run("Activate the nonexistent-skill")

@@ -5,7 +5,6 @@ from agentic_patterns.core.skills.models import Skill
 
 
 class TestSkill(unittest.TestCase):
-
     def test_str_representation(self):
         skill = Skill(
             name="test-skill",

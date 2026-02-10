@@ -8,7 +8,7 @@ source "${SCRIPT_DIR}/config.sh"
 cd "${PROJECT_DIR}"
 
 # Run ruff linter
-ruff check src/ tests/
+ruff check agentic_patterns/ tests/
 
 # Run ruff formatter check
-ruff format --check src/ tests/
+ruff format --check agentic_patterns/ tests/

@@ -36,8 +36,12 @@ class ToolWasCalled(Evaluator[Any, Any, Any]):
             return EvaluationReason(value=False, reason="No span tree available")
         found = self._find_tool_call(ctx.span_tree, self.tool_name)
         if found:
-            return EvaluationReason(value=True, reason=f"Tool '{self.tool_name}' was called")
-        return EvaluationReason(value=False, reason=f"Tool '{self.tool_name}' was not called")
+            return EvaluationReason(
+                value=True, reason=f"Tool '{self.tool_name}' was called"
+            )
+        return EvaluationReason(
+            value=False, reason=f"Tool '{self.tool_name}' was not called"
+        )
 
     def _find_tool_call(self, span: Any, tool_name: str) -> bool:
         """Recursively search span tree for tool call."""
@@ -56,7 +60,9 @@ class NoToolErrors(Evaluator[Any, Any, Any]):
 
     def evaluate(self, ctx: EvaluatorContext[Any, Any, Any]) -> EvaluationReason:
         if ctx.span_tree is None:
-            return EvaluationReason(value=True, reason="No span tree available (no tools to check)")
+            return EvaluationReason(
+                value=True, reason="No span tree available (no tools to check)"
+            )
         errors = self._find_tool_errors(ctx.span_tree)
         if errors:
             return EvaluationReason(value=False, reason=f"Tool errors found: {errors}")
@@ -88,19 +94,25 @@ class OutputMatchesSchema(Evaluator[Any, Any, Any]):
             try:
                 output = json.loads(output)
             except json.JSONDecodeError as e:
-                return EvaluationReason(value=False, reason=f"Output is not valid JSON: {e}")
+                return EvaluationReason(
+                    value=False, reason=f"Output is not valid JSON: {e}"
+                )
 
         if isinstance(self.schema, type) and issubclass(self.schema, BaseModel):
             try:
                 self.schema.model_validate(output)
                 return EvaluationReason(value=True, reason="Output matches schema")
             except Exception as e:
-                return EvaluationReason(value=False, reason=f"Schema validation failed: {e}")
+                return EvaluationReason(
+                    value=False, reason=f"Schema validation failed: {e}"
+                )
         elif isinstance(self.schema, dict):
             if not isinstance(output, dict):
                 return EvaluationReason(value=False, reason="Output is not a dict")
             missing_keys = set(self.schema.keys()) - set(output.keys())
             if missing_keys:
-                return EvaluationReason(value=False, reason=f"Missing keys: {missing_keys}")
+                return EvaluationReason(
+                    value=False, reason=f"Missing keys: {missing_keys}"
+                )
             return EvaluationReason(value=True, reason="Output matches schema keys")
         return EvaluationReason(value=False, reason="Invalid schema type")

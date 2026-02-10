@@ -19,7 +19,13 @@ Answer only using the tool names."""
 class ToolSelector:
     """Selects relevant tools from a list of functions based on user query."""
 
-    def __init__(self, tools: list[Callable], prompt_template: str | None = None, model=None, config_name: str = "default"):
+    def __init__(
+        self,
+        tools: list[Callable],
+        prompt_template: str | None = None,
+        model=None,
+        config_name: str = "default",
+    ):
         self.tools = {func.__name__: func for func in tools}
         self.prompt_template = prompt_template or SELECTION_PROMPT_TEMPLATE
         self.model = model
@@ -30,8 +36,12 @@ class ToolSelector:
 
     async def select(self, query: str, verbose: bool = False) -> list[Callable]:
         """Select relevant tools for the given query."""
-        agent = get_agent(model=self.model, config_name=self.config_name, output_type=list[str])
-        prompt = self.prompt_template.format(query=query, tools_description=self._describe_tools())
+        agent = get_agent(
+            model=self.model, config_name=self.config_name, output_type=list[str]
+        )
+        prompt = self.prompt_template.format(
+            query=query, tools_description=self._describe_tools()
+        )
         result, _ = await run_agent(agent, prompt, verbose=verbose)
         if result is None:
             return []

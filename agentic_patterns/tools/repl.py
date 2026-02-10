@@ -52,7 +52,9 @@ def get_all_tools() -> list:
 
     @tool_permission(ToolPermission.WRITE)
     @context_result()
-    async def repl_rerun_cell(cell_number: int, timeout: int = DEFAULT_CELL_TIMEOUT) -> str:
+    async def repl_rerun_cell(
+        cell_number: int, timeout: int = DEFAULT_CELL_TIMEOUT
+    ) -> str:
         """Re-execute an existing cell by number (0-based)."""
         nb = _load_notebook()
         cell = await nb.execute_cell(cell_number, timeout=timeout)

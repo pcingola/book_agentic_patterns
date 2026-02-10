@@ -7,6 +7,7 @@ from pydantic import BaseModel
 
 class IssueLevel(str, Enum):
     """Severity level of an issue."""
+
     ERROR = "error"
     WARNING = "warning"
     INFO = "info"
@@ -14,6 +15,7 @@ class IssueLevel(str, Enum):
 
 class IssueCategory(str, Enum):
     """Category of an issue."""
+
     AMBIGUITY = "ambiguity"
     ARGUMENTS = "arguments"
     CAPABILITIES = "capabilities"
@@ -31,6 +33,7 @@ class IssueCategory(str, Enum):
 
 class Issue(BaseModel):
     """A single issue found during analysis."""
+
     level: IssueLevel
     category: IssueCategory
     message: str
@@ -45,6 +48,7 @@ class Issue(BaseModel):
 
 class ArgumentRecommendation(BaseModel):
     """Recommendation for a function argument."""
+
     arg_name: str
     arg_type: str
     issues: list[Issue]
@@ -58,6 +62,7 @@ class ArgumentRecommendation(BaseModel):
 
 class Recommendation(BaseModel):
     """Base recommendation for any analyzed artifact."""
+
     name: str
     needs_improvement: bool
     issues: list[Issue]
@@ -74,6 +79,7 @@ class Recommendation(BaseModel):
 
 class ToolRecommendation(Recommendation):
     """Recommendation for a tool/function."""
+
     arguments: list[ArgumentRecommendation]
     return_type_issues: list[Issue]
 
@@ -98,6 +104,7 @@ class ToolRecommendation(Recommendation):
 
 class PromptRecommendation(Recommendation):
     """Recommendation for a prompt."""
+
     placeholders_found: list[str]
 
     def __str__(self) -> str:
@@ -114,6 +121,7 @@ class PromptRecommendation(Recommendation):
 
 class SkillRecommendation(BaseModel):
     """Recommendation for an A2A skill."""
+
     skill_id: str
     issues: list[Issue]
 
@@ -126,6 +134,7 @@ class SkillRecommendation(BaseModel):
 
 class A2ARecommendation(Recommendation):
     """Recommendation for an A2A agent card."""
+
     capabilities: list[str]
     skills: list[SkillRecommendation]
 
@@ -148,6 +157,7 @@ class A2ARecommendation(Recommendation):
 
 class ScriptRecommendation(BaseModel):
     """Recommendation for a script in a skill."""
+
     script_name: str
     issues: list[Issue]
 
@@ -167,6 +177,7 @@ class ScriptRecommendation(BaseModel):
 
 class AgentSkillRecommendation(Recommendation):
     """Recommendation for an Agent Skill (agentskills.io format)."""
+
     body_issues: list[Issue]
     consistency_issues: list[Issue]
     frontmatter_issues: list[Issue]

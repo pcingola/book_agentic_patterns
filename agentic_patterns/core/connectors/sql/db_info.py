@@ -18,7 +18,11 @@ class DbInfo:
     cache_file_path: Path | None = field(default=None, repr=False, compare=False)
 
     def __str__(self) -> str:
-        desc_preview = self.description[:50] + "..." if len(self.description) > 50 else self.description
+        desc_preview = (
+            self.description[:50] + "..."
+            if len(self.description) > 50
+            else self.description
+        )
         return f"DbInfo(db_id={self.db_id!r}, tables={len(self.tables)}, description={desc_preview!r})"
 
     def __iter__(self):
@@ -41,7 +45,10 @@ class DbInfo:
         return sorted([table.name for table in self.tables])
 
     def schema_sql(self) -> str:
-        from agentic_patterns.core.connectors.sql.schema_formatter import SchemaFormatter
+        from agentic_patterns.core.connectors.sql.schema_formatter import (
+            SchemaFormatter,
+        )
+
         return SchemaFormatter.format_schema(self.tables, self.db_id, self.description)
 
     @classmethod
@@ -62,7 +69,11 @@ class DbInfo:
         if input_path is None:
             if db_id is None:
                 raise ValueError("Either db_id or input_path must be provided")
-            from agentic_patterns.core.connectors.sql.config import DATABASE_CACHE_DIR, DB_INFO_EXT
+            from agentic_patterns.core.connectors.sql.config import (
+                DATABASE_CACHE_DIR,
+                DB_INFO_EXT,
+            )
+
             input_path = DATABASE_CACHE_DIR / db_id / f"{db_id}{DB_INFO_EXT}"
         data = json.loads(input_path.read_text())
         return cls.from_dict(data, cache_file_path=input_path)
@@ -73,7 +84,11 @@ class DbInfo:
             if self.cache_file_path is not None:
                 output_path = self.cache_file_path
             else:
-                from agentic_patterns.core.connectors.sql.config import DATABASE_CACHE_DIR, DB_INFO_EXT
+                from agentic_patterns.core.connectors.sql.config import (
+                    DATABASE_CACHE_DIR,
+                    DB_INFO_EXT,
+                )
+
                 output_dir = DATABASE_CACHE_DIR / self.db_id
                 output_dir.mkdir(parents=True, exist_ok=True)
                 output_path = output_dir / f"{self.db_id}{DB_INFO_EXT}"

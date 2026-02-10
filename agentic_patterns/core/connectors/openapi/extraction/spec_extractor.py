@@ -7,7 +7,9 @@ from typing import Any
 import requests
 import yaml
 
-from agentic_patterns.core.connectors.openapi.extraction.spec_parser import ApiSpecParser
+from agentic_patterns.core.connectors.openapi.extraction.spec_parser import (
+    ApiSpecParser,
+)
 from agentic_patterns.core.connectors.openapi.models import ApiInfo
 
 
@@ -33,7 +35,10 @@ class ApiSpecExtractor:
             self.spec_dict = self._load_from_file(Path(spec_source))
 
         # Create parser based on spec format
-        from agentic_patterns.core.connectors.openapi.factories import create_spec_parser
+        from agentic_patterns.core.connectors.openapi.factories import (
+            create_spec_parser,
+        )
+
         self.parser = create_spec_parser(self.spec_dict, self.api_id, self.base_url)
 
         return self
@@ -52,7 +57,10 @@ class ApiSpecExtractor:
 
     def _fetch_from_url(self, url: str) -> dict:
         """Fetch OpenAPI spec from URL."""
-        from agentic_patterns.core.connectors.openapi.config import MAX_RETRIES, REQUEST_TIMEOUT
+        from agentic_patterns.core.connectors.openapi.config import (
+            MAX_RETRIES,
+            REQUEST_TIMEOUT,
+        )
 
         for attempt in range(MAX_RETRIES):
             try:
@@ -76,7 +84,9 @@ class ApiSpecExtractor:
                 if attempt == MAX_RETRIES - 1:
                     raise RuntimeError(f"Failed to fetch spec from {url}: {e}")
 
-        raise RuntimeError(f"Failed to fetch spec from {url} after {MAX_RETRIES} attempts")
+        raise RuntimeError(
+            f"Failed to fetch spec from {url} after {MAX_RETRIES} attempts"
+        )
 
     def _load_from_file(self, path: Path) -> dict:
         """Load OpenAPI spec from file."""

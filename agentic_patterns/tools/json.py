@@ -53,4 +53,14 @@ def get_all_tools() -> list:
         """Delete a key or array element at a JSONPath."""
         return connector.delete_key(path, json_path)
 
-    return [json_get, json_keys, json_head, json_tail, json_validate, json_set, json_merge, json_append, json_delete_key]
+    return [
+        json_get,
+        json_keys,
+        json_head,
+        json_tail,
+        json_validate,
+        json_set,
+        json_merge,
+        json_append,
+        json_delete_key,
+    ]

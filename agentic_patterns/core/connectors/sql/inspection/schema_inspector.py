@@ -15,7 +15,9 @@ class DbSchemaInspector(ABC):
         self.schema = schema
 
     @abstractmethod
-    def get_columns(self, table_name: str, column_descriptions: dict[str, str] | None = None) -> list[ColumnInfo]:
+    def get_columns(
+        self, table_name: str, column_descriptions: dict[str, str] | None = None
+    ) -> list[ColumnInfo]:
         pass
 
     @abstractmethod

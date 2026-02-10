@@ -32,7 +32,14 @@ class TaskStore(ABC):
     async def next_pending(self) -> Task | None: ...
 
     @abstractmethod
-    async def update_state(self, task_id: str, state: TaskState, *, result: str | None = None, error: str | None = None) -> Task | None: ...
+    async def update_state(
+        self,
+        task_id: str,
+        state: TaskState,
+        *,
+        result: str | None = None,
+        error: str | None = None,
+    ) -> Task | None: ...
 
 
 class TaskStoreJson(TaskStore):
@@ -87,7 +94,14 @@ class TaskStoreJson(TaskStore):
         tasks = await self.list_by_state(TaskState.PENDING)
         return tasks[0] if tasks else None
 
-    async def update_state(self, task_id: str, state: TaskState, *, result: str | None = None, error: str | None = None) -> Task | None:
+    async def update_state(
+        self,
+        task_id: str,
+        state: TaskState,
+        *,
+        result: str | None = None,
+        error: str | None = None,
+    ) -> Task | None:
         async with self._lock:
             task = self._read(task_id)
             if task is None:

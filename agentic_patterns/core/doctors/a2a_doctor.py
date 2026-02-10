@@ -45,12 +45,16 @@ async def fetch_agent_card(base_url: str, verbose: bool = False) -> AgentCard:
 class A2ADoctor(DoctorBase):
     """Analyzes A2A agent cards for clarity and completeness."""
 
-    async def analyze(self, agent: str | AgentCard, verbose: bool = False) -> A2ARecommendation:
+    async def analyze(
+        self, agent: str | AgentCard, verbose: bool = False
+    ) -> A2ARecommendation:
         """Analyze a single agent card."""
         results = await self._analyze_batch_internal([agent], verbose=verbose)
         return results[0]
 
-    async def _analyze_batch_internal(self, batch: list[str | AgentCard], verbose: bool = False) -> list[A2ARecommendation]:
+    async def _analyze_batch_internal(
+        self, batch: list[str | AgentCard], verbose: bool = False
+    ) -> list[A2ARecommendation]:
         """Analyze a batch of agent cards."""
         cards = []
         for item in batch:
@@ -62,7 +66,9 @@ class A2ADoctor(DoctorBase):
                     print(f"Agent card: {json.dumps(card, indent=2)}")
             cards.append(card)
 
-        agent_cards_content = "\n\n---\n\n".join(json.dumps(card, indent=2) for card in cards)
+        agent_cards_content = "\n\n---\n\n".join(
+            json.dumps(card, indent=2) for card in cards
+        )
         analysis_prompt = load_prompt(
             PROMPTS_DIR / "doctors" / "a2a_doctor.md",
             agent_cards=agent_cards_content,

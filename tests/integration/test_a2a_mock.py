@@ -30,7 +30,9 @@ class ServerThread(threading.Thread):
         self.server = None
 
     def run(self):
-        config = uvicorn.Config(self.app, host="127.0.0.1", port=self.port, log_level="error", ws="none")
+        config = uvicorn.Config(
+            self.app, host="127.0.0.1", port=self.port, log_level="error", ws="none"
+        )
         self.server = uvicorn.Server(config)
         self.server.run()
 
@@ -62,7 +64,9 @@ class TestMockA2AServer(unittest.IsolatedAsyncioTestCase):
         cls.server_thread.stop()
 
     def setUp(self):
-        self.config = A2AClientConfig(url=f"http://127.0.0.1:{self.port}", timeout=10, poll_interval=0.1)
+        self.config = A2AClientConfig(
+            url=f"http://127.0.0.1:{self.port}", timeout=10, poll_interval=0.1
+        )
         self.client = A2AClientExtended(self.config)
 
     async def asyncTearDown(self):
@@ -107,15 +111,20 @@ class TestMockA2AServer(unittest.IsolatedAsyncioTestCase):
     async def test_cancellation_from_client(self):
         """Cancellation callback triggers cancel and is recorded."""
         # Use a delayed response so there's time for cancellation check
-        self.mock_server.on_prompt_delayed("cancel me", polls=5, result="Should not see this")
+        self.mock_server.on_prompt_delayed(
+            "cancel me", polls=5, result="Should not see this"
+        )
 
         call_count = 0
+
         def is_cancelled():
             nonlocal call_count
             call_count += 1
             return call_count > 1  # Cancel on second poll
 
-        status, task = await self.client.send_and_observe("cancel me", is_cancelled=is_cancelled)
+        status, task = await self.client.send_and_observe(
+            "cancel me", is_cancelled=is_cancelled
+        )
 
         self.assertEqual(status, TaskStatus.CANCELLED)
 

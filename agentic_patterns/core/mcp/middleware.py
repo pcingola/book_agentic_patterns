@@ -13,5 +13,7 @@ class AuthSessionMiddleware(Middleware):
     async def on_request(self, context, call_next):
         token = get_access_token()
         if token:
-            set_user_session(token.claims["sub"], token.claims.get("session_id", DEFAULT_SESSION_ID))
+            set_user_session(
+                token.claims["sub"], token.claims.get("session_id", DEFAULT_SESSION_ID)
+            )
         return await call_next(context)

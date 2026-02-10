@@ -5,11 +5,23 @@ from collections.abc import Callable
 from pathlib import Path
 
 from agentic_patterns.core.context.config import ContextConfig, load_context_config
-from agentic_patterns.core.context.models import FileExtractionResult, FileType, TruncationInfo
-from agentic_patterns.core.context.processors.common import check_and_apply_output_limit, create_error_result, create_file_metadata, format_section_header, truncate_string
+from agentic_patterns.core.context.models import (
+    FileExtractionResult,
+    FileType,
+    TruncationInfo,
+)
+from agentic_patterns.core.context.processors.common import (
+    check_and_apply_output_limit,
+    create_error_result,
+    create_file_metadata,
+    format_section_header,
+    truncate_string,
+)
 
 
-def _format_sheet_as_csv(rows: list[list], max_cell_length: int, max_line_length: int) -> tuple[str, int]:
+def _format_sheet_as_csv(
+    rows: list[list], max_cell_length: int, max_line_length: int
+) -> tuple[str, int]:
     """Format sheet rows as CSV with cell and line truncation."""
     output = io.StringIO()
     cells_truncated = 0
@@ -23,7 +35,10 @@ def _format_sheet_as_csv(rows: list[list], max_cell_length: int, max_line_length
             if was_truncated:
                 cells_truncated += 1
 
-        line = ",".join(f'"{cell}"' if "," in cell or '"' in cell else cell for cell in truncated_cells)
+        line = ",".join(
+            f'"{cell}"' if "," in cell or '"' in cell else cell
+            for cell in truncated_cells
+        )
 
         if len(line) > max_line_length:
             line = line[:max_line_length] + "..."
@@ -33,12 +48,16 @@ def _format_sheet_as_csv(rows: list[list], max_cell_length: int, max_line_length
     return output.getvalue(), cells_truncated
 
 
-def _process_excel_file(file_path: Path, config: ContextConfig, max_sheets: int) -> tuple[str, TruncationInfo]:
+def _process_excel_file(
+    file_path: Path, config: ContextConfig, max_sheets: int
+) -> tuple[str, TruncationInfo]:
     """Process Excel file (.xlsx) using openpyxl."""
     try:
         import openpyxl
     except ImportError:
-        raise ImportError("openpyxl is required for Excel file processing. Install with: uv add openpyxl")
+        raise ImportError(
+            "openpyxl is required for Excel file processing. Install with: uv add openpyxl"
+        )
 
     workbook = openpyxl.load_workbook(file_path, data_only=True)
     sheet_names = workbook.sheetnames
@@ -66,24 +85,35 @@ def _process_excel_file(file_path: Path, config: ContextConfig, max_sheets: int)
         columns_to_show = min(total_columns, config.max_columns)
 
         # Read header
-        header = [str(sheet.cell(1, col).value or "") for col in range(1, columns_to_show + 1)]
+        header = [
+            str(sheet.cell(1, col).value or "") for col in range(1, columns_to_show + 1)
+        ]
 
         # Select rows (head + tail pattern)
         if total_rows <= (config.rows_head + config.rows_tail):
             row_indices = list(range(2, sheet.max_row + 1))
         else:
             head_indices = list(range(2, config.rows_head + 2))
-            tail_indices = list(range(sheet.max_row - config.rows_tail + 1, sheet.max_row + 1)) if config.rows_tail > 0 else []
+            tail_indices = (
+                list(range(sheet.max_row - config.rows_tail + 1, sheet.max_row + 1))
+                if config.rows_tail > 0
+                else []
+            )
             row_indices = head_indices + tail_indices
 
         # Build rows
         rows = [header]
         for row_idx in row_indices:
-            row = [str(sheet.cell(row_idx, col).value or "") for col in range(1, columns_to_show + 1)]
+            row = [
+                str(sheet.cell(row_idx, col).value or "")
+                for col in range(1, columns_to_show + 1)
+            ]
             rows.append(row)
 
         # Format as CSV
-        csv_content, cells_truncated = _format_sheet_as_csv(rows, config.max_cell_length, config.max_line_length)
+        csv_content, cells_truncated = _format_sheet_as_csv(
+            rows, config.max_cell_length, config.max_line_length
+        )
         total_cells_truncated += cells_truncated
 
         rows_shown = len(row_indices)
@@ -99,21 +129,27 @@ def _process_excel_file(file_path: Path, config: ContextConfig, max_sheets: int)
 
     truncation_info = TruncationInfo(
         cells_truncated=total_cells_truncated,
-        total_output_limit_reached=output.tell() > config.max_total_output
+        total_output_limit_reached=output.tell() > config.max_total_output,
     )
 
     if sheets_to_process < total_sheets:
-        truncation_info.rows_shown = f"{sheets_to_process} sheets of {total_sheets} total"
+        truncation_info.rows_shown = (
+            f"{sheets_to_process} sheets of {total_sheets} total"
+        )
 
     return output.getvalue(), truncation_info
 
 
-def _process_xls_file(file_path: Path, config: ContextConfig, max_sheets: int) -> tuple[str, TruncationInfo]:
+def _process_xls_file(
+    file_path: Path, config: ContextConfig, max_sheets: int
+) -> tuple[str, TruncationInfo]:
     """Process legacy Excel file (.xls) using xlrd."""
     try:
         import xlrd
     except ImportError:
-        raise ImportError("xlrd is required for .xls file processing. Install with: uv add xlrd")
+        raise ImportError(
+            "xlrd is required for .xls file processing. Install with: uv add xlrd"
+        )
 
     workbook = xlrd.open_workbook(file_path)
     sheet_names = workbook.sheet_names()
@@ -146,15 +182,23 @@ def _process_xls_file(file_path: Path, config: ContextConfig, max_sheets: int) -
             row_indices = list(range(1, sheet.nrows))
         else:
             head_indices = list(range(1, config.rows_head + 1))
-            tail_indices = list(range(sheet.nrows - config.rows_tail, sheet.nrows)) if config.rows_tail > 0 else []
+            tail_indices = (
+                list(range(sheet.nrows - config.rows_tail, sheet.nrows))
+                if config.rows_tail > 0
+                else []
+            )
             row_indices = head_indices + tail_indices
 
         rows = [header]
         for row_idx in row_indices:
-            row = [str(sheet.cell_value(row_idx, col)) for col in range(columns_to_show)]
+            row = [
+                str(sheet.cell_value(row_idx, col)) for col in range(columns_to_show)
+            ]
             rows.append(row)
 
-        csv_content, cells_truncated = _format_sheet_as_csv(rows, config.max_cell_length, config.max_line_length)
+        csv_content, cells_truncated = _format_sheet_as_csv(
+            rows, config.max_cell_length, config.max_line_length
+        )
         total_cells_truncated += cells_truncated
 
         rows_shown = len(row_indices)
@@ -168,11 +212,13 @@ def _process_xls_file(file_path: Path, config: ContextConfig, max_sheets: int) -
 
     truncation_info = TruncationInfo(
         cells_truncated=total_cells_truncated,
-        total_output_limit_reached=output.tell() > config.max_total_output
+        total_output_limit_reached=output.tell() > config.max_total_output,
     )
 
     if sheets_to_process < total_sheets:
-        truncation_info.rows_shown = f"{sheets_to_process} sheets of {total_sheets} total"
+        truncation_info.rows_shown = (
+            f"{sheets_to_process} sheets of {total_sheets} total"
+        )
 
     return output.getvalue(), truncation_info
 
@@ -188,11 +234,15 @@ def process_spreadsheet(
         config = load_context_config()
 
     try:
-        metadata = create_file_metadata(file_path, mime_type=f"spreadsheet/{file_path.suffix[1:]}")
+        metadata = create_file_metadata(
+            file_path, mime_type=f"spreadsheet/{file_path.suffix[1:]}"
+        )
 
         suffix = file_path.suffix.lower()
         if suffix == ".xlsx":
-            content, truncation_info = _process_excel_file(file_path, config, max_sheets)
+            content, truncation_info = _process_excel_file(
+                file_path, config, max_sheets
+            )
         elif suffix == ".xls":
             content, truncation_info = _process_xls_file(file_path, config, max_sheets)
         else:
@@ -207,7 +257,9 @@ def process_spreadsheet(
         if tokenizer:
             truncation_info.tokens_shown = tokenizer(content)
 
-        content = check_and_apply_output_limit(content, config.max_total_output, truncation_info)
+        content = check_and_apply_output_limit(
+            content, config.max_total_output, truncation_info
+        )
 
         return FileExtractionResult(
             content=content,
@@ -219,6 +271,8 @@ def process_spreadsheet(
         )
 
     except ImportError as e:
-        return create_error_result(e, FileType.SPREADSHEET, file_path, "spreadsheet (missing dependencies)")
+        return create_error_result(
+            e, FileType.SPREADSHEET, file_path, "spreadsheet (missing dependencies)"
+        )
     except Exception as e:
         return create_error_result(e, FileType.SPREADSHEET, file_path, "spreadsheet")

@@ -18,10 +18,14 @@ import chainlit as cl
 from agentic_patterns.core.agents import get_agent, run_agent
 from agentic_patterns.core.compliance.private_data import DataSensitivity, PrivateData
 from agentic_patterns.core.context import read_file_as_string
-from agentic_patterns.core.ui.chainlit.handlers import HISTORY, register_all, setup_user_session
+from agentic_patterns.core.ui.chainlit.handlers import (
+    HISTORY,
+    register_all,
+    setup_user_session,
+)
 from agentic_patterns.core.workspace import write_to_workspace_async
 
-AGENT = 'agent'
+AGENT = "agent"
 
 logger = getLogger(__name__)
 
@@ -73,11 +77,13 @@ async def sub(a: int, b: int) -> int:
     logger.info(f"Subtracting {a} - {b}")
     return a - b
 
+
 @cl.step(type="tool")
 async def mul(a: int, b: int) -> int:
     """Multiply two numbers"""
     logger.info(f"Multiplying {a} * {b}")
     return a * b
+
 
 @cl.step(type="tool")
 async def div(a: int, b: int) -> int:
@@ -95,7 +101,9 @@ async def set_starters(user: str | None, language: str | None) -> list[cl.Starte
     return [
         cl.Starter(label="Add numbers", message="What is 42 + 17?"),
         cl.Starter(label="Subtract numbers", message="What is 100 - 37?"),
-        cl.Starter(label="Calculate", message="Add 25 and 75, then subtract 50 from the result"),
+        cl.Starter(
+            label="Calculate", message="Add 25 and 75, then subtract 50 from the result"
+        ),
     ]
 
 
@@ -136,7 +144,9 @@ async def on_message(message: cl.Message):
     ret, nodes = await run_agent(agent, messages, verbose=True)  # type: ignore
     agent_response = ret.result.output
     logger.info(f"Agent response: {agent_response}")
-    msg = cl.Message(content=agent_response if agent_response else "No response from the agent.")
+    msg = cl.Message(
+        content=agent_response if agent_response else "No response from the agent."
+    )
     await msg.send()
 
     # Update history to add agent's response and store it

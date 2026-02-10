@@ -6,8 +6,16 @@ from pathlib import Path
 
 import tiktoken
 
-from agentic_patterns.core.context.config import EXTRACTABLE_DOCUMENT_TYPES, ContextConfig, load_context_config
-from agentic_patterns.core.context.models import FileExtractionResult, FileType, TruncationInfo
+from agentic_patterns.core.context.config import (
+    EXTRACTABLE_DOCUMENT_TYPES,
+    ContextConfig,
+    load_context_config,
+)
+from agentic_patterns.core.context.models import (
+    FileExtractionResult,
+    FileType,
+    TruncationInfo,
+)
 from agentic_patterns.core.context.processors.csv_processor import process_csv
 from agentic_patterns.core.context.processors.document import process_document
 from agentic_patterns.core.context.processors.image import process_image
@@ -19,10 +27,40 @@ from agentic_patterns.core.context.processors.yaml_processor import process_yaml
 
 
 CODE_EXTENSIONS = {
-    ".py", ".js", ".jsx", ".ts", ".tsx", ".java", ".cpp", ".c", ".h", ".hpp",
-    ".cs", ".rb", ".go", ".rs", ".php", ".swift", ".kt", ".scala", ".r", ".m",
-    ".mm", ".sh", ".bash", ".zsh", ".fish", ".ps1", ".sql", ".html", ".css",
-    ".scss", ".sass", ".less", ".vue", ".svelte",
+    ".py",
+    ".js",
+    ".jsx",
+    ".ts",
+    ".tsx",
+    ".java",
+    ".cpp",
+    ".c",
+    ".h",
+    ".hpp",
+    ".cs",
+    ".rb",
+    ".go",
+    ".rs",
+    ".php",
+    ".swift",
+    ".kt",
+    ".scala",
+    ".r",
+    ".m",
+    ".mm",
+    ".sh",
+    ".bash",
+    ".zsh",
+    ".fish",
+    ".ps1",
+    ".sql",
+    ".html",
+    ".css",
+    ".scss",
+    ".sass",
+    ".less",
+    ".vue",
+    ".svelte",
 }
 
 MARKDOWN_EXTENSIONS = {".md", ".markdown", ".mdown", ".mkd", ".rmd"}
@@ -105,7 +143,9 @@ def _get_default_tokenizer() -> Callable[[str], int]:
         return lambda text: len(text) // 4
 
 
-def _apply_token_limit(result: FileExtractionResult, tokenizer: Callable[[str], int], max_tokens: int) -> FileExtractionResult:
+def _apply_token_limit(
+    result: FileExtractionResult, tokenizer: Callable[[str], int], max_tokens: int
+) -> FileExtractionResult:
     """Apply token-based truncation if content exceeds max_tokens."""
     if not isinstance(result.content, str) or not result.success:
         return result
@@ -156,7 +196,9 @@ def read_file(
         file_path = Path(file_path)
 
     if not file_path.exists():
-        return FileExtractionResult(content=None, success=False, error_message=f"File not found: {file_path}")
+        return FileExtractionResult(
+            content=None, success=False, error_message=f"File not found: {file_path}"
+        )
 
     if config is None:
         config = load_context_config()
@@ -168,40 +210,82 @@ def read_file(
 
     match file_type:
         case FileType.CODE:
-            result = process_code(file_path, config=config, tokenizer=tokenizer, **kwargs)
+            result = process_code(
+                file_path, config=config, tokenizer=tokenizer, **kwargs
+            )
         case FileType.MARKDOWN:
-            result = process_text(file_path, config=config, tokenizer=tokenizer, file_type=FileType.MARKDOWN, **kwargs)
+            result = process_text(
+                file_path,
+                config=config,
+                tokenizer=tokenizer,
+                file_type=FileType.MARKDOWN,
+                **kwargs,
+            )
         case FileType.TEXT:
-            result = process_text(file_path, config=config, tokenizer=tokenizer, file_type=FileType.TEXT, **kwargs)
+            result = process_text(
+                file_path,
+                config=config,
+                tokenizer=tokenizer,
+                file_type=FileType.TEXT,
+                **kwargs,
+            )
         case FileType.JSON:
-            result = process_json(file_path, config=config, tokenizer=tokenizer, **kwargs)
+            result = process_json(
+                file_path, config=config, tokenizer=tokenizer, **kwargs
+            )
         case FileType.YAML:
-            result = process_yaml(file_path, config=config, tokenizer=tokenizer, **kwargs)
+            result = process_yaml(
+                file_path, config=config, tokenizer=tokenizer, **kwargs
+            )
         case FileType.XML:
-            result = process_xml(file_path, config=config, tokenizer=tokenizer, **kwargs)
+            result = process_xml(
+                file_path, config=config, tokenizer=tokenizer, **kwargs
+            )
         case FileType.CSV:
-            result = process_csv(file_path, config=config, tokenizer=tokenizer, **kwargs)
+            result = process_csv(
+                file_path, config=config, tokenizer=tokenizer, **kwargs
+            )
         case FileType.PDF | FileType.DOCX | FileType.PPTX:
-            result = process_document(file_path, file_type=file_type, config=config, tokenizer=tokenizer, **kwargs)
+            result = process_document(
+                file_path,
+                file_type=file_type,
+                config=config,
+                tokenizer=tokenizer,
+                **kwargs,
+            )
         case FileType.SPREADSHEET:
-            result = process_spreadsheet(file_path, config=config, tokenizer=tokenizer, **kwargs)
+            result = process_spreadsheet(
+                file_path, config=config, tokenizer=tokenizer, **kwargs
+            )
         case FileType.IMAGE:
             result = process_image(file_path, config=config, **kwargs)
         case FileType.AUDIO:
             result = FileExtractionResult(
-                content=None, success=False, error_message="Audio processing not yet implemented", file_type=file_type
+                content=None,
+                success=False,
+                error_message="Audio processing not yet implemented",
+                file_type=file_type,
             )
         case FileType.ARCHIVE:
             result = FileExtractionResult(
-                content=None, success=False, error_message="Archive processing not yet implemented", file_type=file_type
+                content=None,
+                success=False,
+                error_message="Archive processing not yet implemented",
+                file_type=file_type,
             )
         case FileType.BINARY:
             result = FileExtractionResult(
-                content=None, success=False, error_message="Binary file metadata processing not yet implemented", file_type=file_type
+                content=None,
+                success=False,
+                error_message="Binary file metadata processing not yet implemented",
+                file_type=file_type,
             )
         case _:
             result = FileExtractionResult(
-                content=None, success=False, error_message=f"Unknown file type: {file_type}", file_type=file_type
+                content=None,
+                success=False,
+                error_message=f"Unknown file type: {file_type}",
+                file_type=file_type,
             )
 
     result = _apply_token_limit(result, tokenizer, config.max_tokens_per_file)
@@ -209,7 +293,9 @@ def read_file(
     return result
 
 
-def read_file_as_string(file_path: Path | str, config: ContextConfig | None = None, **kwargs) -> str:
+def read_file_as_string(
+    file_path: Path | str, config: ContextConfig | None = None, **kwargs
+) -> str:
     """Convenience wrapper that returns content string or error message."""
     result = read_file(file_path, config=config, **kwargs)
     if result.success and isinstance(result.content, str):

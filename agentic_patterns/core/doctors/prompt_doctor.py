@@ -25,12 +25,16 @@ def _format_prompt_for_analysis(name: str, content: str) -> str:
 class PromptDoctor(DoctorBase):
     """Analyzes prompts for clarity and completeness."""
 
-    async def analyze(self, prompt: str | Path, verbose: bool = False) -> PromptRecommendation:
+    async def analyze(
+        self, prompt: str | Path, verbose: bool = False
+    ) -> PromptRecommendation:
         """Analyze a single prompt."""
         results = await self._analyze_batch_internal([prompt], verbose=verbose)
         return results[0]
 
-    async def _analyze_batch_internal(self, batch: list[str | Path], verbose: bool = False) -> list[PromptRecommendation]:
+    async def _analyze_batch_internal(
+        self, batch: list[str | Path], verbose: bool = False
+    ) -> list[PromptRecommendation]:
         """Analyze a batch of prompts."""
         prompts_content = []
         for item in batch:

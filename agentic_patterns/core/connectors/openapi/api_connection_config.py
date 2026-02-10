@@ -40,6 +40,7 @@ class ApiConnectionConfigs:
     def _auto_load(self) -> None:
         """Auto-load from apis.yaml if available."""
         from agentic_patterns.core.connectors.openapi.config import APIS_YAML_PATH
+
         if APIS_YAML_PATH.exists():
             self.load_from_yaml(APIS_YAML_PATH)
 
@@ -48,7 +49,9 @@ class ApiConnectionConfigs:
 
     def get_config(self, api_id: str) -> ApiConnectionConfig:
         if api_id not in self._configs:
-            raise ValueError(f"API '{api_id}' not found. Available: {list(self._configs.keys())}")
+            raise ValueError(
+                f"API '{api_id}' not found. Available: {list(self._configs.keys())}"
+            )
         return self._configs[api_id]
 
     def list_api_ids(self) -> list[str]:
@@ -67,10 +70,17 @@ class ApiConnectionConfigs:
             base_url = self._expand_env_vars(api_data["base_url"])
 
             # Resolve relative file paths
-            if not spec_source.startswith(("http://", "https://")) and not Path(spec_source).is_absolute():
+            if (
+                not spec_source.startswith(("http://", "https://"))
+                and not Path(spec_source).is_absolute()
+            ):
                 spec_source = str(yaml_path.parent / spec_source)
 
-            sensitivity = DataSensitivity(api_data["sensitivity"]) if "sensitivity" in api_data else DataSensitivity.PUBLIC
+            sensitivity = (
+                DataSensitivity(api_data["sensitivity"])
+                if "sensitivity" in api_data
+                else DataSensitivity.PUBLIC
+            )
             self._configs[api_id] = ApiConnectionConfig(
                 api_id=api_id,
                 spec_source=spec_source,
@@ -80,9 +90,11 @@ class ApiConnectionConfigs:
 
     def _expand_env_vars(self, value: str) -> str:
         """Expand ${VAR} environment variables in string."""
+
         def replacer(match: re.Match) -> str:
             var_name = match.group(1)
             return os.getenv(var_name, match.group(0))
+
         return re.sub(r"\$\{([^}]+)\}", replacer, value)
 
     def __len__(self) -> int:

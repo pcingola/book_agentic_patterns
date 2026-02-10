@@ -13,7 +13,9 @@ def create_skill_sandbox_manager(registry: SkillRegistry) -> SandboxManager:
     for meta in registry.list_all():
         scripts_dir = meta.path / "scripts"
         if scripts_dir.exists():
-            read_only_mounts[str(scripts_dir)] = f"{SKILLS_CONTAINER_ROOT}/{meta.path.name}/scripts"
+            read_only_mounts[str(scripts_dir)] = (
+                f"{SKILLS_CONTAINER_ROOT}/{meta.path.name}/scripts"
+            )
     return SandboxManager(read_only_mounts=read_only_mounts)
 
 
@@ -33,7 +35,15 @@ def list_available_skills(registry: SkillRegistry) -> str:
     return "\n".join(str(skill) for skill in skills)
 
 
-def run_skill_script(manager: SandboxManager, registry: SkillRegistry, user_id: str, session_id: str, skill_name: str, script_name: str, args: str = "") -> tuple[int, str]:
+def run_skill_script(
+    manager: SandboxManager,
+    registry: SkillRegistry,
+    user_id: str,
+    session_id: str,
+    skill_name: str,
+    script_name: str,
+    args: str = "",
+) -> tuple[int, str]:
     """Execute a skill script inside the sandbox container."""
     skill = registry.get(skill_name)
     if not skill:
@@ -44,5 +54,9 @@ def run_skill_script(manager: SandboxManager, registry: SkillRegistry, user_id: 
         return 1, f"Script '{script_name}' not found in skill '{skill_name}'."
 
     container_path = f"{SKILLS_CONTAINER_ROOT}/{skill.path.name}/scripts/{script_name}"
-    command = f"python {container_path} {args}".strip() if script_name.endswith(".py") else f"bash {container_path} {args}".strip()
+    command = (
+        f"python {container_path} {args}".strip()
+        if script_name.endswith(".py")
+        else f"bash {container_path} {args}".strip()
+    )
     return manager.execute_command(user_id, session_id, command)

@@ -7,9 +7,22 @@ from pathlib import Path
 import yaml
 
 from agentic_patterns.core.context.config import ContextConfig, load_context_config
-from agentic_patterns.core.context.models import FileExtractionResult, FileType, TruncationInfo
-from agentic_patterns.core.context.processors.common import check_and_apply_output_limit, create_error_result, create_file_metadata, format_truncation_summary, human_readable_size
-from agentic_patterns.core.context.processors.json_processor import _format_truncation_stats, _truncate_structure
+from agentic_patterns.core.context.models import (
+    FileExtractionResult,
+    FileType,
+    TruncationInfo,
+)
+from agentic_patterns.core.context.processors.common import (
+    check_and_apply_output_limit,
+    create_error_result,
+    create_file_metadata,
+    format_truncation_summary,
+    human_readable_size,
+)
+from agentic_patterns.core.context.processors.json_processor import (
+    _format_truncation_stats,
+    _truncate_structure,
+)
 
 
 def process_yaml(
@@ -42,7 +55,12 @@ def process_yaml(
         output.write(f"Size: {human_readable_size(metadata.size_bytes)}\n\n")
         output.write("<content>\n")
 
-        yaml_str = yaml.dump(truncated_data, default_flow_style=False, allow_unicode=True, sort_keys=False)
+        yaml_str = yaml.dump(
+            truncated_data,
+            default_flow_style=False,
+            allow_unicode=True,
+            sort_keys=False,
+        )
         output.write(yaml_str)
         output.write("</content>\n")
 
@@ -51,7 +69,9 @@ def process_yaml(
         if tokenizer:
             truncation_info.tokens_shown = tokenizer(output.getvalue())
 
-        result_content = check_and_apply_output_limit(output.getvalue(), config.max_total_output, truncation_info)
+        result_content = check_and_apply_output_limit(
+            output.getvalue(), config.max_total_output, truncation_info
+        )
 
         extra_stats = _format_truncation_stats(truncation_stats)
         summary = format_truncation_summary(truncation_info, extra_stats)
@@ -59,7 +79,11 @@ def process_yaml(
             result_content += summary
 
         return FileExtractionResult(
-            content=result_content, success=True, file_type=FileType.YAML, truncation_info=truncation_info, metadata=metadata
+            content=result_content,
+            success=True,
+            file_type=FileType.YAML,
+            truncation_info=truncation_info,
+            metadata=metadata,
         )
 
     except yaml.YAMLError as e:

@@ -48,7 +48,13 @@ def _generate_tool_function(op_name: str, op_config):
         raise ToolFatalError(str(e)) from e
 """
 
-    namespace = {"execute_plot": execute_plot, "op_name": op_name, "Context": Context, "ToolRetryError": ToolRetryError, "ToolFatalError": ToolFatalError}
+    namespace = {
+        "execute_plot": execute_plot,
+        "op_name": op_name,
+        "Context": Context,
+        "ToolRetryError": ToolRetryError,
+        "ToolFatalError": ToolFatalError,
+    }
     exec(func_code, namespace)  # noqa: S102
     tool_func = namespace[f"{op_name}_tool"]
 

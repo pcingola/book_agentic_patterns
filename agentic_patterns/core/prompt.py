@@ -1,11 +1,8 @@
 """Prompt building utilities for Pydantic AI agent, including file handling and context management."""
 
-import mimetypes
 import re
 import logging
-from dataclasses import dataclass
-from pathlib import Path, PurePosixPath
-from typing import Optional
+from pathlib import Path
 
 from agentic_patterns.core.config.config import PROMPTS_DIR
 
@@ -42,7 +39,9 @@ def load_prompt(prompt_path: Path, **kwargs) -> str:
     # Check for unused variables
     unused_vars = provided_vars - template_vars
     if unused_vars:
-        raise ValueError(f"Template '{prompt_path.name}' received unused variables: {sorted(unused_vars)}")
+        raise ValueError(
+            f"Template '{prompt_path.name}' received unused variables: {sorted(unused_vars)}"
+        )
 
     if kwargs:
         return template.format(**kwargs)

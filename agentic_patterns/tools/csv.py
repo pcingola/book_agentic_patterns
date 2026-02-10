@@ -39,12 +39,16 @@ def get_all_tools() -> list:
         return connector.append(path, values)
 
     @tool_permission(ToolPermission.WRITE)
-    def csv_update_cell(path: str, row_number: int, column: str | int, value: str) -> str:
+    def csv_update_cell(
+        path: str, row_number: int, column: str | int, value: str
+    ) -> str:
         """Update a single cell by row number (1-indexed) and column name or index."""
         return connector.update_cell(path, row_number, column, value)
 
     @tool_permission(ToolPermission.WRITE)
-    def csv_update_row(path: str, key_column: str | int, key_value: str, updates: dict[str, str]) -> str:
+    def csv_update_row(
+        path: str, key_column: str | int, key_value: str, updates: dict[str, str]
+    ) -> str:
         """Update columns in all rows where key_column equals key_value."""
         return connector.update_row(path, key_column, key_value, updates)
 
@@ -53,4 +57,14 @@ def get_all_tools() -> list:
         """Delete all rows where a column matches a value."""
         return connector.delete_rows(path, column, value)
 
-    return [csv_headers, csv_head, csv_tail, csv_read_row, csv_find_rows, csv_append, csv_update_cell, csv_update_row, csv_delete_rows]
+    return [
+        csv_headers,
+        csv_head,
+        csv_tail,
+        csv_read_row,
+        csv_find_rows,
+        csv_append,
+        csv_update_cell,
+        csv_update_row,
+        csv_delete_rows,
+    ]

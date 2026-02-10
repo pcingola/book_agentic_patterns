@@ -2,14 +2,20 @@
 
 import unittest
 
-from agentic_patterns.core.connectors.openapi.extraction.openapi_v3_parser import OpenApiV3Parser
+from agentic_patterns.core.connectors.openapi.extraction.openapi_v3_parser import (
+    OpenApiV3Parser,
+)
 
 
 class TestOpenApiV3Parser(unittest.TestCase):
     def test_parse_simple_spec(self):
         spec = {
             "openapi": "3.0.0",
-            "info": {"title": "Test API", "version": "1.0.0", "description": "A test API"},
+            "info": {
+                "title": "Test API",
+                "version": "1.0.0",
+                "description": "A test API",
+            },
             "servers": [{"url": "https://api.example.com"}],
             "paths": {
                 "/users": {
@@ -93,7 +99,10 @@ class TestOpenApiV3Parser(unittest.TestCase):
                             "description": "User object",
                             "content": {
                                 "application/json": {
-                                    "schema": {"type": "object", "properties": {"name": {"type": "string"}}}
+                                    "schema": {
+                                        "type": "object",
+                                        "properties": {"name": {"type": "string"}},
+                                    }
                                 }
                             },
                         },
@@ -116,7 +125,14 @@ class TestOpenApiV3Parser(unittest.TestCase):
             "openapi": "3.0.0",
             "info": {"title": "Test API", "version": "1.0.0"},
             "servers": [{"url": "https://production.api.example.com"}],
-            "paths": {"/test": {"get": {"operationId": "test", "responses": {"200": {"description": "OK"}}}}},
+            "paths": {
+                "/test": {
+                    "get": {
+                        "operationId": "test",
+                        "responses": {"200": {"description": "OK"}},
+                    }
+                }
+            },
         }
 
         # Without override - should use spec's server URL
@@ -125,7 +141,9 @@ class TestOpenApiV3Parser(unittest.TestCase):
         self.assertEqual(api_info.base_url, "https://production.api.example.com")
 
         # With override - should use provided base_url
-        parser_override = OpenApiV3Parser(spec, "test_api", base_url="http://localhost:8000")
+        parser_override = OpenApiV3Parser(
+            spec, "test_api", base_url="http://localhost:8000"
+        )
         api_info_override = parser_override.parse()
         self.assertEqual(api_info_override.base_url, "http://localhost:8000")
 
@@ -134,7 +152,14 @@ class TestOpenApiV3Parser(unittest.TestCase):
         spec = {
             "openapi": "3.0.0",
             "info": {"title": "Test API", "version": "1.0.0"},
-            "paths": {"/test": {"get": {"operationId": "test", "responses": {"200": {"description": "OK"}}}}},
+            "paths": {
+                "/test": {
+                    "get": {
+                        "operationId": "test",
+                        "responses": {"200": {"description": "OK"}},
+                    }
+                }
+            },
         }
 
         # Without servers and without override
@@ -143,7 +168,9 @@ class TestOpenApiV3Parser(unittest.TestCase):
         self.assertEqual(api_info.base_url, "")
 
         # With override when no servers
-        parser_override = OpenApiV3Parser(spec, "test_api", base_url="https://api.example.com")
+        parser_override = OpenApiV3Parser(
+            spec, "test_api", base_url="https://api.example.com"
+        )
         api_info_override = parser_override.parse()
         self.assertEqual(api_info_override.base_url, "https://api.example.com")
 

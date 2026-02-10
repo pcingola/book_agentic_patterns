@@ -29,7 +29,8 @@ def parse_rf2(snapshot_dir: Path) -> list[VocabularyTerm]:
     for cid in active_concepts:
         label = labels.get(cid, cid)
         term = VocabularyTerm(
-            id=cid, label=label,
+            id=cid,
+            label=label,
             synonyms=synonyms.get(cid, []),
             parents=parents.get(cid, []),
             relationships=relationships.get(cid, {}),
@@ -60,7 +61,9 @@ def _load_active_concepts(path: Path) -> set[str]:
     return active
 
 
-def _load_descriptions(path: Path, active_concepts: set[str]) -> tuple[dict[str, str], dict[str, list[str]]]:
+def _load_descriptions(
+    path: Path, active_concepts: set[str]
+) -> tuple[dict[str, str], dict[str, list[str]]]:
     """Load labels (FSN) and synonyms from the Description file."""
     labels: dict[str, str] = {}
     synonyms: dict[str, list[str]] = {}
@@ -76,14 +79,20 @@ def _load_descriptions(path: Path, active_concepts: set[str]) -> tuple[dict[str,
             type_id = row.get("typeId", "")
             if type_id == FSN_TYPE:
                 # Strip semantic tag: "Heart (body structure)" -> "Heart"
-                label = term_text.rsplit("(", 1)[0].strip() if "(" in term_text else term_text
+                label = (
+                    term_text.rsplit("(", 1)[0].strip()
+                    if "(" in term_text
+                    else term_text
+                )
                 labels[cid] = label
             elif type_id == SYNONYM_TYPE:
                 synonyms.setdefault(cid, []).append(term_text)
     return labels, synonyms
 
 
-def _load_relationships(path: Path, active_concepts: set[str]) -> tuple[dict[str, list[str]], dict[str, dict[str, list[str]]]]:
+def _load_relationships(
+    path: Path, active_concepts: set[str]
+) -> tuple[dict[str, list[str]], dict[str, dict[str, list[str]]]]:
     """Load is_a parents and other relationships from the Relationship file."""
     parents: dict[str, list[str]] = {}
     relationships: dict[str, dict[str, list[str]]] = {}
@@ -100,7 +109,9 @@ def _load_relationships(path: Path, active_concepts: set[str]) -> tuple[dict[str
             if type_id == IS_A_TYPE:
                 parents.setdefault(source_id, []).append(dest_id)
             else:
-                relationships.setdefault(source_id, {}).setdefault(type_id, []).append(dest_id)
+                relationships.setdefault(source_id, {}).setdefault(type_id, []).append(
+                    dest_id
+                )
     return parents, relationships
 
 

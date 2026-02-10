@@ -7,6 +7,7 @@ from typing import Callable
 
 class ToolPermission(str, Enum):
     """Permission levels for tools."""
+
     READ = "read"
     WRITE = "write"
     CONNECT = "connect"
@@ -14,6 +15,7 @@ class ToolPermission(str, Enum):
 
 class ToolPermissionError(Exception):
     """Raised when a tool is called without required permissions."""
+
     pass
 
 
@@ -22,6 +24,7 @@ def tool_permission(*permissions: ToolPermission) -> Callable:
 
     CONNECT tools are automatically blocked when the session contains private data.
     """
+
     def decorator(func: Callable) -> Callable:
         func._permissions = set(permissions)
         if ToolPermission.CONNECT not in permissions:
@@ -29,9 +32,14 @@ def tool_permission(*permissions: ToolPermission) -> Callable:
 
         @wraps(func)
         def wrapper(*args, **kwargs):
-            from agentic_patterns.core.compliance.private_data import session_has_private_data
+            from agentic_patterns.core.compliance.private_data import (
+                session_has_private_data,
+            )
+
             if session_has_private_data():
-                raise ToolPermissionError(f"Tool '{func.__name__}' blocked: session contains private data")
+                raise ToolPermissionError(
+                    f"Tool '{func.__name__}' blocked: session contains private data"
+                )
             return func(*args, **kwargs)
 
         wrapper._permissions = func._permissions
@@ -45,7 +53,9 @@ def get_permissions(func: Callable) -> set[ToolPermission]:
     return getattr(func, "_permissions", {ToolPermission.READ})
 
 
-def filter_tools_by_permission(tools: list[Callable], granted: set[ToolPermission]) -> list[Callable]:
+def filter_tools_by_permission(
+    tools: list[Callable], granted: set[ToolPermission]
+) -> list[Callable]:
     """Filter tools to only those allowed by the granted permissions."""
     return [t for t in tools if get_permissions(t).issubset(granted)]
 
@@ -65,6 +75,8 @@ def enforce_tool_permission(func: Callable, granted: set[ToolPermission]) -> Cal
     return wrapper
 
 
-def enforce_tools_permissions(tools: list[Callable], granted: set[ToolPermission]) -> list[Callable]:
+def enforce_tools_permissions(
+    tools: list[Callable], granted: set[ToolPermission]
+) -> list[Callable]:
     """Wrap all tools with runtime permission checking."""
     return [enforce_tool_permission(t, granted) for t in tools]

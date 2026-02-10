@@ -11,7 +11,7 @@ from agentic_patterns.core.user_session import set_user_session
 
 logger = getLogger(__name__)
 
-HISTORY = 'history'
+HISTORY = "history"
 
 
 def register_auth_callback():
@@ -22,7 +22,10 @@ def register_auth_callback():
         db = UserDatabase(USER_DATABASE_FILE)
         user = db.authenticate(username, password)
         if user:
-            return cl.User(identifier=user.username, metadata={"role": user.role, "provider": "credentials"})
+            return cl.User(
+                identifier=user.username,
+                metadata={"role": user.role, "provider": "credentials"},
+            )
         return None
 
 
@@ -40,11 +43,11 @@ def register_chat_resume():
     @cl.on_chat_resume
     async def on_chat_resume(thread):
         logger.info("Chat resumed, restoring history.")
-        steps = thread['steps']
+        steps = thread["steps"]
         history = []
         for step in steps:
-            if step['type'] in ('user_message', 'assistant_message'):
-                message = step['input'] + "\n" + step['output']
+            if step["type"] in ("user_message", "assistant_message"):
+                message = step["input"] + "\n" + step["output"]
                 message = message.strip()
                 history.append(message)
         logger.info(f"Restored history with {len(history)} messages")

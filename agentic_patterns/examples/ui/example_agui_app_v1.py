@@ -13,14 +13,14 @@ from agentic_patterns.core.agents.agents import get_agent
 
 
 agent = get_agent(
-    instructions='You are a helpful assistant. Keep responses concise.',
+    instructions="You are a helpful assistant. Keep responses concise.",
 )
 
 app = AGUIApp(agent)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=['http://localhost:5173'],
-    allow_methods=['*'],
-    allow_headers=['*'],
+    allow_origins=["http://localhost:5173"],
+    allow_methods=["*"],
+    allow_headers=["*"],
 )

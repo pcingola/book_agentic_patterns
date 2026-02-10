@@ -114,7 +114,9 @@ class ImageReference(ImageBase):
     def __str__(self) -> str:
         dimensions = self._get_dimensions_str()
         source_info = self._get_source_str()
-        return f"ImageRef[{self.format}{dimensions}{source_info}] -> {self.resource_uri}"
+        return (
+            f"ImageRef[{self.format}{dimensions}{source_info}] -> {self.resource_uri}"
+        )
 
     @classmethod
     def from_image(cls, image: Image, resource_uri: str) -> "ImageReference":

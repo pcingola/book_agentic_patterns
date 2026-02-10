@@ -5,8 +5,14 @@ from pathlib import Path
 
 import yaml
 
-from agentic_patterns.core.connectors.vocabulary.config import VOCABULARIES_YAML_PATH, VOCABULARY_CACHE_DIR
-from agentic_patterns.core.connectors.vocabulary.models import VocabularyConfig, VocabularyInfo
+from agentic_patterns.core.connectors.vocabulary.config import (
+    VOCABULARIES_YAML_PATH,
+    VOCABULARY_CACHE_DIR,
+)
+from agentic_patterns.core.connectors.vocabulary.models import (
+    VocabularyConfig,
+    VocabularyInfo,
+)
 from agentic_patterns.core.connectors.vocabulary.strategy import Strategy
 
 logger = logging.getLogger(__name__)
@@ -27,10 +33,15 @@ def get_vocabulary(name: str) -> Strategy:
     if name not in _registry:
         configs = get_configs()
         if name in configs:
-            from agentic_patterns.core.connectors.vocabulary.loader import load_vocabulary
+            from agentic_patterns.core.connectors.vocabulary.loader import (
+                load_vocabulary,
+            )
+
             load_vocabulary(configs[name], base_dir=VOCABULARY_CACHE_DIR)
         else:
-            raise KeyError(f"Vocabulary '{name}' not registered. Available: {list(_registry.keys()) + list(configs.keys())}")
+            raise KeyError(
+                f"Vocabulary '{name}' not registered. Available: {list(_registry.keys()) + list(configs.keys())}"
+            )
     return _registry[name]
 
 
@@ -42,6 +53,7 @@ def list_vocabularies() -> list[VocabularyInfo]:
 def load_all(config_path: Path | None = None, base_dir: Path | None = None) -> None:
     """Load all vocabularies defined in the YAML config."""
     from agentic_patterns.core.connectors.vocabulary.loader import load_vocabulary
+
     _load_configs(config_path)
     for config in _configs.values():
         if config.name not in _registry:

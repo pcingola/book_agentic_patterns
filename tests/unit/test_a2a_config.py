@@ -11,7 +11,6 @@ TEST_DATA_DIR = Path(__file__).parent.parent / "data" / "a2a"
 
 
 class TestA2AConfig(unittest.TestCase):
-
     def setUp(self):
         config_module._settings = None
 

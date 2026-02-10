@@ -38,7 +38,9 @@ def get_all_tools() -> list:
         output_file: str | None = None,
     ) -> str:
         """Call an API endpoint with specified parameters and body. Results are saved to JSON automatically."""
-        return await connector.call_endpoint(api_id, method, path, parameters, body, output_file)
+        return await connector.call_endpoint(
+            api_id, method, path, parameters, body, output_file
+        )
 
     return [
         openapi_list_apis,

@@ -1,6 +1,9 @@
 import unittest
 
-from agentic_patterns.core.doctors.prompt_doctor import _extract_placeholders, _format_prompt_for_analysis
+from agentic_patterns.core.doctors.prompt_doctor import (
+    _extract_placeholders,
+    _format_prompt_for_analysis,
+)
 
 
 class TestPromptUtils(unittest.TestCase):

@@ -8,6 +8,7 @@ class TestToolMock(unittest.IsolatedAsyncioTestCase):
 
     def test_sync_function_returns_values_in_order(self):
         """Test that a mocked sync function returns values sequentially."""
+
         def original_func(x: int) -> int:
             return x * 2
 
@@ -18,6 +19,7 @@ class TestToolMock(unittest.IsolatedAsyncioTestCase):
 
     async def test_async_function_returns_values_in_order(self):
         """Test that a mocked async function returns values sequentially."""
+
         async def original_async(x: int) -> str:
             return f"result_{x}"
 
@@ -33,6 +35,7 @@ class TestToolMock(unittest.IsolatedAsyncioTestCase):
 
     def test_raises_index_error_when_exhausted(self):
         """Test that IndexError is raised when no more return values are available."""
+
         def original_func() -> str:
             return "test"
 
@@ -43,6 +46,7 @@ class TestToolMock(unittest.IsolatedAsyncioTestCase):
 
     def test_preserves_function_name(self):
         """Test that the mocked function preserves the original function's name."""
+
         def my_special_function() -> None:
             pass
 

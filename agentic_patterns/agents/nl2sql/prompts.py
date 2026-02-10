@@ -1,9 +1,11 @@
 """Prompt generation for NL2SQL agent."""
 
 from agentic_patterns.core.config.config import PROMPTS_DIR
-from agentic_patterns.core.connectors.sql.db_connection_config import DbConnectionConfigs
+from agentic_patterns.core.connectors.sql.db_connection_config import (
+    DbConnectionConfigs,
+)
 from agentic_patterns.core.connectors.sql.db_info import DbInfo
-from agentic_patterns.core.prompt import get_prompt, load_prompt
+from agentic_patterns.core.prompt import get_prompt
 
 
 def get_example_queries_md(db_info: DbInfo) -> str:
@@ -22,7 +24,11 @@ def get_instructions(db_info: DbInfo) -> str:
     """Get instructions for the agent including schema and examples."""
     schema = db_info.schema_sql()
     example_queries_md = get_example_queries_md(db_info)
-    base = get_prompt("sql/nl2sql/nl2sql_instructions", schema=schema, example_queries_md=example_queries_md)
+    base = get_prompt(
+        "sql/nl2sql/nl2sql_instructions",
+        schema=schema,
+        example_queries_md=example_queries_md,
+    )
 
     config = DbConnectionConfigs.get().get_config(db_info.db_id)
     db_type = config.type.value

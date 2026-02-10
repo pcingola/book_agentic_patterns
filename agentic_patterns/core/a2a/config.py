@@ -12,6 +12,7 @@ from agentic_patterns.core.config.config import AGENTIC_PATTERNS_PROJECT_DIR
 
 class A2AClientConfig(BaseModel):
     """Configuration for an A2A client."""
+
     url: str
     timeout: int = Field(default=300)
     poll_interval: float = Field(default=1.0)
@@ -22,11 +23,14 @@ class A2AClientConfig(BaseModel):
 
 class A2ASettings(BaseModel):
     """Container for A2A client configurations."""
+
     clients: dict[str, A2AClientConfig]
 
     def get(self, name: str) -> A2AClientConfig:
         if name not in self.clients:
-            raise ValueError(f"A2A client config '{name}' not found. Available: {list(self.clients.keys())}")
+            raise ValueError(
+                f"A2A client config '{name}' not found. Available: {list(self.clients.keys())}"
+            )
         return self.clients[name]
 
     def list_clients(self) -> list[str]:
@@ -35,10 +39,12 @@ class A2ASettings(BaseModel):
 
 def _expand_env_vars(value: str) -> str:
     """Expand ${VAR} patterns in string values."""
-    pattern = r'\$\{(\w+)\}'
+    pattern = r"\$\{(\w+)\}"
+
     def replace(match):
         var_name = match.group(1)
         return os.environ.get(var_name, match.group(0))
+
     return re.sub(pattern, replace, value)
 
 

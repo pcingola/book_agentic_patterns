@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 
 class AzureConfig(BaseModel):
     """Configuration for Azure OpenAI models."""
+
     model_family: str = Field(default="azure")
     model_name: str
     api_key: str
@@ -21,6 +22,7 @@ class AzureConfig(BaseModel):
 
 class BedrockConfig(BaseModel):
     """Configuration for AWS Bedrock models."""
+
     model_family: str = Field(default="bedrock")
     model_name: str
     aws_region: str = Field(default="us-east-1")
@@ -35,6 +37,7 @@ class BedrockConfig(BaseModel):
 
 class OllamaConfig(BaseModel):
     """Configuration for Ollama models."""
+
     model_family: str = Field(default="ollama")
     model_name: str
     url: str
@@ -44,6 +47,7 @@ class OllamaConfig(BaseModel):
 
 class OpenAIConfig(BaseModel):
     """Configuration for OpenAI models."""
+
     model_family: str = Field(default="openai")
     model_name: str
     api_key: str
@@ -53,6 +57,7 @@ class OpenAIConfig(BaseModel):
 
 class OpenRouterConfig(BaseModel):
     """Configuration for OpenRouter models."""
+
     model_family: str = Field(default="openrouter")
     model_name: str
     api_key: str
@@ -61,17 +66,22 @@ class OpenRouterConfig(BaseModel):
     parallel_tool_calls: bool | None = Field(default=None)
 
 
-AgentConfig = AzureConfig | BedrockConfig | OllamaConfig | OpenAIConfig | OpenRouterConfig
+AgentConfig = (
+    AzureConfig | BedrockConfig | OllamaConfig | OpenAIConfig | OpenRouterConfig
+)
 
 
 class Models(BaseModel):
     """Container for multiple model configurations."""
+
     models: dict[str, AgentConfig]
 
     def get(self, name: str = "default") -> AgentConfig:
         """Get configuration by name."""
         if name not in self.models:
-            raise ValueError(f"Model configuration '{name}' not found. Available: {list(self.models.keys())}")
+            raise ValueError(
+                f"Model configuration '{name}' not found. Available: {list(self.models.keys())}"
+            )
         return self.models[name]
 
 

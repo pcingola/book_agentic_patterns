@@ -4,16 +4,29 @@ import argparse
 import asyncio
 import sys
 
-from agentic_patterns.core.connectors.openapi.annotation.annotator import ApiSpecAnnotator
-from agentic_patterns.core.connectors.openapi.api_connection_config import ApiConnectionConfigs
+from agentic_patterns.core.connectors.openapi.annotation.annotator import (
+    ApiSpecAnnotator,
+)
+from agentic_patterns.core.connectors.openapi.api_connection_config import (
+    ApiConnectionConfigs,
+)
 from agentic_patterns.core.connectors.openapi.config import APIS_YAML_PATH
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Ingest and annotate OpenAPI specification")
+    parser = argparse.ArgumentParser(
+        description="Ingest and annotate OpenAPI specification"
+    )
     parser.add_argument("api_id", type=str, help="API ID from apis.yaml")
-    parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose progress output")
-    parser.add_argument("-d", "--debug", action="store_true", help="Enable debug output (includes agent steps)")
+    parser.add_argument(
+        "-v", "--verbose", action="store_true", help="Enable verbose progress output"
+    )
+    parser.add_argument(
+        "-d",
+        "--debug",
+        action="store_true",
+        help="Enable debug output (includes agent steps)",
+    )
     return parser.parse_args()
 
 
@@ -44,12 +57,12 @@ async def main() -> None:
         )
 
         # Display summary
-        print(f"\nAPI ingestion complete!")
+        print("\nAPI ingestion complete!")
         print(f"API: {api_info.title} v{api_info.version}")
         print(f"Endpoints: {len(api_info.endpoints)}")
         print(f"Description: {api_info.description}")
         categories = api_info.get_endpoints_by_category()
-        print(f"\nCategories:")
+        print("\nCategories:")
         for category, endpoints in sorted(categories.items()):
             print(f"  {category}: {len(endpoints)} endpoints")
 

@@ -16,7 +16,9 @@ class TestCsvConnector(unittest.TestCase):
         """Set up test fixtures."""
         self.temp_dir = tempfile.TemporaryDirectory()
         self.workspace_dir = Path(self.temp_dir.name)
-        self.patcher = patch("agentic_patterns.core.workspace.WORKSPACE_DIR", self.workspace_dir)
+        self.patcher = patch(
+            "agentic_patterns.core.workspace.WORKSPACE_DIR", self.workspace_dir
+        )
         self.patcher.start()
 
         self.workspace_root = self.workspace_dir / "default_user" / "default_session"
@@ -41,7 +43,10 @@ class TestCsvConnector(unittest.TestCase):
 
     def test_head_csv_basic(self):
         """Test basic CSV head."""
-        sandbox_path = self._create_csv("test.csv", [["name", "age", "city"], ["Alice", "30", "NYC"], ["Bob", "25", "LA"]])
+        sandbox_path = self._create_csv(
+            "test.csv",
+            [["name", "age", "city"], ["Alice", "30", "NYC"], ["Bob", "25", "LA"]],
+        )
 
         result = self.connector.head(sandbox_path, n=10)
         self.assertIn("Alice", result)
@@ -76,7 +81,9 @@ class TestCsvConnector(unittest.TestCase):
 
     def test_tail_csv_small_file(self):
         """Test tail on file with fewer rows than n."""
-        sandbox_path = self._create_csv("test.csv", [["name", "age"], ["Alice", "30"], ["Bob", "25"]])
+        sandbox_path = self._create_csv(
+            "test.csv", [["name", "age"], ["Alice", "30"], ["Bob", "25"]]
+        )
 
         result = self.connector.tail(sandbox_path, n=10)
         self.assertIn("Alice", result)
@@ -84,7 +91,10 @@ class TestCsvConnector(unittest.TestCase):
 
     def test_read_csv_row(self):
         """Test reading specific row."""
-        sandbox_path = self._create_csv("test.csv", [["name", "age"], ["Alice", "30"], ["Bob", "25"], ["Charlie", "35"]])
+        sandbox_path = self._create_csv(
+            "test.csv",
+            [["name", "age"], ["Alice", "30"], ["Bob", "25"], ["Charlie", "35"]],
+        )
 
         result = self.connector.read_row(sandbox_path, row_number=2)
         self.assertIn("Bob", result)
@@ -100,7 +110,9 @@ class TestCsvConnector(unittest.TestCase):
 
     def test_get_csv_headers(self):
         """Test getting CSV headers."""
-        sandbox_path = self._create_csv("test.csv", [["name", "age", "city"], ["Alice", "30", "NYC"]])
+        sandbox_path = self._create_csv(
+            "test.csv", [["name", "age", "city"], ["Alice", "30", "NYC"]]
+        )
 
         result = self.connector.headers(sandbox_path)
         self.assertIn("name", result)
@@ -111,34 +123,54 @@ class TestCsvConnector(unittest.TestCase):
     def test_find_csv_by_column_name(self):
         """Test finding rows by column name."""
         sandbox_path = self._create_csv(
-            "test.csv", [["name", "status"], ["Alice", "active"], ["Bob", "inactive"], ["Charlie", "active"]]
+            "test.csv",
+            [
+                ["name", "status"],
+                ["Alice", "active"],
+                ["Bob", "inactive"],
+                ["Charlie", "active"],
+            ],
         )
 
-        result = self.connector.find_rows(sandbox_path, column="status", value="active", limit=10)
+        result = self.connector.find_rows(
+            sandbox_path, column="status", value="active", limit=10
+        )
         self.assertIn("Alice", result)
         self.assertIn("Charlie", result)
         self.assertNotIn("Bob", result)
 
     def test_find_csv_by_column_index(self):
         """Test finding rows by column index."""
-        sandbox_path = self._create_csv("test.csv", [["name", "status"], ["Alice", "active"], ["Bob", "inactive"]])
+        sandbox_path = self._create_csv(
+            "test.csv", [["name", "status"], ["Alice", "active"], ["Bob", "inactive"]]
+        )
 
-        result = self.connector.find_rows(sandbox_path, column=1, value="active", limit=10)
+        result = self.connector.find_rows(
+            sandbox_path, column=1, value="active", limit=10
+        )
         self.assertIn("Alice", result)
         self.assertNotIn("Bob", result)
 
     def test_find_csv_no_matches(self):
         """Test finding rows with no matches."""
-        sandbox_path = self._create_csv("test.csv", [["name", "status"], ["Alice", "active"]])
+        sandbox_path = self._create_csv(
+            "test.csv", [["name", "status"], ["Alice", "active"]]
+        )
 
-        result = self.connector.find_rows(sandbox_path, column="status", value="deleted", limit=10)
+        result = self.connector.find_rows(
+            sandbox_path, column="status", value="deleted", limit=10
+        )
         self.assertIn("[No rows found", result)
 
     def test_update_csv_cell_by_column_name(self):
         """Test updating cell by column name."""
-        sandbox_path = self._create_csv("test.csv", [["name", "status"], ["Alice", "active"], ["Bob", "inactive"]])
+        sandbox_path = self._create_csv(
+            "test.csv", [["name", "status"], ["Alice", "active"], ["Bob", "inactive"]]
+        )
 
-        result = self.connector.update_cell(sandbox_path, row_number=1, column="status", value="pending")
+        result = self.connector.update_cell(
+            sandbox_path, row_number=1, column="status", value="pending"
+        )
         self.assertIn("Updated", result)
         self.assertIn("status", result)
         self.assertIn("pending", result)
@@ -148,9 +180,13 @@ class TestCsvConnector(unittest.TestCase):
 
     def test_update_csv_cell_by_column_index(self):
         """Test updating cell by column index."""
-        sandbox_path = self._create_csv("test.csv", [["name", "status"], ["Alice", "active"]])
+        sandbox_path = self._create_csv(
+            "test.csv", [["name", "status"], ["Alice", "active"]]
+        )
 
-        result = self.connector.update_cell(sandbox_path, row_number=1, column=1, value="inactive")
+        result = self.connector.update_cell(
+            sandbox_path, row_number=1, column=1, value="inactive"
+        )
         self.assertIn("Updated", result)
 
         content = (self.workspace_root / "test.csv").read_text()
@@ -159,11 +195,20 @@ class TestCsvConnector(unittest.TestCase):
     def test_update_csv_row(self):
         """Test updating entire row by key."""
         sandbox_path = self._create_csv(
-            "test.csv", [["customer_id", "name", "status"], ["C-001", "Alice", "active"], ["C-002", "Bob", "inactive"]]
+            "test.csv",
+            [
+                ["customer_id", "name", "status"],
+                ["C-001", "Alice", "active"],
+                ["C-002", "Bob", "inactive"],
+            ],
         )
 
         result = self.connector.update_row(
-            sandbox_path, key_column="customer_id", key_value="C-001", updates={"name": "Alicia", "status": "pending"}        )
+            sandbox_path,
+            key_column="customer_id",
+            key_value="C-001",
+            updates={"name": "Alicia", "status": "pending"},
+        )
         self.assertIn("Updated 1 row", result)
 
         content = (self.workspace_root / "test.csv").read_text()
@@ -172,16 +217,25 @@ class TestCsvConnector(unittest.TestCase):
 
     def test_update_csv_row_no_match(self):
         """Test updating row with no matching key."""
-        sandbox_path = self._create_csv("test.csv", [["customer_id", "name"], ["C-001", "Alice"]])
+        sandbox_path = self._create_csv(
+            "test.csv", [["customer_id", "name"], ["C-001", "Alice"]]
+        )
 
-        result = self.connector.update_row(sandbox_path, key_column="customer_id", key_value="C-999", updates={"name": "Bob"})
+        result = self.connector.update_row(
+            sandbox_path,
+            key_column="customer_id",
+            key_value="C-999",
+            updates={"name": "Bob"},
+        )
         self.assertIn("[No rows found", result)
 
     def test_append_csv_with_dict(self):
         """Test appending row using dict."""
         sandbox_path = self._create_csv("test.csv", [["name", "age"], ["Alice", "30"]])
 
-        result = self.connector.append(sandbox_path, values={"name": "Bob", "age": "25"})
+        result = self.connector.append(
+            sandbox_path, values={"name": "Bob", "age": "25"}
+        )
         self.assertIn("Appended 1 row", result)
         self.assertIn("now 2 rows", result)
 
@@ -209,10 +263,18 @@ class TestCsvConnector(unittest.TestCase):
     def test_delete_csv(self):
         """Test deleting rows."""
         sandbox_path = self._create_csv(
-            "test.csv", [["name", "status"], ["Alice", "active"], ["Bob", "inactive"], ["Charlie", "active"]]
+            "test.csv",
+            [
+                ["name", "status"],
+                ["Alice", "active"],
+                ["Bob", "inactive"],
+                ["Charlie", "active"],
+            ],
         )
 
-        result = self.connector.delete_rows(sandbox_path, column="status", value="active")
+        result = self.connector.delete_rows(
+            sandbox_path, column="status", value="active"
+        )
         self.assertIn("Deleted 2 row", result)
 
         content = (self.workspace_root / "test.csv").read_text()
@@ -222,9 +284,13 @@ class TestCsvConnector(unittest.TestCase):
 
     def test_delete_csv_no_match(self):
         """Test deleting rows with no matches."""
-        sandbox_path = self._create_csv("test.csv", [["name", "status"], ["Alice", "active"]])
+        sandbox_path = self._create_csv(
+            "test.csv", [["name", "status"], ["Alice", "active"]]
+        )
 
-        result = self.connector.delete_rows(sandbox_path, column="status", value="deleted")
+        result = self.connector.delete_rows(
+            sandbox_path, column="status", value="deleted"
+        )
         self.assertIn("[No rows found", result)
 
     def test_tab_separated_values(self):

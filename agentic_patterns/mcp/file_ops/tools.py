@@ -17,7 +17,16 @@ _file = FileConnector()
 _csv = CsvConnector()
 _json = JsonConnector()
 
-_RETRYABLE = (WorkspaceError, FileNotFoundError, IsADirectoryError, NotADirectoryError, ValueError, KeyError, TypeError, IndexError)
+_RETRYABLE = (
+    WorkspaceError,
+    FileNotFoundError,
+    IsADirectoryError,
+    NotADirectoryError,
+    ValueError,
+    KeyError,
+    TypeError,
+    IndexError,
+)
 
 
 def _call(fn: callable, *args, **kwargs) -> str:
@@ -65,7 +74,9 @@ def register_tools(mcp: FastMCP) -> None:
 
     @mcp.tool()
     @tool_permission(ToolPermission.WRITE)
-    async def file_edit(path: str, start_line: int, end_line: int, new_content: str, ctx: Context) -> str:
+    async def file_edit(
+        path: str, start_line: int, end_line: int, new_content: str, ctx: Context
+    ) -> str:
         """Replace lines start_line to end_line (1-indexed, inclusive) with new_content."""
         await ctx.info(f"file_edit: {path} lines {start_line}-{end_line}")
         return _call(_file.edit, path, start_line, end_line, new_content)
@@ -130,35 +141,49 @@ def register_tools(mcp: FastMCP) -> None:
 
     @mcp.tool()
     @tool_permission(ToolPermission.READ)
-    async def csv_find_rows(path: str, column: str, value: str, limit: int = 10, ctx: Context = None) -> str:
+    async def csv_find_rows(
+        path: str, column: str, value: str, limit: int = 10, ctx: Context = None
+    ) -> str:
         """Find rows where a column matches a value. Returns up to `limit` rows."""
         await ctx.info(f"csv_find_rows: {path} {column}={value!r} limit={limit}")
         return _call(_csv.find_rows, path, column, value, limit)
 
     @mcp.tool()
     @tool_permission(ToolPermission.WRITE)
-    async def csv_append(path: str, values: dict[str, str] | list[str], ctx: Context = None) -> str:
+    async def csv_append(
+        path: str, values: dict[str, str] | list[str], ctx: Context = None
+    ) -> str:
         """Append a row to a CSV file. Pass a dict keyed by column name or a list of values."""
         await ctx.info(f"csv_append: {path}")
         return _call(_csv.append, path, values)
 
     @mcp.tool()
     @tool_permission(ToolPermission.WRITE)
-    async def csv_delete_rows(path: str, column: str, value: str, ctx: Context = None) -> str:
+    async def csv_delete_rows(
+        path: str, column: str, value: str, ctx: Context = None
+    ) -> str:
         """Delete all rows where a column matches a value."""
         await ctx.info(f"csv_delete_rows: {path} {column}={value!r}")
         return _call(_csv.delete_rows, path, column, value)
 
     @mcp.tool()
     @tool_permission(ToolPermission.WRITE)
-    async def csv_update_cell(path: str, row_number: int, column: str, value: str, ctx: Context = None) -> str:
+    async def csv_update_cell(
+        path: str, row_number: int, column: str, value: str, ctx: Context = None
+    ) -> str:
         """Update a single cell in a CSV file."""
         await ctx.info(f"csv_update_cell: {path} row={row_number} col={column!r}")
         return _call(_csv.update_cell, path, row_number, column, value)
 
     @mcp.tool()
     @tool_permission(ToolPermission.WRITE)
-    async def csv_update_row(path: str, key_column: str, key_value: str, updates: dict[str, str], ctx: Context = None) -> str:
+    async def csv_update_row(
+        path: str,
+        key_column: str,
+        key_value: str,
+        updates: dict[str, str],
+        ctx: Context = None,
+    ) -> str:
         """Update all rows matching key_column=key_value with the given column updates."""
         await ctx.info(f"csv_update_row: {path} {key_column}={key_value!r}")
         return _call(_csv.update_row, path, key_column, key_value, updates)
@@ -188,28 +213,36 @@ def register_tools(mcp: FastMCP) -> None:
 
     @mcp.tool()
     @tool_permission(ToolPermission.READ)
-    async def json_schema(path: str, json_path: str = "$", max_depth: int = 4, ctx: Context = None) -> str:
+    async def json_schema(
+        path: str, json_path: str = "$", max_depth: int = 4, ctx: Context = None
+    ) -> str:
         """Show JSON structure: keys, types, nesting depths, and array sizes."""
         await ctx.info(f"json_schema: {path} {json_path}")
         return _call(_json.schema, path, json_path, max_depth)
 
     @mcp.tool()
     @tool_permission(ToolPermission.READ)
-    async def json_query(path: str, json_path: str, max_results: int = 20, ctx: Context = None) -> str:
+    async def json_query(
+        path: str, json_path: str, max_results: int = 20, ctx: Context = None
+    ) -> str:
         """Query JSON with extended JSONPath filters (e.g. '$.items[?(@.age > 30)]')."""
         await ctx.info(f"json_query: {path} {json_path}")
         return _call(_json.query, path, json_path, max_results)
 
     @mcp.tool()
     @tool_permission(ToolPermission.READ)
-    async def json_head(path: str, json_path: str = "$", n: int = 10, ctx: Context = None) -> str:
+    async def json_head(
+        path: str, json_path: str = "$", n: int = 10, ctx: Context = None
+    ) -> str:
         """Return the first N keys or array elements at a JSONPath."""
         await ctx.info(f"json_head: {path} {json_path} n={n}")
         return _call(_json.head, path, json_path, n)
 
     @mcp.tool()
     @tool_permission(ToolPermission.READ)
-    async def json_tail(path: str, json_path: str = "$", n: int = 10, ctx: Context = None) -> str:
+    async def json_tail(
+        path: str, json_path: str = "$", n: int = 10, ctx: Context = None
+    ) -> str:
         """Return the last N keys or array elements at a JSONPath."""
         await ctx.info(f"json_tail: {path} {json_path} n={n}")
         return _call(_json.tail, path, json_path, n)

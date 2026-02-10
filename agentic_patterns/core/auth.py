@@ -10,7 +10,12 @@ from agentic_patterns.core.config.config import JWT_ALGORITHM, JWT_SECRET
 def create_token(user_id: str, session_id: str, expires_in: int = 3600) -> str:
     """Create a JWT carrying user identity claims."""
     now = int(time.time())
-    payload = {"sub": user_id, "session_id": session_id, "iat": now, "exp": now + expires_in}
+    payload = {
+        "sub": user_id,
+        "session_id": session_id,
+        "iat": now,
+        "exp": now + expires_in,
+    }
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
 

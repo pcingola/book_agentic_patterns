@@ -13,15 +13,22 @@ from agentic_patterns.core.tools import func_to_description
 class ToolDoctor(DoctorBase):
     """Analyzes tool function definitions for clarity and completeness."""
 
-    async def analyze(self, tool: Callable, verbose: bool = False) -> ToolRecommendation:
+    async def analyze(
+        self, tool: Callable, verbose: bool = False
+    ) -> ToolRecommendation:
         """Analyze a single tool function."""
         results = await self._analyze_batch_internal([tool], verbose=verbose)
         return results[0]
 
-    async def _analyze_batch_internal(self, batch: list[Callable], verbose: bool = False) -> list[ToolRecommendation]:
+    async def _analyze_batch_internal(
+        self, batch: list[Callable], verbose: bool = False
+    ) -> list[ToolRecommendation]:
         """Analyze a batch of tool functions."""
         tools_description = "\n\n".join(func_to_description(tool) for tool in batch)
-        prompt = load_prompt(PROMPTS_DIR / "doctors" / "tool_doctor.md", tools_description=tools_description)
+        prompt = load_prompt(
+            PROMPTS_DIR / "doctors" / "tool_doctor.md",
+            tools_description=tools_description,
+        )
 
         agent = get_agent(tools=batch, output_type=list[ToolRecommendation])
         agent_run, _ = await run_agent(agent, prompt, verbose=verbose)

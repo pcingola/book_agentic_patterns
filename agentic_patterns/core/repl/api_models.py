@@ -37,12 +37,24 @@ class CellInfo(BaseModel):
 
         if include_outputs and cell.outputs:
             for i, output in enumerate(cell.outputs):
-                processed_output = CellOutput(output_type=output.output_type, content=output.content)
-                if output.output_type == OutputType.IMAGE and isinstance(output.content, Image):
+                processed_output = CellOutput(
+                    output_type=output.output_type, content=output.content
+                )
+                if output.output_type == OutputType.IMAGE and isinstance(
+                    output.content, Image
+                ):
                     image = output.content
                     resource_uri = f"notebook://cell/{cell.cell_number}/image/{i}"
-                    resources.append(ResourceLink(uri=resource_uri, mime_type=f"image/{image.format}", description=f"Image output {i + 1} from cell {cell.cell_number}"))
-                    processed_output.content = ImageReference.from_image(image, resource_uri)
+                    resources.append(
+                        ResourceLink(
+                            uri=resource_uri,
+                            mime_type=f"image/{image.format}",
+                            description=f"Image output {i + 1} from cell {cell.cell_number}",
+                        )
+                    )
+                    processed_output.content = ImageReference.from_image(
+                        image, resource_uri
+                    )
                 processed_outputs.append(processed_output)
 
         return cls(
@@ -65,7 +77,11 @@ class NotebookInfo(BaseModel):
 
     @classmethod
     def from_notebook(cls, notebook: Notebook) -> "NotebookInfo":
-        return cls(user_id=notebook.user_id, session_id=notebook.session_id, cell_count=len(notebook.cells))
+        return cls(
+            user_id=notebook.user_id,
+            session_id=notebook.session_id,
+            cell_count=len(notebook.cells),
+        )
 
 
 class OperationResult(BaseModel):

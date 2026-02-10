@@ -7,7 +7,7 @@ using naming conventions (dataset_*, target_*, scorer_*).
 import importlib.util
 import inspect
 import sys
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from types import ModuleType
 from typing import Any, Callable
@@ -54,7 +54,9 @@ def load_module_from_file(file_path: Path) -> ModuleType:
     return module
 
 
-def _find_prefixed_objects(module: ModuleType, prefix: str, predicate: Callable[[Any], bool]) -> list[tuple[str, Any]]:
+def _find_prefixed_objects(
+    module: ModuleType, prefix: str, predicate: Callable[[Any], bool]
+) -> list[tuple[str, Any]]:
     """Find all objects with a specific prefix matching a predicate."""
     results = []
     for name, obj in inspect.getmembers(module):
@@ -65,28 +67,47 @@ def _find_prefixed_objects(module: ModuleType, prefix: str, predicate: Callable[
 
 def _find_datasets(module: ModuleType) -> list[tuple[str, Dataset]]:
     """Find all dataset_* objects that are Dataset instances."""
-    return _find_prefixed_objects(module, "dataset_", lambda obj: isinstance(obj, Dataset))
+    return _find_prefixed_objects(
+        module, "dataset_", lambda obj: isinstance(obj, Dataset)
+    )
 
 
 def _find_target_functions(module: ModuleType) -> list[tuple[str, Callable]]:
     """Find all target_* functions (sync or async)."""
-    return _find_prefixed_objects(module, "target_", lambda obj: inspect.isfunction(obj) or inspect.iscoroutinefunction(obj))
+    return _find_prefixed_objects(
+        module,
+        "target_",
+        lambda obj: inspect.isfunction(obj) or inspect.iscoroutinefunction(obj),
+    )
 
 
 def _find_scorer_functions(module: ModuleType) -> list[tuple[str, Callable]]:
     """Find all scorer_* functions."""
-    return _find_prefixed_objects(module, "scorer_", lambda obj: inspect.isfunction(obj) or inspect.iscoroutinefunction(obj))
+    return _find_prefixed_objects(
+        module,
+        "scorer_",
+        lambda obj: inspect.isfunction(obj) or inspect.iscoroutinefunction(obj),
+    )
 
 
-def _matches_filter(module_name: str, file_name: str, dataset_name: str, name_filter: str | None) -> bool:
+def _matches_filter(
+    module_name: str, file_name: str, dataset_name: str, name_filter: str | None
+) -> bool:
     """Check if the dataset matches the name filter."""
     if name_filter is None:
         return True
     full_name = f"{module_name}.{dataset_name}"
-    return name_filter in module_name or name_filter in file_name or name_filter in dataset_name or name_filter in full_name
+    return (
+        name_filter in module_name
+        or name_filter in file_name
+        or name_filter in dataset_name
+        or name_filter in full_name
+    )
 
 
-def discover_datasets(eval_files: list[Path], name_filter: str | None = None, verbose: bool = False) -> list[DiscoveredDataset]:
+def discover_datasets(
+    eval_files: list[Path], name_filter: str | None = None, verbose: bool = False
+) -> list[DiscoveredDataset]:
     """Discover all datasets from eval files.
 
     For each eval file, finds dataset_* objects and pairs them with target_* functions
@@ -110,18 +131,24 @@ def discover_datasets(eval_files: list[Path], name_filter: str | None = None, ve
         scorers = _find_scorer_functions(module)
 
         if verbose:
-            print(f"  Found {len(datasets)} datasets, {len(targets)} targets, {len(scorers)} scorers")
+            print(
+                f"  Found {len(datasets)} datasets, {len(targets)} targets, {len(scorers)} scorers"
+            )
 
         if len(targets) != 1:
             if verbose:
-                print(f"  Skipping file: expected 1 target function, found {len(targets)}")
+                print(
+                    f"  Skipping file: expected 1 target function, found {len(targets)}"
+                )
             continue
 
         target_name, target_func = targets[0]
         scorer_funcs = [func for _, func in scorers]
 
         for dataset_name, dataset in datasets:
-            if not _matches_filter(module.__name__, eval_file.stem, dataset_name, name_filter):
+            if not _matches_filter(
+                module.__name__, eval_file.stem, dataset_name, name_filter
+            ):
                 if verbose:
                     print(f"    Skipping {dataset_name} (doesn't match filter)")
                 continue

@@ -8,7 +8,13 @@ import yaml
 from agentic_patterns.core.agents import get_agent, run_agent
 from agentic_patterns.core.config.config import PROMPTS_DIR
 from agentic_patterns.core.doctors.base import DoctorBase
-from agentic_patterns.core.doctors.models import AgentSkillRecommendation, Issue, IssueCategory, IssueLevel, ScriptRecommendation
+from agentic_patterns.core.doctors.models import (
+    AgentSkillRecommendation,
+    Issue,
+    IssueCategory,
+    IssueLevel,
+    ScriptRecommendation,
+)
 from agentic_patterns.core.prompt import load_prompt
 
 
@@ -21,12 +27,14 @@ MAX_SKILL_MD_LINES = 500
 
 class ScriptAnalysisResult(ScriptRecommendation):
     """Extended script recommendation with description match info."""
+
     is_documented: bool = False
     description_accurate: bool = True
 
 
 class ConsistencyAnalysisResult:
     """Result of consistency analysis between scripts and SKILL.md."""
+
     def __init__(self) -> None:
         self.undocumented_scripts: list[str] = []
         self.phantom_references: list[str] = []
@@ -53,9 +61,23 @@ def _validate_body(body: str) -> list[Issue]:
     issues = []
     lines = body.split("\n")
     if len(lines) > MAX_SKILL_MD_LINES:
-        issues.append(Issue(level=IssueLevel.WARNING, category=IssueCategory.COMPLETENESS, message=f"SKILL.md body exceeds {MAX_SKILL_MD_LINES} lines", suggestion="Move detailed content to files in references/ directory"))
+        issues.append(
+            Issue(
+                level=IssueLevel.WARNING,
+                category=IssueCategory.COMPLETENESS,
+                message=f"SKILL.md body exceeds {MAX_SKILL_MD_LINES} lines",
+                suggestion="Move detailed content to files in references/ directory",
+            )
+        )
     if not body.strip():
-        issues.append(Issue(level=IssueLevel.WARNING, category=IssueCategory.COMPLETENESS, message="SKILL.md body is empty", suggestion="Add instructions for the agent"))
+        issues.append(
+            Issue(
+                level=IssueLevel.WARNING,
+                category=IssueCategory.COMPLETENESS,
+                message="SKILL.md body is empty",
+                suggestion="Add instructions for the agent",
+            )
+        )
     return issues
 
 
@@ -65,7 +87,14 @@ def _validate_compatibility(compatibility: str | None) -> list[Issue]:
         return []
     issues = []
     if len(compatibility) > MAX_COMPATIBILITY_LENGTH:
-        issues.append(Issue(level=IssueLevel.ERROR, category=IssueCategory.DOCUMENTATION, message=f"Compatibility exceeds {MAX_COMPATIBILITY_LENGTH} characters", suggestion=f"Shorten to {MAX_COMPATIBILITY_LENGTH} or fewer characters"))
+        issues.append(
+            Issue(
+                level=IssueLevel.ERROR,
+                category=IssueCategory.DOCUMENTATION,
+                message=f"Compatibility exceeds {MAX_COMPATIBILITY_LENGTH} characters",
+                suggestion=f"Shorten to {MAX_COMPATIBILITY_LENGTH} or fewer characters",
+            )
+        )
     return issues
 
 
@@ -73,19 +102,46 @@ def _validate_description(description: str | None) -> list[Issue]:
     """Validate the description field."""
     issues = []
     if not description:
-        issues.append(Issue(level=IssueLevel.ERROR, category=IssueCategory.DOCUMENTATION, message="Missing required 'description' field in frontmatter"))
+        issues.append(
+            Issue(
+                level=IssueLevel.ERROR,
+                category=IssueCategory.DOCUMENTATION,
+                message="Missing required 'description' field in frontmatter",
+            )
+        )
         return issues
     if len(description) > MAX_DESCRIPTION_LENGTH:
-        issues.append(Issue(level=IssueLevel.ERROR, category=IssueCategory.DOCUMENTATION, message=f"Description exceeds {MAX_DESCRIPTION_LENGTH} characters", suggestion=f"Shorten to {MAX_DESCRIPTION_LENGTH} or fewer characters"))
+        issues.append(
+            Issue(
+                level=IssueLevel.ERROR,
+                category=IssueCategory.DOCUMENTATION,
+                message=f"Description exceeds {MAX_DESCRIPTION_LENGTH} characters",
+                suggestion=f"Shorten to {MAX_DESCRIPTION_LENGTH} or fewer characters",
+            )
+        )
     if len(description) < 20:
-        issues.append(Issue(level=IssueLevel.WARNING, category=IssueCategory.DOCUMENTATION, message="Description is too short", suggestion="Add more detail about what the skill does and when to use it"))
+        issues.append(
+            Issue(
+                level=IssueLevel.WARNING,
+                category=IssueCategory.DOCUMENTATION,
+                message="Description is too short",
+                suggestion="Add more detail about what the skill does and when to use it",
+            )
+        )
     return issues
 
 
 def _validate_frontmatter(frontmatter: dict | None, dir_name: str) -> list[Issue]:
     """Validate all frontmatter fields."""
     if frontmatter is None:
-        return [Issue(level=IssueLevel.ERROR, category=IssueCategory.COMPLETENESS, message="Missing or invalid YAML frontmatter in SKILL.md", suggestion="Add frontmatter with --- delimiters containing name and description")]
+        return [
+            Issue(
+                level=IssueLevel.ERROR,
+                category=IssueCategory.COMPLETENESS,
+                message="Missing or invalid YAML frontmatter in SKILL.md",
+                suggestion="Add frontmatter with --- delimiters containing name and description",
+            )
+        ]
     issues = []
     issues.extend(_validate_name(frontmatter.get("name"), dir_name))
     issues.extend(_validate_description(frontmatter.get("description")))
@@ -97,14 +153,41 @@ def _validate_name(name: str | None, dir_name: str) -> list[Issue]:
     """Validate the name field per Agent Skills specification."""
     issues = []
     if not name:
-        issues.append(Issue(level=IssueLevel.ERROR, category=IssueCategory.NAMING, message="Missing required 'name' field in frontmatter"))
+        issues.append(
+            Issue(
+                level=IssueLevel.ERROR,
+                category=IssueCategory.NAMING,
+                message="Missing required 'name' field in frontmatter",
+            )
+        )
         return issues
     if len(name) > MAX_NAME_LENGTH:
-        issues.append(Issue(level=IssueLevel.ERROR, category=IssueCategory.NAMING, message=f"Name exceeds {MAX_NAME_LENGTH} characters", suggestion=f"Shorten to {MAX_NAME_LENGTH} or fewer characters"))
+        issues.append(
+            Issue(
+                level=IssueLevel.ERROR,
+                category=IssueCategory.NAMING,
+                message=f"Name exceeds {MAX_NAME_LENGTH} characters",
+                suggestion=f"Shorten to {MAX_NAME_LENGTH} or fewer characters",
+            )
+        )
     if not SKILL_NAME_PATTERN.match(name):
-        issues.append(Issue(level=IssueLevel.ERROR, category=IssueCategory.NAMING, message="Name must be lowercase alphanumeric with hyphens, no leading/trailing/consecutive hyphens", suggestion="Use format like 'my-skill-name'"))
+        issues.append(
+            Issue(
+                level=IssueLevel.ERROR,
+                category=IssueCategory.NAMING,
+                message="Name must be lowercase alphanumeric with hyphens, no leading/trailing/consecutive hyphens",
+                suggestion="Use format like 'my-skill-name'",
+            )
+        )
     if name != dir_name:
-        issues.append(Issue(level=IssueLevel.ERROR, category=IssueCategory.NAMING, message=f"Name '{name}' does not match directory name '{dir_name}'", suggestion=f"Change name to '{dir_name}' or rename directory to '{name}'"))
+        issues.append(
+            Issue(
+                level=IssueLevel.ERROR,
+                category=IssueCategory.NAMING,
+                message=f"Name '{name}' does not match directory name '{dir_name}'",
+                suggestion=f"Change name to '{dir_name}' or rename directory to '{name}'",
+            )
+        )
     return issues
 
 
@@ -113,13 +196,42 @@ def _validate_structure(skill_dir: Path) -> list[Issue]:
     issues = []
     skill_md = skill_dir / "SKILL.md"
     if not skill_md.exists():
-        issues.append(Issue(level=IssueLevel.ERROR, category=IssueCategory.COMPLETENESS, message="Missing required SKILL.md file"))
+        issues.append(
+            Issue(
+                level=IssueLevel.ERROR,
+                category=IssueCategory.COMPLETENESS,
+                message="Missing required SKILL.md file",
+            )
+        )
     for item in skill_dir.iterdir():
-        if item.is_file() and item.name not in ("SKILL.md", "LICENSE", "LICENSE.txt", "LICENSE.md"):
+        if item.is_file() and item.name not in (
+            "SKILL.md",
+            "LICENSE",
+            "LICENSE.txt",
+            "LICENSE.md",
+        ):
             if not item.name.startswith("."):
-                issues.append(Issue(level=IssueLevel.ERROR, category=IssueCategory.STRUCTURE, message=f"Unexpected file '{item.name}' in skill root", suggestion="Move to scripts/, references/, or assets/ directory"))
-        elif item.is_dir() and item.name not in ("scripts", "references", "assets") and not item.name.startswith("."):
-            issues.append(Issue(level=IssueLevel.ERROR, category=IssueCategory.STRUCTURE, message=f"Unexpected directory '{item.name}'", suggestion="Use scripts/, references/, or assets/ for organization"))
+                issues.append(
+                    Issue(
+                        level=IssueLevel.ERROR,
+                        category=IssueCategory.STRUCTURE,
+                        message=f"Unexpected file '{item.name}' in skill root",
+                        suggestion="Move to scripts/, references/, or assets/ directory",
+                    )
+                )
+        elif (
+            item.is_dir()
+            and item.name not in ("scripts", "references", "assets")
+            and not item.name.startswith(".")
+        ):
+            issues.append(
+                Issue(
+                    level=IssueLevel.ERROR,
+                    category=IssueCategory.STRUCTURE,
+                    message=f"Unexpected directory '{item.name}'",
+                    suggestion="Use scripts/, references/, or assets/ for organization",
+                )
+            )
     return issues
 
 
@@ -130,7 +242,13 @@ def _collect_references(skill_dir: Path) -> list[tuple[str, str]]:
         return []
     refs = []
     for ref_file in refs_dir.iterdir():
-        if ref_file.is_file() and ref_file.suffix.lower() in (".md", ".txt", ".yaml", ".yml", ".json"):
+        if ref_file.is_file() and ref_file.suffix.lower() in (
+            ".md",
+            ".txt",
+            ".yaml",
+            ".yml",
+            ".json",
+        ):
             try:
                 content = ref_file.read_text(encoding="utf-8")
                 refs.append((ref_file.name, content[:2000]))
@@ -158,7 +276,11 @@ def _collect_scripts(skill_dir: Path) -> list[tuple[str, str]]:
 def _format_skill_for_analysis(skill_dir: Path) -> str:
     """Format a skill directory for overall analysis."""
     skill_md = skill_dir / "SKILL.md"
-    content = skill_md.read_text(encoding="utf-8") if skill_md.exists() else "(SKILL.md not found)"
+    content = (
+        skill_md.read_text(encoding="utf-8")
+        if skill_md.exists()
+        else "(SKILL.md not found)"
+    )
     frontmatter, body = _parse_skill_md(content)
     references = _collect_references(skill_dir)
     scripts = _collect_scripts(skill_dir)
@@ -172,7 +294,9 @@ def _format_skill_for_analysis(skill_dir: Path) -> str:
         out += "\n**References:**\n"
         for name, ref_content in references:
             out += f"\n`references/{name}` ({len(ref_content)} chars preview)\n"
-    dirs = [d.name for d in skill_dir.iterdir() if d.is_dir() and not d.name.startswith(".")]
+    dirs = [
+        d.name for d in skill_dir.iterdir() if d.is_dir() and not d.name.startswith(".")
+    ]
     out += f"\n**Directories present:** {', '.join(dirs) if dirs else '(none)'}\n"
     return out
 
@@ -180,14 +304,22 @@ def _format_skill_for_analysis(skill_dir: Path) -> str:
 class SkillDoctor(DoctorBase):
     """Analyzes Agent Skills (agentskills.io format) for compliance and quality."""
 
-    async def analyze(self, skill_dir: Path, verbose: bool = False) -> AgentSkillRecommendation:
+    async def analyze(
+        self, skill_dir: Path, verbose: bool = False
+    ) -> AgentSkillRecommendation:
         """Analyze a single skill directory."""
         skill_md = skill_dir / "SKILL.md"
         if not skill_md.exists():
             return AgentSkillRecommendation(
                 name=skill_dir.name,
                 needs_improvement=True,
-                issues=[Issue(level=IssueLevel.ERROR, category=IssueCategory.COMPLETENESS, message="Missing required SKILL.md file")],
+                issues=[
+                    Issue(
+                        level=IssueLevel.ERROR,
+                        category=IssueCategory.COMPLETENESS,
+                        message="Missing required SKILL.md file",
+                    )
+                ],
                 body_issues=[],
                 consistency_issues=[],
                 frontmatter_issues=[],
@@ -204,25 +336,35 @@ class SkillDoctor(DoctorBase):
         structure_issues = _validate_structure(skill_dir)
 
         skill_content = _format_skill_for_analysis(skill_dir)
-        analysis_prompt = load_prompt(PROMPTS_DIR / "doctors" / "skill_doctor.md", skill_content=skill_content)
+        analysis_prompt = load_prompt(
+            PROMPTS_DIR / "doctors" / "skill_doctor.md", skill_content=skill_content
+        )
 
         agent = get_agent(output_type=AgentSkillRecommendation)
         agent_run, _ = await run_agent(agent, analysis_prompt, verbose=verbose)
-        result = agent_run.result.output if agent_run else AgentSkillRecommendation(
-            name=skill_dir.name,
-            needs_improvement=False,
-            issues=[],
-            body_issues=[],
-            consistency_issues=[],
-            frontmatter_issues=[],
-            references=[],
-            scripts=[],
-            structure_issues=[],
+        result = (
+            agent_run.result.output
+            if agent_run
+            else AgentSkillRecommendation(
+                name=skill_dir.name,
+                needs_improvement=False,
+                issues=[],
+                body_issues=[],
+                consistency_issues=[],
+                frontmatter_issues=[],
+                references=[],
+                scripts=[],
+                structure_issues=[],
+            )
         )
 
         scripts = _collect_scripts(skill_dir)
-        script_recommendations = await self._analyze_scripts_individually(content, scripts, verbose=verbose)
-        consistency_issues = await self._analyze_consistency(content, [name for name, _ in scripts], verbose=verbose)
+        script_recommendations = await self._analyze_scripts_individually(
+            content, scripts, verbose=verbose
+        )
+        consistency_issues = await self._analyze_consistency(
+            content, [name for name, _ in scripts], verbose=verbose
+        )
 
         result.frontmatter_issues.extend(frontmatter_issues)
         result.body_issues.extend(body_issues)
@@ -243,7 +385,9 @@ class SkillDoctor(DoctorBase):
         )
         return result
 
-    async def _analyze_batch_internal(self, batch: list[Path], verbose: bool = False) -> list[AgentSkillRecommendation]:
+    async def _analyze_batch_internal(
+        self, batch: list[Path], verbose: bool = False
+    ) -> list[AgentSkillRecommendation]:
         """Analyze skills one by one."""
         results = []
         for skill_dir in batch:
@@ -251,7 +395,9 @@ class SkillDoctor(DoctorBase):
             results.append(result)
         return results
 
-    async def _analyze_consistency(self, skill_md_content: str, scripts_present: list[str], verbose: bool = False) -> list[Issue]:
+    async def _analyze_consistency(
+        self, skill_md_content: str, scripts_present: list[str], verbose: bool = False
+    ) -> list[Issue]:
         """Analyze consistency between scripts and SKILL.md documentation."""
         if not scripts_present:
             return []
@@ -281,22 +427,31 @@ class SkillDoctor(DoctorBase):
         if agent_run and agent_run.result.output:
             result = agent_run.result.output
             for script_name in result.undocumented_scripts:
-                issues.append(Issue(
-                    level=IssueLevel.ERROR,
-                    category=IssueCategory.DOCUMENTATION,
-                    message=f"Script '{script_name}' exists but is not documented in SKILL.md",
-                    suggestion=f"Add documentation for scripts/{script_name} in SKILL.md body",
-                ))
+                issues.append(
+                    Issue(
+                        level=IssueLevel.ERROR,
+                        category=IssueCategory.DOCUMENTATION,
+                        message=f"Script '{script_name}' exists but is not documented in SKILL.md",
+                        suggestion=f"Add documentation for scripts/{script_name} in SKILL.md body",
+                    )
+                )
             for ref in result.phantom_references:
-                issues.append(Issue(
-                    level=IssueLevel.ERROR,
-                    category=IssueCategory.CONSISTENCY,
-                    message=f"SKILL.md references '{ref}' but no such script exists",
-                    suggestion=f"Remove reference to '{ref}' or create the script",
-                ))
+                issues.append(
+                    Issue(
+                        level=IssueLevel.ERROR,
+                        category=IssueCategory.CONSISTENCY,
+                        message=f"SKILL.md references '{ref}' but no such script exists",
+                        suggestion=f"Remove reference to '{ref}' or create the script",
+                    )
+                )
         return issues
 
-    async def _analyze_scripts_individually(self, skill_md_content: str, scripts: list[tuple[str, str]], verbose: bool = False) -> list[ScriptRecommendation]:
+    async def _analyze_scripts_individually(
+        self,
+        skill_md_content: str,
+        scripts: list[tuple[str, str]],
+        verbose: bool = False,
+    ) -> list[ScriptRecommendation]:
         """Analyze each script individually against SKILL.md."""
         if not scripts:
             return []
@@ -319,7 +474,9 @@ class SkillDoctor(DoctorBase):
             if agent_run and agent_run.result.output:
                 recommendations.append(agent_run.result.output)
             else:
-                recommendations.append(ScriptRecommendation(script_name=script_name, issues=[]))
+                recommendations.append(
+                    ScriptRecommendation(script_name=script_name, issues=[])
+                )
 
         return recommendations
 

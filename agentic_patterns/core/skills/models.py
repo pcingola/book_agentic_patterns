@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict
 
 class SkillMetadata(BaseModel):
     """Lightweight skill info for catalog/discovery (one-line view)."""
+
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     name: str
@@ -19,6 +20,7 @@ class SkillMetadata(BaseModel):
 
 class Skill(BaseModel):
     """Full parsed skill with frontmatter, body, and file paths."""
+
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     name: str

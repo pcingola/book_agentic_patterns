@@ -1,22 +1,27 @@
 """Tests for vocabulary parsers and loader (Phase 2)."""
 
-import json
 import unittest
 from pathlib import Path
 
-from agentic_patterns.core.connectors.vocabulary.loader import load_vocabulary, _create_backend
-from agentic_patterns.core.connectors.vocabulary.models import SourceFormat, VocabularyConfig, VocabularyStrategy
+from agentic_patterns.core.connectors.vocabulary.loader import load_vocabulary
+from agentic_patterns.core.connectors.vocabulary.models import (
+    SourceFormat,
+    VocabularyConfig,
+    VocabularyStrategy,
+)
 from agentic_patterns.core.connectors.vocabulary.parser_obo import parse_obo
 from agentic_patterns.core.connectors.vocabulary.parser_owl import parse_owl
 from agentic_patterns.core.connectors.vocabulary.parser_rf2 import parse_rf2
-from agentic_patterns.core.connectors.vocabulary.parser_tabular import parse_csv, parse_json_flat
+from agentic_patterns.core.connectors.vocabulary.parser_tabular import (
+    parse_csv,
+    parse_json_flat,
+)
 from agentic_patterns.core.connectors.vocabulary.registry import get_vocabulary, reset
 
 DATA_DIR = Path(__file__).parent.parent.parent / "data" / "vocabulary"
 
 
 class TestParserObo(unittest.TestCase):
-
     def setUp(self) -> None:
         self.terms = parse_obo(DATA_DIR / "test.obo")
 
@@ -56,7 +61,6 @@ class TestParserObo(unittest.TestCase):
 
 
 class TestParserOwl(unittest.TestCase):
-
     def setUp(self) -> None:
         self.terms = parse_owl(DATA_DIR / "test.owl")
 
@@ -88,7 +92,6 @@ class TestParserOwl(unittest.TestCase):
 
 
 class TestParserJsonFlat(unittest.TestCase):
-
     def setUp(self) -> None:
         self.terms = parse_json_flat(DATA_DIR / "test.json")
 
@@ -102,9 +105,10 @@ class TestParserJsonFlat(unittest.TestCase):
 
 
 class TestParserCsv(unittest.TestCase):
-
     def setUp(self) -> None:
-        self.terms = parse_csv(DATA_DIR / "test.tsv", parent_field="parent", synonym_fields=["synonyms"])
+        self.terms = parse_csv(
+            DATA_DIR / "test.tsv", parent_field="parent", synonym_fields=["synonyms"]
+        )
 
     def test_term_count(self) -> None:
         assert len(self.terms) == 4
@@ -125,7 +129,6 @@ class TestParserCsv(unittest.TestCase):
 
 
 class TestParserRf2(unittest.TestCase):
-
     def setUp(self) -> None:
         self.terms = parse_rf2(DATA_DIR / "rf2")
 
@@ -154,36 +157,60 @@ class TestParserRf2(unittest.TestCase):
 
 
 class TestLoader(unittest.TestCase):
-
     def setUp(self) -> None:
         reset()
 
     def test_load_obo_as_tree(self) -> None:
-        config = VocabularyConfig(name="test_obo", strategy=VocabularyStrategy.TREE, source=str(DATA_DIR / "test.obo"), source_format=SourceFormat.OBO)
+        config = VocabularyConfig(
+            name="test_obo",
+            strategy=VocabularyStrategy.TREE,
+            source=str(DATA_DIR / "test.obo"),
+            source_format=SourceFormat.OBO,
+        )
         backend = load_vocabulary(config)
         term = backend.lookup("TEST:0001")
         assert term is not None
         assert term.label == "root_term"
 
     def test_load_json_as_enum(self) -> None:
-        config = VocabularyConfig(name="test_json", strategy=VocabularyStrategy.ENUM, source=str(DATA_DIR / "test.json"), source_format=SourceFormat.JSON_FLAT)
+        config = VocabularyConfig(
+            name="test_json",
+            strategy=VocabularyStrategy.ENUM,
+            source=str(DATA_DIR / "test.json"),
+            source_format=SourceFormat.JSON_FLAT,
+        )
         backend = load_vocabulary(config)
         term = backend.lookup("BT001")
         assert term is not None
 
     def test_loaded_vocab_registered(self) -> None:
-        config = VocabularyConfig(name="test_reg", strategy=VocabularyStrategy.ENUM, source=str(DATA_DIR / "test.json"), source_format=SourceFormat.JSON_FLAT)
+        config = VocabularyConfig(
+            name="test_reg",
+            strategy=VocabularyStrategy.ENUM,
+            source=str(DATA_DIR / "test.json"),
+            source_format=SourceFormat.JSON_FLAT,
+        )
         load_vocabulary(config)
         backend = get_vocabulary("test_reg")
         assert backend is not None
 
     def test_load_owl_as_tree(self) -> None:
-        config = VocabularyConfig(name="test_owl", strategy=VocabularyStrategy.TREE, source=str(DATA_DIR / "test.owl"), source_format=SourceFormat.OWL)
+        config = VocabularyConfig(
+            name="test_owl",
+            strategy=VocabularyStrategy.TREE,
+            source=str(DATA_DIR / "test.owl"),
+            source_format=SourceFormat.OWL,
+        )
         backend = load_vocabulary(config)
         assert backend.lookup("TEST:0001") is not None
 
     def test_load_rf2_as_tree(self) -> None:
-        config = VocabularyConfig(name="test_rf2", strategy=VocabularyStrategy.TREE, source=str(DATA_DIR / "rf2"), source_format=SourceFormat.RF2)
+        config = VocabularyConfig(
+            name="test_rf2",
+            strategy=VocabularyStrategy.TREE,
+            source=str(DATA_DIR / "rf2"),
+            source_format=SourceFormat.RF2,
+        )
         backend = load_vocabulary(config)
         assert backend.lookup("100") is not None
 

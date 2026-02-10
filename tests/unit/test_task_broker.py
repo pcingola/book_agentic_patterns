@@ -56,7 +56,9 @@ class TestTaskBroker(unittest.IsolatedAsyncioTestCase):
     async def test_submit_and_wait(self) -> None:
         """End-to-end: submit, dispatch loop processes, wait returns completed task."""
         model = ModelMock(responses=["the answer"])
-        async with TaskBroker(store=self.store, model=model, poll_interval=0.05) as broker:
+        async with TaskBroker(
+            store=self.store, model=model, poll_interval=0.05
+        ) as broker:
             task_id = await broker.submit("question")
             task = await broker.wait(task_id)
             self.assertEqual(task.state, TaskState.COMPLETED)
@@ -70,7 +72,9 @@ class TestTaskBroker(unittest.IsolatedAsyncioTestCase):
             received.append(task)
 
         model = ModelMock(responses=["result"])
-        async with TaskBroker(store=self.store, model=model, poll_interval=0.05) as broker:
+        async with TaskBroker(
+            store=self.store, model=model, poll_interval=0.05
+        ) as broker:
             task_id = await broker.submit("notify me")
             await broker.notify(task_id, {TaskState.COMPLETED}, on_complete)
             await broker.wait(task_id)

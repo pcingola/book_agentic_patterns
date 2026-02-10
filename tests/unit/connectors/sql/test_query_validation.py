@@ -2,11 +2,13 @@
 
 import unittest
 
-from agentic_patterns.core.connectors.sql.query_validation import QueryValidationError, validate_query
+from agentic_patterns.core.connectors.sql.query_validation import (
+    QueryValidationError,
+    validate_query,
+)
 
 
 class TestQueryValidation(unittest.TestCase):
-
     def test_valid_select(self):
         validate_query("SELECT * FROM books")
 

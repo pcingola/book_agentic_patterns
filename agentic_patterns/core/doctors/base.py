@@ -29,12 +29,16 @@ class DoctorBase:
             batch = targets[i : i + batch_size]
             batch_num = i // batch_size + 1
             if verbose:
-                print(f"Processing batch {batch_num}/{total_batches} ({len(batch)} items)")
+                print(
+                    f"Processing batch {batch_num}/{total_batches} ({len(batch)} items)"
+                )
             batch_results = await self._analyze_batch_internal(batch, verbose=verbose)
             results.extend(batch_results)
 
         return results
 
-    async def _analyze_batch_internal(self, batch: list[Any], verbose: bool = False) -> list[Recommendation]:
+    async def _analyze_batch_internal(
+        self, batch: list[Any], verbose: bool = False
+    ) -> list[Recommendation]:
         """Analyze a batch of targets. Subclasses must implement this."""
         raise NotImplementedError

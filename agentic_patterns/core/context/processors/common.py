@@ -5,10 +5,17 @@ import math
 from datetime import datetime
 from pathlib import Path
 
-from agentic_patterns.core.context.models import FileExtractionResult, FileMetadata, FileType, TruncationInfo
+from agentic_patterns.core.context.models import (
+    FileExtractionResult,
+    FileMetadata,
+    FileType,
+    TruncationInfo,
+)
 
 
-def check_and_apply_output_limit(content: str, max_output: int, truncation_info: TruncationInfo) -> str:
+def check_and_apply_output_limit(
+    content: str, max_output: int, truncation_info: TruncationInfo
+) -> str:
     """Check if content exceeds max output and truncate if needed."""
     suffix = "\n..."
     if len(content) > max_output:
@@ -23,7 +30,12 @@ def count_lines(file_path: Path, encoding: str = "utf-8") -> int:
         return sum(1 for _ in f)
 
 
-def create_error_result(error: Exception, file_type: FileType, file_path: Path | None = None, context: str = "") -> FileExtractionResult:
+def create_error_result(
+    error: Exception,
+    file_type: FileType,
+    file_path: Path | None = None,
+    context: str = "",
+) -> FileExtractionResult:
     """Create standardized error result."""
     context_str = f" {context}" if context else ""
     error_message = f"Failed to process{context_str}: {str(error)}"
@@ -44,7 +56,9 @@ def create_error_result(error: Exception, file_type: FileType, file_path: Path |
     )
 
 
-def create_file_metadata(file_path: Path, mime_type: str | None = None, encoding: str | None = None) -> FileMetadata:
+def create_file_metadata(
+    file_path: Path, mime_type: str | None = None, encoding: str | None = None
+) -> FileMetadata:
     """Create file metadata from file path."""
     file_stat = file_path.stat()
     return FileMetadata(
@@ -55,23 +69,29 @@ def create_file_metadata(file_path: Path, mime_type: str | None = None, encoding
     )
 
 
-def format_section_header(title: str, index: int | None = None, total: int | None = None) -> str:
+def format_section_header(
+    title: str, index: int | None = None, total: int | None = None
+) -> str:
     """Format section header (e.g., for sheets, chapters)."""
     if index is not None and total is not None:
         return f"\n## {title} {index + 1} of {total}\n\n"
     return f"\n## {title}\n\n"
 
 
-def format_truncation_summary(truncation_info: TruncationInfo, extra_stats: dict | None = None) -> str:
+def format_truncation_summary(
+    truncation_info: TruncationInfo, extra_stats: dict | None = None
+) -> str:
     """Format truncation summary if any truncation occurred."""
-    if not any([
-        truncation_info.lines_shown,
-        truncation_info.columns_shown,
-        truncation_info.rows_shown,
-        truncation_info.cells_truncated,
-        truncation_info.total_output_limit_reached,
-        extra_stats,
-    ]):
+    if not any(
+        [
+            truncation_info.lines_shown,
+            truncation_info.columns_shown,
+            truncation_info.rows_shown,
+            truncation_info.cells_truncated,
+            truncation_info.total_output_limit_reached,
+            extra_stats,
+        ]
+    ):
         return ""
 
     output = io.StringIO()
@@ -115,7 +135,9 @@ def human_readable_size(size_bytes: int) -> str:
     return f"{size:.1f}{units[index]}"
 
 
-def truncate_string(value: str | None, max_length: int, suffix: str = "...") -> tuple[str, bool]:
+def truncate_string(
+    value: str | None, max_length: int, suffix: str = "..."
+) -> tuple[str, bool]:
     """Truncate string if it exceeds max_length. Returns (truncated_string, was_truncated)."""
     if value is None:
         return "", False

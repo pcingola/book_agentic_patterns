@@ -13,6 +13,7 @@ def make_report_with_assertions(assertions_avg: float | None) -> EvaluationRepor
     # A single case with one assertion whose bool value yields the desired average
     passing = assertions_avg >= 1.0
     from pydantic_evals.evaluators import EvaluationResult, EvaluatorSpec
+
     source = EvaluatorSpec(name="test", arguments=None)
     case = ReportCase(
         name="case1",
@@ -24,7 +25,9 @@ def make_report_with_assertions(assertions_avg: float | None) -> EvaluationRepor
         attributes={},
         scores={},
         labels={},
-        assertions={"a1": EvaluationResult(name="a1", value=passing, reason="", source=source)},
+        assertions={
+            "a1": EvaluationResult(name="a1", value=passing, reason="", source=source)
+        },
         task_duration=0.0,
         total_duration=0.0,
     )

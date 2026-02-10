@@ -6,8 +6,18 @@ from collections.abc import Callable
 from pathlib import Path
 
 from agentic_patterns.core.context.config import ContextConfig, load_context_config
-from agentic_patterns.core.context.models import FileExtractionResult, FileType, TruncationInfo
-from agentic_patterns.core.context.processors.common import check_and_apply_output_limit, create_error_result, create_file_metadata, format_truncation_summary, truncate_string
+from agentic_patterns.core.context.models import (
+    FileExtractionResult,
+    FileType,
+    TruncationInfo,
+)
+from agentic_patterns.core.context.processors.common import (
+    check_and_apply_output_limit,
+    create_error_result,
+    create_file_metadata,
+    format_truncation_summary,
+    truncate_string,
+)
 
 
 def _detect_delimiter(file_path: Path) -> str:
@@ -25,7 +35,9 @@ def _detect_delimiter(file_path: Path) -> str:
         return ","
 
 
-def _read_header_and_count(file_path: Path, delimiter: str, count_rows: bool = True) -> tuple[list[str], int | None]:
+def _read_header_and_count(
+    file_path: Path, delimiter: str, count_rows: bool = True
+) -> tuple[list[str], int | None]:
     """Read CSV header and optionally count total rows."""
     with open(file_path, "r", encoding="utf-8", errors="replace") as f:
         reader = csv.reader(f, delimiter=delimiter)
@@ -41,7 +53,9 @@ def _read_header_and_count(file_path: Path, delimiter: str, count_rows: bool = T
     return header, total_rows
 
 
-def _read_row_range(file_path: Path, delimiter: str, start: int, end: int, max_row_bytes: int = 100000) -> list[list[str]]:
+def _read_row_range(
+    file_path: Path, delimiter: str, start: int, end: int, max_row_bytes: int = 100000
+) -> list[list[str]]:
     """Read rows from start to end index without loading entire file."""
     selected_rows = []
     with open(file_path, "r", encoding="utf-8", errors="replace") as f:
@@ -66,12 +80,16 @@ def _read_row_range(file_path: Path, delimiter: str, start: int, end: int, max_r
                     row = next(row_reader)
                     selected_rows.append(row)
                 except (StopIteration, csv.Error):
-                    selected_rows.append([f"[Row {i + 1} parsing error after truncation]"])
+                    selected_rows.append(
+                        [f"[Row {i + 1} parsing error after truncation]"]
+                    )
 
     return selected_rows
 
 
-def _truncate_row(row: list[str], max_columns: int, max_cell_length: int) -> tuple[list[str], int]:
+def _truncate_row(
+    row: list[str], max_columns: int, max_cell_length: int
+) -> tuple[list[str], int]:
     """Truncate row to max columns and truncate each cell."""
     row_truncated = row[:max_columns]
     cells_truncated = 0
@@ -116,11 +134,15 @@ def process_csv(
         file_type = FileType.CSV
 
         needs_row_count = start_row is not None and start_row < 0
-        header, total_rows = _read_header_and_count(file_path, delimiter, count_rows=needs_row_count)
+        header, total_rows = _read_header_and_count(
+            file_path, delimiter, count_rows=needs_row_count
+        )
 
         if start_row is not None and start_row < 0:
             if total_rows is None:
-                header, total_rows = _read_header_and_count(file_path, delimiter, count_rows=True)
+                header, total_rows = _read_header_and_count(
+                    file_path, delimiter, count_rows=True
+                )
             actual_start = max(0, total_rows + start_row)
         else:
             actual_start = start_row if start_row is not None else 0
@@ -129,7 +151,11 @@ def process_csv(
 
         if not header:
             return FileExtractionResult(
-                content="", success=True, file_type=file_type, truncation_info=TruncationInfo(), metadata=metadata
+                content="",
+                success=True,
+                file_type=file_type,
+                truncation_info=TruncationInfo(),
+                metadata=metadata,
             )
 
         total_columns = len(header)
@@ -143,12 +169,16 @@ def process_csv(
         csv_writer = csv.writer(output, delimiter=delimiter, lineterminator="\n")
         cells_truncated = 0
 
-        truncated_header, header_cells_truncated = _truncate_row(header_truncated, columns_to_show, config.max_cell_length)
+        truncated_header, header_cells_truncated = _truncate_row(
+            header_truncated, columns_to_show, config.max_cell_length
+        )
         cells_truncated += header_cells_truncated
         csv_writer.writerow(truncated_header)
 
         for row in selected_rows:
-            truncated_row, row_cells_truncated = _truncate_row(row, columns_to_show, config.max_cell_length)
+            truncated_row, row_cells_truncated = _truncate_row(
+                row, columns_to_show, config.max_cell_length
+            )
             cells_truncated += row_cells_truncated
 
             line = _write_row_as_line(truncated_row, delimiter, config.max_line_length)
@@ -161,10 +191,14 @@ def process_csv(
         if total_rows is None:
             rows_info = f"first {rows_shown} rows" if rows_shown > 0 else None
         else:
-            rows_info = f"{rows_shown} of {total_rows}" if rows_shown < total_rows else None
+            rows_info = (
+                f"{rows_shown} of {total_rows}" if rows_shown < total_rows else None
+            )
 
         truncation_info = TruncationInfo(
-            columns_shown=f"{columns_to_show} of {total_columns}" if total_columns > columns_to_show else None,
+            columns_shown=f"{columns_to_show} of {total_columns}"
+            if total_columns > columns_to_show
+            else None,
             rows_shown=rows_info,
             cells_truncated=cells_truncated,
             total_output_limit_reached=output.tell() > config.max_total_output,
@@ -178,10 +212,16 @@ def process_csv(
         if summary:
             output.write(summary)
 
-        result_content = check_and_apply_output_limit(output.getvalue(), config.max_total_output, truncation_info)
+        result_content = check_and_apply_output_limit(
+            output.getvalue(), config.max_total_output, truncation_info
+        )
 
         return FileExtractionResult(
-            content=result_content, success=True, file_type=file_type, truncation_info=truncation_info, metadata=metadata
+            content=result_content,
+            success=True,
+            file_type=file_type,
+            truncation_info=truncation_info,
+            metadata=metadata,
         )
 
     except Exception as e:

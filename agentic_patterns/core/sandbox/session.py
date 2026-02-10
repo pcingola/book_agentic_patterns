@@ -11,6 +11,7 @@ from agentic_patterns.core.sandbox.network_mode import NetworkMode
 
 class Session(BaseModel):
     """Represents an active sandbox session tied to a Docker container."""
+
     user_id: str
     session_id: str
     container_id: str = ""

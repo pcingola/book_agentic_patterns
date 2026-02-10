@@ -55,7 +55,10 @@ class TableInfo:
         return None
 
     def schema_sql(self) -> str:
-        from agentic_patterns.core.connectors.sql.schema_formatter import SchemaFormatter
+        from agentic_patterns.core.connectors.sql.schema_formatter import (
+            SchemaFormatter,
+        )
+
         return SchemaFormatter.format_table(self)
 
     @classmethod
@@ -66,11 +69,15 @@ class TableInfo:
             description=data.get("description", ""),
             sample_data_csv=data.get("sample_data_csv", ""),
             columns=[],
-            foreign_keys=[ForeignKeyInfo.from_dict(fk) for fk in data.get("foreign_keys", [])],
+            foreign_keys=[
+                ForeignKeyInfo.from_dict(fk) for fk in data.get("foreign_keys", [])
+            ],
             indexes=[IndexInfo.from_dict(idx) for idx in data.get("indexes", [])],
             db=db,
         )
-        table.columns = [ColumnInfo.from_dict(col, table=table) for col in data["columns"]]
+        table.columns = [
+            ColumnInfo.from_dict(col, table=table) for col in data["columns"]
+        ]
         return table
 
     def to_dict(self) -> dict:

@@ -5,10 +5,20 @@ from collections.abc import Callable
 from pydantic_ai import RunContext, Tool
 
 from agentic_patterns.core.a2a.client import A2AClientExtended, TaskStatus
-from agentic_patterns.core.a2a.utils import extract_text, extract_question, slugify, card_to_prompt
+from agentic_patterns.core.a2a.utils import (
+    extract_text,
+    extract_question,
+    slugify,
+    card_to_prompt,
+)
 
 
-def create_a2a_tool(client: A2AClientExtended, card: dict, name: str | None = None, is_cancelled: Callable[[], bool] | None = None) -> Tool:
+def create_a2a_tool(
+    client: A2AClientExtended,
+    card: dict,
+    name: str | None = None,
+    is_cancelled: Callable[[], bool] | None = None,
+) -> Tool:
     """Create a PydanticAI tool that delegates to a remote A2A agent.
 
     Args:

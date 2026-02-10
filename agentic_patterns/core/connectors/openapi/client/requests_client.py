@@ -23,7 +23,11 @@ class RequestsApiClient(ApiHttpClient):
         data: str | None = None,
     ) -> dict:
         """Make an HTTP request with retry logic."""
-        url = f"{self.base_url}{path}" if path.startswith("/") else f"{self.base_url}/{path}"
+        url = (
+            f"{self.base_url}{path}"
+            if path.startswith("/")
+            else f"{self.base_url}/{path}"
+        )
 
         last_error = None
         for attempt in range(MAX_RETRIES):

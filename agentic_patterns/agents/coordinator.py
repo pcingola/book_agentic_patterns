@@ -2,8 +2,15 @@
 
 from pydantic_ai import RunContext
 
-from agentic_patterns.core.agents import get_agent, get_model, run_agent, AgentSpec, OrchestratorAgent
-from agentic_patterns.agents.data_analysis import create_agent as create_data_analysis_agent
+from agentic_patterns.core.agents import (
+    get_model,
+    run_agent,
+    AgentSpec,
+    OrchestratorAgent,
+)
+from agentic_patterns.agents.data_analysis import (
+    create_agent as create_data_analysis_agent,
+)
 from agentic_patterns.agents.sql import create_agent as create_sql_agent
 
 SYSTEM_PROMPT = """You coordinate tasks between specialized agents.

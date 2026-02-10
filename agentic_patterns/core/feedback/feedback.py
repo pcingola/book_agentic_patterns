@@ -5,7 +5,6 @@ following the same directory pattern as PrivateData:
   FEEDBACK_DIR / user_id / session_id / {feedback.json, history.json}
 """
 
-import json
 import logging
 from datetime import datetime, timezone
 from enum import Enum
@@ -48,16 +47,25 @@ def _session_dir(user_id: str | None, session_id: str | None) -> Path:
     return FEEDBACK_DIR / uid / sid
 
 
-def add_feedback(feedback_type: FeedbackType, comment: str = "", user_id: str | None = None, session_id: str | None = None) -> None:
+def add_feedback(
+    feedback_type: FeedbackType,
+    comment: str = "",
+    user_id: str | None = None,
+    session_id: str | None = None,
+) -> None:
     """Append a feedback entry to the session's feedback.json."""
     session_feedback = get_feedback(user_id, session_id)
-    session_feedback.entries.append(FeedbackEntry(feedback_type=feedback_type, comment=comment))
+    session_feedback.entries.append(
+        FeedbackEntry(feedback_type=feedback_type, comment=comment)
+    )
     path = _session_dir(user_id, session_id) / FEEDBACK_FILENAME
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(session_feedback.model_dump_json(indent=2), encoding="utf-8")
 
 
-def get_feedback(user_id: str | None = None, session_id: str | None = None) -> SessionFeedback:
+def get_feedback(
+    user_id: str | None = None, session_id: str | None = None
+) -> SessionFeedback:
     """Load feedback for a session. Returns empty SessionFeedback if none exists."""
     uid = user_id or get_user_id()
     sid = session_id or get_session_id()
@@ -67,7 +75,9 @@ def get_feedback(user_id: str | None = None, session_id: str | None = None) -> S
     return SessionFeedback.model_validate_json(path.read_text(encoding="utf-8"))
 
 
-def load_session_history(user_id: str | None = None, session_id: str | None = None) -> list[ModelMessage]:
+def load_session_history(
+    user_id: str | None = None, session_id: str | None = None
+) -> list[ModelMessage]:
     """Deserialize conversation history from history.json."""
     path = _session_dir(user_id, session_id) / HISTORY_FILENAME
     if not path.exists():
@@ -75,7 +85,11 @@ def load_session_history(user_id: str | None = None, session_id: str | None = No
     return ModelMessagesTypeAdapter.validate_json(path.read_bytes())
 
 
-def save_session_history(messages: list[ModelMessage], user_id: str | None = None, session_id: str | None = None) -> None:
+def save_session_history(
+    messages: list[ModelMessage],
+    user_id: str | None = None,
+    session_id: str | None = None,
+) -> None:
     """Serialize conversation history to history.json."""
     path = _session_dir(user_id, session_id) / HISTORY_FILENAME
     path.parent.mkdir(parents=True, exist_ok=True)

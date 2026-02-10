@@ -14,7 +14,9 @@ def main():
     # Add user
     add_parser = subparsers.add_parser("add", help="Add a new user")
     add_parser.add_argument("username", help="Username")
-    add_parser.add_argument("--password", "-p", help="Password (generated if not provided)")
+    add_parser.add_argument(
+        "--password", "-p", help="Password (generated if not provided)"
+    )
     add_parser.add_argument("--role", "-r", default="user", help="Role (default: user)")
 
     # Delete user
@@ -27,7 +29,9 @@ def main():
     # Change password
     passwd_parser = subparsers.add_parser("passwd", help="Change user password")
     passwd_parser.add_argument("username", help="Username")
-    passwd_parser.add_argument("--password", "-p", help="New password (generated if not provided)")
+    passwd_parser.add_argument(
+        "--password", "-p", help="New password (generated if not provided)"
+    )
 
     args = parser.parse_args()
     db = UserDatabase(USER_DATABASE_FILE)

@@ -3,7 +3,11 @@
 from collections import deque
 from difflib import get_close_matches
 
-from agentic_patterns.core.connectors.vocabulary.models import VocabularyInfo, VocabularyStrategy, VocabularyTerm
+from agentic_patterns.core.connectors.vocabulary.models import (
+    VocabularyInfo,
+    VocabularyStrategy,
+    VocabularyTerm,
+)
 
 
 class StrategyTree:
@@ -22,7 +26,9 @@ class StrategyTree:
             if t.parents:
                 self._relation_types.add("is_a")
 
-    def _bfs(self, start_id: str, direction: str, max_depth: int) -> list[VocabularyTerm]:
+    def _bfs(
+        self, start_id: str, direction: str, max_depth: int
+    ) -> list[VocabularyTerm]:
         """BFS traversal. direction is 'parents' or 'children'."""
         if start_id not in self._by_id:
             return []
@@ -41,7 +47,11 @@ class StrategyTree:
             current_term = self._by_id.get(current_id)
             if not current_term:
                 continue
-            neighbors = current_term.parents if direction == "parents" else current_term.children
+            neighbors = (
+                current_term.parents
+                if direction == "parents"
+                else current_term.children
+            )
             for nid in neighbors:
                 if nid not in visited:
                     visited.add(nid)
@@ -61,7 +71,13 @@ class StrategyTree:
         return self._bfs(term_code, "children", max_depth)
 
     def info(self) -> VocabularyInfo:
-        return VocabularyInfo(name=self._name, strategy=VocabularyStrategy.TREE, source_format="obo", term_count=len(self._by_id), relation_types=sorted(self._relation_types))
+        return VocabularyInfo(
+            name=self._name,
+            strategy=VocabularyStrategy.TREE,
+            source_format="obo",
+            term_count=len(self._by_id),
+            relation_types=sorted(self._relation_types),
+        )
 
     def lookup(self, term_code: str) -> VocabularyTerm | None:
         return self._by_id.get(term_code)
@@ -97,12 +113,16 @@ class StrategyTree:
             return [self._by_id[self._label_to_id[query_lower]]]
         results = []
         for term in self._by_id.values():
-            if query_lower in term.label.lower() or any(query_lower in s.lower() for s in term.synonyms):
+            if query_lower in term.label.lower() or any(
+                query_lower in s.lower() for s in term.synonyms
+            ):
                 results.append(term)
                 if len(results) >= max_results:
                     break
         if not results:
-            close = get_close_matches(query_lower, list(self._label_to_id.keys()), n=max_results, cutoff=0.6)
+            close = get_close_matches(
+                query_lower, list(self._label_to_id.keys()), n=max_results, cutoff=0.6
+            )
             for label in close:
                 tid = self._label_to_id[label]
                 if tid not in [r.id for r in results]:

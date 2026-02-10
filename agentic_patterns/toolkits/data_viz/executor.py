@@ -29,11 +29,15 @@ def get_all_operations() -> dict[str, PlotConfig]:
     return _ALL_OPERATIONS
 
 
-async def execute_plot(input_file: str, output_file: str | None, plot_name: str, parameters: dict[str, Any]) -> str:
+async def execute_plot(
+    input_file: str, output_file: str | None, plot_name: str, parameters: dict[str, Any]
+) -> str:
     """Execute a plot operation: load CSV, create figure, save image, return path."""
     operations = get_all_operations()
     if plot_name not in operations:
-        raise ValueError(f"Unknown plot: {plot_name}. Available: {list(operations.keys())}")
+        raise ValueError(
+            f"Unknown plot: {plot_name}. Available: {list(operations.keys())}"
+        )
 
     op = operations[plot_name]
 

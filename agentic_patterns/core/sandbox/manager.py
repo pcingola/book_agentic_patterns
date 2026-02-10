@@ -1,7 +1,6 @@
 """Sandbox manager for Docker-based code execution with network isolation."""
 
 import logging
-from pathlib import Path
 
 import docker
 from docker.errors import DockerException, NotFound
@@ -12,7 +11,10 @@ from agentic_patterns.core.sandbox.config import (
     SANDBOX_COMMAND_TIMEOUT,
     SANDBOX_CONTAINER_PREFIX,
 )
-from agentic_patterns.core.sandbox.container_config import ContainerConfig, create_default_config
+from agentic_patterns.core.sandbox.container_config import (
+    ContainerConfig,
+    create_default_config,
+)
 from agentic_patterns.core.sandbox.network_mode import NetworkMode, get_network_mode
 from agentic_patterns.core.sandbox.session import Session
 
@@ -47,7 +49,9 @@ class SandboxManager:
         del self._sessions[key]
         logger.info("Closed session %s:%s", user_id, session_id)
 
-    def execute_command(self, user_id: str, session_id: str, command: str, timeout: int | None = None) -> tuple[int, str]:
+    def execute_command(
+        self, user_id: str, session_id: str, command: str, timeout: int | None = None
+    ) -> tuple[int, str]:
         """Execute a command in the session's container. Returns (exit_code, output)."""
         session = self.get_or_create_session(user_id, session_id)
         session.touch()
@@ -60,15 +64,30 @@ class SandboxManager:
                 workdir=session.config.working_dir,
                 demux=True,
             )
-            stdout = result.output[0].decode("utf-8", errors="replace") if result.output[0] else ""
-            stderr = result.output[1].decode("utf-8", errors="replace") if result.output[1] else ""
+            stdout = (
+                result.output[0].decode("utf-8", errors="replace")
+                if result.output[0]
+                else ""
+            )
+            stderr = (
+                result.output[1].decode("utf-8", errors="replace")
+                if result.output[1]
+                else ""
+            )
             output = stdout + stderr
             return result.exit_code, output
         except NotFound:
-            logger.error("Container %s not found for session %s:%s", session.container_id, user_id, session_id)
+            logger.error(
+                "Container %s not found for session %s:%s",
+                session.container_id,
+                user_id,
+                session_id,
+            )
             raise
         except DockerException as e:
-            logger.error("Docker error executing command in %s:%s: %s", user_id, session_id, e)
+            logger.error(
+                "Docker error executing command in %s:%s: %s", user_id, session_id, e
+            )
             raise
 
     def get_or_create_session(self, user_id: str, session_id: str) -> Session:
@@ -109,7 +128,13 @@ class SandboxManager:
         session.container_id = container.id
         session.config = config
         session.network_mode = config.network_mode
-        logger.info("Created container %s (network=%s) for %s:%s", session.container_name, config.network_mode.value, session.user_id, session.session_id)
+        logger.info(
+            "Created container %s (network=%s) for %s:%s",
+            session.container_name,
+            config.network_mode.value,
+            session.user_id,
+            session.session_id,
+        )
         return container
 
     def _ensure_network_mode(self, session: Session) -> None:
@@ -118,7 +143,11 @@ class SandboxManager:
         if session.network_mode == required:
             return
         if required == NetworkMode.NONE:
-            logger.info("Private data detected for %s:%s, recreating container with network=none", session.user_id, session.session_id)
+            logger.info(
+                "Private data detected for %s:%s, recreating container with network=none",
+                session.user_id,
+                session.session_id,
+            )
             self._recreate_container(session)
 
     def _new_session(self, user_id: str, session_id: str) -> Session:

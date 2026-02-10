@@ -36,9 +36,14 @@ tools = [
 async def set_starters(user: str | None, language: str | None) -> list[cl.Starter]:
     """Suggested actions shown when a new chat starts."""
     return [
-        cl.Starter(label="Create a file", message="Create a file /workspace/notes.md with a title '# Meeting Notes' and three bullet points about a project kickoff."),
+        cl.Starter(
+            label="Create a file",
+            message="Create a file /workspace/notes.md with a title '# Meeting Notes' and three bullet points about a project kickoff.",
+        ),
         cl.Starter(label="List files", message="List all files in /workspace/"),
-        cl.Starter(label="Find files", message="Find all markdown files in /workspace/"),
+        cl.Starter(
+            label="Find files", message="Find all markdown files in /workspace/"
+        ),
     ]
 
 

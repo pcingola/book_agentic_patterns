@@ -2,7 +2,11 @@ import unittest
 from pathlib import Path
 
 from agentic_patterns.core.context.models import FileType
-from agentic_patterns.core.context.reader import _detect_file_type, read_file, read_file_as_string
+from agentic_patterns.core.context.reader import (
+    _detect_file_type,
+    read_file,
+    read_file_as_string,
+)
 
 
 DATA_DIR = Path(__file__).parent.parent / "data" / "context"

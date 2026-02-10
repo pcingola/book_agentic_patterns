@@ -10,6 +10,7 @@ from agentic_patterns.core.config.config import DATA_DIR, MAIN_PROJECT_DIR
 
 class OpenApiConfig(BaseModel):
     """OpenAPI connector configuration."""
+
     apis_yaml: str = "apis.yaml"
     cache_dir: str = "data/api"
     info_ext: str = ".api_info.json"

@@ -1,9 +1,12 @@
 """RAG strategy: vector DB for large vocabularies (1000+ terms)."""
 
 import json
-from difflib import get_close_matches
 
-from agentic_patterns.core.connectors.vocabulary.models import VocabularyInfo, VocabularyStrategy, VocabularyTerm
+from agentic_patterns.core.connectors.vocabulary.models import (
+    VocabularyInfo,
+    VocabularyStrategy,
+    VocabularyTerm,
+)
 from agentic_patterns.core.vectordb.vectordb import get_vector_db, vdb_add, vdb_query
 
 
@@ -33,11 +36,18 @@ def _meta_to_term(doc_id: str, meta: dict) -> VocabularyTerm:
 class StrategyRag:
     """Vector DB backed strategy using existing vectordb module."""
 
-    def __init__(self, name: str, collection: str | None = None, embedding_config: str | None = None) -> None:
+    def __init__(
+        self,
+        name: str,
+        collection: str | None = None,
+        embedding_config: str | None = None,
+    ) -> None:
         self._name = name
         self._collection_name = collection or name
         self._embedding_config = embedding_config
-        self._vdb = get_vector_db(self._collection_name, embedding_config=self._embedding_config)
+        self._vdb = get_vector_db(
+            self._collection_name, embedding_config=self._embedding_config
+        )
         self._relation_types: set[str] = set()
 
     def _get_term_by_id(self, term_id: str) -> VocabularyTerm | None:
@@ -113,7 +123,13 @@ class StrategyRag:
 
     def info(self) -> VocabularyInfo:
         count = self._vdb.count()
-        return VocabularyInfo(name=self._name, strategy=VocabularyStrategy.RAG, source_format="vector_db", term_count=count, relation_types=sorted(self._relation_types))
+        return VocabularyInfo(
+            name=self._name,
+            strategy=VocabularyStrategy.RAG,
+            source_format="vector_db",
+            term_count=count,
+            relation_types=sorted(self._relation_types),
+        )
 
     def lookup(self, term_code: str) -> VocabularyTerm | None:
         return self._get_term_by_id(term_code)

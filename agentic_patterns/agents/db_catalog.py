@@ -31,12 +31,25 @@ def _build_databases_info() -> str:
     return "\n".join(lines)
 
 
-async def select_database(query: str, verbose: bool = False) -> tuple[DatabaseSelection, list]:
+async def select_database(
+    query: str, verbose: bool = False
+) -> tuple[DatabaseSelection, list]:
     """Select the most appropriate database for a natural language query."""
-    system_prompt = (PROMPTS_DIR / "sql" / "db_catalog" / "db_catalog_system_prompt.md").read_text(encoding="utf-8")
+    system_prompt = (
+        PROMPTS_DIR / "sql" / "db_catalog" / "db_catalog_system_prompt.md"
+    ).read_text(encoding="utf-8")
     databases_info = _build_databases_info()
-    instructions = load_prompt(PROMPTS_DIR / "sql" / "db_catalog" / "db_catalog_instructions.md", databases_info=databases_info)
+    instructions = load_prompt(
+        PROMPTS_DIR / "sql" / "db_catalog" / "db_catalog_instructions.md",
+        databases_info=databases_info,
+    )
 
-    agent = get_agent(system_prompt=system_prompt, instructions=instructions, output_type=DatabaseSelection)
+    agent = get_agent(
+        system_prompt=system_prompt,
+        instructions=instructions,
+        output_type=DatabaseSelection,
+    )
     result, nodes = await run_agent(agent, query, verbose=verbose)
-    return result.output if result else DatabaseSelection(database="", reasoning="No result"), nodes
+    return result.output if result else DatabaseSelection(
+        database="", reasoning="No result"
+    ), nodes

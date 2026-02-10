@@ -62,18 +62,32 @@ def _truncate_json_value(value: Any, config: TruncationConfig, depth: int = 0) -
     if isinstance(value, list):
         if len(value) <= config.json_array_head + config.json_array_tail:
             return [_truncate_json_value(item, config, depth + 1) for item in value]
-        head = [_truncate_json_value(item, config, depth + 1) for item in value[:config.json_array_head]]
-        tail = [_truncate_json_value(item, config, depth + 1) for item in value[-config.json_array_tail:]] if config.json_array_tail > 0 else []
+        head = [
+            _truncate_json_value(item, config, depth + 1)
+            for item in value[: config.json_array_head]
+        ]
+        tail = (
+            [
+                _truncate_json_value(item, config, depth + 1)
+                for item in value[-config.json_array_tail :]
+            ]
+            if config.json_array_tail > 0
+            else []
+        )
         omitted = len(value) - config.json_array_head - config.json_array_tail
         return head + [f"... ({omitted} items omitted) ..."] + tail
 
     if isinstance(value, dict):
         keys = list(value.keys())
         if len(keys) <= config.json_max_keys:
-            return {k: _truncate_json_value(v, config, depth + 1) for k, v in value.items()}
-        kept_keys = keys[:config.json_max_keys]
+            return {
+                k: _truncate_json_value(v, config, depth + 1) for k, v in value.items()
+            }
+        kept_keys = keys[: config.json_max_keys]
         omitted = len(keys) - config.json_max_keys
-        result = {k: _truncate_json_value(value[k], config, depth + 1) for k in kept_keys}
+        result = {
+            k: _truncate_json_value(value[k], config, depth + 1) for k in kept_keys
+        }
         result[f"... ({omitted} keys omitted) ..."] = "..."
         return result
 
@@ -87,10 +101,12 @@ def _truncate_json(content: str, config: TruncationConfig) -> str:
         truncated = _truncate_json_value(data, config)
         return json.dumps(truncated, indent=2)
     except json.JSONDecodeError:
-        return content[:config.max_preview_tokens * 4] + "..."
+        return content[: config.max_preview_tokens * 4] + "..."
 
 
-def _truncate_by_type(content: str, content_type: FileType, config: TruncationConfig) -> str:
+def _truncate_by_type(
+    content: str, content_type: FileType, config: TruncationConfig
+) -> str:
     """Truncate content based on detected type."""
     if content_type == FileType.JSON:
         return _truncate_json(content, config)
@@ -99,8 +115,8 @@ def _truncate_by_type(content: str, content_type: FileType, config: TruncationCo
         lines = content.split("\n")
         if len(lines) > config.rows_head + config.rows_tail + 1:
             header = lines[0]
-            head = lines[1:config.rows_head + 1]
-            tail = lines[-config.rows_tail:] if config.rows_tail > 0 else []
+            head = lines[1 : config.rows_head + 1]
+            tail = lines[-config.rows_tail :] if config.rows_tail > 0 else []
             truncated_lines = [header] + head + ["..."] + tail
             return "\n".join(truncated_lines)
         return content
@@ -108,8 +124,8 @@ def _truncate_by_type(content: str, content_type: FileType, config: TruncationCo
     if content_type in (FileType.TEXT, FileType.MARKDOWN):
         lines = content.split("\n")
         if len(lines) > config.lines_head + config.lines_tail:
-            head = lines[:config.lines_head]
-            tail = lines[-config.lines_tail:] if config.lines_tail > 0 else []
+            head = lines[: config.lines_head]
+            tail = lines[-config.lines_tail :] if config.lines_tail > 0 else []
             truncated_lines = head + ["..."] + tail
             return "\n".join(truncated_lines)
         return content
@@ -147,6 +163,7 @@ def context_result(config_name: str = "default", save: bool = True):
         def view_only_tool() -> str:
             ...
     """
+
     def decorator(func):
         def _process_result(result: str) -> str:
             config = get_truncation_config(config_name)
@@ -163,6 +180,7 @@ def context_result(config_name: str = "default", save: bool = True):
                 path = f"/workspace/results/{filename}"
 
                 from agentic_patterns.core.workspace import write_to_workspace
+
                 write_to_workspace(path, result)
 
                 return f"Results saved to {path} ({len(result)} chars)\n\nPreview:\n{preview}"

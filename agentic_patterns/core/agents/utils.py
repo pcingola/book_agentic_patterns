@@ -26,7 +26,9 @@ def has_tool_calls(msg: ModelMessage) -> bool:
     return any(isinstance(part, ToolCallPart) for part in msg.parts)
 
 
-def nodes_to_message_history(nodes: list, remove_last_call_tool: bool = True) -> Sequence[ModelMessage]:
+def nodes_to_message_history(
+    nodes: list, remove_last_call_tool: bool = True
+) -> Sequence[ModelMessage]:
     """Convert a list of nodes to message history."""
     messages = []
     for n in nodes:

@@ -14,12 +14,17 @@ logger = logging.getLogger(__name__)
 class TaskBroker:
     """Coordination layer for task submission, observation, and dispatch."""
 
-    def __init__(self, store: TaskStore | None = None, poll_interval: float = 0.5, model=None) -> None:
+    def __init__(
+        self, store: TaskStore | None = None, poll_interval: float = 0.5, model=None
+    ) -> None:
         self._store = store or TaskStoreJson()
         self._worker = Worker(self._store, model=model)
         self._poll_interval = poll_interval
         self._dispatch_task: asyncio.Task | None = None
-        self._callbacks: dict[str, list[tuple[set[TaskState], Callable[[Task], Coroutine[Any, Any, None]]]]] = {}
+        self._callbacks: dict[
+            str,
+            list[tuple[set[TaskState], Callable[[Task], Coroutine[Any, Any, None]]]],
+        ] = {}
 
     async def __aenter__(self) -> "TaskBroker":
         self._dispatch_task = asyncio.create_task(self._dispatch_loop())
@@ -51,11 +56,23 @@ class TaskBroker:
         if task is None or task.state in TERMINAL_STATES:
             return task
         updated = await self._store.update_state(task_id, TaskState.CANCELLED)
-        await self._store.add_event(task_id, TaskEvent(task_id=task_id, event_type=EventType.STATE_CHANGE, payload={"state": TaskState.CANCELLED.value}))
+        await self._store.add_event(
+            task_id,
+            TaskEvent(
+                task_id=task_id,
+                event_type=EventType.STATE_CHANGE,
+                payload={"state": TaskState.CANCELLED.value},
+            ),
+        )
         logger.info("Cancelled task %s", task_id[:8])
         return updated
 
-    async def notify(self, task_id: str, states: set[TaskState], callback: Callable[[Task], Coroutine[Any, Any, None]]) -> None:
+    async def notify(
+        self,
+        task_id: str,
+        states: set[TaskState],
+        callback: Callable[[Task], Coroutine[Any, Any, None]],
+    ) -> None:
         """Register a callback for specific state changes."""
         self._callbacks.setdefault(task_id, []).append((states, callback))
 

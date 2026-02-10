@@ -41,13 +41,13 @@ def create_agui_app(
         Configured AGUIApp instance.
     """
     if instructions:
-        agent_kwargs['instructions'] = instructions
+        agent_kwargs["instructions"] = instructions
 
     if tools:
-        agent_kwargs['tools'] = tools
+        agent_kwargs["tools"] = tools
 
     if state_type:
-        agent_kwargs['deps_type'] = StateDeps[state_type]
+        agent_kwargs["deps_type"] = StateDeps[state_type]
 
     agent = get_agent(config_name=config_name, config_path=config_path, **agent_kwargs)
 

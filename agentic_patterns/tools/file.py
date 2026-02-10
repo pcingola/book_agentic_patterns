@@ -53,4 +53,14 @@ def get_all_tools() -> list:
         """Delete a file."""
         return connector.delete(path)
 
-    return [file_read, file_head, file_tail, file_find, file_list, file_write, file_append, file_edit, file_delete]
+    return [
+        file_read,
+        file_head,
+        file_tail,
+        file_find,
+        file_list,
+        file_write,
+        file_append,
+        file_edit,
+        file_delete,
+    ]

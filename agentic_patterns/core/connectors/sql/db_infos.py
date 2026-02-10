@@ -4,7 +4,9 @@ from typing import TYPE_CHECKING
 
 from agentic_patterns.core.connectors.sql.config import DATABASE_CACHE_DIR, DB_INFO_EXT
 from agentic_patterns.core.connectors.sql.connection import DbConnection
-from agentic_patterns.core.connectors.sql.db_connection_config import DbConnectionConfigs
+from agentic_patterns.core.connectors.sql.db_connection_config import (
+    DbConnectionConfigs,
+)
 from agentic_patterns.core.connectors.sql.db_info import DbInfo
 from agentic_patterns.core.connectors.sql.factories import create_connection
 
@@ -51,21 +53,30 @@ class DbInfos:
 
     def get_connection(self, db_id: str) -> DbConnection:
         if db_id not in self._db_info:
-            raise ValueError(f"Database '{db_id}' not found. Available: {list(self._db_info.keys())}")
+            raise ValueError(
+                f"Database '{db_id}' not found. Available: {list(self._db_info.keys())}"
+            )
         if db_id not in self._connections:
             self._connections[db_id] = create_connection(db_id)
         return self._connections[db_id]
 
     def get_db_info(self, db_id: str) -> DbInfo:
         if db_id not in self._db_info:
-            raise ValueError(f"Database '{db_id}' not found. Available: {list(self._db_info.keys())}")
+            raise ValueError(
+                f"Database '{db_id}' not found. Available: {list(self._db_info.keys())}"
+            )
         return self._db_info[db_id]
 
     def get_operations(self, db_id: str) -> "DbOperations":
         if db_id not in self._db_info:
-            raise ValueError(f"Database '{db_id}' not found. Available: {list(self._db_info.keys())}")
+            raise ValueError(
+                f"Database '{db_id}' not found. Available: {list(self._db_info.keys())}"
+            )
         if db_id not in self._operations:
-            from agentic_patterns.core.connectors.sql.factories import create_db_operations
+            from agentic_patterns.core.connectors.sql.factories import (
+                create_db_operations,
+            )
+
             conn = self.get_connection(db_id)
             self._operations[db_id] = create_db_operations(db_id, conn)
         return self._operations[db_id]

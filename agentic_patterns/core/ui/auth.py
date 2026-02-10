@@ -11,6 +11,7 @@ from pydantic import BaseModel
 
 class User(BaseModel):
     """User model."""
+
     username: str
     password_hash: str
     role: str = "user"
@@ -32,7 +33,7 @@ class UserDatabase:
         return hashlib.sha256(password.encode()).hexdigest()
 
     def _load_users(self) -> dict[str, User]:
-        with open(self.db_path, 'r') as f:
+        with open(self.db_path, "r") as f:
             data = json.load(f)
         return {username: User(**user_data) for username, user_data in data.items()}
 
@@ -43,7 +44,7 @@ class UserDatabase:
 
     def _save_users(self, users: dict[str, User]):
         data = {username: user.model_dump() for username, user in users.items()}
-        with open(self.db_path, 'w') as f:
+        with open(self.db_path, "w") as f:
             json.dump(data, f, indent=2)
 
     def add_user(self, username: str, password: str, role: str = "user") -> bool:
@@ -52,7 +53,9 @@ class UserDatabase:
         users = self._load_users()
         if username in users:
             return False
-        users[username] = User(username=username, password_hash=self._hash_password(password), role=role)
+        users[username] = User(
+            username=username, password_hash=self._hash_password(password), role=role
+        )
         self._save_users(users)
         return True
 
@@ -65,7 +68,9 @@ class UserDatabase:
             return user
         return None
 
-    def change_password(self, username: str, old_password: str, new_password: str) -> bool:
+    def change_password(
+        self, username: str, old_password: str, new_password: str
+    ) -> bool:
         """Change user password. Returns True if successful."""
         username = self._normalize_username(username)
         if not self.authenticate(username, old_password):
@@ -98,4 +103,4 @@ class UserDatabase:
 def generate_password(length: int = 16) -> str:
     """Generate a random password."""
     alphabet = string.ascii_letters + string.digits
-    return ''.join(secrets.choice(alphabet) for _ in range(length))
+    return "".join(secrets.choice(alphabet) for _ in range(length))

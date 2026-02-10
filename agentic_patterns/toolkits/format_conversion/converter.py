@@ -17,7 +17,9 @@ _EXT_TO_INPUT = {f".{f.value}": f for f in InputFormat}
 _TEXT_OUTPUTS = {OutputFormat.MD, OutputFormat.CSV}
 
 
-def convert(input_path: Path, output_format: OutputFormat, output_path: Path | None = None) -> str | Path:
+def convert(
+    input_path: Path, output_format: OutputFormat, output_path: Path | None = None
+) -> str | Path:
     """Convert a document, dispatching by input extension and output format.
 
     Returns str for text outputs (MD, CSV), Path for binary outputs (PDF, DOCX, HTML).

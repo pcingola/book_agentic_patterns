@@ -13,6 +13,7 @@ from agentic_patterns.core.config.config import MAIN_PROJECT_DIR
 
 class TruncationConfig(BaseModel):
     """Configuration for @context_result decorator."""
+
     threshold: int = 5000
     max_preview_tokens: int = 500
     rows_head: int = 20
@@ -26,6 +27,7 @@ class TruncationConfig(BaseModel):
 
 class ContextConfig(BaseModel):
     """Complete context management configuration."""
+
     # File processing
     max_tokens_per_file: int = 5000
     max_total_output: int = 50000
@@ -56,13 +58,23 @@ class ContextConfig(BaseModel):
     # Truncation configs for decorators
     truncation: dict[str, TruncationConfig] = {
         "default": TruncationConfig(),
-        "sql_query": TruncationConfig(threshold=2000, max_preview_tokens=1000, rows_head=30, rows_tail=10),
-        "log_search": TruncationConfig(threshold=10000, max_preview_tokens=300, lines_head=50, lines_tail=20),
+        "sql_query": TruncationConfig(
+            threshold=2000, max_preview_tokens=1000, rows_head=30, rows_tail=10
+        ),
+        "log_search": TruncationConfig(
+            threshold=10000, max_preview_tokens=300, lines_head=50, lines_tail=20
+        ),
     }
 
 
 # Image MIME types that can be attached to model context
-IMAGE_ATTACHMENT_TYPES = {"image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp"}
+IMAGE_ATTACHMENT_TYPES = {
+    "image/png",
+    "image/jpeg",
+    "image/jpg",
+    "image/gif",
+    "image/webp",
+}
 
 # Document types that can be extracted
 EXTRACTABLE_DOCUMENT_TYPES = {

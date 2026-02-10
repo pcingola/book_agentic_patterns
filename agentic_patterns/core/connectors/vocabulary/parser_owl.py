@@ -40,10 +40,18 @@ def _parse_class(cls: ET.Element) -> VocabularyTerm | None:
 
     term_id = _uri_to_id(about)
     label = _text(cls, f"{{{RDFS}}}label") or term_id
-    definition = _text(cls, f"{{{OBO}}}IAO_0000115") or _text(cls, f"{{{SKOS}}}definition")
+    definition = _text(cls, f"{{{OBO}}}IAO_0000115") or _text(
+        cls, f"{{{SKOS}}}definition"
+    )
 
     synonyms: list[str] = []
-    for tag in [f"{{{OBO_IN_OWL}}}hasExactSynonym", f"{{{OBO_IN_OWL}}}hasRelatedSynonym", f"{{{OBO_IN_OWL}}}hasBroadSynonym", f"{{{OBO_IN_OWL}}}hasNarrowSynonym", f"{{{SKOS}}}altLabel"]:
+    for tag in [
+        f"{{{OBO_IN_OWL}}}hasExactSynonym",
+        f"{{{OBO_IN_OWL}}}hasRelatedSynonym",
+        f"{{{OBO_IN_OWL}}}hasBroadSynonym",
+        f"{{{OBO_IN_OWL}}}hasNarrowSynonym",
+        f"{{{SKOS}}}altLabel",
+    ]:
         for el in cls.findall(tag):
             if el.text and el.text.strip():
                 synonyms.append(el.text.strip())
@@ -63,12 +71,19 @@ def _parse_class(cls: ET.Element) -> VocabularyTerm | None:
         metadata["deprecated"] = "true"
 
     return VocabularyTerm(
-        id=term_id, label=label, synonyms=synonyms, definition=definition,
-        parents=parents, relationships=relationships, metadata=metadata,
+        id=term_id,
+        label=label,
+        synonyms=synonyms,
+        definition=definition,
+        parents=parents,
+        relationships=relationships,
+        metadata=metadata,
     )
 
 
-def _parse_restriction(sc_element: ET.Element, relationships: dict[str, list[str]]) -> None:
+def _parse_restriction(
+    sc_element: ET.Element, relationships: dict[str, list[str]]
+) -> None:
     """Parse an owl:Restriction inside rdfs:subClassOf."""
     restriction = sc_element.find(f"{{{OWL}}}Restriction")
     if restriction is None:

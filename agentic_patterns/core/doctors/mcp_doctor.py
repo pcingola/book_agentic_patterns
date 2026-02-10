@@ -15,11 +15,18 @@ class MCPDoctor(DoctorBase):
     def __init__(self, mcp_server: MCPServerHTTP | MCPServerStdio):
         self.mcp_server = mcp_server
 
-    async def _analyze_batch_internal(self, batch: list, verbose: bool = False) -> list[ToolRecommendation]:
+    async def _analyze_batch_internal(
+        self, batch: list, verbose: bool = False
+    ) -> list[ToolRecommendation]:
         """Analyze tools from the MCP server. Batch parameter is ignored as we analyze all tools."""
-        prompt = load_prompt(PROMPTS_DIR / "doctors" / "tool_doctor.md", tools_description="(tools provided via MCP)")
+        prompt = load_prompt(
+            PROMPTS_DIR / "doctors" / "tool_doctor.md",
+            tools_description="(tools provided via MCP)",
+        )
 
-        agent = get_agent(toolsets=[self.mcp_server], output_type=list[ToolRecommendation])
+        agent = get_agent(
+            toolsets=[self.mcp_server], output_type=list[ToolRecommendation]
+        )
         async with agent:
             agent_run, _ = await run_agent(agent, prompt, verbose=verbose)
         return agent_run.result.output if agent_run else []

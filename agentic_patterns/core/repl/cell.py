@@ -48,13 +48,20 @@ class Cell(BaseModel):
 
         if user_id is None or session_id is None:
             try:
-                from agentic_patterns.core.user_session import get_session_id, get_user_id
+                from agentic_patterns.core.user_session import (
+                    get_session_id,
+                    get_user_id,
+                )
+
                 user_id = user_id or get_user_id()
                 session_id = session_id or get_session_id()
             except Exception:
                 user_id = user_id or "test_user"
                 session_id = session_id or "test_session"
-                logger.warning("Session context unavailable, falling back to defaults for cell %s", self.id)
+                logger.warning(
+                    "Session context unavailable, falling back to defaults for cell %s",
+                    self.id,
+                )
 
         start_time = datetime.now()
 
@@ -69,7 +76,9 @@ class Cell(BaseModel):
         )
 
         self.execution_time = (datetime.now() - start_time).total_seconds()
-        logger.debug("Cell %s execution completed in %.2f seconds", self.id, self.execution_time)
+        logger.debug(
+            "Cell %s execution completed in %.2f seconds", self.id, self.execution_time
+        )
 
     def _execute_sync(
         self,
@@ -89,7 +98,9 @@ class Cell(BaseModel):
         workspace_path: Path = WORKSPACE_DIR / user_id / session_id
         workspace_path.mkdir(parents=True, exist_ok=True)
 
-        clean_namespace = {k: v for k, v in namespace.items() if not isinstance(v, types.ModuleType)}
+        clean_namespace = {
+            k: v for k, v in namespace.items() if not isinstance(v, types.ModuleType)
+        }
 
         loop = asyncio.new_event_loop()
         try:
@@ -117,7 +128,9 @@ class Cell(BaseModel):
         saved_resources = []
         output_dir.mkdir(parents=True, exist_ok=True)
         for i, output in enumerate(self.outputs):
-            if output.output_type == OutputType.IMAGE and isinstance(output.content, Image):
+            if output.output_type == OutputType.IMAGE and isinstance(
+                output.content, Image
+            ):
                 filename = f"cell_{self.id}_output_{i}.{output.content.format}"
                 file_path = output_dir / filename
                 output.content.save_to_file(file_path)
@@ -149,8 +162,12 @@ class Cell(BaseModel):
                 "mcp_repl": {
                     "cell_number": self.cell_number,
                     "state": self.state.value,
-                    "created_at": self.created_at.isoformat() if self.created_at else None,
-                    "executed_at": self.executed_at.isoformat() if self.executed_at else None,
+                    "created_at": self.created_at.isoformat()
+                    if self.created_at
+                    else None,
+                    "executed_at": self.executed_at.isoformat()
+                    if self.executed_at
+                    else None,
                     "execution_time": self.execution_time,
                 }
             },
@@ -170,20 +187,28 @@ class Cell(BaseModel):
             code=data["code"],
             state=CellState(data["state"]),
             execution_count=data["execution_count"],
-            created_at=datetime.fromisoformat(data["created_at"]) if data.get("created_at") else None,
-            executed_at=datetime.fromisoformat(data["executed_at"]) if data.get("executed_at") else None,
+            created_at=datetime.fromisoformat(data["created_at"])
+            if data.get("created_at")
+            else None,
+            executed_at=datetime.fromisoformat(data["executed_at"])
+            if data.get("executed_at")
+            else None,
             execution_time=data.get("execution_time"),
             cell_number=data.get("number"),
         )
         if "outputs" in data and data["outputs"]:
-            cell.outputs = [CellOutput.unserialize(output_data) for output_data in data["outputs"]]
+            cell.outputs = [
+                CellOutput.unserialize(output_data) for output_data in data["outputs"]
+            ]
         return cell
 
     def __repr__(self) -> str:
         return f"Cell(id={self.id}, number={self.cell_number}, state={self.state.name}, execution_count={self.execution_count})"
 
     def __str__(self) -> str:
-        exec_time = f"{self.execution_time:.2f}s" if self.execution_time is not None else "N/A"
+        exec_time = (
+            f"{self.execution_time:.2f}s" if self.execution_time is not None else "N/A"
+        )
         result = [f"Cell[{self.cell_number or '-'}] {self.state.name}, {exec_time}"]
 
         prefix = "  | "
@@ -193,9 +218,15 @@ class Cell(BaseModel):
 
         if self.outputs:
             for i, output in enumerate(self.outputs):
-                show_cell_number = f" {i + 1} / {len(self.outputs)}" if len(self.outputs) > 1 else ""
-                if output.output_type == OutputType.IMAGE and isinstance(output.content, Image):
-                    result.append(f"Output{show_cell_number}, type: {output.output_type.name}:")
+                show_cell_number = (
+                    f" {i + 1} / {len(self.outputs)}" if len(self.outputs) > 1 else ""
+                )
+                if output.output_type == OutputType.IMAGE and isinstance(
+                    output.content, Image
+                ):
+                    result.append(
+                        f"Output{show_cell_number}, type: {output.output_type.name}:"
+                    )
                     result.append(f"{prefix}{str(output.content)}")
                 else:
                     result.append(f"Output{show_cell_number}:")

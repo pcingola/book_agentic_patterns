@@ -73,7 +73,11 @@ class TestDoctorsModels(unittest.TestCase):
 
     def test_argument_recommendation_str_with_issues(self):
         """Test ArgumentRecommendation __str__ with issues."""
-        issue = Issue(level=IssueLevel.WARNING, category=IssueCategory.NAMING, message="Unclear name")
+        issue = Issue(
+            level=IssueLevel.WARNING,
+            category=IssueCategory.NAMING,
+            message="Unclear name",
+        )
         arg = ArgumentRecommendation(arg_name="x", arg_type="int", issues=[issue])
         result = str(arg)
         self.assertIn("x", result)
@@ -90,7 +94,11 @@ class TestDoctorsModels(unittest.TestCase):
 
     def test_recommendation_str_needs_improvement(self):
         """Test Recommendation __str__ when improvement needed."""
-        issue = Issue(level=IssueLevel.ERROR, category=IssueCategory.DOCUMENTATION, message="No docs")
+        issue = Issue(
+            level=IssueLevel.ERROR,
+            category=IssueCategory.DOCUMENTATION,
+            message="No docs",
+        )
         rec = Recommendation(name="bad_tool", needs_improvement=True, issues=[issue])
         result = str(rec)
         self.assertIn("bad_tool", result)
@@ -99,10 +107,20 @@ class TestDoctorsModels(unittest.TestCase):
 
     def test_tool_recommendation_str(self):
         """Test ToolRecommendation __str__ with all fields."""
-        arg_issue = Issue(level=IssueLevel.WARNING, category=IssueCategory.NAMING, message="Unclear")
+        arg_issue = Issue(
+            level=IssueLevel.WARNING, category=IssueCategory.NAMING, message="Unclear"
+        )
         arg = ArgumentRecommendation(arg_name="x", arg_type="int", issues=[arg_issue])
-        return_issue = Issue(level=IssueLevel.INFO, category=IssueCategory.RETURN_TYPE, message="Consider typing")
-        general_issue = Issue(level=IssueLevel.ERROR, category=IssueCategory.DOCUMENTATION, message="No docstring")
+        return_issue = Issue(
+            level=IssueLevel.INFO,
+            category=IssueCategory.RETURN_TYPE,
+            message="Consider typing",
+        )
+        general_issue = Issue(
+            level=IssueLevel.ERROR,
+            category=IssueCategory.DOCUMENTATION,
+            message="No docstring",
+        )
 
         rec = ToolRecommendation(
             name="process_data",
@@ -123,7 +141,11 @@ class TestDoctorsModels(unittest.TestCase):
 
     def test_prompt_recommendation_str(self):
         """Test PromptRecommendation __str__ with placeholders."""
-        issue = Issue(level=IssueLevel.WARNING, category=IssueCategory.AMBIGUITY, message="Unclear instruction")
+        issue = Issue(
+            level=IssueLevel.WARNING,
+            category=IssueCategory.AMBIGUITY,
+            message="Unclear instruction",
+        )
         rec = PromptRecommendation(
             name="system_prompt.md",
             needs_improvement=True,
@@ -147,7 +169,11 @@ class TestDoctorsModels(unittest.TestCase):
 
     def test_skill_recommendation_str_with_issues(self):
         """Test SkillRecommendation __str__ with issues."""
-        issue = Issue(level=IssueLevel.WARNING, category=IssueCategory.DOCUMENTATION, message="Missing description")
+        issue = Issue(
+            level=IssueLevel.WARNING,
+            category=IssueCategory.DOCUMENTATION,
+            message="Missing description",
+        )
         skill = SkillRecommendation(skill_id="fetch_data", issues=[issue])
         result = str(skill)
         self.assertIn("fetch_data", result)
@@ -155,9 +181,17 @@ class TestDoctorsModels(unittest.TestCase):
 
     def test_a2a_recommendation_str(self):
         """Test A2ARecommendation __str__ with all fields."""
-        skill_issue = Issue(level=IssueLevel.WARNING, category=IssueCategory.DOCUMENTATION, message="Unclear skill")
+        skill_issue = Issue(
+            level=IssueLevel.WARNING,
+            category=IssueCategory.DOCUMENTATION,
+            message="Unclear skill",
+        )
         skill = SkillRecommendation(skill_id="process", issues=[skill_issue])
-        general_issue = Issue(level=IssueLevel.ERROR, category=IssueCategory.NAMING, message="Generic name")
+        general_issue = Issue(
+            level=IssueLevel.ERROR,
+            category=IssueCategory.NAMING,
+            message="Generic name",
+        )
 
         rec = A2ARecommendation(
             name="DataAgent",

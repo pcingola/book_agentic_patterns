@@ -13,7 +13,9 @@ class WorkbookReference(BaseModel):
     var_name: str
 
 
-def filter_openpyxl_from_namespace(namespace: dict, temp_dir: Path) -> tuple[dict, set[str], list[str]]:
+def filter_openpyxl_from_namespace(
+    namespace: dict, temp_dir: Path
+) -> tuple[dict, set[str], list[str]]:
     """Filter openpyxl objects from namespace, serializing saveable workbooks.
 
     Returns:
@@ -34,7 +36,9 @@ def filter_openpyxl_from_namespace(namespace: dict, temp_dir: Path) -> tuple[dic
 
         if is_openpyxl_workbook(value):
             mode = "read-only" if getattr(value, "read_only", False) else "write-only"
-            messages.append(f"Note: {mode} workbook '{key}' not persisted (cannot be serialized)")
+            messages.append(
+                f"Note: {mode} workbook '{key}' not persisted (cannot be serialized)"
+            )
             handled_keys.add(key)
             continue
 
@@ -54,9 +58,13 @@ def filter_openpyxl_from_namespace(namespace: dict, temp_dir: Path) -> tuple[dic
                         wb_var = k
                         break
             if wb_var:
-                messages.append(f"Note: worksheet '{key}' not persisted - re-access via: {key} = {wb_var}.active")
+                messages.append(
+                    f"Note: worksheet '{key}' not persisted - re-access via: {key} = {wb_var}.active"
+                )
             else:
-                messages.append(f"Note: worksheet '{key}' not persisted - re-access via workbook in next cell")
+                messages.append(
+                    f"Note: worksheet '{key}' not persisted - re-access via workbook in next cell"
+                )
             handled_keys.add(key)
             continue
 
@@ -123,7 +131,9 @@ def load_workbook_from_reference(ref) -> "openpyxl.Workbook":  # type: ignore  #
         return openpyxl.load_workbook(ref.temp_path)
     if isinstance(ref, dict) and "temp_path" in ref:
         return openpyxl.load_workbook(ref["temp_path"])
-    raise ValueError(f"Expected WorkbookReference or dict with temp_path, got {type(ref)}")
+    raise ValueError(
+        f"Expected WorkbookReference or dict with temp_path, got {type(ref)}"
+    )
 
 
 def restore_workbook_references(namespace: dict) -> None:

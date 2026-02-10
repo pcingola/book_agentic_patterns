@@ -14,13 +14,20 @@ logger = logging.getLogger(__name__)
 
 
 MCP_LOG_LEVEL_MAP: dict[str, int] = {
-    "debug": logging.DEBUG, "info": logging.INFO, "notice": logging.INFO,
-    "warning": logging.WARNING, "error": logging.ERROR, "critical": logging.CRITICAL,
-    "alert": logging.CRITICAL, "emergency": logging.CRITICAL,
+    "debug": logging.DEBUG,
+    "info": logging.INFO,
+    "notice": logging.INFO,
+    "warning": logging.WARNING,
+    "error": logging.ERROR,
+    "critical": logging.CRITICAL,
+    "alert": logging.CRITICAL,
+    "emergency": logging.CRITICAL,
 }
 
 
-async def default_mcp_log_handler(params: mcp_types.LoggingMessageNotificationParams) -> None:
+async def default_mcp_log_handler(
+    params: mcp_types.LoggingMessageNotificationParams,
+) -> None:
     """Forward MCP server log messages to Python logging."""
     data = params.data
     msg = data.get("msg", str(data)) if isinstance(data, dict) else str(data)
@@ -37,13 +44,15 @@ class MCPServerStrict(MCPServerStreamableHTTP):
     (agent retries with different arguments).
     """
 
-    async def direct_call_tool(self, name: str, args: dict[str, Any], metadata: dict[str, Any] | None = None):
+    async def direct_call_tool(
+        self, name: str, args: dict[str, Any], metadata: dict[str, Any] | None = None
+    ):
         try:
             return await super().direct_call_tool(name, args, metadata)
         except ModelRetry as e:
             msg = str(e)
             if msg.startswith(FATAL_PREFIX):
-                raise RuntimeError(msg[len(FATAL_PREFIX):]) from e
+                raise RuntimeError(msg[len(FATAL_PREFIX) :]) from e
             raise
 
 
@@ -85,7 +94,9 @@ class MCPServerPrivateData(MCPServerStrict):
     async def call_tool(self, name, tool_args, ctx, tool):
         return await self._target().call_tool(name, tool_args, ctx, tool)
 
-    async def direct_call_tool(self, name: str, args: dict[str, Any], metadata: dict[str, Any] | None = None):
+    async def direct_call_tool(
+        self, name: str, args: dict[str, Any], metadata: dict[str, Any] | None = None
+    ):
         return await self._target().direct_call_tool(name, args, metadata)
 
     async def get_tools(self, ctx):

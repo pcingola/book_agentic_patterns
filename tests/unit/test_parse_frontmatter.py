@@ -4,7 +4,6 @@ from agentic_patterns.core.skills.registry import _parse_frontmatter
 
 
 class TestParseFrontmatter(unittest.TestCase):
-
     def test_valid_frontmatter(self):
         content = """---
 name: my-skill

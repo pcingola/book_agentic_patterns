@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class BindMount:
     """A filesystem bind mount for the sandbox."""
+
     source: Path
     target: str
     readonly: bool = False
@@ -36,6 +37,7 @@ class BindMount:
 @dataclass
 class SandboxResult:
     """Result of a sandboxed command execution."""
+
     exit_code: int
     stdout: bytes = field(default=b"")
     stderr: bytes = field(default=b"")
@@ -84,7 +86,9 @@ class SandboxBubblewrap(Sandbox):
         cwd: str | None = None,
         env: dict[str, str] | None = None,
     ) -> SandboxResult:
-        cmd = self._build_command(command, bind_mounts or [], isolate_network, isolate_pid, cwd)
+        cmd = self._build_command(
+            command, bind_mounts or [], isolate_network, isolate_pid, cwd
+        )
         logger.debug("bwrap command: %s", " ".join(cmd))
 
         process = await asyncio.create_subprocess_exec(
@@ -95,8 +99,12 @@ class SandboxBubblewrap(Sandbox):
         )
 
         try:
-            stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=timeout)
-            return SandboxResult(exit_code=process.returncode or 0, stdout=stdout, stderr=stderr)
+            stdout, stderr = await asyncio.wait_for(
+                process.communicate(), timeout=timeout
+            )
+            return SandboxResult(
+                exit_code=process.returncode or 0, stdout=stdout, stderr=stderr
+            )
         except asyncio.TimeoutError:
             process.kill()
             await process.wait()
@@ -112,15 +120,30 @@ class SandboxBubblewrap(Sandbox):
     ) -> list[str]:
         cmd = [
             "bwrap",
-            "--ro-bind", "/usr", "/usr",
-            "--ro-bind", "/lib", "/lib",
-            "--ro-bind", "/lib64", "/lib64",
-            "--ro-bind", "/bin", "/bin",
-            "--ro-bind", "/sbin", "/sbin",
-            "--ro-bind", "/etc/resolv.conf", "/etc/resolv.conf",
-            "--proc", "/proc",
-            "--dev", "/dev",
-            "--tmpfs", "/tmp",
+            "--ro-bind",
+            "/usr",
+            "/usr",
+            "--ro-bind",
+            "/lib",
+            "/lib",
+            "--ro-bind",
+            "/lib64",
+            "/lib64",
+            "--ro-bind",
+            "/bin",
+            "/bin",
+            "--ro-bind",
+            "/sbin",
+            "/sbin",
+            "--ro-bind",
+            "/etc/resolv.conf",
+            "/etc/resolv.conf",
+            "--proc",
+            "/proc",
+            "--dev",
+            "/dev",
+            "--tmpfs",
+            "/tmp",
         ]
 
         # Bind Python prefix so the child can import installed packages
@@ -167,8 +190,12 @@ class SandboxSubprocess(Sandbox):
         )
 
         try:
-            stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=timeout)
-            return SandboxResult(exit_code=process.returncode or 0, stdout=stdout, stderr=stderr)
+            stdout, stderr = await asyncio.wait_for(
+                process.communicate(), timeout=timeout
+            )
+            return SandboxResult(
+                exit_code=process.returncode or 0, stdout=stdout, stderr=stderr
+            )
         except asyncio.TimeoutError:
             process.kill()
             await process.wait()

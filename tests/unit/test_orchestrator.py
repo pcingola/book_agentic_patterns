@@ -29,7 +29,9 @@ class ServerThread(threading.Thread):
         self.server = None
 
     def run(self):
-        config = uvicorn.Config(self.app, host="127.0.0.1", port=self.port, log_level="error", ws="none")
+        config = uvicorn.Config(
+            self.app, host="127.0.0.1", port=self.port, log_level="error", ws="none"
+        )
         self.server = uvicorn.Server(config)
         self.server.run()
 
@@ -44,11 +46,12 @@ def sample_tool(x: int) -> int:
 
 
 class TestOrchestratorAgent(unittest.IsolatedAsyncioTestCase):
-
     @classmethod
     def setUpClass(cls):
         cls.port = find_free_port()
-        cls.mock_server = MockA2AServer(name="Researcher", description="Researches topics")
+        cls.mock_server = MockA2AServer(
+            name="Researcher", description="Researches topics"
+        )
         cls.mock_server.on_prompt("Find info", result="Found it!")
         cls.mock_server.set_default("I can help with research")
 
@@ -62,7 +65,9 @@ class TestOrchestratorAgent(unittest.IsolatedAsyncioTestCase):
         cls.server_thread.stop()
 
     def setUp(self):
-        self.config = A2AClientConfig(url=f"http://127.0.0.1:{self.port}", timeout=10, poll_interval=0.1)
+        self.config = A2AClientConfig(
+            url=f"http://127.0.0.1:{self.port}", timeout=10, poll_interval=0.1
+        )
         self.client = A2AClientExtended(self.config)
         self.mock_server.received_prompts.clear()
 
@@ -71,10 +76,12 @@ class TestOrchestratorAgent(unittest.IsolatedAsyncioTestCase):
 
     async def test_creates_a2a_delegation_tools(self):
         """A2A clients should be converted to delegation tools."""
-        model = ModelMock(responses=[
-            ToolCallPart(tool_name="researcher", args={"prompt": "Find info"}),
-            "Done.",
-        ])
+        model = ModelMock(
+            responses=[
+                ToolCallPart(tool_name="researcher", args={"prompt": "Find info"}),
+                "Done.",
+            ]
+        )
 
         spec = AgentSpec(name="coordinator", model=model, a2a_clients=[self.client])
 
@@ -90,7 +97,10 @@ class TestOrchestratorAgent(unittest.IsolatedAsyncioTestCase):
             name="code-review",
             description="Reviews code for issues",
             path=Path("/tmp/code-review"),
-            frontmatter={"name": "code-review", "description": "Reviews code for issues"},
+            frontmatter={
+                "name": "code-review",
+                "description": "Reviews code for issues",
+            },
             body="# Instructions",
             script_paths=[],
             reference_paths=[],

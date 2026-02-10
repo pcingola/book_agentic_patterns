@@ -11,9 +11,13 @@ from agentic_patterns.core.workspace import workspace_to_host_path
 from agentic_patterns.toolkits.data_analysis.display import df2str
 from agentic_patterns.toolkits.data_analysis.io import load_df, save_df
 from agentic_patterns.toolkits.data_analysis.models import OperationConfig
-from agentic_patterns.toolkits.data_analysis.ops_classification import CLASSIFICATION_OPERATIONS
+from agentic_patterns.toolkits.data_analysis.ops_classification import (
+    CLASSIFICATION_OPERATIONS,
+)
 from agentic_patterns.toolkits.data_analysis.ops_eda import EDA_OPERATIONS
-from agentic_patterns.toolkits.data_analysis.ops_feature_importance import FEATURE_IMPORTANCE_OPERATIONS
+from agentic_patterns.toolkits.data_analysis.ops_feature_importance import (
+    FEATURE_IMPORTANCE_OPERATIONS,
+)
 from agentic_patterns.toolkits.data_analysis.ops_regression import REGRESSION_OPERATIONS
 from agentic_patterns.toolkits.data_analysis.ops_stats import STATS_OPERATIONS
 from agentic_patterns.toolkits.data_analysis.ops_transform import TRANSFORM_OPERATIONS
@@ -68,14 +72,21 @@ def _format_result(result: Any, op: OperationConfig, output_file: str | None) ->
     return str(result)
 
 
-async def execute_operation(input_file: str, output_file: str | None, operation_name: str, parameters: dict[str, Any]) -> str:
+async def execute_operation(
+    input_file: str,
+    output_file: str | None,
+    operation_name: str,
+    parameters: dict[str, Any],
+) -> str:
     """Execute a data analysis operation.
 
     Loads the DataFrame, runs the operation, saves results if applicable, and returns a formatted string.
     """
     operations = get_all_operations()
     if operation_name not in operations:
-        raise ValueError(f"Unknown operation: {operation_name}. Available: {list(operations.keys())}")
+        raise ValueError(
+            f"Unknown operation: {operation_name}. Available: {list(operations.keys())}"
+        )
 
     op = operations[operation_name]
 
@@ -97,4 +108,6 @@ async def execute_operation(input_file: str, output_file: str | None, operation_
     except (FileNotFoundError, KeyError, ValueError, TypeError, IndexError) as e:
         raise ValueError(str(e)) from e
     except Exception as e:
-        raise RuntimeError(f"Operation '{operation_name}' failed unexpectedly: {e}") from e
+        raise RuntimeError(
+            f"Operation '{operation_name}' failed unexpectedly: {e}"
+        ) from e

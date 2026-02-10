@@ -6,7 +6,7 @@ import logging
 from pathlib import Path
 from typing import Sequence
 
-from pydantic_ai import AgentRun, AgentRunResult, ModelMessage, RequestUsage
+from pydantic_ai import AgentRun, ModelMessage
 import rich
 from fastmcp import Context
 from pydantic_ai.agent import Agent
@@ -14,7 +14,6 @@ from pydantic_ai.settings import ModelSettings
 from pydantic_ai.usage import UsageLimits
 
 from agentic_patterns.core.agents.models import _get_model_from_config, _get_config
-from agentic_patterns.core.agents.utils import get_usage, has_tool_calls, nodes_to_message_history
 
 
 logger = logging.getLogger(__name__)
@@ -28,7 +27,7 @@ def get_agent(
     model_settings=None,
     http_client=None,
     history_compactor=None,
-    **kwargs
+    **kwargs,
 ) -> Agent:
     """
     Get a PydanticAI agent.
@@ -52,34 +51,29 @@ def get_agent(
         model = _get_model_from_config(config, http_client=http_client)
 
     if model_settings is None:
-        settings_kwargs = {'timeout': config.timeout}
+        settings_kwargs = {"timeout": config.timeout}
         if config.parallel_tool_calls is not None:
-            settings_kwargs['parallel_tool_calls'] = config.parallel_tool_calls
+            settings_kwargs["parallel_tool_calls"] = config.parallel_tool_calls
         model_settings = ModelSettings(**settings_kwargs)
 
     # If history_compactor provided and no history_processor in kwargs, create one
-    if history_compactor is not None and 'history_processor' not in kwargs:
-        kwargs['history_processor'] = history_compactor.create_history_processor()
+    if history_compactor is not None and "history_processor" not in kwargs:
+        kwargs["history_processor"] = history_compactor.create_history_processor()
 
-    agent = Agent(
-        model=model,
-        model_settings=model_settings,
-        instrument=True,
-        **kwargs
-    )
+    agent = Agent(model=model, model_settings=model_settings, instrument=True, **kwargs)
     return agent
 
 
 async def run_agent(
-        # noqa: PLR0913, pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
-        agent: Agent,
-        prompt: str | list[str],
-        message_history: Sequence[ModelMessage] | None = None,
-        usage_limits: UsageLimits | None = None,
-        verbose: bool = False,
-        catch_exceptions: bool = False,
-        ctx: Context | None = None,
-    ) -> tuple[AgentRun | None, list[ModelMessage]]:
+    # noqa: PLR0913, pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
+    agent: Agent,
+    prompt: str | list[str],
+    message_history: Sequence[ModelMessage] | None = None,
+    usage_limits: UsageLimits | None = None,
+    verbose: bool = False,
+    catch_exceptions: bool = False,
+    ctx: Context | None = None,
+) -> tuple[AgentRun | None, list[ModelMessage]]:
     """
     Run the agent with the given prompt and log the execution details.
     Args:
@@ -96,7 +90,9 @@ async def run_agent(
     # Results
     agent_run, nodes = None, []
     try:
-        async with agent.iter(prompt, usage_limits=usage_limits, message_history=message_history) as agent_run:
+        async with agent.iter(
+            prompt, usage_limits=usage_limits, message_history=message_history
+        ) as agent_run:
             # Run the agent
             async for node in agent_run:
                 nodes.append(node)

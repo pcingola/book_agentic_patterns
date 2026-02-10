@@ -9,9 +9,7 @@ Shows how to build the skills list from all four sources:
 Run with: uvicorn agentic_patterns.a2a.template.server:app --port 8001
 """
 
-import asyncio
-
-from agentic_patterns.core.a2a import AuthSessionMiddleware, card_to_skills, mcp_to_skills, skill_metadata_to_a2a_skill, tool_to_skill
+from agentic_patterns.core.a2a import AuthSessionMiddleware, tool_to_skill
 from agentic_patterns.core.agents import get_agent
 from agentic_patterns.core.config.config import PROMPTS_DIR
 from agentic_patterns.core.prompt import load_prompt
@@ -42,5 +40,9 @@ skills = [tool_to_skill(f) for f in ALL_TOOLS]
 
 
 agent = get_agent(tools=ALL_TOOLS, instructions=system_prompt)
-app = agent.to_a2a(name="TextProcessor", description="An agent that can perform simple text-processing operations.", skills=skills)
+app = agent.to_a2a(
+    name="TextProcessor",
+    description="An agent that can perform simple text-processing operations.",
+    skills=skills,
+)
 app.add_middleware(AuthSessionMiddleware)

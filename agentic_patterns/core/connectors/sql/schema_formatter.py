@@ -61,7 +61,11 @@ class SchemaFormatter:
     @staticmethod
     def format_table(table: "TableInfo") -> str:
         object_type = "View" if table.is_view else "Table"
-        create_stmt = f"CREATE VIEW {table.name} (" if table.is_view else f"CREATE TABLE {table.name} ("
+        create_stmt = (
+            f"CREATE VIEW {table.name} ("
+            if table.is_view
+            else f"CREATE TABLE {table.name} ("
+        )
 
         lines = [f"-- {object_type}: {table.name}"]
         if table.description:
@@ -76,7 +80,9 @@ class SchemaFormatter:
                 lines.append(f"--   {SchemaFormatter.format_index(idx)}")
 
         lines.append(create_stmt)
-        col_lines = [f"    {SchemaFormatter.format_column(col)}" for col in table.columns]
+        col_lines = [
+            f"    {SchemaFormatter.format_column(col)}" for col in table.columns
+        ]
         for i in range(len(col_lines) - 1):
             col_lines[i] += ","
         lines.extend(col_lines)
@@ -91,7 +97,9 @@ class SchemaFormatter:
         return "\n".join(lines)
 
     @staticmethod
-    def format_schema(tables: list["TableInfo"], database_name: str, description: str = "") -> str:
+    def format_schema(
+        tables: list["TableInfo"], database_name: str, description: str = ""
+    ) -> str:
         lines = [f"-- Database: {database_name}"]
         if description:
             lines.append("-- Description:")

@@ -26,7 +26,9 @@ def load_df(workspace_path: str) -> pd.DataFrame:
     return pd.read_csv(host_path)
 
 
-def save_figure(fig: matplotlib.figure.Figure, workspace_path: str, dpi: int = DEFAULT_DPI) -> str:
+def save_figure(
+    fig: matplotlib.figure.Figure, workspace_path: str, dpi: int = DEFAULT_DPI
+) -> str:
     """Save a matplotlib Figure to the workspace and close it. Returns the workspace path."""
     host_path = workspace_to_host_path(PurePosixPath(workspace_path))
     host_path.parent.mkdir(parents=True, exist_ok=True)

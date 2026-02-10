@@ -41,7 +41,9 @@ def register_tools(mcp: FastMCP) -> None:
         """Search records by keyword. Demonstrates retryable error for bad input."""
         await ctx.info(f"search_records called with query={query!r}")
         if not query.strip():
-            await ctx.warning("Empty query rejected -- raising ToolRetryError (client sees ModelRetry)")
+            await ctx.warning(
+                "Empty query rejected -- raising ToolRetryError (client sees ModelRetry)"
+            )
             raise ToolRetryError("Query cannot be empty -- provide a search term")
         # Placeholder: a real implementation would query a database or index
         return f"Found 3 records matching '{query}': [record_1, record_2, record_3]"
@@ -64,6 +66,8 @@ def register_tools(mcp: FastMCP) -> None:
         except Exception as e:
             raise ToolFatalError(f"Compliance system unavailable: {e}") from e
 
-        await ctx.warning(f"Session flagged as containing private data (dataset: {dataset_name}, sensitivity: CONFIDENTIAL)")
+        await ctx.warning(
+            f"Session flagged as containing private data (dataset: {dataset_name}, sensitivity: CONFIDENTIAL)"
+        )
         # Placeholder: a real implementation would load from a data source
         return f"Loaded dataset '{dataset_name}' (3 rows). Session marked as containing private data."

@@ -2,16 +2,23 @@
 
 from typing import Protocol, runtime_checkable
 
-from agentic_patterns.core.connectors.vocabulary.models import VocabularyInfo, VocabularyTerm
+from agentic_patterns.core.connectors.vocabulary.models import (
+    VocabularyInfo,
+    VocabularyTerm,
+)
 
 
 @runtime_checkable
 class Strategy(Protocol):
     """Protocol that all vocabulary strategy backends must satisfy."""
 
-    def ancestors(self, term_code: str, max_depth: int = 10) -> list[VocabularyTerm]: ...
+    def ancestors(
+        self, term_code: str, max_depth: int = 10
+    ) -> list[VocabularyTerm]: ...
     def children(self, term_code: str) -> list[VocabularyTerm]: ...
-    def descendants(self, term_code: str, max_depth: int = 10) -> list[VocabularyTerm]: ...
+    def descendants(
+        self, term_code: str, max_depth: int = 10
+    ) -> list[VocabularyTerm]: ...
     def info(self) -> VocabularyInfo: ...
     def lookup(self, term_code: str) -> VocabularyTerm | None: ...
     def parent(self, term_code: str) -> list[VocabularyTerm]: ...

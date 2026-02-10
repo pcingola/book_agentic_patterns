@@ -20,7 +20,9 @@ class TestRunEvaluation(unittest.TestCase):
     def test_run_evaluation_success(self):
         ds = self.datasets[0]
         with patch("builtins.print"):
-            name, success, report = asyncio.run(run_evaluation(ds, self.print_options, min_assertions=1.0))
+            name, success, report = asyncio.run(
+                run_evaluation(ds, self.print_options, min_assertions=1.0)
+            )
         self.assertEqual(name, ds.name)
         self.assertTrue(success)
         self.assertIsNotNone(report)

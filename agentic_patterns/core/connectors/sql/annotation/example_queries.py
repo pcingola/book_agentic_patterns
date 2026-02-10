@@ -4,7 +4,10 @@ import json
 import logging
 
 from agentic_patterns.core.agents.agents import get_agent, run_agent
-from agentic_patterns.core.connectors.sql.config import MAX_QUERY_GENERATION_RETRIES, NUMBER_OF_EXAMPLE_QUERIES
+from agentic_patterns.core.connectors.sql.config import (
+    MAX_QUERY_GENERATION_RETRIES,
+    NUMBER_OF_EXAMPLE_QUERIES,
+)
 from agentic_patterns.core.connectors.sql.db_info import DbInfo
 from agentic_patterns.core.connectors.sql.db_infos import DbInfos
 from agentic_patterns.core.prompt import get_prompt

@@ -9,7 +9,9 @@ from fastapi import FastAPI, Request
 class MockA2AServer:
     """A controllable A2A server for testing."""
 
-    def __init__(self, name: str = "MockAgent", description: str = "A mock agent for testing"):
+    def __init__(
+        self, name: str = "MockAgent", description: str = "A mock agent for testing"
+    ):
         self._card = {
             "name": name,
             "description": description,
@@ -19,24 +21,51 @@ class MockA2AServer:
             "protocolVersion": "0.3.0",
             "defaultInputModes": ["application/json"],
             "defaultOutputModes": ["application/json"],
-            "capabilities": {"streaming": False, "pushNotifications": False, "stateTransitionHistory": False},
+            "capabilities": {
+                "streaming": False,
+                "pushNotifications": False,
+                "stateTransitionHistory": False,
+            },
         }
         self._responses: list[tuple[re.Pattern | str, dict]] = []
         self._default_result = "OK"
         self._tasks: dict[str, dict] = {}
         self._task_poll_counts: dict[str, int] = {}
-        self._delayed_responses: dict[str, tuple[int, dict]] = {}  # task_id -> (polls_needed, final_response)
+        self._delayed_responses: dict[
+            str, tuple[int, dict]
+        ] = {}  # task_id -> (polls_needed, final_response)
         self.received_prompts: list[str] = []
         self.cancelled_task_ids: set[str] = set()
 
-    def on_prompt(self, prompt: str, *, result: str | None = None, error: str | None = None, input_required: str | None = None) -> "MockA2AServer":
+    def on_prompt(
+        self,
+        prompt: str,
+        *,
+        result: str | None = None,
+        error: str | None = None,
+        input_required: str | None = None,
+    ) -> "MockA2AServer":
         """Configure response for exact prompt match."""
-        self._responses.append((prompt, self._make_response(result, error, input_required)))
+        self._responses.append(
+            (prompt, self._make_response(result, error, input_required))
+        )
         return self
 
-    def on_pattern(self, pattern: str, *, result: str | None = None, error: str | None = None, input_required: str | None = None) -> "MockA2AServer":
+    def on_pattern(
+        self,
+        pattern: str,
+        *,
+        result: str | None = None,
+        error: str | None = None,
+        input_required: str | None = None,
+    ) -> "MockA2AServer":
         """Configure response for regex pattern match."""
-        self._responses.append((re.compile(pattern, re.IGNORECASE), self._make_response(result, error, input_required)))
+        self._responses.append(
+            (
+                re.compile(pattern, re.IGNORECASE),
+                self._make_response(result, error, input_required),
+            )
+        )
         return self
 
     def set_default(self, result: str) -> "MockA2AServer":
@@ -44,12 +73,31 @@ class MockA2AServer:
         self._default_result = result
         return self
 
-    def on_prompt_delayed(self, prompt: str, polls: int, *, result: str | None = None, error: str | None = None, input_required: str | None = None) -> "MockA2AServer":
+    def on_prompt_delayed(
+        self,
+        prompt: str,
+        polls: int,
+        *,
+        result: str | None = None,
+        error: str | None = None,
+        input_required: str | None = None,
+    ) -> "MockA2AServer":
         """Configure a delayed response that returns 'working' until N polls, then final state."""
-        self._responses.append((prompt, {"state": "working", "polls": polls, "final": self._make_response(result, error, input_required)}))
+        self._responses.append(
+            (
+                prompt,
+                {
+                    "state": "working",
+                    "polls": polls,
+                    "final": self._make_response(result, error, input_required),
+                },
+            )
+        )
         return self
 
-    def _make_response(self, result: str | None, error: str | None, input_required: str | None) -> dict:
+    def _make_response(
+        self, result: str | None, error: str | None, input_required: str | None
+    ) -> dict:
         if error:
             return {"state": "failed", "error": error}
         if input_required:
@@ -68,7 +116,12 @@ class MockA2AServer:
     def _build_task(self, task_id: str, context_id: str, response: dict) -> dict:
         status: dict = {"state": response["state"]}
         if response["state"] == "input-required" and "question" in response:
-            status["message"] = {"role": "agent", "parts": [{"kind": "text", "text": response["question"]}], "kind": "message", "messageId": str(uuid.uuid4())}
+            status["message"] = {
+                "role": "agent",
+                "parts": [{"kind": "text", "text": response["question"]}],
+                "kind": "message",
+                "messageId": str(uuid.uuid4()),
+            }
 
         task: dict = {
             "id": task_id,
@@ -78,9 +131,19 @@ class MockA2AServer:
         }
 
         if response["state"] == "completed":
-            task["artifacts"] = [{"artifactId": str(uuid.uuid4()), "parts": [{"kind": "text", "text": response["result"]}]}]
+            task["artifacts"] = [
+                {
+                    "artifactId": str(uuid.uuid4()),
+                    "parts": [{"kind": "text", "text": response["result"]}],
+                }
+            ]
         elif response["state"] == "failed":
-            status["message"] = {"role": "agent", "parts": [{"kind": "text", "text": response["error"]}], "kind": "message", "messageId": str(uuid.uuid4())}
+            status["message"] = {
+                "role": "agent",
+                "parts": [{"kind": "text", "text": response["error"]}],
+                "kind": "message",
+                "messageId": str(uuid.uuid4()),
+            }
 
         return task
 
@@ -118,7 +181,10 @@ class MockA2AServer:
 
                 # Handle delayed responses
                 if response.get("state") == "working":
-                    self._delayed_responses[task_id] = (response["polls"], response["final"])
+                    self._delayed_responses[task_id] = (
+                        response["polls"],
+                        response["final"],
+                    )
                     self._task_poll_counts[task_id] = 0
                     task = self._build_task(task_id, context_id, {"state": "working"})
                 else:
@@ -134,14 +200,22 @@ class MockA2AServer:
                     if task_id in self.cancelled_task_ids:
                         task = {**task, "status": {"state": "canceled"}}
                     elif task_id in self._delayed_responses:
-                        self._task_poll_counts[task_id] = self._task_poll_counts.get(task_id, 0) + 1
+                        self._task_poll_counts[task_id] = (
+                            self._task_poll_counts.get(task_id, 0) + 1
+                        )
                         polls_needed, final_response = self._delayed_responses[task_id]
                         if self._task_poll_counts[task_id] >= polls_needed:
-                            task = self._build_task(task_id, task["contextId"], final_response)
+                            task = self._build_task(
+                                task_id, task["contextId"], final_response
+                            )
                             self._tasks[task_id] = task
                             del self._delayed_responses[task_id]
                     return {"jsonrpc": "2.0", "id": req_id, "result": task}
-                return {"jsonrpc": "2.0", "id": req_id, "error": {"code": -32001, "message": "Task not found"}}
+                return {
+                    "jsonrpc": "2.0",
+                    "id": req_id,
+                    "error": {"code": -32001, "message": "Task not found"},
+                }
 
             elif method == "tasks/cancel":
                 task_id = params.get("id")
@@ -149,8 +223,16 @@ class MockA2AServer:
                     self.cancelled_task_ids.add(task_id)
                     task = {**self._tasks[task_id], "status": {"state": "canceled"}}
                     return {"jsonrpc": "2.0", "id": req_id, "result": task}
-                return {"jsonrpc": "2.0", "id": req_id, "error": {"code": -32001, "message": "Task not found"}}
+                return {
+                    "jsonrpc": "2.0",
+                    "id": req_id,
+                    "error": {"code": -32001, "message": "Task not found"},
+                }
 
-            return {"jsonrpc": "2.0", "id": req_id, "error": {"code": -32601, "message": "Method not found"}}
+            return {
+                "jsonrpc": "2.0",
+                "id": req_id,
+                "error": {"code": -32601, "message": "Method not found"},
+            }
 
         return app

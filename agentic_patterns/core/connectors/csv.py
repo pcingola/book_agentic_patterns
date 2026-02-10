@@ -9,7 +9,10 @@ import csv
 import io
 from agentic_patterns.core.connectors.file import FileConnector
 from agentic_patterns.core.context.decorators import context_result
-from agentic_patterns.core.context.processors.csv_processor import _detect_delimiter, process_csv
+from agentic_patterns.core.context.processors.csv_processor import (
+    _detect_delimiter,
+    process_csv,
+)
 
 
 class CsvConnector(FileConnector):
@@ -43,7 +46,9 @@ class CsvConnector(FileConnector):
                 new_row.append(values[col_name])
         else:
             if len(values) != len(header):
-                raise ValueError(f"Value count mismatch: expected {len(header)}, got {len(values)}")
+                raise ValueError(
+                    f"Value count mismatch: expected {len(header)}, got {len(values)}"
+                )
             new_row = values
 
         with open(host_path, "a", encoding="utf-8") as f:
@@ -69,7 +74,9 @@ class CsvConnector(FileConnector):
             rows = list(reader)
 
         original_count = len(rows)
-        filtered_rows = [row for row in rows if not (len(row) > col_idx and row[col_idx] == value)]
+        filtered_rows = [
+            row for row in rows if not (len(row) > col_idx and row[col_idx] == value)
+        ]
         deleted_count = original_count - len(filtered_rows)
 
         if deleted_count == 0:
@@ -86,7 +93,9 @@ class CsvConnector(FileConnector):
         return f"Deleted {deleted_count} row(s) where {col_name}='{value}' from {path}"
 
     @context_result()
-    def find_rows(self, path: str, column: str | int, value: str, limit: int = 10) -> str:
+    def find_rows(
+        self, path: str, column: str | int, value: str, limit: int = 10
+    ) -> str:
         """Find rows where a column matches a value with automatic truncation."""
         host_path = self._translate_path(path)
         if not host_path.exists():
@@ -129,7 +138,9 @@ class CsvConnector(FileConnector):
             if not result.success:
                 raise ValueError(f"Failed to process results: {result.content}")
 
-            rows_info = f"[Found {len(matching_rows)} row(s): {', '.join(row_numbers)}]\n"
+            rows_info = (
+                f"[Found {len(matching_rows)} row(s): {', '.join(row_numbers)}]\n"
+            )
             return rows_info + result.content
         finally:
             if temp_file.exists():
@@ -160,7 +171,7 @@ class CsvConnector(FileConnector):
             raise ValueError(f"Failed to read CSV: {result.content}")
 
         delimiter = _detect_delimiter(host_path)
-        lines = result.content.strip().split('\n')
+        lines = result.content.strip().split("\n")
         if not lines:
             raise ValueError("Empty CSV file")
 
@@ -186,7 +197,7 @@ class CsvConnector(FileConnector):
         if not result.success:
             raise ValueError(f"Failed to read CSV: {result.content}")
 
-        if not result.content.strip() or result.content.count('\n') < 2:
+        if not result.content.strip() or result.content.count("\n") < 2:
             raise IndexError(f"Row {row_number} not found")
 
         return f"[Row {row_number}]\n{result.content}"
@@ -229,13 +240,17 @@ class CsvConnector(FileConnector):
                 raise ValueError(f"Failed to read CSV: {result.content}")
 
             if start > 0:
-                return f"[Rows {start + 1}-{total_rows} of {total_rows}]\n{result.content}"
+                return (
+                    f"[Rows {start + 1}-{total_rows} of {total_rows}]\n{result.content}"
+                )
             return result.content
         finally:
             if temp_file.exists():
                 temp_file.unlink()
 
-    def update_cell(self, path: str, row_number: int, column: str | int, value: str) -> str:
+    def update_cell(
+        self, path: str, row_number: int, column: str | int, value: str
+    ) -> str:
         """Update a single cell value."""
         host_path = self._translate_path(path)
         if not host_path.exists():
@@ -254,7 +269,9 @@ class CsvConnector(FileConnector):
             rows = list(reader)
 
         if row_number > len(rows):
-            raise IndexError(f"Row {row_number} not found (file has {len(rows)} data rows)")
+            raise IndexError(
+                f"Row {row_number} not found (file has {len(rows)} data rows)"
+            )
 
         rows[row_number - 1][col_idx] = value
 
@@ -267,7 +284,9 @@ class CsvConnector(FileConnector):
         col_name = header[col_idx] if isinstance(column, int) else column
         return f"Updated row {row_number}, column '{col_name}' to '{value}' in {path}"
 
-    def update_row(self, path: str, key_column: str | int, key_value: str, updates: dict[str, str]) -> str:
+    def update_row(
+        self, path: str, key_column: str | int, key_value: str, updates: dict[str, str]
+    ) -> str:
         """Update an entire row by matching a key column."""
         host_path = self._translate_path(path)
         if not host_path.exists():
@@ -289,7 +308,9 @@ class CsvConnector(FileConnector):
                 try:
                     update_indices[col_name] = header.index(col_name)
                 except ValueError:
-                    raise ValueError(f"Column '{col_name}' not found. Available columns: {', '.join(header)}") from None
+                    raise ValueError(
+                        f"Column '{col_name}' not found. Available columns: {', '.join(header)}"
+                    ) from None
 
             rows = list(reader)
 
@@ -301,7 +322,9 @@ class CsvConnector(FileConnector):
                 updated_count += 1
 
         if updated_count == 0:
-            key_col_name = header[key_col_idx] if isinstance(key_column, int) else key_column
+            key_col_name = (
+                header[key_col_idx] if isinstance(key_column, int) else key_column
+            )
             return f"[No rows found where {key_col_name}='{key_value}']"
 
         output = io.StringIO()
@@ -310,7 +333,9 @@ class CsvConnector(FileConnector):
         csv_writer.writerows(rows)
         host_path.write_text(output.getvalue())
 
-        key_col_name = header[key_col_idx] if isinstance(key_column, int) else key_column
+        key_col_name = (
+            header[key_col_idx] if isinstance(key_column, int) else key_column
+        )
         return f"Updated {updated_count} row(s) where {key_col_name}='{key_value}' in {path}"
 
     @staticmethod
@@ -318,9 +343,13 @@ class CsvConnector(FileConnector):
         """Resolve column name or index to index."""
         if isinstance(column, int):
             if column < 0 or column >= len(header):
-                raise ValueError(f"Column index {column} out of range (0-{len(header) - 1})")
+                raise ValueError(
+                    f"Column index {column} out of range (0-{len(header) - 1})"
+                )
             return column
         try:
             return header.index(column)
         except ValueError:
-            raise ValueError(f"Column '{column}' not found. Available columns: {', '.join(header)}") from None
+            raise ValueError(
+                f"Column '{column}' not found. Available columns: {', '.join(header)}"
+            ) from None

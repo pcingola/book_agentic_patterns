@@ -1,9 +1,9 @@
 import asyncio
 import unittest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 from agentic_patterns.core.doctors.base import DoctorBase
-from agentic_patterns.core.doctors.models import Issue, IssueCategory, IssueLevel, Recommendation
+from agentic_patterns.core.doctors.models import Recommendation
 
 
 class MockDoctor(DoctorBase):
@@ -15,9 +15,14 @@ class MockDoctor(DoctorBase):
     async def analyze(self, target, verbose: bool = False) -> Recommendation:
         return Recommendation(name=str(target), needs_improvement=False, issues=[])
 
-    async def _analyze_batch_internal(self, batch: list, verbose: bool = False) -> list[Recommendation]:
+    async def _analyze_batch_internal(
+        self, batch: list, verbose: bool = False
+    ) -> list[Recommendation]:
         self.batches_processed.append(batch)
-        return [Recommendation(name=str(t), needs_improvement=False, issues=[]) for t in batch]
+        return [
+            Recommendation(name=str(t), needs_improvement=False, issues=[])
+            for t in batch
+        ]
 
 
 class TestDoctorBase(unittest.TestCase):

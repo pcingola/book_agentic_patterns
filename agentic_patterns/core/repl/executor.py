@@ -15,9 +15,17 @@ from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 
 from agentic_patterns.core.repl.cell_output import CellOutput
-from agentic_patterns.core.repl.cell_utils import SubprocessResult, execute_and_capture_last_expression, filter_picklable_namespace
+from agentic_patterns.core.repl.cell_utils import (
+    SubprocessResult,
+    execute_and_capture_last_expression,
+    filter_picklable_namespace,
+)
 from agentic_patterns.core.repl.enums import CellState, OutputType
-from agentic_patterns.core.repl.matplotlib_backend import capture_matplotlib_figures, configure_matplotlib, reset_matplotlib
+from agentic_patterns.core.repl.matplotlib_backend import (
+    capture_matplotlib_figures,
+    configure_matplotlib,
+    reset_matplotlib,
+)
 from agentic_patterns.core.repl.openpyxl_handler import restore_workbook_references
 
 
@@ -50,7 +58,7 @@ def main() -> None:
                 except Exception as e:
                     print(f"Failed to execute import statement '{import_stmt}': {e}")
 
-            for func_def in (function_definitions or []):
+            for func_def in function_definitions or []:
                 try:
                     exec(func_def, namespace)
                 except Exception as e:
@@ -59,12 +67,18 @@ def main() -> None:
             last_value = execute_and_capture_last_expression(code, namespace)
 
             if last_value is not None:
-                result.outputs.append(CellOutput(output_type=OutputType.TEXT, content=repr(last_value)))
+                result.outputs.append(
+                    CellOutput(output_type=OutputType.TEXT, content=repr(last_value))
+                )
 
             if stdout_text := stdout_buf.getvalue():
-                result.outputs.append(CellOutput(output_type=OutputType.TEXT, content=stdout_text))
+                result.outputs.append(
+                    CellOutput(output_type=OutputType.TEXT, content=stdout_text)
+                )
             if stderr_text := stderr_buf.getvalue():
-                result.outputs.append(CellOutput(output_type=OutputType.ERROR, content=stderr_text))
+                result.outputs.append(
+                    CellOutput(output_type=OutputType.ERROR, content=stderr_text)
+                )
 
             figure_outputs = capture_matplotlib_figures()
             result.outputs.extend(figure_outputs)
@@ -73,11 +87,19 @@ def main() -> None:
     except Exception as e:
         result.state = CellState.ERROR
         error_msg = f"{type(e).__name__}: {str(e)}\n{traceback.format_exc()}"
-        result.outputs.append(CellOutput(output_type=OutputType.ERROR, content=error_msg))
+        result.outputs.append(
+            CellOutput(output_type=OutputType.ERROR, content=error_msg)
+        )
 
-    result.namespace, namespace_messages = filter_picklable_namespace(namespace, user_id, session_id, workspace_path)
+    result.namespace, namespace_messages = filter_picklable_namespace(
+        namespace, user_id, session_id, workspace_path
+    )
     if namespace_messages:
-        result.outputs.append(CellOutput(output_type=OutputType.TEXT, content="\n".join(namespace_messages)))
+        result.outputs.append(
+            CellOutput(
+                output_type=OutputType.TEXT, content="\n".join(namespace_messages)
+            )
+        )
 
     (temp_dir / "output.pkl").write_bytes(pickle.dumps(result))
 

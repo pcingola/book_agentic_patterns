@@ -67,7 +67,11 @@ class RequestSchemaInfo:
     example: str | None = None
 
     def __str__(self) -> str:
-        schema_preview = self.schema_json[:50] + "..." if len(self.schema_json) > 50 else self.schema_json
+        schema_preview = (
+            self.schema_json[:50] + "..."
+            if len(self.schema_json) > 50
+            else self.schema_json
+        )
         return f"RequestSchemaInfo({self.content_type!r}, schema={schema_preview!r})"
 
     @classmethod
@@ -99,7 +103,11 @@ class ResponseSchemaInfo:
     example: str | None = None
 
     def __str__(self) -> str:
-        schema_preview = self.schema_json[:50] + "..." if len(self.schema_json) > 50 else self.schema_json
+        schema_preview = (
+            self.schema_json[:50] + "..."
+            if len(self.schema_json) > 50
+            else self.schema_json
+        )
         return f"ResponseSchemaInfo({self.status_code}, {self.content_type!r}, schema={schema_preview!r})"
 
     @classmethod
@@ -154,8 +162,12 @@ class EndpointInfo:
             summary=data.get("summary", ""),
             description=data.get("description", ""),
             parameters=[ParameterInfo.from_dict(p) for p in data.get("parameters", [])],
-            request_body=RequestSchemaInfo.from_dict(data["request_body"]) if data.get("request_body") else None,
-            responses=[ResponseSchemaInfo.from_dict(r) for r in data.get("responses", [])],
+            request_body=RequestSchemaInfo.from_dict(data["request_body"])
+            if data.get("request_body")
+            else None,
+            responses=[
+                ResponseSchemaInfo.from_dict(r) for r in data.get("responses", [])
+            ],
             tags=data.get("tags", []),
             deprecated=data.get("deprecated", False),
             category=data.get("category", ""),
@@ -194,7 +206,11 @@ class ApiInfo:
     cache_file_path: Path | None = field(default=None, repr=False, compare=False)
 
     def __str__(self) -> str:
-        desc_preview = self.description[:50] + "..." if len(self.description) > 50 else self.description
+        desc_preview = (
+            self.description[:50] + "..."
+            if len(self.description) > 50
+            else self.description
+        )
         return f"ApiInfo(api_id={self.api_id!r}, title={self.title!r}, endpoints={len(self.endpoints)}, description={desc_preview!r})"
 
     def __iter__(self):
@@ -252,16 +268,24 @@ class ApiInfo:
             example_use_cases=data.get("example_use_cases", []),
             cache_file_path=cache_file_path,
         )
-        api_info.endpoints = [EndpointInfo.from_dict(e, api=api_info) for e in data.get("endpoints", [])]
+        api_info.endpoints = [
+            EndpointInfo.from_dict(e, api=api_info) for e in data.get("endpoints", [])
+        ]
         return api_info
 
     @classmethod
-    def load(cls, api_id: str | None = None, input_path: Path | None = None) -> "ApiInfo":
+    def load(
+        cls, api_id: str | None = None, input_path: Path | None = None
+    ) -> "ApiInfo":
         """Load API info from JSON file."""
         if input_path is None:
             if api_id is None:
                 raise ValueError("Either api_id or input_path must be provided")
-            from agentic_patterns.core.connectors.openapi.config import API_CACHE_DIR, API_INFO_EXT
+            from agentic_patterns.core.connectors.openapi.config import (
+                API_CACHE_DIR,
+                API_INFO_EXT,
+            )
+
             input_path = API_CACHE_DIR / api_id / f"{api_id}{API_INFO_EXT}"
         data = json.loads(input_path.read_text())
         return cls.from_dict(data, cache_file_path=input_path)
@@ -272,7 +296,11 @@ class ApiInfo:
             if self.cache_file_path is not None:
                 output_path = self.cache_file_path
             else:
-                from agentic_patterns.core.connectors.openapi.config import API_CACHE_DIR, API_INFO_EXT
+                from agentic_patterns.core.connectors.openapi.config import (
+                    API_CACHE_DIR,
+                    API_INFO_EXT,
+                )
+
                 output_dir = API_CACHE_DIR / self.api_id
                 output_dir.mkdir(parents=True, exist_ok=True)
                 output_path = output_dir / f"{self.api_id}{API_INFO_EXT}"

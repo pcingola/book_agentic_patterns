@@ -12,6 +12,7 @@ from agentic_patterns.core.config.config import MAIN_PROJECT_DIR
 
 class MCPClientConfig(BaseModel):
     """Configuration for connecting to an external MCP server."""
+
     type: str = Field(default="client")
     url: str
     url_isolated: str | None = None
@@ -20,6 +21,7 @@ class MCPClientConfig(BaseModel):
 
 class MCPServerConfig(BaseModel):
     """Configuration for exposing an MCP server."""
+
     type: str = Field(default="server")
     name: str
     instructions: str | None = None
@@ -31,20 +33,25 @@ MCPConfig = MCPClientConfig | MCPServerConfig
 
 class MCPSettings(BaseModel):
     """Container for MCP configurations."""
+
     mcp_servers: dict[str, MCPConfig]
 
     def get(self, name: str) -> MCPConfig:
         if name not in self.mcp_servers:
-            raise ValueError(f"MCP config '{name}' not found. Available: {list(self.mcp_servers.keys())}")
+            raise ValueError(
+                f"MCP config '{name}' not found. Available: {list(self.mcp_servers.keys())}"
+            )
         return self.mcp_servers[name]
 
 
 def _expand_env_vars(value: str) -> str:
     """Expand ${VAR} patterns in string values."""
-    pattern = r'\$\{(\w+)\}'
+    pattern = r"\$\{(\w+)\}"
+
     def replace(match):
         var_name = match.group(1)
         return os.environ.get(var_name, match.group(0))
+
     return re.sub(pattern, replace, value)
 
 

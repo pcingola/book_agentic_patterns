@@ -24,10 +24,14 @@ def create_vocabulary_agent(vocab_names: list[str] | None = None) -> Agent:
     """Create a vocabulary agent with tools bound to available vocabularies."""
     instructions = _build_instructions(vocab_names)
     tools = _get_tools()
-    return get_agent(system_prompt=SYSTEM_PROMPT, instructions=instructions, tools=tools)
+    return get_agent(
+        system_prompt=SYSTEM_PROMPT, instructions=instructions, tools=tools
+    )
 
 
-async def run_vocabulary_query(query: str, vocab_names: list[str] | None = None, verbose: bool = False) -> tuple[Any, list]:
+async def run_vocabulary_query(
+    query: str, vocab_names: list[str] | None = None, verbose: bool = False
+) -> tuple[Any, list]:
     """Run a vocabulary query using the vocabulary agent."""
     agent = create_vocabulary_agent(vocab_names)
     return await run_agent(agent, query, verbose=verbose)
@@ -42,7 +46,9 @@ def _build_instructions(vocab_names: list[str] | None = None) -> str:
         return "No vocabularies are currently loaded."
     lines = ["Available vocabularies:"]
     for info in infos:
-        lines.append(f"- {info.name}: {info.strategy.value} strategy, {info.term_count} terms ({info.source_format})")
+        lines.append(
+            f"- {info.name}: {info.strategy.value} strategy, {info.term_count} terms ({info.source_format})"
+        )
     return "\n".join(lines)
 
 
@@ -73,11 +79,15 @@ def _get_tools() -> list:
         """Get direct children of a term."""
         return _connector.children(vocab_name, term_code)
 
-    async def vocab_ancestors(vocab_name: str, term_code: str, max_depth: int = 10) -> str:
+    async def vocab_ancestors(
+        vocab_name: str, term_code: str, max_depth: int = 10
+    ) -> str:
         """Get ancestor chain to root."""
         return _connector.ancestors(vocab_name, term_code, max_depth)
 
-    async def vocab_descendants(vocab_name: str, term_code: str, max_depth: int = 10) -> str:
+    async def vocab_descendants(
+        vocab_name: str, term_code: str, max_depth: int = 10
+    ) -> str:
         """Get all descendants up to max_depth."""
         return _connector.descendants(vocab_name, term_code, max_depth)
 
@@ -98,7 +108,16 @@ def _get_tools() -> list:
         return _connector.list_vocabularies()
 
     return [
-        vocab_lookup, vocab_search, vocab_validate, vocab_suggest,
-        vocab_parent, vocab_children, vocab_ancestors, vocab_descendants,
-        vocab_relationships, vocab_related, vocab_info, vocab_list,
+        vocab_lookup,
+        vocab_search,
+        vocab_validate,
+        vocab_suggest,
+        vocab_parent,
+        vocab_children,
+        vocab_ancestors,
+        vocab_descendants,
+        vocab_relationships,
+        vocab_related,
+        vocab_info,
+        vocab_list,
     ]

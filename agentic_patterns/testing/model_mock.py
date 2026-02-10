@@ -6,7 +6,13 @@ from contextlib import asynccontextmanager
 from types import AsyncGeneratorType
 
 from pydantic import BaseModel
-from pydantic_ai.messages import FinishReason, ModelMessage, ModelResponse, TextPart, ToolCallPart
+from pydantic_ai.messages import (
+    FinishReason,
+    ModelMessage,
+    ModelResponse,
+    TextPart,
+    ToolCallPart,
+)
 from pydantic_ai.models import Model, ModelRequestParameters, StreamedResponse
 from pydantic_ai.models.function import _estimate_usage
 from pydantic_ai.models.test import TestStreamedResponse
@@ -33,7 +39,9 @@ def _convert_to_parts(items: list[ResponseItem]) -> list[TextPart | ToolCallPart
             case TextPart() | ToolCallPart():
                 parts.append(item)
             case _:
-                raise ValueError(f"Invalid item type in list: {type(item)}, item: {item}")
+                raise ValueError(
+                    f"Invalid item type in list: {type(item)}, item: {item}"
+                )
     return parts
 
 
@@ -56,7 +64,11 @@ def final_result_tool(result: BaseModel | dict | list) -> ToolCallPart:
 class MockFinishReason:
     """Wraps a response item for ModelMock to emulate a custom finish reason from the model."""
 
-    def __init__(self, reason: FinishReason, response: ResponseItem | list[ResponseItem] | None = None):
+    def __init__(
+        self,
+        reason: FinishReason,
+        response: ResponseItem | list[ResponseItem] | None = None,
+    ):
         self.reason: FinishReason = reason
         match response:
             case list():
@@ -114,10 +126,13 @@ class ModelMock(Model):
 
     def __init__(
         self,
-        responses: list[ResponseItem | list[ResponseItem] | MockFinishReason] | AsyncGeneratorType,
+        responses: list[ResponseItem | list[ResponseItem] | MockFinishReason]
+        | AsyncGeneratorType,
         sleep_time: float | None = None,
     ):
-        self.response_iter = responses(self) if callable(responses) else _async_iter(responses)
+        self.response_iter = (
+            responses(self) if callable(responses) else _async_iter(responses)
+        )
         self.messages: list[ModelMessage] = None
         self.sleep_time = sleep_time
         self.last_model_request_parameters: ModelRequestParameters | None = None
@@ -130,7 +145,11 @@ class ModelMock(Model):
     @property
     def last_message_part(self) -> TextPart | ToolCallPart | None:
         """Return the last part of the response."""
-        return self.last_message.parts[-1] if self.last_message and self.last_message.parts else None
+        return (
+            self.last_message.parts[-1]
+            if self.last_message and self.last_message.parts
+            else None
+        )
 
     @property
     def model_name(self) -> str:
@@ -147,7 +166,9 @@ class ModelMock(Model):
         model_request_parameters: ModelRequestParameters,
     ) -> ModelResponse:
         self.last_model_request_parameters = model_request_parameters
-        model_response = await self._request(messages, model_settings, model_request_parameters)
+        model_response = await self._request(
+            messages, model_settings, model_request_parameters
+        )
         model_response.usage = _estimate_usage([*messages, model_response])
         return model_response
 
@@ -160,7 +181,9 @@ class ModelMock(Model):
         *args,  # noqa: ARG002
         **kwargs,  # noqa: ARG002
     ) -> AsyncIterator[StreamedResponse]:
-        model_response = await self._request(messages, model_settings, model_request_parameters)
+        model_response = await self._request(
+            messages, model_settings, model_request_parameters
+        )
         response = TestStreamedResponse(
             _model_name=self.model_name,
             _structured_response=model_response,
@@ -200,4 +223,6 @@ class ModelMock(Model):
 
         if self.sleep_time:
             await asyncio.sleep(self.sleep_time)
-        return ModelResponse(parts=parts, model_name=self.model_name, finish_reason=finish_reason)
+        return ModelResponse(
+            parts=parts, model_name=self.model_name, finish_reason=finish_reason
+        )

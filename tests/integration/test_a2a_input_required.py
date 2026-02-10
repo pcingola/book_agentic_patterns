@@ -30,7 +30,9 @@ class ServerThread(threading.Thread):
         self.server = None
 
     def run(self):
-        config = uvicorn.Config(self.app, host="127.0.0.1", port=self.port, log_level="error", ws="none")
+        config = uvicorn.Config(
+            self.app, host="127.0.0.1", port=self.port, log_level="error", ws="none"
+        )
         self.server = uvicorn.Server(config)
         self.server.run()
 
@@ -45,7 +47,9 @@ class TestInputRequiredPropagation(unittest.IsolatedAsyncioTestCase):
     @classmethod
     def setUpClass(cls):
         cls.port = find_free_port()
-        cls.mock_server = MockA2AServer(name="FormBot", description="Collects user information")
+        cls.mock_server = MockA2AServer(
+            name="FormBot", description="Collects user information"
+        )
         cls.mock_server.on_prompt("start form", input_required="What is your name?")
         cls.mock_server.on_pattern(r"name is .*", result="Thank you, form completed")
 
@@ -59,7 +63,9 @@ class TestInputRequiredPropagation(unittest.IsolatedAsyncioTestCase):
         cls.server_thread.stop()
 
     def setUp(self):
-        self.config = A2AClientConfig(url=f"http://127.0.0.1:{self.port}", timeout=10, poll_interval=0.1)
+        self.config = A2AClientConfig(
+            url=f"http://127.0.0.1:{self.port}", timeout=10, poll_interval=0.1
+        )
         self.client = A2AClientExtended(self.config)
         self.mock_server.received_prompts.clear()
 
@@ -82,10 +88,12 @@ class TestInputRequiredPropagation(unittest.IsolatedAsyncioTestCase):
         card = await self.client.get_agent_card()
         a2a_tool = create_a2a_tool(self.client, card)
 
-        model = ModelMock(responses=[
-            ToolCallPart(tool_name="formbot", args={"prompt": "start form"}),
-            "The form bot is asking: What is your name?",
-        ])
+        model = ModelMock(
+            responses=[
+                ToolCallPart(tool_name="formbot", args={"prompt": "start form"}),
+                "The form bot is asking: What is your name?",
+            ]
+        )
 
         agent = get_agent(model=model, tools=[a2a_tool])
         result = await agent.run("Fill out the form")

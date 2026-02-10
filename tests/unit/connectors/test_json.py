@@ -16,7 +16,9 @@ class TestJsonConnector(unittest.TestCase):
         """Set up test fixtures."""
         self.temp_dir = tempfile.TemporaryDirectory()
         self.workspace_dir = Path(self.temp_dir.name)
-        self.patcher = patch("agentic_patterns.core.workspace.WORKSPACE_DIR", self.workspace_dir)
+        self.patcher = patch(
+            "agentic_patterns.core.workspace.WORKSPACE_DIR", self.workspace_dir
+        )
         self.patcher.start()
 
         self.workspace_root = self.workspace_dir / "default_user" / "default_session"
@@ -89,20 +91,26 @@ class TestJsonConnector(unittest.TestCase):
 
     def test_get_json_primitive(self):
         """Test getting a primitive value."""
-        sandbox_path = self._create_json_file("config.json", {"features": {"rollout": {"percent": 50}}})
+        sandbox_path = self._create_json_file(
+            "config.json", {"features": {"rollout": {"percent": 50}}}
+        )
         result = self.connector.get(sandbox_path, "$.features.rollout.percent")
         self.assertEqual(result.strip(), "50")
 
     def test_get_json_object(self):
         """Test getting an object value."""
-        sandbox_path = self._create_json_file("config.json", {"features": {"rollout": {"enabled": True, "percent": 50}}})
+        sandbox_path = self._create_json_file(
+            "config.json", {"features": {"rollout": {"enabled": True, "percent": 50}}}
+        )
         result = self.connector.get(sandbox_path, "$.features.rollout")
         self.assertIn("enabled", result)
         self.assertIn("percent", result)
 
     def test_get_json_array_index(self):
         """Test getting array element by index."""
-        sandbox_path = self._create_json_file("users.json", {"users": [{"name": "Alice"}, {"name": "Bob"}]})
+        sandbox_path = self._create_json_file(
+            "users.json", {"users": [{"name": "Alice"}, {"name": "Bob"}]}
+        )
         result = self.connector.get(sandbox_path, "$.users[0].name")
         self.assertIn("Alice", result)
 
@@ -114,7 +122,10 @@ class TestJsonConnector(unittest.TestCase):
 
     def test_keys_json_object(self):
         """Test listing keys of an object."""
-        sandbox_path = self._create_json_file("config.json", {"features": {"rollout": {}, "darkMode": True, "analytics": {}}})
+        sandbox_path = self._create_json_file(
+            "config.json",
+            {"features": {"rollout": {}, "darkMode": True, "analytics": {}}},
+        )
         result = self.connector.keys(sandbox_path, "$.features")
         self.assertIn("rollout", result)
         self.assertIn("darkMode", result)
@@ -129,7 +140,9 @@ class TestJsonConnector(unittest.TestCase):
 
     def test_keys_json_root(self):
         """Test listing keys at root."""
-        sandbox_path = self._create_json_file("config.json", {"features": {}, "version": "1.0", "env": "prod"})
+        sandbox_path = self._create_json_file(
+            "config.json", {"features": {}, "version": "1.0", "env": "prod"}
+        )
         result = self.connector.keys(sandbox_path, "$")
         self.assertIn("features", result)
         self.assertIn("version", result)
@@ -137,7 +150,9 @@ class TestJsonConnector(unittest.TestCase):
 
     def test_validate_json_valid(self):
         """Test validating a valid JSON file."""
-        sandbox_path = self._create_json_file("valid.json", {"key1": "value1", "key2": "value2"})
+        sandbox_path = self._create_json_file(
+            "valid.json", {"key1": "value1", "key2": "value2"}
+        )
         result = self.connector.validate(sandbox_path)
         self.assertIn("Valid JSON", result)
         self.assertIn("2 keys", result)
@@ -151,7 +166,9 @@ class TestJsonConnector(unittest.TestCase):
 
     def test_set_json_primitive(self):
         """Test setting a primitive value."""
-        sandbox_path = self._create_json_file("config.json", {"features": {"rollout": {"percent": 50}}})
+        sandbox_path = self._create_json_file(
+            "config.json", {"features": {"rollout": {"percent": 50}}}
+        )
         result = self.connector.set(sandbox_path, "$.features.rollout.percent", "75")
         self.assertIn("Updated", result)
 
@@ -162,7 +179,9 @@ class TestJsonConnector(unittest.TestCase):
     def test_set_json_object(self):
         """Test setting an object value."""
         sandbox_path = self._create_json_file("config.json", {"features": {}})
-        result = self.connector.set(sandbox_path, "$.features.newFeature", '{"enabled": true}')
+        result = self.connector.set(
+            sandbox_path, "$.features.newFeature", '{"enabled": true}'
+        )
         self.assertIn("Updated", result)
 
         with open(self.workspace_root / "config.json", "r") as f:
@@ -177,7 +196,9 @@ class TestJsonConnector(unittest.TestCase):
 
     def test_set_json_wildcard_rejected(self):
         """Test that wildcard paths are rejected."""
-        sandbox_path = self._create_json_file("users.json", {"users": [{"status": "active"}, {"status": "active"}]})
+        sandbox_path = self._create_json_file(
+            "users.json", {"users": [{"status": "active"}, {"status": "active"}]}
+        )
         with self.assertRaises(ValueError):
             self.connector.set(sandbox_path, "$.users[*].status", '"inactive"')
 
@@ -189,7 +210,9 @@ class TestJsonConnector(unittest.TestCase):
 
     def test_delete_json_key(self):
         """Test deleting a key."""
-        sandbox_path = self._create_json_file("config.json", {"features": {"old": True, "new": False}})
+        sandbox_path = self._create_json_file(
+            "config.json", {"features": {"old": True, "new": False}}
+        )
         result = self.connector.delete_key(sandbox_path, "$.features.old")
         self.assertIn("Deleted", result)
 
@@ -206,7 +229,9 @@ class TestJsonConnector(unittest.TestCase):
 
     def test_delete_json_wildcard_rejected(self):
         """Test that wildcard deletes are rejected."""
-        sandbox_path = self._create_json_file("users.json", {"users": [{"temp": True}, {"temp": True}]})
+        sandbox_path = self._create_json_file(
+            "users.json", {"users": [{"temp": True}, {"temp": True}]}
+        )
         with self.assertRaises(ValueError):
             self.connector.delete_key(sandbox_path, "$.users[*].temp")
 
@@ -218,7 +243,9 @@ class TestJsonConnector(unittest.TestCase):
 
     def test_append_json(self):
         """Test appending to an array."""
-        sandbox_path = self._create_json_file("users.json", {"users": [{"id": 1}, {"id": 2}]})
+        sandbox_path = self._create_json_file(
+            "users.json", {"users": [{"id": 1}, {"id": 2}]}
+        )
         result = self.connector.append(sandbox_path, "$.users", '{"id": 3}')
         self.assertIn("Appended", result)
         self.assertIn("3 items", result)
@@ -230,7 +257,9 @@ class TestJsonConnector(unittest.TestCase):
 
     def test_append_json_not_array(self):
         """Test appending to non-array."""
-        sandbox_path = self._create_json_file("test.json", {"notArray": {"key": "value"}})
+        sandbox_path = self._create_json_file(
+            "test.json", {"notArray": {"key": "value"}}
+        )
         with self.assertRaises(TypeError):
             self.connector.append(sandbox_path, "$.notArray", '"value"')
 
@@ -242,8 +271,14 @@ class TestJsonConnector(unittest.TestCase):
 
     def test_merge_json(self):
         """Test merging into an object."""
-        sandbox_path = self._create_json_file("config.json", {"features": {"rollout": {"percent": 50, "enabled": True}}})
-        result = self.connector.merge(sandbox_path, "$.features.rollout", '{"percent": 75, "regions": ["us-east-1"]}')
+        sandbox_path = self._create_json_file(
+            "config.json", {"features": {"rollout": {"percent": 50, "enabled": True}}}
+        )
+        result = self.connector.merge(
+            sandbox_path,
+            "$.features.rollout",
+            '{"percent": 75, "regions": ["us-east-1"]}',
+        )
         self.assertIn("Merged", result)
         self.assertIn("2 keys", result)
 
@@ -303,20 +338,26 @@ class TestJsonConnector(unittest.TestCase):
 
     def test_special_characters_in_keys(self):
         """Test keys with special characters."""
-        sandbox_path = self._create_json_file("test.json", {"key with spaces": "value", "key.with.dots": "value2"})
+        sandbox_path = self._create_json_file(
+            "test.json", {"key with spaces": "value", "key.with.dots": "value2"}
+        )
         result = self.connector.keys(sandbox_path, "$")
         self.assertIn("key with spaces", result)
         self.assertIn("key.with.dots", result)
 
     def test_unicode_values(self):
         """Test handling unicode values."""
-        sandbox_path = self._create_json_file("test.json", {"name": "Alice", "greeting": "Hello world"})
+        sandbox_path = self._create_json_file(
+            "test.json", {"name": "Alice", "greeting": "Hello world"}
+        )
         result = self.connector.get(sandbox_path, "$.greeting")
         self.assertIn("Hello", result)
 
     def test_boolean_values(self):
         """Test handling boolean values."""
-        sandbox_path = self._create_json_file("test.json", {"active": True, "deleted": False})
+        sandbox_path = self._create_json_file(
+            "test.json", {"active": True, "deleted": False}
+        )
         result = self.connector.get(sandbox_path, "$.active")
         self.assertEqual(result.strip(), "true")
 

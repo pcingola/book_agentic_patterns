@@ -53,7 +53,9 @@ def register_tools(mcp: FastMCP) -> None:
     @mcp.tool()
     @tool_permission(ToolPermission.WRITE)
     @context_result()
-    async def execute_cell(code: str, timeout: int = DEFAULT_CELL_TIMEOUT, ctx: Context = None) -> str:
+    async def execute_cell(
+        code: str, timeout: int = DEFAULT_CELL_TIMEOUT, ctx: Context = None
+    ) -> str:
         """Add and execute a new Python cell. Returns cell output.
 
         Args:
@@ -89,7 +91,9 @@ def register_tools(mcp: FastMCP) -> None:
     @mcp.tool()
     @tool_permission(ToolPermission.WRITE)
     @context_result()
-    async def rerun_cell(cell_number: int, timeout: int = DEFAULT_CELL_TIMEOUT, ctx: Context = None) -> str:
+    async def rerun_cell(
+        cell_number: int, timeout: int = DEFAULT_CELL_TIMEOUT, ctx: Context = None
+    ) -> str:
         """Re-execute an existing cell by number (0-based).
 
         Args:

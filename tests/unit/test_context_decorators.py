@@ -1,7 +1,11 @@
 import unittest
 
 from agentic_patterns.core.context.config import TruncationConfig
-from agentic_patterns.core.context.decorators import _detect_content_type, _get_extension_for_type, _truncate_by_type
+from agentic_patterns.core.context.decorators import (
+    _detect_content_type,
+    _get_extension_for_type,
+    _truncate_by_type,
+)
 from agentic_patterns.core.context.models import FileType
 
 
@@ -16,7 +20,7 @@ class TestContextDecorators(unittest.TestCase):
 
     def test_detect_content_type_json_array(self):
         """Test that content starting with [ is detected as JSON."""
-        content = '[1, 2, 3]'
+        content = "[1, 2, 3]"
         result = _detect_content_type(content)
         self.assertEqual(result, FileType.JSON)
 
@@ -80,6 +84,7 @@ class TestContextDecorators(unittest.TestCase):
     def test_truncate_json_array_preserves_structure(self):
         """Test that JSON array truncation preserves valid JSON structure."""
         import json
+
         data = [{"id": i, "name": f"item{i}"} for i in range(50)]
         content = json.dumps(data)
         config = TruncationConfig(json_array_head=3, json_array_tail=2)
@@ -94,6 +99,7 @@ class TestContextDecorators(unittest.TestCase):
     def test_truncate_json_object_limits_keys(self):
         """Test that JSON object truncation limits number of keys."""
         import json
+
         data = {f"key{i}": f"value{i}" for i in range(50)}
         content = json.dumps(data)
         config = TruncationConfig(json_max_keys=5)
@@ -107,17 +113,21 @@ class TestContextDecorators(unittest.TestCase):
     def test_truncate_json_nested_structure(self):
         """Test that nested JSON structures are truncated recursively."""
         import json
+
         data = {"items": [{"id": i, "tags": list(range(20))} for i in range(30)]}
         content = json.dumps(data)
         config = TruncationConfig(json_array_head=2, json_array_tail=1)
         result = _truncate_by_type(content, FileType.JSON, config)
         parsed = json.loads(result)
         self.assertEqual(len(parsed["items"]), 4)  # 2 head + 1 omitted + 1 tail
-        self.assertEqual(len(parsed["items"][0]["tags"]), 4)  # nested array also truncated
+        self.assertEqual(
+            len(parsed["items"][0]["tags"]), 4
+        )  # nested array also truncated
 
     def test_truncate_json_small_array_unchanged(self):
         """Test that small JSON arrays are not truncated."""
         import json
+
         data = [1, 2, 3]
         content = json.dumps(data)
         config = TruncationConfig(json_array_head=10, json_array_tail=5)
@@ -136,6 +146,7 @@ class TestContextDecorators(unittest.TestCase):
     def test_truncate_json_deep_nesting_limited(self):
         """Test that deeply nested JSON stops at depth limit."""
         import json
+
         data = {"a": {"b": {"c": {"d": {"e": {"f": {"g": "deep"}}}}}}}
         content = json.dumps(data)
         config = TruncationConfig()

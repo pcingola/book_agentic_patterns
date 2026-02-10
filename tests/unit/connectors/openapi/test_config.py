@@ -51,10 +51,13 @@ apis:
             self.assertIn("local_api", configs.list_api_ids())
 
             test_config = configs.get_config("test_api")
-            self.assertEqual(test_config.spec_source, "https://example.com/openapi.json")
+            self.assertEqual(
+                test_config.spec_source, "https://example.com/openapi.json"
+            )
 
     def test_env_var_expansion(self):
         import os
+
         os.environ["TEST_API_URL"] = "https://test.example.com"
 
         with TemporaryDirectory() as tmpdir:
@@ -71,7 +74,9 @@ apis:
             configs.load_from_yaml(yaml_path)
 
             test_config = configs.get_config("test_api")
-            self.assertEqual(test_config.spec_source, "https://test.example.com/openapi.json")
+            self.assertEqual(
+                test_config.spec_source, "https://test.example.com/openapi.json"
+            )
             self.assertEqual(test_config.base_url, "https://test.example.com")
 
 

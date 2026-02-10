@@ -12,6 +12,7 @@ from agentic_patterns.core.sandbox.network_mode import NetworkMode
 
 class ContainerConfig(BaseModel):
     """Docker container configuration for a sandbox session."""
+
     image: str = SANDBOX_DOCKER_IMAGE
     cpu_limit: float = SANDBOX_CPU_LIMIT
     memory_limit: str = SANDBOX_MEMORY_LIMIT
@@ -25,6 +26,10 @@ class ContainerConfig(BaseModel):
         return f"ContainerConfig(image={self.image}, network={self.network_mode.value}, cpu={self.cpu_limit}, mem={self.memory_limit})"
 
 
-def create_default_config(network_mode: NetworkMode, read_only_mounts: dict[str, str] | None = None) -> ContainerConfig:
+def create_default_config(
+    network_mode: NetworkMode, read_only_mounts: dict[str, str] | None = None
+) -> ContainerConfig:
     """Create a ContainerConfig with the given network mode and default settings."""
-    return ContainerConfig(network_mode=network_mode, read_only_mounts=read_only_mounts or {})
+    return ContainerConfig(
+        network_mode=network_mode, read_only_mounts=read_only_mounts or {}
+    )

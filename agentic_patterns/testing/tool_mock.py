@@ -58,7 +58,9 @@ class ToolMockWrapperAsync(ToolMockWrapper):
         return self._record_call(args, kwargs)
 
 
-def tool_mock(func: Callable[..., T | Awaitable[T]], return_values: list[Any]) -> ToolMockWrapper:
+def tool_mock(
+    func: Callable[..., T | Awaitable[T]], return_values: list[Any]
+) -> ToolMockWrapper:
     """
     Creates a mock version of the provided function that returns values from a predefined list.
     Supports both synchronous and asynchronous functions.

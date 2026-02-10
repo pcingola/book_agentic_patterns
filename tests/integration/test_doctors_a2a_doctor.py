@@ -62,7 +62,13 @@ class TestA2ADoctor(unittest.IsolatedAsyncioTestCase):
             AgentCard(
                 name="WellDefinedAgent",
                 description="A clearly defined agent that performs specific tasks",
-                skills=[AgentSkill(id="execute_task", name="Execute Task", description="Execute a predefined task")],
+                skills=[
+                    AgentSkill(
+                        id="execute_task",
+                        name="Execute Task",
+                        description="Execute a predefined task",
+                    )
+                ],
             ),
             AgentCard(
                 name="VagueAgent",

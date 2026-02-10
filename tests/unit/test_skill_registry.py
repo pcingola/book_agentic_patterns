@@ -6,7 +6,6 @@ from agentic_patterns.core.skills.registry import SkillRegistry
 
 
 class TestSkillRegistry(unittest.TestCase):
-
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.skills_root = Path(self.temp_dir.name)
@@ -16,7 +15,9 @@ class TestSkillRegistry(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    def _create_test_skill(self, name: str, description: str, body: str = "# Instructions\nDo something."):
+    def _create_test_skill(
+        self, name: str, description: str, body: str = "# Instructions\nDo something."
+    ):
         skill_dir = self.skills_root / name
         skill_dir.mkdir(parents=True, exist_ok=True)
         skill_md = skill_dir / "SKILL.md"
@@ -39,7 +40,9 @@ description: {description}
     def test_discover_ignores_hidden_directories(self):
         hidden_dir = self.skills_root / ".hidden-skill"
         hidden_dir.mkdir()
-        (hidden_dir / "SKILL.md").write_text("---\nname: hidden\ndescription: Hidden\n---\n# Body")
+        (hidden_dir / "SKILL.md").write_text(
+            "---\nname: hidden\ndescription: Hidden\n---\n# Body"
+        )
 
         registry = SkillRegistry()
         metadata = registry.discover([self.skills_root])

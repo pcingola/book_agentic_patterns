@@ -46,7 +46,9 @@ class TestVectorDBConfig(unittest.TestCase):
         self.assertEqual(len(settings.embeddings), 3)
         self.assertIsInstance(settings.get_embedding("default"), OpenAIEmbeddingConfig)
         self.assertIsInstance(settings.get_embedding("ollama"), OllamaEmbeddingConfig)
-        self.assertIsInstance(settings.get_embedding("sentence"), SentenceTransformersEmbeddingConfig)
+        self.assertIsInstance(
+            settings.get_embedding("sentence"), SentenceTransformersEmbeddingConfig
+        )
 
     def test_load_vectordb_settings_parses_vectordb(self):
         """Test that load_vectordb_settings correctly parses vectordb configs."""

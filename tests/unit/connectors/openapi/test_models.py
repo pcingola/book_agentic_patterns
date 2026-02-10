@@ -8,8 +8,6 @@ from agentic_patterns.core.connectors.openapi.models import (
     ApiInfo,
     EndpointInfo,
     ParameterInfo,
-    RequestSchemaInfo,
-    ResponseSchemaInfo,
 )
 
 

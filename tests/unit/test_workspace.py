@@ -21,7 +21,9 @@ class TestWorkspace(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.workspace_dir = Path(self.temp_dir.name)
-        self.patcher = patch("agentic_patterns.core.workspace.WORKSPACE_DIR", self.workspace_dir)
+        self.patcher = patch(
+            "agentic_patterns.core.workspace.WORKSPACE_DIR", self.workspace_dir
+        )
         self.patcher.start()
         set_user_session("default_user", "default_session")
 
@@ -33,7 +35,13 @@ class TestWorkspace(unittest.TestCase):
         """Test converting sandbox path to host path."""
         path = PurePosixPath("/workspace/docs/file.txt")
         result = workspace_to_host_path(path)
-        expected = self.workspace_dir / "default_user" / "default_session" / "docs" / "file.txt"
+        expected = (
+            self.workspace_dir
+            / "default_user"
+            / "default_session"
+            / "docs"
+            / "file.txt"
+        )
         self.assertEqual(result, expected)
 
     def test_workspace_to_host_path_rejects_invalid_prefix(self):

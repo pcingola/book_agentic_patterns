@@ -5,15 +5,36 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 
-from agentic_patterns.toolkits.data_viz.config import DEFAULT_FIGSIZE_HEIGHT, DEFAULT_FIGSIZE_WIDTH, DEFAULT_PALETTE, DEFAULT_STYLE
+from agentic_patterns.toolkits.data_viz.config import (
+    DEFAULT_FIGSIZE_HEIGHT,
+    DEFAULT_FIGSIZE_WIDTH,
+    DEFAULT_PALETTE,
+    DEFAULT_STYLE,
+)
 from agentic_patterns.toolkits.data_viz.models import PlotConfig
 
 
-def _heatmap(df, title=None, xlabel=None, ylabel=None, figsize_width=DEFAULT_FIGSIZE_WIDTH, figsize_height=DEFAULT_FIGSIZE_HEIGHT, style=DEFAULT_STYLE, palette=DEFAULT_PALETTE, columns=None, annot=True, fmt=".2f") -> matplotlib.figure.Figure:
+def _heatmap(
+    df,
+    title=None,
+    xlabel=None,
+    ylabel=None,
+    figsize_width=DEFAULT_FIGSIZE_WIDTH,
+    figsize_height=DEFAULT_FIGSIZE_HEIGHT,
+    style=DEFAULT_STYLE,
+    palette=DEFAULT_PALETTE,
+    columns=None,
+    annot=True,
+    fmt=".2f",
+) -> matplotlib.figure.Figure:
     sns.set_style(style)
     fig, ax = plt.subplots(figsize=(figsize_width, figsize_height))
     if columns:
-        cols = [c.strip() for c in columns.split(",")] if isinstance(columns, str) else columns
+        cols = (
+            [c.strip() for c in columns.split(",")]
+            if isinstance(columns, str)
+            else columns
+        )
         corr = df[cols].select_dtypes(include=[np.number]).corr()
     else:
         corr = df.select_dtypes(include=[np.number]).corr()
@@ -28,10 +49,23 @@ def _heatmap(df, title=None, xlabel=None, ylabel=None, figsize_width=DEFAULT_FIG
     return fig
 
 
-def _pair_plot(df, title=None, figsize_width=DEFAULT_FIGSIZE_WIDTH, figsize_height=DEFAULT_FIGSIZE_HEIGHT, style=DEFAULT_STYLE, palette=DEFAULT_PALETTE, columns=None, hue_column=None) -> matplotlib.figure.Figure:
+def _pair_plot(
+    df,
+    title=None,
+    figsize_width=DEFAULT_FIGSIZE_WIDTH,
+    figsize_height=DEFAULT_FIGSIZE_HEIGHT,
+    style=DEFAULT_STYLE,
+    palette=DEFAULT_PALETTE,
+    columns=None,
+    hue_column=None,
+) -> matplotlib.figure.Figure:
     sns.set_style(style)
     if columns:
-        cols = [c.strip() for c in columns.split(",")] if isinstance(columns, str) else columns
+        cols = (
+            [c.strip() for c in columns.split(",")]
+            if isinstance(columns, str)
+            else columns
+        )
         if hue_column and hue_column not in cols:
             cols.append(hue_column)
         data = df[cols]
@@ -48,14 +82,33 @@ MATRIX_OPERATIONS: dict[str, PlotConfig] = {
         name="heatmap",
         category="matrix",
         func=_heatmap,
-        parameters={"title": None, "xlabel": None, "ylabel": None, "figsize_width": DEFAULT_FIGSIZE_WIDTH, "figsize_height": DEFAULT_FIGSIZE_HEIGHT, "style": DEFAULT_STYLE, "palette": DEFAULT_PALETTE, "columns": None, "annot": True, "fmt": ".2f"},
+        parameters={
+            "title": None,
+            "xlabel": None,
+            "ylabel": None,
+            "figsize_width": DEFAULT_FIGSIZE_WIDTH,
+            "figsize_height": DEFAULT_FIGSIZE_HEIGHT,
+            "style": DEFAULT_STYLE,
+            "palette": DEFAULT_PALETTE,
+            "columns": None,
+            "annot": True,
+            "fmt": ".2f",
+        },
         description="Correlation heatmap of numeric columns. Use 'columns' (comma-separated) to limit which columns are included.",
     ),
     "pair_plot": PlotConfig(
         name="pair_plot",
         category="matrix",
         func=_pair_plot,
-        parameters={"title": None, "figsize_width": DEFAULT_FIGSIZE_WIDTH, "figsize_height": DEFAULT_FIGSIZE_HEIGHT, "style": DEFAULT_STYLE, "palette": DEFAULT_PALETTE, "columns": None, "hue_column": None},
+        parameters={
+            "title": None,
+            "figsize_width": DEFAULT_FIGSIZE_WIDTH,
+            "figsize_height": DEFAULT_FIGSIZE_HEIGHT,
+            "style": DEFAULT_STYLE,
+            "palette": DEFAULT_PALETTE,
+            "columns": None,
+            "hue_column": None,
+        },
         description="Pair plot (scatter matrix) of numeric columns. Use 'columns' (comma-separated) to limit columns, hue_column for color grouping.",
     ),
 }

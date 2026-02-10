@@ -60,14 +60,26 @@ def register_tools(mcp: FastMCP) -> None:
 
     @mcp.tool()
     @tool_permission(ToolPermission.READ)
-    async def sql_execute(db_id: str, query: str, output_file: str | None = None, nl_query: str | None = None, ctx: Context = None) -> str:
+    async def sql_execute(
+        db_id: str,
+        query: str,
+        output_file: str | None = None,
+        nl_query: str | None = None,
+        ctx: Context = None,
+    ) -> str:
         """Execute a SELECT query. Large results are saved to CSV automatically."""
         await ctx.info(f"sql_execute: {db_id}")
         return await _call(_sql.execute_sql(db_id, query, output_file, nl_query))
 
     @mcp.tool()
     @tool_permission(ToolPermission.READ)
-    async def sql_get_row_by_id(db_id: str, table_name: str, row_id: str, fetch_related: bool = False, ctx: Context = None) -> str:
+    async def sql_get_row_by_id(
+        db_id: str,
+        table_name: str,
+        row_id: str,
+        fetch_related: bool = False,
+        ctx: Context = None,
+    ) -> str:
         """Fetch a row by primary key, optionally including related rows via foreign keys."""
         await ctx.info(f"sql_get_row_by_id: {db_id}/{table_name}/{row_id}")
         return await _call(_sql.get_row_by_id(db_id, table_name, row_id, fetch_related))

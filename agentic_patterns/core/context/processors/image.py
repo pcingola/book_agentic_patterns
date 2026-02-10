@@ -3,12 +3,27 @@
 import io
 from pathlib import Path
 
-from agentic_patterns.core.context.config import IMAGE_ATTACHMENT_TYPES, ContextConfig, load_context_config
-from agentic_patterns.core.context.models import BinaryContent, FileExtractionResult, FileMetadata, FileType, TruncationInfo
-from agentic_patterns.core.context.processors.common import create_error_result, create_file_metadata
+from agentic_patterns.core.context.config import (
+    IMAGE_ATTACHMENT_TYPES,
+    ContextConfig,
+    load_context_config,
+)
+from agentic_patterns.core.context.models import (
+    BinaryContent,
+    FileExtractionResult,
+    FileMetadata,
+    FileType,
+    TruncationInfo,
+)
+from agentic_patterns.core.context.processors.common import (
+    create_error_result,
+    create_file_metadata,
+)
 
 
-def _resize_image(image, max_size: int | None = None, max_dimension: int | None = None) -> tuple:
+def _resize_image(
+    image, max_size: int | None = None, max_dimension: int | None = None
+) -> tuple:
     """Resize image based on file size or dimensions. Returns (resized_image, was_resized)."""
     from PIL import Image
 
@@ -58,10 +73,12 @@ def process_image(
         from PIL import Image
     except ImportError:
         return create_error_result(
-            ImportError("pillow is required for image processing. Install with: uv add pillow"),
+            ImportError(
+                "pillow is required for image processing. Install with: uv add pillow"
+            ),
             FileType.IMAGE,
             file_path,
-            "image (missing dependencies)"
+            "image (missing dependencies)",
         )
 
     try:
@@ -75,12 +92,16 @@ def process_image(
                     success=False,
                     error_message=f"Unsupported image type: {mime_type}",
                     file_type=FileType.IMAGE,
-                    metadata=FileMetadata(size_bytes=file_path.stat().st_size, mime_type=mime_type),
+                    metadata=FileMetadata(
+                        size_bytes=file_path.stat().st_size, mime_type=mime_type
+                    ),
                 )
 
             metadata = create_file_metadata(file_path, mime_type=mime_type)
 
-            processed_image, was_resized = _resize_image(image, max_size=max_size, max_dimension=max_dimension)
+            processed_image, was_resized = _resize_image(
+                image, max_size=max_size, max_dimension=max_dimension
+            )
 
             buffer = io.BytesIO()
             processed_image.save(buffer, format=image_format or "PNG")

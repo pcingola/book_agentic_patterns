@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 
 class OpenAIEmbeddingConfig(BaseModel):
     """Configuration for OpenAI embeddings."""
+
     provider: str = Field(default="openai")
     model_name: str
     api_key: str | None = None
@@ -18,6 +19,7 @@ class OpenAIEmbeddingConfig(BaseModel):
 
 class OllamaEmbeddingConfig(BaseModel):
     """Configuration for Ollama embeddings."""
+
     provider: str = Field(default="ollama")
     model_name: str
     url: str = Field(default="http://localhost:11434")
@@ -25,6 +27,7 @@ class OllamaEmbeddingConfig(BaseModel):
 
 class SentenceTransformersEmbeddingConfig(BaseModel):
     """Configuration for Sentence Transformers embeddings."""
+
     provider: str = Field(default="sentence_transformers")
     model_name: str
     device: str = Field(default="cpu")
@@ -32,6 +35,7 @@ class SentenceTransformersEmbeddingConfig(BaseModel):
 
 class OpenRouterEmbeddingConfig(BaseModel):
     """Configuration for OpenRouter embeddings (OpenAI-compatible API)."""
+
     provider: str = Field(default="openrouter")
     model_name: str
     api_key: str | None = None
@@ -39,17 +43,24 @@ class OpenRouterEmbeddingConfig(BaseModel):
     dimensions: int | None = None
 
 
-EmbeddingConfig = OpenAIEmbeddingConfig | OllamaEmbeddingConfig | SentenceTransformersEmbeddingConfig | OpenRouterEmbeddingConfig
+EmbeddingConfig = (
+    OpenAIEmbeddingConfig
+    | OllamaEmbeddingConfig
+    | SentenceTransformersEmbeddingConfig
+    | OpenRouterEmbeddingConfig
+)
 
 
 class ChromaVectorDBConfig(BaseModel):
     """Configuration for Chroma vector database."""
+
     backend: str = Field(default="chroma")
     persist_directory: str
 
 
 class PgVectorDBConfig(BaseModel):
     """Configuration for PostgreSQL + pgvector."""
+
     backend: str = Field(default="pgvector")
     connection_string: str
 
@@ -59,26 +70,33 @@ VectorDBConfig = ChromaVectorDBConfig | PgVectorDBConfig
 
 class VectorDBSettings(BaseModel):
     """Container for embedding and vector database configurations."""
+
     embeddings: dict[str, EmbeddingConfig]
     vectordb: dict[str, VectorDBConfig]
 
     def get_embedding(self, name: str = "default") -> EmbeddingConfig:
         if name not in self.embeddings:
-            raise ValueError(f"Embedding config '{name}' not found. Available: {list(self.embeddings.keys())}")
+            raise ValueError(
+                f"Embedding config '{name}' not found. Available: {list(self.embeddings.keys())}"
+            )
         return self.embeddings[name]
 
     def get_vectordb(self, name: str = "default") -> VectorDBConfig:
         if name not in self.vectordb:
-            raise ValueError(f"VectorDB config '{name}' not found. Available: {list(self.vectordb.keys())}")
+            raise ValueError(
+                f"VectorDB config '{name}' not found. Available: {list(self.vectordb.keys())}"
+            )
         return self.vectordb[name]
 
 
 def _expand_env_vars(value: str) -> str:
     """Expand ${VAR} patterns in string values."""
-    pattern = r'\$\{(\w+)\}'
+    pattern = r"\$\{(\w+)\}"
+
     def replace(match):
         var_name = match.group(1)
         return os.environ.get(var_name, match.group(0))
+
     return re.sub(pattern, replace, value)
 
 
@@ -117,7 +135,9 @@ def load_vectordb_settings(config_path: Path | str) -> VectorDBSettings:
                 case "ollama":
                     embeddings[name] = OllamaEmbeddingConfig(**config_data)
                 case "sentence_transformers":
-                    embeddings[name] = SentenceTransformersEmbeddingConfig(**config_data)
+                    embeddings[name] = SentenceTransformersEmbeddingConfig(
+                        **config_data
+                    )
                 case "openrouter":
                     embeddings[name] = OpenRouterEmbeddingConfig(**config_data)
                 case _:

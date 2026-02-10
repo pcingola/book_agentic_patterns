@@ -30,7 +30,9 @@ class TestToolsSelection(unittest.IsolatedAsyncioTestCase):
     async def test_select_returns_matching_tools(self):
         """Test that select() returns tools whose names are returned by the model."""
         tools = [tool_read_file, tool_write_file, tool_search, tool_delete]
-        model = ModelMock(responses=[final_result_tool(["tool_read_file", "tool_search"])])
+        model = ModelMock(
+            responses=[final_result_tool(["tool_read_file", "tool_search"])]
+        )
         selector = ToolSelector(tools, model=model)
 
         result = await selector.select("find and read files")
@@ -42,7 +44,9 @@ class TestToolsSelection(unittest.IsolatedAsyncioTestCase):
     async def test_select_ignores_unknown_tool_names(self):
         """Test that select() ignores tool names not in the tools list."""
         tools = [tool_read_file, tool_write_file]
-        model = ModelMock(responses=[final_result_tool(["tool_read_file", "nonexistent_tool"])])
+        model = ModelMock(
+            responses=[final_result_tool(["tool_read_file", "nonexistent_tool"])]
+        )
         selector = ToolSelector(tools, model=model)
 
         result = await selector.select("read something")

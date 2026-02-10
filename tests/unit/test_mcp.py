@@ -7,7 +7,6 @@ TEST_DATA_DIR = Path(__file__).parent.parent / "data" / "mcp"
 
 
 class TestMCP(unittest.TestCase):
-
     def test_get_mcp_client_raises_on_server_config(self):
         with self.assertRaises(ValueError) as ctx:
             get_mcp_client("server1", TEST_DATA_DIR / "test_config.yaml")

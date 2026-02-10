@@ -93,7 +93,9 @@ async def cmd_prompt(args: argparse.Namespace) -> int:
     if args.verbose:
         print(f"Analyzing {len(paths)} prompts")
 
-    results = await prompt_doctor(paths, batch_size=args.batch_size, verbose=args.verbose)
+    results = await prompt_doctor(
+        paths, batch_size=args.batch_size, verbose=args.verbose
+    )
 
     for result in results:
         print(result)
@@ -135,7 +137,9 @@ async def cmd_a2a(args: argparse.Namespace) -> int:
     if args.verbose:
         print(f"Analyzing {len(args.urls)} agent cards")
 
-    results = await a2a_doctor(args.urls, batch_size=args.batch_size, verbose=args.verbose)
+    results = await a2a_doctor(
+        args.urls, batch_size=args.batch_size, verbose=args.verbose
+    )
 
     for result in results:
         print(result)
@@ -190,19 +194,29 @@ async def cmd_skill(args: argparse.Namespace) -> int:
 
 async def main() -> int:
     """Main entry point."""
-    parser = argparse.ArgumentParser(description="Doctor analysis tools for prompts, tools, MCP, and A2A")
-    parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose output")
+    parser = argparse.ArgumentParser(
+        description="Doctor analysis tools for prompts, tools, MCP, and A2A"
+    )
+    parser.add_argument(
+        "--verbose", "-v", action="store_true", help="Enable verbose output"
+    )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     # Tool subcommand
     tool_parser = subparsers.add_parser("tool", help="Analyze tool functions")
-    tool_parser.add_argument("module", help="Module spec like 'mymodule:my_tools' or 'mymodule'")
-    tool_parser.add_argument("--batch-size", type=int, default=5, help="Tools per batch")
+    tool_parser.add_argument(
+        "module", help="Module spec like 'mymodule:my_tools' or 'mymodule'"
+    )
+    tool_parser.add_argument(
+        "--batch-size", type=int, default=5, help="Tools per batch"
+    )
 
     # Prompt subcommand
     prompt_parser = subparsers.add_parser("prompt", help="Analyze prompt files")
     prompt_parser.add_argument("files", nargs="+", help="Prompt files to analyze")
-    prompt_parser.add_argument("--batch-size", type=int, default=5, help="Prompts per batch")
+    prompt_parser.add_argument(
+        "--batch-size", type=int, default=5, help="Prompts per batch"
+    )
 
     # MCP subcommand
     mcp_parser = subparsers.add_parser("mcp", help="Analyze MCP server tools")
@@ -213,12 +227,20 @@ async def main() -> int:
     # A2A subcommand
     a2a_parser = subparsers.add_parser("a2a", help="Analyze A2A agent cards")
     a2a_parser.add_argument("urls", nargs="+", help="Agent card URLs")
-    a2a_parser.add_argument("--batch-size", type=int, default=5, help="Agents per batch")
+    a2a_parser.add_argument(
+        "--batch-size", type=int, default=5, help="Agents per batch"
+    )
 
     # Skill subcommand
-    skill_parser = subparsers.add_parser("skill", help="Analyze Agent Skills (agentskills.io)")
-    skill_parser.add_argument("path", help="Skill directory or parent directory with --all")
-    skill_parser.add_argument("--all", action="store_true", help="Analyze all skills in directory")
+    skill_parser = subparsers.add_parser(
+        "skill", help="Analyze Agent Skills (agentskills.io)"
+    )
+    skill_parser.add_argument(
+        "path", help="Skill directory or parent directory with --all"
+    )
+    skill_parser.add_argument(
+        "--all", action="store_true", help="Analyze all skills in directory"
+    )
 
     args = parser.parse_args()
 

@@ -28,7 +28,9 @@ class ServerThread(threading.Thread):
         self.server = None
 
     def run(self):
-        config = uvicorn.Config(self.app, host="127.0.0.1", port=self.port, log_level="error", ws="none")
+        config = uvicorn.Config(
+            self.app, host="127.0.0.1", port=self.port, log_level="error", ws="none"
+        )
         self.server = uvicorn.Server(config)
         self.server.run()
 
@@ -45,7 +47,9 @@ class TestCoordinatorMultiAgent(unittest.IsolatedAsyncioTestCase):
         cls.port1 = find_free_port()
         cls.port2 = find_free_port()
 
-        cls.math_server = MockA2AServer(name="MathAgent", description="Does math calculations")
+        cls.math_server = MockA2AServer(
+            name="MathAgent", description="Does math calculations"
+        )
         cls.math_server.on_pattern(r".*add.*|.*sum.*|.*plus.*", result="The sum is 10")
         cls.math_server.set_default("I do math")
 
@@ -68,8 +72,12 @@ class TestCoordinatorMultiAgent(unittest.IsolatedAsyncioTestCase):
         cls.thread2.stop()
 
     def setUp(self):
-        self.config1 = A2AClientConfig(url=f"http://127.0.0.1:{self.port1}", timeout=10, poll_interval=0.1)
-        self.config2 = A2AClientConfig(url=f"http://127.0.0.1:{self.port2}", timeout=10, poll_interval=0.1)
+        self.config1 = A2AClientConfig(
+            url=f"http://127.0.0.1:{self.port1}", timeout=10, poll_interval=0.1
+        )
+        self.config2 = A2AClientConfig(
+            url=f"http://127.0.0.1:{self.port2}", timeout=10, poll_interval=0.1
+        )
         self.math_server.received_prompts.clear()
         self.text_server.received_prompts.clear()
 
@@ -77,10 +85,12 @@ class TestCoordinatorMultiAgent(unittest.IsolatedAsyncioTestCase):
         """Coordinator with multiple agents delegates to the right one based on task."""
         coordinator = await create_coordinator([self.config1, self.config2])
 
-        model = ModelMock(responses=[
-            ToolCallPart(tool_name="mathagent", args={"prompt": "add 5 and 5"}),
-            "The math agent calculated the sum is 10.",
-        ])
+        model = ModelMock(
+            responses=[
+                ToolCallPart(tool_name="mathagent", args={"prompt": "add 5 and 5"}),
+                "The math agent calculated the sum is 10.",
+            ]
+        )
         coordinator._model = model
 
         result = await coordinator.run("What is 5 + 5?")

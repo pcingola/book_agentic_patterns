@@ -2,7 +2,11 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from agentic_patterns.core.evals.discovery import DiscoveredDataset, discover_datasets, find_eval_files
+from agentic_patterns.core.evals.discovery import (
+    DiscoveredDataset,
+    discover_datasets,
+    find_eval_files,
+)
 
 TEST_DATA_DIR = Path(__file__).parent.parent / "data" / "evals"
 

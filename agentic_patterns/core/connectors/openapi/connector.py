@@ -7,7 +7,9 @@ from pathlib import PurePosixPath
 
 from agentic_patterns.core.compliance.private_data import DataSensitivity, PrivateData
 from agentic_patterns.core.connectors.base import Connector
-from agentic_patterns.core.connectors.openapi.api_connection_config import ApiConnectionConfigs
+from agentic_patterns.core.connectors.openapi.api_connection_config import (
+    ApiConnectionConfigs,
+)
 from agentic_patterns.core.connectors.openapi.api_infos import ApiInfos
 from agentic_patterns.core.context.decorators import context_result
 from agentic_patterns.core.workspace import workspace_to_host_path, write_to_workspace
@@ -115,9 +117,16 @@ class OpenApiConnector(Connector):
                 return f"[Error] HTTP {status_code}\nFull response saved to: {output_file}\n\nResponse body:\n{json.dumps(response_body, indent=2)}"
 
             # Truncate response body for preview
-            body_str = json.dumps(response_body, indent=2) if isinstance(response_body, dict) else str(response_body)
+            body_str = (
+                json.dumps(response_body, indent=2)
+                if isinstance(response_body, dict)
+                else str(response_body)
+            )
             if len(body_str) > 500:
-                body_str = body_str[:500] + f"...\n\n[Full response ({len(body_str)} chars) saved to: {output_file}]"
+                body_str = (
+                    body_str[:500]
+                    + f"...\n\n[Full response ({len(body_str)} chars) saved to: {output_file}]"
+                )
 
             return f"HTTP {status_code}\nFull response saved to: {output_file}\n\nResponse body (preview):\n{body_str}"
 

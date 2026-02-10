@@ -36,11 +36,17 @@ class TestHistoryCompactor(unittest.IsolatedAsyncioTestCase):
     def _make_assistant_message(self, text: str) -> ModelResponse:
         return ModelResponse(parts=[TextPart(content=text)])
 
-    def _make_tool_call_message(self, tool_name: str = "test_tool", args: dict | None = None) -> ModelResponse:
+    def _make_tool_call_message(
+        self, tool_name: str = "test_tool", args: dict | None = None
+    ) -> ModelResponse:
         return ModelResponse(parts=[ToolCallPart(tool_name=tool_name, args=args or {})])
 
-    def _make_tool_return_message(self, tool_name: str = "test_tool", content: str = "result") -> ModelRequest:
-        return ModelRequest(parts=[ToolReturnPart(tool_name=tool_name, content=content)])
+    def _make_tool_return_message(
+        self, tool_name: str = "test_tool", content: str = "result"
+    ) -> ModelRequest:
+        return ModelRequest(
+            parts=[ToolReturnPart(tool_name=tool_name, content=content)]
+        )
 
     def test_has_tool_return_part_true(self):
         """Test _has_tool_return_part returns True when message contains ToolReturnPart."""
@@ -165,8 +171,12 @@ class TestHistoryCompactor(unittest.IsolatedAsyncioTestCase):
         model = ModelMock(responses=["Summary of the conversation."])
         compactor = HistoryCompactor(config=config, model=model)
         messages = [
-            self._make_user_message("first message with lots of text to exceed token limit"),
-            self._make_assistant_message("response with lots of text to exceed token limit"),
+            self._make_user_message(
+                "first message with lots of text to exceed token limit"
+            ),
+            self._make_assistant_message(
+                "response with lots of text to exceed token limit"
+            ),
             self._make_user_message("final message"),
         ]
         result = await compactor.compact(messages)
@@ -200,7 +210,9 @@ class TestHistoryCompactor(unittest.IsolatedAsyncioTestCase):
             self._make_tool_call_message("search", {"query": "test"}),
             self._make_tool_return_message("search", "results"),
         ]
-        with self.assertLogs("agentic_patterns.core.context.history", level=logging.WARNING):
+        with self.assertLogs(
+            "agentic_patterns.core.context.history", level=logging.WARNING
+        ):
             result = await compactor.compact(messages)
         self.assertEqual(result, messages)
 
@@ -210,8 +222,12 @@ class TestHistoryCompactor(unittest.IsolatedAsyncioTestCase):
         model = ModelMock(responses=["Summary of conversation."])
         compactor = HistoryCompactor(config=config, model=model)
         messages = [
-            self._make_user_message("first message with lots of text to exceed token limit"),
-            self._make_assistant_message("response with lots of text to exceed token limit"),
+            self._make_user_message(
+                "first message with lots of text to exceed token limit"
+            ),
+            self._make_assistant_message(
+                "response with lots of text to exceed token limit"
+            ),
             self._make_user_message("final message"),
         ]
         result = await compactor.compact(messages)
@@ -225,8 +241,12 @@ class TestHistoryCompactor(unittest.IsolatedAsyncioTestCase):
         compactor = HistoryCompactor(config=config, model=model)
         messages = [
             self._make_system_message("You are a helpful assistant"),
-            self._make_user_message("first message with lots of text to exceed token limit"),
-            self._make_assistant_message("response with lots of text to exceed token limit"),
+            self._make_user_message(
+                "first message with lots of text to exceed token limit"
+            ),
+            self._make_assistant_message(
+                "response with lots of text to exceed token limit"
+            ),
             self._make_user_message("final message"),
         ]
         result = await compactor.compact(messages)
@@ -253,15 +273,24 @@ class TestHistoryCompactor(unittest.IsolatedAsyncioTestCase):
 
         config = CompactionConfig(max_tokens=10, target_tokens=5)
         model = ModelMock(responses=["Summary."])
-        compactor = HistoryCompactor(config=config, model=model, on_compaction=on_compaction)
+        compactor = HistoryCompactor(
+            config=config, model=model, on_compaction=on_compaction
+        )
         messages = [
-            self._make_user_message("first message with lots of text to exceed token limit"),
-            self._make_assistant_message("response with lots of text to exceed token limit"),
+            self._make_user_message(
+                "first message with lots of text to exceed token limit"
+            ),
+            self._make_assistant_message(
+                "response with lots of text to exceed token limit"
+            ),
             self._make_user_message("final message"),
         ]
         await compactor.compact(messages)
         self.assertEqual(len(callback_results), 1)
-        self.assertGreater(callback_results[0].original_messages, callback_results[0].compacted_messages)
+        self.assertGreater(
+            callback_results[0].original_messages,
+            callback_results[0].compacted_messages,
+        )
 
     async def test_multi_turn_conversation_with_compaction(self):
         """Test multi-turn conversation where compaction happens and conversation continues."""
@@ -331,9 +360,7 @@ class TestHistoryCompactor(unittest.IsolatedAsyncioTestCase):
         messages = await compactor.compact(messages)
 
         system_prompt_count = sum(
-            1 for m in messages
-            for p in m.parts
-            if isinstance(p, SystemPromptPart)
+            1 for m in messages for p in m.parts if isinstance(p, SystemPromptPart)
         )
         self.assertLessEqual(system_prompt_count, 1)
 
@@ -353,7 +380,9 @@ class TestHistoryCompactor(unittest.IsolatedAsyncioTestCase):
         result = await compactor.compact(messages)
 
         all_content = " ".join(
-            p.content for m in result for p in m.parts
+            p.content
+            for m in result
+            for p in m.parts
             if isinstance(p, UserPromptPart) and isinstance(p.content, str)
         )
         original_word_count = all_content.count("Original user question")

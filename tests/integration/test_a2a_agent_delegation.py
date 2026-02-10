@@ -30,7 +30,9 @@ class ServerThread(threading.Thread):
         self.server = None
 
     def run(self):
-        config = uvicorn.Config(self.app, host="127.0.0.1", port=self.port, log_level="error", ws="none")
+        config = uvicorn.Config(
+            self.app, host="127.0.0.1", port=self.port, log_level="error", ws="none"
+        )
         self.server = uvicorn.Server(config)
         self.server.run()
 
@@ -45,7 +47,9 @@ class TestAgentDelegatesViaA2A(unittest.IsolatedAsyncioTestCase):
     @classmethod
     def setUpClass(cls):
         cls.port = find_free_port()
-        cls.mock_server = MockA2AServer(name="Calculator", description="Performs calculations")
+        cls.mock_server = MockA2AServer(
+            name="Calculator", description="Performs calculations"
+        )
         cls.mock_server.on_prompt("calculate 2+3", result="The answer is 5")
         cls.mock_server.on_pattern(r"multiply \d+ and \d+", result="42")
         cls.mock_server.set_default("I can help with calculations")
@@ -60,7 +64,9 @@ class TestAgentDelegatesViaA2A(unittest.IsolatedAsyncioTestCase):
         cls.server_thread.stop()
 
     def setUp(self):
-        self.config = A2AClientConfig(url=f"http://127.0.0.1:{self.port}", timeout=10, poll_interval=0.1)
+        self.config = A2AClientConfig(
+            url=f"http://127.0.0.1:{self.port}", timeout=10, poll_interval=0.1
+        )
         self.client = A2AClientExtended(self.config)
         self.mock_server.received_prompts.clear()
         self.mock_server.cancelled_task_ids.clear()
@@ -73,10 +79,12 @@ class TestAgentDelegatesViaA2A(unittest.IsolatedAsyncioTestCase):
         card = await self.client.get_agent_card()
         a2a_tool = create_a2a_tool(self.client, card)
 
-        model = ModelMock(responses=[
-            ToolCallPart(tool_name="calculator", args={"prompt": "calculate 2+3"}),
-            "Based on the calculation, the answer is 5.",
-        ])
+        model = ModelMock(
+            responses=[
+                ToolCallPart(tool_name="calculator", args={"prompt": "calculate 2+3"}),
+                "Based on the calculation, the answer is 5.",
+            ]
+        )
 
         agent = get_agent(model=model, tools=[a2a_tool])
         result = await agent.run("What is 2 plus 3?")

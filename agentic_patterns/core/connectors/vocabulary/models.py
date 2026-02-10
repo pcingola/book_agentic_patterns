@@ -13,6 +13,7 @@ class VocabularyStrategy(str, Enum):
 
 class VocabularyTerm(BaseModel):
     """A single term in a vocabulary."""
+
     id: str
     label: str
     synonyms: list[str] = []
@@ -39,6 +40,7 @@ class VocabularyTerm(BaseModel):
 
 class VocabularyInfo(BaseModel):
     """Metadata about a loaded vocabulary."""
+
     name: str
     strategy: VocabularyStrategy
     source_format: str
@@ -64,6 +66,7 @@ class SourceFormat(str, Enum):
 
 class VocabularyConfig(BaseModel):
     """Configuration entry for a single vocabulary in vocabularies.yaml."""
+
     name: str
     strategy: VocabularyStrategy
     source: str | None = None

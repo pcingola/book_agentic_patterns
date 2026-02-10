@@ -3,7 +3,10 @@
 from pathlib import PurePosixPath
 
 from agentic_patterns.core.tools.permissions import ToolPermission, tool_permission
-from agentic_patterns.core.workspace import host_to_workspace_path, workspace_to_host_path
+from agentic_patterns.core.workspace import (
+    host_to_workspace_path,
+    workspace_to_host_path,
+)
 from agentic_patterns.toolkits.format_conversion.converter import convert
 from agentic_patterns.toolkits.format_conversion.enums import OutputFormat
 

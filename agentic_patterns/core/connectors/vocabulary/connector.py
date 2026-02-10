@@ -2,7 +2,10 @@
 
 from agentic_patterns.core.connectors.base import Connector
 from agentic_patterns.core.connectors.vocabulary.models import VocabularyTerm
-from agentic_patterns.core.connectors.vocabulary.registry import get_vocabulary, list_vocabularies as _list_vocabularies
+from agentic_patterns.core.connectors.vocabulary.registry import (
+    get_vocabulary,
+    list_vocabularies as _list_vocabularies,
+)
 from agentic_patterns.core.context.decorators import context_result
 
 
@@ -70,7 +73,9 @@ class VocabularyConnector(Connector):
         try:
             backend = get_vocabulary(vocab_name)
             term = backend.lookup(term_code)
-            return str(term) if term else f"Term '{term_code}' not found in {vocab_name}."
+            return (
+                str(term) if term else f"Term '{term_code}' not found in {vocab_name}."
+            )
         except Exception as e:
             return f"[Error] {e}"
 

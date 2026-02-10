@@ -41,7 +41,6 @@ from pydantic_ai.messages import (
     FilePart,
     ModelMessage,
     ModelRequest,
-    ModelResponse,
     RetryPromptPart,
     SystemPromptPart,
     TextPart,
@@ -80,6 +79,7 @@ Continue with the last task that you were asked to work on, if any, otherwise ju
 
 class CompactionConfig(BaseModel):
     """Configuration for history compaction."""
+
     max_tokens: int = 120_000
     target_tokens: int = 40_000
 
@@ -92,6 +92,7 @@ class CompactionConfig(BaseModel):
 
 class CompactionResult(BaseModel):
     """Result of a history compaction operation."""
+
     original_messages: int
     compacted_messages: int
     original_tokens: int
@@ -144,6 +145,7 @@ class HistoryCompactor:
 
         if model is None:
             from agentic_patterns.core.agents.models import get_model
+
             model = get_model(config_name)
 
         self.config = config
@@ -158,11 +160,17 @@ class HistoryCompactor:
 
     def _has_tool_return_part(self, message: ModelMessage) -> bool:
         """Check if a message contains a ToolReturnPart."""
-        return any(isinstance(part, (ToolReturnPart, BuiltinToolReturnPart)) for part in message.parts)
+        return any(
+            isinstance(part, (ToolReturnPart, BuiltinToolReturnPart))
+            for part in message.parts
+        )
 
     def _has_tool_call_part(self, message: ModelMessage) -> bool:
         """Check if a message contains a ToolCallPart."""
-        return any(isinstance(part, (ToolCallPart, BuiltinToolCallPart)) for part in message.parts)
+        return any(
+            isinstance(part, (ToolCallPart, BuiltinToolCallPart))
+            for part in message.parts
+        )
 
     def _find_safe_compaction_boundary(self, messages: list[ModelMessage]) -> int:
         """Find the index where we can safely split messages for compaction.
@@ -228,7 +236,9 @@ class HistoryCompactor:
                 if isinstance(content, str):
                     result = content
                 elif isinstance(content, Sequence):
-                    result = " ".join(str(item) for item in content if isinstance(item, str))
+                    result = " ".join(
+                        str(item) for item in content if isinstance(item, str)
+                    )
             case ToolCallPart() | BuiltinToolCallPart():
                 result = f"[Tool call: {part.tool_name}({part.args})]"
             case ToolReturnPart() | BuiltinToolReturnPart():
@@ -265,9 +275,15 @@ class HistoryCompactor:
 
         return total_tokens
 
-    def needs_compaction(self, messages: list[ModelMessage], current_tokens: int | None = None) -> bool:
+    def needs_compaction(
+        self, messages: list[ModelMessage], current_tokens: int | None = None
+    ) -> bool:
         """Check if the message history needs compaction."""
-        token_count = current_tokens if current_tokens is not None else self.count_tokens(messages)
+        token_count = (
+            current_tokens
+            if current_tokens is not None
+            else self.count_tokens(messages)
+        )
         return token_count > self.config.max_tokens
 
     async def compact(self, messages: list[ModelMessage]) -> list[ModelMessage]:
@@ -297,7 +313,10 @@ class HistoryCompactor:
 
         logger.info(
             "Checking: %d messages, %d tokens (max=%d, target=%d)",
-            total_messages, token_count, self.config.max_tokens, self.config.target_tokens
+            total_messages,
+            token_count,
+            self.config.max_tokens,
+            self.config.target_tokens,
         )
 
         if not self.needs_compaction(messages, current_tokens=token_count):
@@ -313,7 +332,9 @@ class HistoryCompactor:
             )
             return messages
 
-        logger.info("Starting compaction: %d messages, %d tokens", total_messages, token_count)
+        logger.info(
+            "Starting compaction: %d messages, %d tokens", total_messages, token_count
+        )
 
         messages_to_summarize = messages[:keep_from]
         messages_to_keep = messages[keep_from:]
@@ -326,7 +347,10 @@ class HistoryCompactor:
 
         logger.info(
             "Compaction complete: %d -> %d messages, %d -> %d tokens",
-            total_messages, len(messages_after_summary), token_count, token_count_after_summary
+            total_messages,
+            len(messages_after_summary),
+            token_count,
+            token_count_after_summary,
         )
 
         if self.on_compaction:
@@ -372,14 +396,17 @@ class HistoryCompactor:
     async def _call_summarizer(self, text: str) -> str:
         """Call the model to generate a summary of the conversation."""
         if self.model is None:
-            logger.warning("No model provided for summarization, using truncation fallback")
+            logger.warning(
+                "No model provided for summarization, using truncation fallback"
+            )
             return self._truncate_for_fallback(text, self.config.target_tokens // 2)
 
         text_tokens = self._count_text_tokens(text)
         if text_tokens > self._summarizer_max_tokens:
             logger.warning(
                 "Conversation too long for summarization (%d tokens), truncating to %d tokens",
-                text_tokens, self._summarizer_max_tokens
+                text_tokens,
+                self._summarizer_max_tokens,
             )
             text = self._truncate_for_fallback(text, self._summarizer_max_tokens)
 
@@ -390,21 +417,34 @@ class HistoryCompactor:
             result = await summarizer.run(prompt)
             return result.output
         except (ValueError, RuntimeError, TimeoutError) as e:
-            logger.warning("Summarization failed (%s), using truncation fallback", str(e))
+            logger.warning(
+                "Summarization failed (%s), using truncation fallback", str(e)
+            )
             return self._truncate_for_fallback(text, self.config.target_tokens // 2)
 
-    def create_history_processor(self) -> Callable[[list[ModelMessage]], Awaitable[list[ModelMessage]]]:
+    def create_history_processor(
+        self,
+    ) -> Callable[[list[ModelMessage]], Awaitable[list[ModelMessage]]]:
         """Create a pydantic-ai compatible history processor."""
+
         async def processor(messages: list[ModelMessage]) -> list[ModelMessage]:
             return await self.compact(messages)
 
         return processor
 
-    def create_context_aware_processor(self) -> Callable[[RunContext, list[ModelMessage]], Awaitable[list[ModelMessage]]]:
+    def create_context_aware_processor(
+        self,
+    ) -> Callable[[RunContext, list[ModelMessage]], Awaitable[list[ModelMessage]]]:
         """Create a context-aware history processor that uses RunContext."""
-        logger.info("Creating context-aware processor (max=%s, target=%s)", self.config.max_tokens, self.config.target_tokens)
+        logger.info(
+            "Creating context-aware processor (max=%s, target=%s)",
+            self.config.max_tokens,
+            self.config.target_tokens,
+        )
 
-        async def processor(_ctx: RunContext, messages: list[ModelMessage]) -> list[ModelMessage]:
+        async def processor(
+            _ctx: RunContext, messages: list[ModelMessage]
+        ) -> list[ModelMessage]:
             return await self.compact(messages)
 
         return processor

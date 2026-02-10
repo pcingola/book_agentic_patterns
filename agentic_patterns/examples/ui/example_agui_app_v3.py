@@ -23,10 +23,18 @@ from agentic_patterns.core.agents.agents import get_agent
 
 class CalculatorState(BaseModel):
     """Shared state for the calculator application."""
+
     history: list[str] = []
     last_result: int | None = None
 
-def update_state_with_result(ctx: RunContext[StateDeps[CalculatorState]], operation: str, a: int, b: int, result: int) -> ToolReturn:
+
+def update_state_with_result(
+    ctx: RunContext[StateDeps[CalculatorState]],
+    operation: str,
+    a: int,
+    b: int,
+    result: int,
+) -> ToolReturn:
     """Helper function to update state and emit events after a calculation."""
     state = ctx.deps.state
     state.history.append(f"{a} {operation} {b} = {result}")
@@ -35,26 +43,37 @@ def update_state_with_result(ctx: RunContext[StateDeps[CalculatorState]], operat
         return_value=f"Result: {result}",
         metadata=[
             StateSnapshotEvent(type=EventType.STATE_SNAPSHOT, snapshot=state),
-            CustomEvent(type=EventType.CUSTOM, name='calculation_complete', value={'operation': operation, 'result': result}),
+            CustomEvent(
+                type=EventType.CUSTOM,
+                name="calculation_complete",
+                value={"operation": operation, "result": result},
+            ),
         ],
     )
 
-async def add(ctx: RunContext[StateDeps[CalculatorState]], a: int, b: int) -> ToolReturn:
+
+async def add(
+    ctx: RunContext[StateDeps[CalculatorState]], a: int, b: int
+) -> ToolReturn:
     """Add two numbers and update the state."""
     result = a + b
-    return update_state_with_result(ctx, 'add', a, b, result)
+    return update_state_with_result(ctx, "add", a, b, result)
 
 
-async def sub(ctx: RunContext[StateDeps[CalculatorState]], a: int, b: int) -> ToolReturn:
+async def sub(
+    ctx: RunContext[StateDeps[CalculatorState]], a: int, b: int
+) -> ToolReturn:
     """Subtract two numbers and update the state."""
     result = a - b
-    return update_state_with_result(ctx, 'sub', a, b, result)
+    return update_state_with_result(ctx, "sub", a, b, result)
 
 
-async def mul(ctx: RunContext[StateDeps[CalculatorState]], a: int, b: int) -> ToolReturn:
+async def mul(
+    ctx: RunContext[StateDeps[CalculatorState]], a: int, b: int
+) -> ToolReturn:
     """Multiply two numbers and update the state."""
     result = a * b
-    return update_state_with_result(ctx, 'mul', a, b, result)
+    return update_state_with_result(ctx, "mul", a, b, result)
 
 
 async def show_history(ctx: RunContext[StateDeps[CalculatorState]]) -> str:
@@ -74,15 +93,15 @@ async def clear_history(ctx: RunContext[StateDeps[CalculatorState]]) -> ToolRetu
         return_value="History cleared.",
         metadata=[
             StateSnapshotEvent(type=EventType.STATE_SNAPSHOT, snapshot=state),
-            CustomEvent(type=EventType.CUSTOM, name='history_cleared', value=True),
+            CustomEvent(type=EventType.CUSTOM, name="history_cleared", value=True),
         ],
     )
 
 
 agent = get_agent(
     instructions=(
-        'You are a calculator assistant. Use the provided tools to perform calculations. '
-        'The calculation history is maintained in the shared state.'
+        "You are a calculator assistant. Use the provided tools to perform calculations. "
+        "The calculation history is maintained in the shared state."
     ),
     deps_type=StateDeps[CalculatorState],
     tools=[add, sub, mul, show_history, clear_history],
@@ -91,7 +110,7 @@ agent = get_agent(
 app = AGUIApp(agent, deps=StateDeps(CalculatorState()))
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=['http://localhost:5173'],
-    allow_methods=['*'],
-    allow_headers=['*'],
+    allow_origins=["http://localhost:5173"],
+    allow_methods=["*"],
+    allow_headers=["*"],
 )

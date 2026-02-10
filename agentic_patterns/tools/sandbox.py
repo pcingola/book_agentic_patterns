@@ -20,9 +20,13 @@ def get_all_tools() -> list:
 
     @tool_permission(ToolPermission.WRITE)
     @context_result()
-    async def sandbox_execute(command: str, timeout: int = SANDBOX_COMMAND_TIMEOUT) -> str:
+    async def sandbox_execute(
+        command: str, timeout: int = SANDBOX_COMMAND_TIMEOUT
+    ) -> str:
         """Execute a shell command in the Docker sandbox. Returns exit code and output."""
-        exit_code, output = manager.execute_command(get_user_id(), get_session_id(), command, timeout)
+        exit_code, output = manager.execute_command(
+            get_user_id(), get_session_id(), command, timeout
+        )
         header = f"Exit code: {exit_code}\n"
         return header + output
 

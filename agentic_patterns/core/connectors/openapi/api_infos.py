@@ -1,6 +1,8 @@
 """API metadata and client registry."""
 
-from agentic_patterns.core.connectors.openapi.api_connection_config import ApiConnectionConfigs
+from agentic_patterns.core.connectors.openapi.api_connection_config import (
+    ApiConnectionConfigs,
+)
 from agentic_patterns.core.connectors.openapi.client.http_client import ApiHttpClient
 from agentic_patterns.core.connectors.openapi.config import API_CACHE_DIR, API_INFO_EXT
 from agentic_patterns.core.connectors.openapi.factories import create_http_client
@@ -39,12 +41,16 @@ class ApiInfos:
 
     def get_api_info(self, api_id: str) -> ApiInfo:
         if api_id not in self._api_info:
-            raise ValueError(f"API '{api_id}' not found. Available: {list(self._api_info.keys())}")
+            raise ValueError(
+                f"API '{api_id}' not found. Available: {list(self._api_info.keys())}"
+            )
         return self._api_info[api_id]
 
     def get_client(self, api_id: str) -> ApiHttpClient:
         if api_id not in self._api_info:
-            raise ValueError(f"API '{api_id}' not found. Available: {list(self._api_info.keys())}")
+            raise ValueError(
+                f"API '{api_id}' not found. Available: {list(self._api_info.keys())}"
+            )
         if api_id not in self._clients:
             api_info = self._api_info[api_id]
             self._clients[api_id] = create_http_client(api_id, api_info.base_url)

@@ -24,6 +24,7 @@ from agentic_patterns.core.skills.tools import list_available_skills
 
 class AgentSpec(BaseModel):
     """Specification for an orchestrator agent with all components resolved."""
+
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     name: str
@@ -107,7 +108,9 @@ class OrchestratorAgent:
 
         # Create MCP connections
         for mcp_config in self.spec.mcp_servers:
-            mcp_client = MCPServerStreamableHTTP(url=mcp_config.url, timeout=mcp_config.read_timeout)
+            mcp_client = MCPServerStreamableHTTP(
+                url=mcp_config.url, timeout=mcp_config.read_timeout
+            )
             connection = await self._exit_stack.enter_async_context(mcp_client)
             self._mcp_connections.append(connection)
 
@@ -147,7 +150,9 @@ class OrchestratorAgent:
     ) -> tuple[AgentRun | None, list[ModelMessage]]:
         """Run the agent with the given prompt."""
         if not self._agent:
-            raise RuntimeError("OrchestratorAgent must be used as async context manager")
+            raise RuntimeError(
+                "OrchestratorAgent must be used as async context manager"
+            )
 
         return await run_agent(
             self._agent,
@@ -184,11 +189,14 @@ class OrchestratorAgent:
 def _resolve_tool(tool_ref: str) -> Any:
     """Resolve tool reference like 'module.path:function_name' to Tool or Callable."""
     if ":" not in tool_ref:
-        raise ValueError(f"Invalid tool reference '{tool_ref}'. Expected 'module.path:function_name'")
+        raise ValueError(
+            f"Invalid tool reference '{tool_ref}'. Expected 'module.path:function_name'"
+        )
 
     module_path, func_name = tool_ref.rsplit(":", 1)
 
     import importlib
+
     module = importlib.import_module(module_path)
     func = getattr(module, func_name)
 

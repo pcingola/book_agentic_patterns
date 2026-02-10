@@ -3,7 +3,10 @@
 from agentic_patterns.core.context.decorators import context_result
 from agentic_patterns.core.tools.permissions import ToolPermission, tool_permission
 from agentic_patterns.tools.dynamic import generate_param_docs, get_param_signature
-from agentic_patterns.toolkits.data_analysis.executor import execute_operation, get_all_operations
+from agentic_patterns.toolkits.data_analysis.executor import (
+    execute_operation,
+    get_all_operations,
+)
 from agentic_patterns.toolkits.data_analysis.io import list_dataframe_files
 
 
@@ -73,7 +76,9 @@ def get_all_tools() -> list:
     operations = get_all_operations()
     for op_name, op_config in operations.items():
         tool_func = _generate_tool_function(op_name, op_config)
-        permission = ToolPermission.READ if op_config.view_only else ToolPermission.WRITE
+        permission = (
+            ToolPermission.READ if op_config.view_only else ToolPermission.WRITE
+        )
         tool_func = context_result(save=not op_config.view_only)(tool_func)
         tool_func = tool_permission(permission)(tool_func)
         tools.append(tool_func)

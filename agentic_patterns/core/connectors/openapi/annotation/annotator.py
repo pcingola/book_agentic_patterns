@@ -5,7 +5,9 @@ import re
 
 from agentic_patterns.core.agents.agents import get_agent, run_agent
 from agentic_patterns.core.connectors.openapi.config import CATEGORIZATION_BATCH_SIZE
-from agentic_patterns.core.connectors.openapi.extraction.spec_extractor import ApiSpecExtractor
+from agentic_patterns.core.connectors.openapi.extraction.spec_extractor import (
+    ApiSpecExtractor,
+)
 from agentic_patterns.core.connectors.openapi.models import ApiInfo
 from agentic_patterns.core.prompt import get_prompt
 
@@ -16,7 +18,13 @@ class ApiSpecAnnotator:
     def __init__(self, api_id: str):
         self.api_id = api_id
 
-    async def annotate(self, spec_source: str, base_url: str | None = None, verbose: bool = False, debug: bool = False) -> ApiInfo:
+    async def annotate(
+        self,
+        spec_source: str,
+        base_url: str | None = None,
+        verbose: bool = False,
+        debug: bool = False,
+    ) -> ApiInfo:
         """Run the full annotation pipeline.
 
         Args:
@@ -58,7 +66,9 @@ class ApiSpecAnnotator:
         # Build endpoints summary
         endpoints_summary = []
         for endpoint in api_info.endpoints:
-            endpoints_summary.append(f"- {endpoint.method} {endpoint.path}: {endpoint.summary or 'No summary'}")
+            endpoints_summary.append(
+                f"- {endpoint.method} {endpoint.path}: {endpoint.summary or 'No summary'}"
+            )
 
         prompt = get_prompt(
             "openapi/annotation/api_description",
@@ -80,9 +90,13 @@ class ApiSpecAnnotator:
         categorization: dict[str, str] = {}
 
         for batch_start in range(0, total, CATEGORIZATION_BATCH_SIZE):
-            batch = api_info.endpoints[batch_start:batch_start + CATEGORIZATION_BATCH_SIZE]
+            batch = api_info.endpoints[
+                batch_start : batch_start + CATEGORIZATION_BATCH_SIZE
+            ]
             batch_end = min(batch_start + CATEGORIZATION_BATCH_SIZE, total)
-            print(f"  [{batch_start + 1}-{batch_end}/{total}] categorizing endpoints...")
+            print(
+                f"  [{batch_start + 1}-{batch_end}/{total}] categorizing endpoints..."
+            )
 
             endpoints_list = [
                 {
@@ -106,33 +120,45 @@ class ApiSpecAnnotator:
             if result:
                 try:
                     output = result.result.output.strip()
-                    json_match = re.search(r"```(?:json)?\s*\n(.*?)```", output, re.DOTALL)
+                    json_match = re.search(
+                        r"```(?:json)?\s*\n(.*?)```", output, re.DOTALL
+                    )
                     if json_match:
                         output = json_match.group(1).strip()
                     categorization.update(json.loads(output))
                 except json.JSONDecodeError as e:
-                    print(f"  WARNING: Failed to parse categorization JSON for batch: {e}")
+                    print(
+                        f"  WARNING: Failed to parse categorization JSON for batch: {e}"
+                    )
                     for endpoint in batch:
                         if endpoint.operation_id not in categorization:
-                            categorization[endpoint.operation_id] = endpoint.tags[0] if endpoint.tags else "Uncategorized"
+                            categorization[endpoint.operation_id] = (
+                                endpoint.tags[0] if endpoint.tags else "Uncategorized"
+                            )
 
         # Apply categories
         for endpoint in api_info.endpoints:
-            endpoint.category = categorization.get(endpoint.operation_id, endpoint.tags[0] if endpoint.tags else "Uncategorized")
+            endpoint.category = categorization.get(
+                endpoint.operation_id,
+                endpoint.tags[0] if endpoint.tags else "Uncategorized",
+            )
 
     async def _annotate_endpoint_descriptions(self, api_info: ApiInfo) -> None:
         """Generate endpoint descriptions for endpoints missing them."""
         endpoints_to_describe = [e for e in api_info.endpoints if not e.description]
         total = len(endpoints_to_describe)
-        print(f"  {total} endpoints need descriptions ({len(api_info.endpoints) - total} already have one)")
+        print(
+            f"  {total} endpoints need descriptions ({len(api_info.endpoints) - total} already have one)"
+        )
 
         for i, endpoint in enumerate(endpoints_to_describe, 1):
-
             # Build parameters summary
             params_lines = []
             for param in endpoint.parameters:
                 required_str = " (required)" if param.required else ""
-                params_lines.append(f"- {param.name} ({param.location}, {param.schema_type}){required_str}: {param.description}")
+                params_lines.append(
+                    f"- {param.name} ({param.location}, {param.schema_type}){required_str}: {param.description}"
+                )
 
             # Build request body summary
             request_body_str = "None"
@@ -142,7 +168,9 @@ class ApiSpecAnnotator:
             # Build responses summary
             responses_lines = []
             for response in endpoint.responses:
-                responses_lines.append(f"- {response.status_code}: {response.description}")
+                responses_lines.append(
+                    f"- {response.status_code}: {response.description}"
+                )
 
             if self._verbose:
                 print(f"  [{i}/{total}] {endpoint.method} {endpoint.path}")

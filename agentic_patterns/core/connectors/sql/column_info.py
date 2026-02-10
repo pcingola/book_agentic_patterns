@@ -37,7 +37,10 @@ class ColumnInfo:
 
     def schema_sql(self) -> str:
         """Generate SQL fragment for this column."""
-        from agentic_patterns.core.connectors.sql.schema_formatter import SchemaFormatter
+        from agentic_patterns.core.connectors.sql.schema_formatter import (
+            SchemaFormatter,
+        )
+
         return SchemaFormatter.format_column(self)
 
     @classmethod

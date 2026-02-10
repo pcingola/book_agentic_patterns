@@ -29,13 +29,27 @@ def get_all_tools() -> list:
         return await connector.show_table_details(db_id, table_name)
 
     @tool_permission(ToolPermission.READ)
-    async def sql_execute(db_id: str, query: str, output_file: str | None = None, nl_query: str | None = None) -> str:
+    async def sql_execute(
+        db_id: str,
+        query: str,
+        output_file: str | None = None,
+        nl_query: str | None = None,
+    ) -> str:
         """Execute a SELECT query. Large results are saved to CSV automatically."""
         return await connector.execute_sql(db_id, query, output_file, nl_query)
 
     @tool_permission(ToolPermission.READ)
-    async def sql_get_row_by_id(db_id: str, table_name: str, row_id: str, fetch_related: bool = False) -> str:
+    async def sql_get_row_by_id(
+        db_id: str, table_name: str, row_id: str, fetch_related: bool = False
+    ) -> str:
         """Fetch a row by primary key, optionally including related rows via foreign keys."""
         return await connector.get_row_by_id(db_id, table_name, row_id, fetch_related)
 
-    return [sql_list_databases, sql_list_tables, sql_show_schema, sql_show_table_details, sql_execute, sql_get_row_by_id]
+    return [
+        sql_list_databases,
+        sql_list_tables,
+        sql_show_schema,
+        sql_show_table_details,
+        sql_execute,
+        sql_get_row_by_id,
+    ]

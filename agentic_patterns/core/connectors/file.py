@@ -5,7 +5,11 @@ from pathlib import Path, PurePosixPath
 
 from agentic_patterns.core.connectors.base import Connector
 from agentic_patterns.core.context.decorators import context_result
-from agentic_patterns.core.context.processors import count_lines, detect_encoding, read_line_range
+from agentic_patterns.core.context.processors import (
+    count_lines,
+    detect_encoding,
+    read_line_range,
+)
 from agentic_patterns.core.context.reader import read_file_as_string
 from agentic_patterns.core.workspace import workspace_to_host_path
 
@@ -47,7 +51,9 @@ class FileConnector(Connector):
         encoding = detect_encoding(host_path)
         total_lines = count_lines(host_path, encoding)
         if start_line > total_lines:
-            raise ValueError(f"start_line {start_line} exceeds file length ({total_lines} lines)")
+            raise ValueError(
+                f"start_line {start_line} exceeds file length ({total_lines} lines)"
+            )
 
         with open(host_path, "r", encoding=encoding, errors="replace") as f:
             lines = f.read().splitlines()
@@ -123,7 +129,10 @@ class FileConnector(Connector):
 
         if len(matches) > 200:
             shown = matches[:200]
-            return f"[Showing 200 of {len(matches)} files matching '{pattern}' in {path}]\n" + "\n".join(shown)
+            return (
+                f"[Showing 200 of {len(matches)} files matching '{pattern}' in {path}]\n"
+                + "\n".join(shown)
+            )
 
         return f"[{len(matches)} file(s) in {path}]\n" + "\n".join(matches)
 

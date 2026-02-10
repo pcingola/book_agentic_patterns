@@ -23,5 +23,7 @@ class DbOperations(ABC):
         """Fetch a single row by primary key."""
 
     @abstractmethod
-    async def fetch_related_row(self, table: TableInfo, column_name: str, value: str) -> dict | None:
+    async def fetch_related_row(
+        self, table: TableInfo, column_name: str, value: str
+    ) -> dict | None:
         """Fetch a related row from another table."""

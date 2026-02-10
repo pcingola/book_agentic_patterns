@@ -3,7 +3,12 @@
 
 def get_param_signature(param_name: str, param_default) -> str:
     """Generate parameter signature string for dynamic function creation."""
-    type_mapping = {str: f", {param_name}: str = None", int: f", {param_name}: int = None", float: f", {param_name}: float = None", bool: f", {param_name}: bool = None"}
+    type_mapping = {
+        str: f", {param_name}: str = None",
+        int: f", {param_name}: int = None",
+        float: f", {param_name}: float = None",
+        bool: f", {param_name}: bool = None",
+    }
 
     if param_default is None:
         return f", {param_name} = None"
@@ -45,6 +50,10 @@ def generate_param_docs(parameters: dict) -> str:
             ptype = "dict"
         else:
             ptype = type(default).__name__
-        default_str = f" (default: {default})" if default not in (str, int, float, bool, list, dict, None) else ""
+        default_str = (
+            f" (default: {default})"
+            if default not in (str, int, float, bool, list, dict, None)
+            else ""
+        )
         lines.append(f"    {name}: {ptype}{default_str}")
     return "\n".join(lines)

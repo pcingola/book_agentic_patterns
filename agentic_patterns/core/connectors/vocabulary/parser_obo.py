@@ -79,8 +79,13 @@ def _parse_term_block(block: str) -> VocabularyTerm | None:
         metadata["xrefs"] = ",".join(xrefs)
 
     return VocabularyTerm(
-        id=term_id, label=label, synonyms=synonyms, definition=definition,
-        parents=parents, relationships=relationships, metadata=metadata,
+        id=term_id,
+        label=label,
+        synonyms=synonyms,
+        definition=definition,
+        parents=parents,
+        relationships=relationships,
+        metadata=metadata,
     )
 
 

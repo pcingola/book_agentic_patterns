@@ -27,7 +27,9 @@ class ServerThread(threading.Thread):
         self.server = None
 
     def run(self):
-        config = uvicorn.Config(self.app, host="127.0.0.1", port=self.port, log_level="error", ws="none")
+        config = uvicorn.Config(
+            self.app, host="127.0.0.1", port=self.port, log_level="error", ws="none"
+        )
         self.server = uvicorn.Server(config)
         self.server.run()
 
@@ -42,8 +44,12 @@ class TestCancellationPropagation(unittest.IsolatedAsyncioTestCase):
     @classmethod
     def setUpClass(cls):
         cls.port = find_free_port()
-        cls.mock_server = MockA2AServer(name="SlowAgent", description="Takes time to respond")
-        cls.mock_server.on_prompt_delayed("slow task", polls=10, result="Eventually done")
+        cls.mock_server = MockA2AServer(
+            name="SlowAgent", description="Takes time to respond"
+        )
+        cls.mock_server.on_prompt_delayed(
+            "slow task", polls=10, result="Eventually done"
+        )
 
         app = cls.mock_server.to_app()
         cls.server_thread = ServerThread(app, cls.port)
@@ -55,7 +61,9 @@ class TestCancellationPropagation(unittest.IsolatedAsyncioTestCase):
         cls.server_thread.stop()
 
     def setUp(self):
-        self.config = A2AClientConfig(url=f"http://127.0.0.1:{self.port}", timeout=10, poll_interval=0.1)
+        self.config = A2AClientConfig(
+            url=f"http://127.0.0.1:{self.port}", timeout=10, poll_interval=0.1
+        )
         self.client = A2AClientExtended(self.config)
         self.mock_server.received_prompts.clear()
         self.mock_server.cancelled_task_ids.clear()

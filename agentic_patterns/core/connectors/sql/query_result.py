@@ -21,7 +21,9 @@ class QueryResultMetadata(BaseModel):
     natural_language_query: str | None = None
 
     def __str__(self) -> str:
-        query_preview = self.sql_query[:60] + "..." if len(self.sql_query) > 60 else self.sql_query
+        query_preview = (
+            self.sql_query[:60] + "..." if len(self.sql_query) > 60 else self.sql_query
+        )
         return f"QueryResultMetadata(db_id={self.db_id!r}, rows={self.row_count}, query={query_preview!r})"
 
     @classmethod

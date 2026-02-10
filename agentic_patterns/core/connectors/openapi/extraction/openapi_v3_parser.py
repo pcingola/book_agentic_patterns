@@ -2,7 +2,9 @@
 
 import json
 
-from agentic_patterns.core.connectors.openapi.extraction.spec_parser import ApiSpecParser
+from agentic_patterns.core.connectors.openapi.extraction.spec_parser import (
+    ApiSpecParser,
+)
 from agentic_patterns.core.connectors.openapi.models import (
     ApiInfo,
     EndpointInfo,
@@ -46,21 +48,38 @@ class OpenApiV3Parser(ApiSpecParser):
             path_parameters = self._parse_parameters(path_item.get("parameters", []))
 
             # Parse each HTTP method
-            for method in ["get", "post", "put", "delete", "patch", "head", "options", "trace"]:
+            for method in [
+                "get",
+                "post",
+                "put",
+                "delete",
+                "patch",
+                "head",
+                "options",
+                "trace",
+            ]:
                 if method not in path_item:
                     continue
 
                 operation = path_item[method]
-                endpoint = self._parse_operation(path, method.upper(), operation, path_parameters)
+                endpoint = self._parse_operation(
+                    path, method.upper(), operation, path_parameters
+                )
                 api_info.add_endpoint(endpoint)
 
         return api_info
 
     def _parse_operation(
-        self, path: str, method: str, operation: dict, path_parameters: list[ParameterInfo]
+        self,
+        path: str,
+        method: str,
+        operation: dict,
+        path_parameters: list[ParameterInfo],
     ) -> EndpointInfo:
         """Parse a single operation (endpoint)."""
-        operation_id = operation.get("operationId", f"{method.lower()}_{path.replace('/', '_')}")
+        operation_id = operation.get(
+            "operationId", f"{method.lower()}_{path.replace('/', '_')}"
+        )
         summary = operation.get("summary", "")
         description = operation.get("description", "")
         tags = operation.get("tags", [])
@@ -138,10 +157,14 @@ class OpenApiV3Parser(ApiSpecParser):
             content_type=content_type,
             schema_json=json.dumps(schema, indent=2),
             description=request_body.get("description", ""),
-            example=json.dumps(media_type.get("example")) if "example" in media_type else None,
+            example=json.dumps(media_type.get("example"))
+            if "example" in media_type
+            else None,
         )
 
-    def _parse_response(self, status_code: str, response_spec: dict) -> list[ResponseSchemaInfo]:
+    def _parse_response(
+        self, status_code: str, response_spec: dict
+    ) -> list[ResponseSchemaInfo]:
         """Parse response definitions."""
         # Handle $ref
         if "$ref" in response_spec:
@@ -175,7 +198,9 @@ class OpenApiV3Parser(ApiSpecParser):
                         content_type=content_type,
                         schema_json=json.dumps(schema, indent=2),
                         description=response_spec.get("description", ""),
-                        example=json.dumps(media_type.get("example")) if "example" in media_type else None,
+                        example=json.dumps(media_type.get("example"))
+                        if "example" in media_type
+                        else None,
                     )
                 )
 

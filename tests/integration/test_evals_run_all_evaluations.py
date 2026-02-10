@@ -19,7 +19,11 @@ class TestRunAllEvaluations(unittest.TestCase):
 
     def test_run_all_returns_true_on_success(self):
         with patch("builtins.print"):
-            result = asyncio.run(run_all_evaluations(self.datasets, self.print_options, min_assertions=1.0))
+            result = asyncio.run(
+                run_all_evaluations(
+                    self.datasets, self.print_options, min_assertions=1.0
+                )
+            )
         self.assertTrue(result)
 
     def test_run_all_runs_all_datasets(self):
@@ -31,7 +35,9 @@ class TestRunAllEvaluations(unittest.TestCase):
 
     def test_run_all_verbose_prints_summary(self):
         with patch("builtins.print") as mock_print:
-            asyncio.run(run_all_evaluations(self.datasets, self.print_options, verbose=True))
+            asyncio.run(
+                run_all_evaluations(self.datasets, self.print_options, verbose=True)
+            )
             calls = " ".join(str(call) for call in mock_print.call_args_list)
             self.assertIn("EVALUATION SUMMARY", calls)
 

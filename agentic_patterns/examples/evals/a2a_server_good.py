@@ -16,7 +16,7 @@ def tool_to_skill(func: Callable, tags: list[str]) -> Skill:
         tags=tags,
         inputModes=["application/json"],
         outputModes=["application/json"],
-    ) # type: ignore
+    )  # type: ignore
 
 
 def add_numbers(a: float, b: float) -> float:

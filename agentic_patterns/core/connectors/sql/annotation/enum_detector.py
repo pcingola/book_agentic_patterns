@@ -13,7 +13,22 @@ from agentic_patterns.core.prompt import get_prompt
 
 logger = logging.getLogger(__name__)
 
-SKIP_TYPES = {"INTEGER", "INT", "REAL", "FLOAT", "DOUBLE", "NUMERIC", "DECIMAL", "BOOLEAN", "BOOL", "DATE", "DATETIME", "TIMESTAMP", "TIME", "BLOB"}
+SKIP_TYPES = {
+    "INTEGER",
+    "INT",
+    "REAL",
+    "FLOAT",
+    "DOUBLE",
+    "NUMERIC",
+    "DECIMAL",
+    "BOOLEAN",
+    "BOOL",
+    "DATE",
+    "DATETIME",
+    "TIMESTAMP",
+    "TIME",
+    "BLOB",
+}
 
 
 class EnumDetectionResult(BaseModel):
@@ -55,10 +70,14 @@ async def detect_enums(db_info: DbInfo, verbose: bool = False) -> None:
                 col.enum_values = []
                 continue
 
-            row_count_df = await db_ops.execute_select_query(f'SELECT COUNT(*) FROM "{table.name}"')
+            row_count_df = await db_ops.execute_select_query(
+                f'SELECT COUNT(*) FROM "{table.name}"'
+            )
             row_count = int(row_count_df.iloc[0, 0])
 
-            distinct_str = "\n".join(f"  {row[col.name]}: {row['cnt']}" for _, row in df.iterrows())
+            distinct_str = "\n".join(
+                f"  {row[col.name]}: {row['cnt']}" for _, row in df.iterrows()
+            )
 
             prompt = get_prompt(
                 "sql/enum_detection/enum_detection",
@@ -72,11 +91,24 @@ async def detect_enums(db_info: DbInfo, verbose: bool = False) -> None:
                 distinct_by_count=distinct_str,
             )
 
-            agent = get_agent(system_prompt="You are a database analyst.", output_type=EnumDetectionResult)
+            agent = get_agent(
+                system_prompt="You are a database analyst.",
+                output_type=EnumDetectionResult,
+            )
             result, _ = await run_agent(agent, prompt, verbose=verbose)
             if result and result.output:
                 col.is_enum = result.output.is_enum
-                col.enum_values = sorted([str(row[col.name]) for _, row in df.iterrows() if row[col.name] is not None]) if col.is_enum else []
+                col.enum_values = (
+                    sorted(
+                        [
+                            str(row[col.name])
+                            for _, row in df.iterrows()
+                            if row[col.name] is not None
+                        ]
+                    )
+                    if col.is_enum
+                    else []
+                )
             else:
                 col.is_enum = False
                 col.enum_values = []

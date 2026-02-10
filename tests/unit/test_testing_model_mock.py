@@ -4,7 +4,12 @@ from pydantic import BaseModel
 from pydantic_ai.messages import TextPart, ToolCallPart
 from pydantic_ai.models import ModelRequestParameters
 
-from agentic_patterns.testing.model_mock import ModelMock, MockFinishReason, _convert_to_parts, final_result_tool
+from agentic_patterns.testing.model_mock import (
+    ModelMock,
+    MockFinishReason,
+    _convert_to_parts,
+    final_result_tool,
+)
 
 
 class TestModelMock(unittest.IsolatedAsyncioTestCase):
@@ -33,6 +38,7 @@ class TestModelMock(unittest.IsolatedAsyncioTestCase):
 
     def test_final_result_tool_with_pydantic_model(self):
         """Test that final_result_tool creates ToolCallPart from Pydantic model."""
+
         class MyModel(BaseModel):
             name: str
             value: int
@@ -50,7 +56,9 @@ class TestModelMock(unittest.IsolatedAsyncioTestCase):
     async def test_model_mock_returns_text_response(self):
         """Test that ModelMock returns text responses in order."""
         model = ModelMock(responses=["first", "second"])
-        params = ModelRequestParameters(function_tools=[], allow_text_output=True, output_mode="text")
+        params = ModelRequestParameters(
+            function_tools=[], allow_text_output=True, output_mode="text"
+        )
 
         response1 = await model.request([], None, params)
         response2 = await model.request([], None, params)
@@ -62,7 +70,9 @@ class TestModelMock(unittest.IsolatedAsyncioTestCase):
         """Test that ModelMock returns ToolCallPart responses."""
         tool_call = ToolCallPart(tool_name="search", args={"query": "test"})
         model = ModelMock(responses=[tool_call])
-        params = ModelRequestParameters(function_tools=[], allow_text_output=True, output_mode="text")
+        params = ModelRequestParameters(
+            function_tools=[], allow_text_output=True, output_mode="text"
+        )
 
         response = await model.request([], None, params)
 
@@ -72,7 +82,9 @@ class TestModelMock(unittest.IsolatedAsyncioTestCase):
     async def test_model_mock_raises_exception(self):
         """Test that ModelMock raises exceptions when configured to do so."""
         model = ModelMock(responses=[ValueError("test error")])
-        params = ModelRequestParameters(function_tools=[], allow_text_output=True, output_mode="text")
+        params = ModelRequestParameters(
+            function_tools=[], allow_text_output=True, output_mode="text"
+        )
 
         with self.assertRaises(ValueError) as ctx:
             await model.request([], None, params)

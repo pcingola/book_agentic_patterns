@@ -2,7 +2,11 @@
 
 from difflib import get_close_matches
 
-from agentic_patterns.core.connectors.vocabulary.models import VocabularyInfo, VocabularyStrategy, VocabularyTerm
+from agentic_patterns.core.connectors.vocabulary.models import (
+    VocabularyInfo,
+    VocabularyStrategy,
+    VocabularyTerm,
+)
 
 
 class StrategyEnum:
@@ -26,7 +30,12 @@ class StrategyEnum:
         return []
 
     def info(self) -> VocabularyInfo:
-        return VocabularyInfo(name=self._name, strategy=VocabularyStrategy.ENUM, source_format="json", term_count=len(self._by_id))
+        return VocabularyInfo(
+            name=self._name,
+            strategy=VocabularyStrategy.ENUM,
+            source_format="json",
+            term_count=len(self._by_id),
+        )
 
     def lookup(self, term_code: str) -> VocabularyTerm | None:
         return self._by_id.get(term_code)
@@ -52,14 +61,18 @@ class StrategyEnum:
         # Substring match
         results = []
         for term in self._by_id.values():
-            if query_lower in term.label.lower() or any(query_lower in s.lower() for s in term.synonyms):
+            if query_lower in term.label.lower() or any(
+                query_lower in s.lower() for s in term.synonyms
+            ):
                 results.append(term)
                 if len(results) >= max_results:
                     break
         # Fuzzy match as fallback
         if not results:
             all_labels = list(self._label_to_id.keys())
-            close = get_close_matches(query_lower, all_labels, n=max_results, cutoff=0.6)
+            close = get_close_matches(
+                query_lower, all_labels, n=max_results, cutoff=0.6
+            )
             for label in close:
                 tid = self._label_to_id[label]
                 if tid not in [r.id for r in results]:

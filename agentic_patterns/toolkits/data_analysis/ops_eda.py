@@ -88,7 +88,9 @@ EDA_OPERATIONS = {
     "nunique": OperationConfig(
         name="nunique",
         category="eda",
-        func=lambda df, column=None: df[column].nunique() if column else df.nunique().to_dict(),
+        func=lambda df, column=None: (
+            df[column].nunique() if column else df.nunique().to_dict()
+        ),
         parameters={"column": None},
         returns_df=False,
         view_only=True,
@@ -97,7 +99,9 @@ EDA_OPERATIONS = {
     "value_counts": OperationConfig(
         name="value_counts",
         category="eda",
-        func=lambda df, column, normalize=False: df[column].value_counts(normalize=normalize).reset_index(),
+        func=lambda df, column, normalize=False: (
+            df[column].value_counts(normalize=normalize).reset_index()
+        ),
         parameters={"column": str, "normalize": False},
         returns_df=True,
         view_only=True,
@@ -106,7 +110,11 @@ EDA_OPERATIONS = {
     "correlation": OperationConfig(
         name="correlation",
         category="eda",
-        func=lambda df, method="pearson", numeric_only=True: df.select_dtypes(include=[np.number]).corr(method=method) if numeric_only else df.corr(method=method),
+        func=lambda df, method="pearson", numeric_only=True: (
+            df.select_dtypes(include=[np.number]).corr(method=method)
+            if numeric_only
+            else df.corr(method=method)
+        ),
         parameters={"method": "pearson", "numeric_only": True},
         returns_df=False,
         view_only=True,
@@ -154,7 +162,9 @@ EDA_OPERATIONS = {
     "pivot_table": OperationConfig(
         name="pivot_table",
         category="eda",
-        func=lambda df, index, columns, values, aggfunc="mean": df.pivot_table(index=index, columns=columns, values=values, aggfunc=aggfunc),
+        func=lambda df, index, columns, values, aggfunc="mean": df.pivot_table(
+            index=index, columns=columns, values=values, aggfunc=aggfunc
+        ),
         parameters={"index": str, "columns": str, "values": str, "aggfunc": "mean"},
         returns_df=True,
         view_only=False,
@@ -163,7 +173,9 @@ EDA_OPERATIONS = {
     "crosstab": OperationConfig(
         name="crosstab",
         category="eda",
-        func=lambda df, index, columns, normalize=False: pd.crosstab(df[index], df[columns], normalize=normalize),
+        func=lambda df, index, columns, normalize=False: pd.crosstab(
+            df[index], df[columns], normalize=normalize
+        ),
         parameters={"index": str, "columns": str, "normalize": False},
         returns_df=True,
         view_only=False,

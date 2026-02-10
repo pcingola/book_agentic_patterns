@@ -13,7 +13,9 @@ def get_all_tools() -> list:
         return ops.add_task(description, parent_task_id)
 
     @tool_permission(ToolPermission.WRITE)
-    async def add_tasks(descriptions: list[str], parent_task_id: str | None = None) -> list[str]:
+    async def add_tasks(
+        descriptions: list[str], parent_task_id: str | None = None
+    ) -> list[str]:
         """Add several tasks at once. Returns list of new task IDs."""
         return ops.add_tasks(descriptions, parent_task_id)
 
@@ -37,4 +39,11 @@ def get_all_tools() -> list:
         """Update a task's status by ID. status: pending, in_progress, completed, or failed."""
         return ops.update_task_status(task_id, status)
 
-    return [add_task, add_tasks, create_task_list, delete_task, show_task_list, update_task_status]
+    return [
+        add_task,
+        add_tasks,
+        create_task_list,
+        delete_task,
+        show_task_list,
+        update_task_status,
+    ]

@@ -93,7 +93,9 @@ class TestTaskStoreJson(unittest.IsolatedAsyncioTestCase):
         """Events are appended to the task."""
         task = Task(input="test")
         await self.store.create(task)
-        event = TaskEvent(task_id=task.id, event_type=EventType.LOG, payload={"msg": "hi"})
+        event = TaskEvent(
+            task_id=task.id, event_type=EventType.LOG, payload={"msg": "hi"}
+        )
         await self.store.add_event(task.id, event)
         got = await self.store.get(task.id)
         self.assertEqual(len(got.events), 1)

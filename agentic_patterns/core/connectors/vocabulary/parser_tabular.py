@@ -12,7 +12,13 @@ from xml.etree import ElementTree as ET
 from agentic_patterns.core.connectors.vocabulary.models import VocabularyTerm
 
 
-def parse_json_flat(path: Path, id_field: str = "id", label_field: str = "label", synonym_fields: list[str] | None = None, definition_field: str | None = "definition") -> list[VocabularyTerm]:
+def parse_json_flat(
+    path: Path,
+    id_field: str = "id",
+    label_field: str = "label",
+    synonym_fields: list[str] | None = None,
+    definition_field: str | None = "definition",
+) -> list[VocabularyTerm]:
     """Parse a JSON file with flat term objects (no hierarchy). For Ensembl Biotypes, NDC, UNII."""
     data = json.loads(path.read_text(encoding="utf-8"))
     if isinstance(data, dict):
@@ -22,7 +28,9 @@ def parse_json_flat(path: Path, id_field: str = "id", label_field: str = "label"
                 data = data[key]
                 break
     if not isinstance(data, list):
-        raise ValueError(f"Expected a JSON array or dict with list field, got {type(data).__name__}")
+        raise ValueError(
+            f"Expected a JSON array or dict with list field, got {type(data).__name__}"
+        )
 
     terms: list[VocabularyTerm] = []
     for item in data:
@@ -31,18 +39,34 @@ def parse_json_flat(path: Path, id_field: str = "id", label_field: str = "label"
             continue
         label = str(item.get(label_field, term_id))
         synonyms = []
-        for sf in (synonym_fields or []):
+        for sf in synonym_fields or []:
             val = item.get(sf)
             if isinstance(val, list):
                 synonyms.extend(str(v) for v in val)
             elif val:
                 synonyms.append(str(val))
-        definition = str(item[definition_field]) if definition_field and definition_field in item else None
-        terms.append(VocabularyTerm(id=term_id, label=label, synonyms=synonyms, definition=definition))
+        definition = (
+            str(item[definition_field])
+            if definition_field and definition_field in item
+            else None
+        )
+        terms.append(
+            VocabularyTerm(
+                id=term_id, label=label, synonyms=synonyms, definition=definition
+            )
+        )
     return terms
 
 
-def parse_json_hierarchical(path: Path, id_field: str = "id", label_field: str = "label", parent_field: str = "parents", children_field: str = "children", synonym_fields: list[str] | None = None, definition_field: str | None = "definition") -> list[VocabularyTerm]:
+def parse_json_hierarchical(
+    path: Path,
+    id_field: str = "id",
+    label_field: str = "label",
+    parent_field: str = "parents",
+    children_field: str = "children",
+    synonym_fields: list[str] | None = None,
+    definition_field: str | None = "definition",
+) -> list[VocabularyTerm]:
     """Parse a JSON file with hierarchical terms (parent/children fields)."""
     data = json.loads(path.read_text(encoding="utf-8"))
     if isinstance(data, dict):
@@ -60,18 +84,39 @@ def parse_json_hierarchical(path: Path, id_field: str = "id", label_field: str =
         parents = item.get(parent_field, [])
         children = item.get(children_field, [])
         synonyms = []
-        for sf in (synonym_fields or []):
+        for sf in synonym_fields or []:
             val = item.get(sf)
             if isinstance(val, list):
                 synonyms.extend(str(v) for v in val)
             elif val:
                 synonyms.append(str(val))
-        definition = str(item[definition_field]) if definition_field and definition_field in item else None
-        terms.append(VocabularyTerm(id=term_id, label=label, parents=parents, children=children, synonyms=synonyms, definition=definition))
+        definition = (
+            str(item[definition_field])
+            if definition_field and definition_field in item
+            else None
+        )
+        terms.append(
+            VocabularyTerm(
+                id=term_id,
+                label=label,
+                parents=parents,
+                children=children,
+                synonyms=synonyms,
+                definition=definition,
+            )
+        )
     return terms
 
 
-def parse_csv(path: Path, id_field: str = "id", label_field: str = "label", delimiter: str | None = None, synonym_fields: list[str] | None = None, definition_field: str | None = "definition", parent_field: str | None = None) -> list[VocabularyTerm]:
+def parse_csv(
+    path: Path,
+    id_field: str = "id",
+    label_field: str = "label",
+    delimiter: str | None = None,
+    synonym_fields: list[str] | None = None,
+    definition_field: str | None = "definition",
+    parent_field: str | None = None,
+) -> list[VocabularyTerm]:
     """Parse CSV/TSV into VocabularyTerm objects. Auto-detects delimiter if not given."""
     text = path.read_text(encoding="utf-8")
     if delimiter is None:
@@ -85,17 +130,27 @@ def parse_csv(path: Path, id_field: str = "id", label_field: str = "label", deli
             continue
         label = row.get(label_field, term_id).strip()
         synonyms = []
-        for sf in (synonym_fields or []):
+        for sf in synonym_fields or []:
             val = (row.get(sf) or "").strip()
             if val:
                 synonyms.extend(s.strip() for s in val.split("|") if s.strip())
-        definition = (row.get(definition_field) or "").strip() if definition_field else None
+        definition = (
+            (row.get(definition_field) or "").strip() if definition_field else None
+        )
         parents = []
         if parent_field:
             pval = (row.get(parent_field) or "").strip()
             if pval:
                 parents = [p.strip() for p in pval.split("|") if p.strip()]
-        terms.append(VocabularyTerm(id=term_id, label=label, synonyms=synonyms, definition=definition or None, parents=parents))
+        terms.append(
+            VocabularyTerm(
+                id=term_id,
+                label=label,
+                synonyms=synonyms,
+                definition=definition or None,
+                parents=parents,
+            )
+        )
 
     if parent_field:
         _resolve_children(terms)
@@ -137,7 +192,19 @@ def parse_mesh_xml(path: Path) -> list[VocabularyTerm]:
                 if "." in tn:
                     parents.append(tn.rsplit(".", 1)[0])
 
-        terms.append(VocabularyTerm(id=term_id, label=label, synonyms=synonyms, definition=definition, metadata={"tree_numbers": ",".join(tn.text.strip() for tn in record.iter("TreeNumber") if tn.text)}))
+        terms.append(
+            VocabularyTerm(
+                id=term_id,
+                label=label,
+                synonyms=synonyms,
+                definition=definition,
+                metadata={
+                    "tree_numbers": ",".join(
+                        tn.text.strip() for tn in record.iter("TreeNumber") if tn.text
+                    )
+                },
+            )
+        )
 
     return terms
 
@@ -153,7 +220,14 @@ def parse_gmt(path: Path) -> list[VocabularyTerm]:
         description = parts[1].strip() if parts[1].strip() else None
         genes = [g.strip() for g in parts[2:] if g.strip()]
         term_id = label.replace(" ", "_")
-        terms.append(VocabularyTerm(id=term_id, label=label, definition=description, metadata={"genes": ",".join(genes), "gene_count": str(len(genes))}))
+        terms.append(
+            VocabularyTerm(
+                id=term_id,
+                label=label,
+                definition=description,
+                metadata={"genes": ",".join(genes), "gene_count": str(len(genes))},
+            )
+        )
     return terms
 
 

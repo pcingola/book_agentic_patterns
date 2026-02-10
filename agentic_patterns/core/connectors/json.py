@@ -38,7 +38,9 @@ def _get_value_at_path(data: dict | list, json_path: str) -> Any:
     if not matches:
         raise KeyError(f"Path '{json_path}' not found in JSON")
     if len(matches) > 1:
-        raise ValueError(f"Path '{json_path}' matches {len(matches)} locations (must be unique)")
+        raise ValueError(
+            f"Path '{json_path}' matches {len(matches)} locations (must be unique)"
+        )
     return matches[0].value
 
 
@@ -48,7 +50,9 @@ def _set_value_at_path(data: dict | list, json_path: str, value: Any) -> None:
     matches = parsed.find(data)
 
     if len(matches) > 1:
-        raise ValueError(f"Path '{json_path}' matches {len(matches)} locations (must be unique for writes)")
+        raise ValueError(
+            f"Path '{json_path}' matches {len(matches)} locations (must be unique for writes)"
+        )
 
     if len(matches) == 1:
         match = matches[0]
@@ -86,7 +90,9 @@ def _delete_at_path(data: dict | list, json_path: str) -> None:
     if not matches:
         raise KeyError(f"Path '{json_path}' not found in JSON")
     if len(matches) > 1:
-        raise ValueError(f"Path '{json_path}' matches {len(matches)} locations (must be unique)")
+        raise ValueError(
+            f"Path '{json_path}' matches {len(matches)} locations (must be unique)"
+        )
 
     match = matches[0]
     if isinstance(match.context.value, dict):
@@ -101,7 +107,9 @@ def _delete_at_path(data: dict | list, json_path: str) -> None:
         raise TypeError("Cannot delete: parent is not a dict or list")
 
 
-def _describe_schema(value: Any, path: str = "$", max_depth: int = 4, _depth: int = 0) -> list[str]:
+def _describe_schema(
+    value: Any, path: str = "$", max_depth: int = 4, _depth: int = 0
+) -> list[str]:
     """Walk JSON structure and return type descriptions per path."""
     lines = []
     indent = "  " * _depth
@@ -110,13 +118,17 @@ def _describe_schema(value: Any, path: str = "$", max_depth: int = 4, _depth: in
         if _depth < max_depth:
             for key in list(value.keys())[:30]:
                 child_path = f"{path}.{key}"
-                lines.extend(_describe_schema(value[key], child_path, max_depth, _depth + 1))
+                lines.extend(
+                    _describe_schema(value[key], child_path, max_depth, _depth + 1)
+                )
             if len(value) > 30:
                 lines.append(f"{indent}  ... and {len(value) - 30} more keys")
     elif isinstance(value, list):
         lines.append(f"{indent}{path} (array, {len(value)} items)")
         if _depth < max_depth and len(value) > 0:
-            lines.extend(_describe_schema(value[0], f"{path}[0]", max_depth, _depth + 1))
+            lines.extend(
+                _describe_schema(value[0], f"{path}[0]", max_depth, _depth + 1)
+            )
     else:
         type_name = type(value).__name__ if value is not None else "null"
         lines.append(f"{indent}{path} ({type_name})")
@@ -137,7 +149,9 @@ def _slice_value(value: Any, n: int, from_end: bool = False) -> tuple[Any, int]:
     return value, 1
 
 
-def _format_sliced(sliced: Any, n: int, total: int, from_end: bool, json_path: str) -> str:
+def _format_sliced(
+    sliced: Any, n: int, total: int, from_end: bool, json_path: str
+) -> str:
     """Format sliced JSON value with truncation info."""
     formatted = json.dumps(sliced, ensure_ascii=False, indent=2)
     if total > n:
@@ -176,7 +190,9 @@ class JsonConnector(FileConnector):
 
         target = _get_value_at_path(data, json_path)
         if not isinstance(target, list):
-            raise TypeError(f"Target at {json_path} is not an array (type: {type(target).__name__})")
+            raise TypeError(
+                f"Target at {json_path} is not an array (type: {type(target).__name__})"
+            )
 
         target.append(parsed_value)
         self._write_json(host_path, data)
@@ -204,7 +220,10 @@ class JsonConnector(FileConnector):
             return json.dumps(value, ensure_ascii=False)
 
         import tempfile
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False, encoding="utf-8") as tmp:
+
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".json", delete=False, encoding="utf-8"
+        ) as tmp:
             json.dump(value, tmp, ensure_ascii=False, indent=2)
             tmp_path = Path(tmp.name)
 
@@ -254,12 +273,16 @@ class JsonConnector(FileConnector):
         """Merge updates into an object at a specific JSONPath without replacing it entirely."""
         parsed_updates = json.loads(updates)
         if not isinstance(parsed_updates, dict):
-            raise TypeError(f"Updates must be a JSON object, not {type(parsed_updates).__name__}")
+            raise TypeError(
+                f"Updates must be a JSON object, not {type(parsed_updates).__name__}"
+            )
 
         host_path, data = self._read_json(path)
         target = _get_value_at_path(data, json_path)
         if not isinstance(target, dict):
-            raise TypeError(f"Target at {json_path} is not an object (type: {type(target).__name__})")
+            raise TypeError(
+                f"Target at {json_path} is not an object (type: {type(target).__name__})"
+            )
 
         target.update(parsed_updates)
         self._write_json(host_path, data)
@@ -271,6 +294,7 @@ class JsonConnector(FileConnector):
         _, data = self._read_json(path)
 
         from jsonpath_ng.ext import parse as ext_parse
+
         try:
             parsed = ext_parse(json_path)
         except Exception as e:
@@ -305,7 +329,9 @@ class JsonConnector(FileConnector):
 
         parsed_value = json.loads(value)
         if len(value) > 10 * 1024:
-            raise ValueError(f"Value is very large ({len(value) / 1024:.1f} KB). Consider breaking into smaller updates.")
+            raise ValueError(
+                f"Value is very large ({len(value) / 1024:.1f} KB). Consider breaking into smaller updates."
+            )
 
         host_path, data = self._read_json(path)
         _set_value_at_path(data, json_path, parsed_value)

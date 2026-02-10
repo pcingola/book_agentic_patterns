@@ -5,9 +5,10 @@ from agentic_patterns.core.skills.models import SkillMetadata
 
 
 class TestSkillMetadata(unittest.TestCase):
-
     def test_str_representation(self):
-        meta = SkillMetadata(name="test-skill", description="A test skill", path=Path("/tmp/test"))
+        meta = SkillMetadata(
+            name="test-skill", description="A test skill", path=Path("/tmp/test")
+        )
         self.assertEqual(str(meta), "test-skill: A test skill")
 
 

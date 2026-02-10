@@ -6,13 +6,24 @@ from collections.abc import Callable
 from pathlib import Path
 
 from agentic_patterns.core.context.config import ContextConfig, load_context_config
-from agentic_patterns.core.context.models import FileExtractionResult, FileType, TruncationInfo
-from agentic_patterns.core.context.processors.common import check_and_apply_output_limit, create_error_result, create_file_metadata, truncate_string
+from agentic_patterns.core.context.models import (
+    FileExtractionResult,
+    FileType,
+    TruncationInfo,
+)
+from agentic_patterns.core.context.processors.common import (
+    check_and_apply_output_limit,
+    create_error_result,
+    create_file_metadata,
+    truncate_string,
+)
 
 
 def _get_cache_path(file_path: Path) -> Path:
     """Generate cache file path for markdown conversion."""
-    file_hash = hashlib.md5(f"{file_path}:{file_path.stat().st_mtime}".encode()).hexdigest()
+    file_hash = hashlib.md5(
+        f"{file_path}:{file_path.stat().st_mtime}".encode()
+    ).hexdigest()
     cache_dir = file_path.parent / ".markitdown_cache"
     cache_dir.mkdir(exist_ok=True)
     return cache_dir / f"{file_path.stem}_{file_hash}.md"
@@ -37,14 +48,18 @@ def _convert_to_markdown(file_path: Path) -> str:
     try:
         from markitdown import MarkItDown
     except ImportError:
-        raise ImportError("markitdown is required for document processing. Install with: uv add markitdown")
+        raise ImportError(
+            "markitdown is required for document processing. Install with: uv add markitdown"
+        )
 
     markitdown = MarkItDown()
     result = markitdown.convert(str(file_path))
     return result.text_content
 
 
-def _truncate_markdown_lines(markdown_content: str, max_lines: int, max_line_length: int, max_total_output: int) -> tuple[str, int]:
+def _truncate_markdown_lines(
+    markdown_content: str, max_lines: int, max_line_length: int, max_total_output: int
+) -> tuple[str, int]:
     """Truncate markdown content by lines."""
     lines = markdown_content.split("\n")
     output = io.StringIO()
@@ -76,7 +91,9 @@ def process_document(
         config = load_context_config()
 
     try:
-        metadata = create_file_metadata(file_path, mime_type=f"document/{file_path.suffix[1:]}")
+        metadata = create_file_metadata(
+            file_path, mime_type=f"document/{file_path.suffix[1:]}"
+        )
 
         if use_cache:
             markdown_content = _get_cached_markdown(file_path)
@@ -90,17 +107,26 @@ def process_document(
         total_lines = len(lines)
         lines_shown = min(config.max_lines, total_lines)
 
-        truncated_content, _ = _truncate_markdown_lines(markdown_content, config.max_lines, config.max_line_length, config.max_total_output)
+        truncated_content, _ = _truncate_markdown_lines(
+            markdown_content,
+            config.max_lines,
+            config.max_line_length,
+            config.max_total_output,
+        )
 
         truncation_info = TruncationInfo(
-            lines_shown=f"{lines_shown} of {total_lines}" if lines_shown < total_lines else None,
+            lines_shown=f"{lines_shown} of {total_lines}"
+            if lines_shown < total_lines
+            else None,
             total_output_limit_reached=len(truncated_content) > config.max_total_output,
         )
 
         if tokenizer:
             truncation_info.tokens_shown = tokenizer(truncated_content)
 
-        result_content = check_and_apply_output_limit(truncated_content, config.max_total_output, truncation_info)
+        result_content = check_and_apply_output_limit(
+            truncated_content, config.max_total_output, truncation_info
+        )
 
         return FileExtractionResult(
             content=result_content,
@@ -112,6 +138,8 @@ def process_document(
         )
 
     except ImportError as e:
-        return create_error_result(e, file_type, file_path, "document (missing dependencies)")
+        return create_error_result(
+            e, file_type, file_path, "document (missing dependencies)"
+        )
     except Exception as e:
         return create_error_result(e, file_type, file_path, "document")

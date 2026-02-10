@@ -19,7 +19,9 @@ class TestMatchesFilter(unittest.TestCase):
         self.assertTrue(_matches_filter("module", "file", "dataset_one", "one"))
 
     def test_matches_full_name(self):
-        self.assertTrue(_matches_filter("module", "file", "dataset_one", "module.dataset"))
+        self.assertTrue(
+            _matches_filter("module", "file", "dataset_one", "module.dataset")
+        )
 
     def test_no_match(self):
         self.assertFalse(_matches_filter("module", "file", "dataset", "xyz"))

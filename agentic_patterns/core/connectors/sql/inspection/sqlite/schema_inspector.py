@@ -3,13 +3,17 @@
 from agentic_patterns.core.connectors.sql.column_info import ColumnInfo
 from agentic_patterns.core.connectors.sql.foreign_key_info import ForeignKeyInfo
 from agentic_patterns.core.connectors.sql.index_info import IndexInfo
-from agentic_patterns.core.connectors.sql.inspection.schema_inspector import DbSchemaInspector
+from agentic_patterns.core.connectors.sql.inspection.schema_inspector import (
+    DbSchemaInspector,
+)
 
 
 class DbSchemaInspectorSqlite(DbSchemaInspector):
     """Inspects SQLite database schema."""
 
-    def get_columns(self, table_name: str, column_descriptions: dict[str, str] | None = None) -> list[ColumnInfo]:
+    def get_columns(
+        self, table_name: str, column_descriptions: dict[str, str] | None = None
+    ) -> list[ColumnInfo]:
         pks = self.get_primary_keys(table_name)
         uniques = self.get_unique_constraints(table_name)
         cur = self.conn.cursor()
@@ -17,15 +21,19 @@ class DbSchemaInspectorSqlite(DbSchemaInspector):
         columns = []
         for row in cur.fetchall():
             col_id, col_name, data_type, not_null, col_default, is_pk = row
-            columns.append(ColumnInfo(
-                name=col_name,
-                data_type=data_type.upper() if data_type else "TEXT",
-                is_nullable=not not_null,
-                column_default=col_default,
-                is_primary_key=col_name in pks,
-                is_unique=col_name in uniques,
-                description=column_descriptions.get(col_name, "") if column_descriptions else "",
-            ))
+            columns.append(
+                ColumnInfo(
+                    name=col_name,
+                    data_type=data_type.upper() if data_type else "TEXT",
+                    is_nullable=not not_null,
+                    column_default=col_default,
+                    is_primary_key=col_name in pks,
+                    is_unique=col_name in uniques,
+                    description=column_descriptions.get(col_name, "")
+                    if column_descriptions
+                    else "",
+                )
+            )
         cur.close()
         return columns
 
@@ -37,7 +45,10 @@ class DbSchemaInspectorSqlite(DbSchemaInspector):
             fk_id, seq, ref_table, col_name, ref_col, on_update, on_delete, match = row
             if fk_id not in fk_map:
                 fk_map[fk_id] = ForeignKeyInfo(
-                    name=None, columns=[], referenced_table=ref_table, referenced_columns=[],
+                    name=None,
+                    columns=[],
+                    referenced_table=ref_table,
+                    referenced_columns=[],
                     on_delete=on_delete if on_delete != "NO ACTION" else None,
                     on_update=on_update if on_update != "NO ACTION" else None,
                 )
@@ -57,10 +68,15 @@ class DbSchemaInspectorSqlite(DbSchemaInspector):
             columns = [info_row[2] for info_row in cur_info.fetchall()]
             cur_info.close()
             if columns:
-                indexes.append(IndexInfo(
-                    name=index_name, columns=columns, is_unique=bool(is_unique),
-                    is_primary=origin == "pk", index_type=None,
-                ))
+                indexes.append(
+                    IndexInfo(
+                        name=index_name,
+                        columns=columns,
+                        is_unique=bool(is_unique),
+                        is_primary=origin == "pk",
+                        index_type=None,
+                    )
+                )
         cur.close()
         return indexes
 

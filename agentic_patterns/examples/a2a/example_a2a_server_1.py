@@ -1,6 +1,7 @@
 """
 A2A server that exposes an agent with arithmetic tools.
 """
+
 from typing import Callable
 
 from agentic_patterns.core.agents import get_agent
@@ -9,7 +10,9 @@ from fasta2a import Skill
 
 def tool_to_skill(func: Callable) -> Skill:
     """Convert a tool function to an A2A Skill."""
-    return Skill(id=func.__name__, name=func.__name__, description=func.__doc__ or func.__name__)
+    return Skill(
+        id=func.__name__, name=func.__name__, description=func.__doc__ or func.__name__
+    )
 
 
 def add(a: int, b: int) -> int:
@@ -38,4 +41,8 @@ tools = [add, sub, mul, div]
 skills = [tool_to_skill(f) for f in tools]
 
 agent = get_agent(tools=tools)
-app = agent.to_a2a(name="Arithmetic", description="An agent that can perform basic arithmetic operations", skills=skills)
+app = agent.to_a2a(
+    name="Arithmetic",
+    description="An agent that can perform basic arithmetic operations",
+    skills=skills,
+)

@@ -4,14 +4,21 @@ import unittest
 
 from agentic_patterns.core.connectors.vocabulary.connector import VocabularyConnector
 from agentic_patterns.core.connectors.vocabulary.models import VocabularyStrategy
-from agentic_patterns.core.connectors.vocabulary.registry import get_vocabulary, list_vocabularies, register_vocabulary, reset
+from agentic_patterns.core.connectors.vocabulary.registry import (
+    get_vocabulary,
+    list_vocabularies,
+    register_vocabulary,
+    reset,
+)
 from agentic_patterns.core.connectors.vocabulary.strategy_enum import StrategyEnum
 from agentic_patterns.core.connectors.vocabulary.strategy_tree import StrategyTree
-from agentic_patterns.core.connectors.vocabulary.toy_data import get_toy_enum_terms, get_toy_tree_terms
+from agentic_patterns.core.connectors.vocabulary.toy_data import (
+    get_toy_enum_terms,
+    get_toy_tree_terms,
+)
 
 
 class TestStrategyEnum(unittest.TestCase):
-
     def setUp(self) -> None:
         self.backend = StrategyEnum("biotypes", get_toy_enum_terms())
 
@@ -65,7 +72,6 @@ class TestStrategyEnum(unittest.TestCase):
 
 
 class TestStrategyTree(unittest.TestCase):
-
     def setUp(self) -> None:
         self.backend = StrategyTree("sequence_ontology", get_toy_tree_terms())
 
@@ -139,7 +145,6 @@ class TestStrategyTree(unittest.TestCase):
 
 
 class TestRegistry(unittest.TestCase):
-
     def setUp(self) -> None:
         reset()
 
@@ -160,7 +165,6 @@ class TestRegistry(unittest.TestCase):
 
 
 class TestVocabularyConnector(unittest.TestCase):
-
     def setUp(self) -> None:
         reset()
         register_vocabulary("biotypes", StrategyEnum("biotypes", get_toy_enum_terms()))

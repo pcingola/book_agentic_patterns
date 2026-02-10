@@ -10,7 +10,14 @@ TRANSFORM_OPERATIONS = {
     "min_max_scale": OperationConfig(
         name="min_max_scale",
         category="transform",
-        func=lambda df, columns=None: df.copy().assign(**{col: MinMaxScaler().fit_transform(df[[col]]).flatten() for col in (columns if columns else df.select_dtypes(include=["number"]).columns)}),
+        func=lambda df, columns=None: df.copy().assign(
+            **{
+                col: MinMaxScaler().fit_transform(df[[col]]).flatten()
+                for col in (
+                    columns if columns else df.select_dtypes(include=["number"]).columns
+                )
+            }
+        ),
         parameters={"columns": None},
         returns_df=True,
         view_only=False,
@@ -19,7 +26,14 @@ TRANSFORM_OPERATIONS = {
     "standard_scale": OperationConfig(
         name="standard_scale",
         category="transform",
-        func=lambda df, columns=None: df.copy().assign(**{col: StandardScaler().fit_transform(df[[col]]).flatten() for col in (columns if columns else df.select_dtypes(include=["number"]).columns)}),
+        func=lambda df, columns=None: df.copy().assign(
+            **{
+                col: StandardScaler().fit_transform(df[[col]]).flatten()
+                for col in (
+                    columns if columns else df.select_dtypes(include=["number"]).columns
+                )
+            }
+        ),
         parameters={"columns": None},
         returns_df=True,
         view_only=False,
@@ -55,7 +69,13 @@ TRANSFORM_OPERATIONS = {
     "one_hot_encode": OperationConfig(
         name="one_hot_encode",
         category="transform",
-        func=lambda df, columns=None, drop_first=False: pd.get_dummies(df, columns=columns if columns else df.select_dtypes(include=["object", "category"]).columns.tolist(), drop_first=drop_first),
+        func=lambda df, columns=None, drop_first=False: pd.get_dummies(
+            df,
+            columns=columns
+            if columns
+            else df.select_dtypes(include=["object", "category"]).columns.tolist(),
+            drop_first=drop_first,
+        ),
         parameters={"columns": None, "drop_first": False},
         returns_df=True,
         view_only=False,
@@ -64,7 +84,17 @@ TRANSFORM_OPERATIONS = {
     "log_transform": OperationConfig(
         name="log_transform",
         category="transform",
-        func=lambda df, columns=None: df.assign(**{col: np.log(df[col]) for col in (columns if columns else df.select_dtypes(include=["number"]).columns.tolist()) if df[col].dtype in ["int64", "float64"] and (df[col] > 0).all()}),
+        func=lambda df, columns=None: df.assign(
+            **{
+                col: np.log(df[col])
+                for col in (
+                    columns
+                    if columns
+                    else df.select_dtypes(include=["number"]).columns.tolist()
+                )
+                if df[col].dtype in ["int64", "float64"] and (df[col] > 0).all()
+            }
+        ),
         parameters={"columns": None},
         returns_df=True,
         view_only=False,
@@ -82,7 +112,9 @@ TRANSFORM_OPERATIONS = {
     "sample": OperationConfig(
         name="sample",
         category="transform",
-        func=lambda df, n=None, frac=None, random_state=None: df.sample(n=n, frac=frac, random_state=random_state),
+        func=lambda df, n=None, frac=None, random_state=None: df.sample(
+            n=n, frac=frac, random_state=random_state
+        ),
         parameters={"n": None, "frac": None, "random_state": None},
         returns_df=True,
         view_only=False,

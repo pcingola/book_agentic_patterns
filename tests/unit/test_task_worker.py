@@ -35,7 +35,9 @@ class TestWorker(unittest.IsolatedAsyncioTestCase):
         task = Task(input="fail please")
         await self.store.create(task)
         worker = Worker(self.store, model=ModelMock(responses=[RuntimeError("boom")]))
-        with self.assertLogs("agentic_patterns.core.tasks.worker", level="ERROR") as logs:
+        with self.assertLogs(
+            "agentic_patterns.core.tasks.worker", level="ERROR"
+        ) as logs:
             await worker.execute(task.id)
         self.assertTrue(any("boom" in msg for msg in logs.output))
         got = await self.store.get(task.id)
@@ -45,7 +47,9 @@ class TestWorker(unittest.IsolatedAsyncioTestCase):
     async def test_execute_nonexistent(self) -> None:
         """Worker silently returns when task is not found."""
         worker = Worker(self.store, model=ModelMock(responses=["ignored"]))
-        with self.assertLogs("agentic_patterns.core.tasks.worker", level="WARNING") as logs:
+        with self.assertLogs(
+            "agentic_patterns.core.tasks.worker", level="WARNING"
+        ) as logs:
             await worker.execute("nonexistent-id")
         self.assertTrue(any("not found" in msg for msg in logs.output))
 

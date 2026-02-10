@@ -12,7 +12,9 @@ agent = get_agent()
 
 @cl.on_message
 async def on_message(message: cl.Message):
-    user_message = message.content  # Here we DON'T use the history, so it has no memory of the previous messages
+    user_message = (
+        message.content
+    )  # Here we DON'T use the history, so it has no memory of the previous messages
     ret, nodes = await run_agent(agent, user_message, verbose=True)
     output = ret.result.output
     msg = cl.Message(content=output if output else "No response from the agent.")

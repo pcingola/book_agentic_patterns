@@ -60,7 +60,9 @@ class TestToolsPermissions(unittest.TestCase):
     def test_filter_tools_by_permission_multiple(self):
         """Test filtering with multiple granted permissions."""
         tools = [plain_func, read_func, write_func, read_connect_func]
-        filtered = filter_tools_by_permission(tools, {ToolPermission.READ, ToolPermission.CONNECT})
+        filtered = filter_tools_by_permission(
+            tools, {ToolPermission.READ, ToolPermission.CONNECT}
+        )
         self.assertEqual(filtered, [plain_func, read_func, read_connect_func])
 
     def test_enforce_tools_permissions_allowed(self):

@@ -37,7 +37,9 @@ class CellOutput(BaseModel):
             "output_type": self.output_type.value,
             "timestamp": self.timestamp.isoformat(),
         }
-        if self.output_type == OutputType.IMAGE and isinstance(self.content, Image | ImageReference):
+        if self.output_type == OutputType.IMAGE and isinstance(
+            self.content, Image | ImageReference
+        ):
             if isinstance(self.content, Image):
                 result["content_type"] = "image"
             else:
@@ -74,7 +76,9 @@ class CellOutput(BaseModel):
     def show(self) -> None:
         if self.output_type == OutputType.IMAGE and isinstance(self.content, Image):
             self.content.show()
-        elif self.output_type == OutputType.IMAGE and isinstance(self.content, ImageReference):
+        elif self.output_type == OutputType.IMAGE and isinstance(
+            self.content, ImageReference
+        ):
             print(f"Image Reference: {self.content}")
             print("Use get_cell_image tool to fetch the actual image data")
         else:
@@ -84,17 +88,49 @@ class CellOutput(BaseModel):
         """Convert the cell output to Jupyter notebook output format."""
         match self.output_type:
             case OutputType.TEXT:
-                return {"output_type": "stream", "name": "stdout", "text": str(self.content).split("\n")}
+                return {
+                    "output_type": "stream",
+                    "name": "stdout",
+                    "text": str(self.content).split("\n"),
+                }
             case OutputType.ERROR:
-                return {"output_type": "error", "ename": "Error", "evalue": str(self.content), "traceback": str(self.content).split("\n")}
+                return {
+                    "output_type": "error",
+                    "ename": "Error",
+                    "evalue": str(self.content),
+                    "traceback": str(self.content).split("\n"),
+                }
             case OutputType.HTML:
-                return {"output_type": "display_data", "data": {"text/html": self.content}, "metadata": {}}
+                return {
+                    "output_type": "display_data",
+                    "data": {"text/html": self.content},
+                    "metadata": {},
+                }
             case OutputType.IMAGE if isinstance(self.content, Image):
                 mime_type = f"image/{self.content.format}"
-                return {"output_type": "display_data", "data": {mime_type: self.content.get_data_base64()}, "metadata": {mime_type: {"width": self.content.width, "height": self.content.height}}}
+                return {
+                    "output_type": "display_data",
+                    "data": {mime_type: self.content.get_data_base64()},
+                    "metadata": {
+                        mime_type: {
+                            "width": self.content.width,
+                            "height": self.content.height,
+                        }
+                    },
+                }
             case OutputType.IMAGE if isinstance(self.content, ImageReference):
-                return {"output_type": "display_data", "data": {"text/plain": f"Image Reference: {self.content.resource_uri}"}, "metadata": {}}
+                return {
+                    "output_type": "display_data",
+                    "data": {
+                        "text/plain": f"Image Reference: {self.content.resource_uri}"
+                    },
+                    "metadata": {},
+                }
             case OutputType.DATAFRAME:
-                return {"output_type": "display_data", "data": {"text/html": self.content}, "metadata": {}}
+                return {
+                    "output_type": "display_data",
+                    "data": {"text/html": self.content},
+                    "metadata": {},
+                }
             case _:
                 return None

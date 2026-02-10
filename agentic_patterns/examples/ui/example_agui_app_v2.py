@@ -31,14 +31,14 @@ async def mul(a: int, b: int) -> int:
 
 
 agent = get_agent(
-    instructions='You are a calculator assistant. Use the provided tools to perform calculations.',
+    instructions="You are a calculator assistant. Use the provided tools to perform calculations.",
     tools=[add, sub, mul],
 )
 
 app = AGUIApp(agent)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=['http://localhost:5173'],
-    allow_methods=['*'],
-    allow_headers=['*'],
+    allow_origins=["http://localhost:5173"],
+    allow_methods=["*"],
+    allow_headers=["*"],
 )

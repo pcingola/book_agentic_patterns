@@ -25,6 +25,7 @@ PRIVATE_DATA_FILENAME = ".private_data"
 
 class DataSensitivity(str, Enum):
     """Data sensitivity levels, from least to most restrictive."""
+
     PUBLIC = "public"
     INTERNAL = "internal"
     CONFIDENTIAL = "confidential"
@@ -49,12 +50,18 @@ class PrivateData:
         self._sensitivity: str = DataSensitivity.CONFIDENTIAL.value
         self.load()
 
-    def add_private_dataset(self, dataset_name: str, sensitivity: DataSensitivity = DataSensitivity.CONFIDENTIAL) -> None:
+    def add_private_dataset(
+        self,
+        dataset_name: str,
+        sensitivity: DataSensitivity = DataSensitivity.CONFIDENTIAL,
+    ) -> None:
         """Register a dataset as private. Idempotent."""
         if dataset_name not in self._private_datasets:
             self._private_datasets.append(dataset_name)
             self._has_private_data = True
-            self._sensitivity = max(self._sensitivity, sensitivity.value, key=_sensitivity_order)
+            self._sensitivity = max(
+                self._sensitivity, sensitivity.value, key=_sensitivity_order
+            )
             self.save()
 
     def get_private_datasets(self) -> list[str]:
@@ -81,7 +88,9 @@ class PrivateData:
         return DataSensitivity(self._sensitivity)
 
     def _get_path(self) -> Path:
-        return PRIVATE_DATA_DIR / self._user_id / self._session_id / PRIVATE_DATA_FILENAME
+        return (
+            PRIVATE_DATA_DIR / self._user_id / self._session_id / PRIVATE_DATA_FILENAME
+        )
 
     def load(self) -> None:
         path = self._get_path()
@@ -115,7 +124,9 @@ class PrivateData:
         return self.__repr__()
 
 
-def mark_session_private(user_id: str | None = None, session_id: str | None = None) -> PrivateData:
+def mark_session_private(
+    user_id: str | None = None, session_id: str | None = None
+) -> PrivateData:
     """Mark the current session's workspace as containing private data. Idempotent."""
     pd = PrivateData(user_id, session_id)
     if not pd.has_private_data:
@@ -124,7 +135,9 @@ def mark_session_private(user_id: str | None = None, session_id: str | None = No
     return pd
 
 
-def session_has_private_data(user_id: str | None = None, session_id: str | None = None) -> bool:
+def session_has_private_data(
+    user_id: str | None = None, session_id: str | None = None
+) -> bool:
     """Check whether the current session contains private data."""
     return PrivateData(user_id, session_id).has_private_data
 

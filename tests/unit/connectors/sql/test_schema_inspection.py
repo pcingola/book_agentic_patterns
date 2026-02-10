@@ -7,11 +7,12 @@ from pathlib import Path
 
 from tests.data.sql.db_helper import create_test_bookstore_db
 
-from agentic_patterns.core.connectors.sql.inspection.sqlite.schema_inspector import DbSchemaInspectorSqlite
+from agentic_patterns.core.connectors.sql.inspection.sqlite.schema_inspector import (
+    DbSchemaInspectorSqlite,
+)
 
 
 class TestSchemaInspectionSqlite(unittest.TestCase):
-
     @classmethod
     def setUpClass(cls):
         cls._tmpdir = tempfile.TemporaryDirectory()

@@ -3,11 +3,13 @@ import unittest
 from pathlib import Path
 
 from agentic_patterns.core.skills.registry import SkillRegistry
-from agentic_patterns.core.skills.tools import get_skill_instructions, list_available_skills
+from agentic_patterns.core.skills.tools import (
+    get_skill_instructions,
+    list_available_skills,
+)
 
 
 class TestSkillTools(unittest.TestCase):
-
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.skills_root = Path(self.temp_dir.name)
@@ -17,10 +19,14 @@ class TestSkillTools(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    def _create_test_skill(self, name: str, description: str, body: str = "# Instructions\nDo something."):
+    def _create_test_skill(
+        self, name: str, description: str, body: str = "# Instructions\nDo something."
+    ):
         skill_dir = self.skills_root / name
         skill_dir.mkdir(parents=True, exist_ok=True)
-        (skill_dir / "SKILL.md").write_text(f"---\nname: {name}\ndescription: {description}\n---\n\n{body}\n")
+        (skill_dir / "SKILL.md").write_text(
+            f"---\nname: {name}\ndescription: {description}\n---\n\n{body}\n"
+        )
         return skill_dir
 
     def test_list_available_skills_formats_output(self):
@@ -52,7 +58,9 @@ class TestSkillTools(unittest.TestCase):
 
     def test_get_skill_instructions_returns_only_body(self):
         """Per spec, activation returns only the body (tier 2). Resources are tier 3."""
-        skill_dir = self._create_test_skill("with-scripts", "Has scripts", body="# Main Instructions")
+        skill_dir = self._create_test_skill(
+            "with-scripts", "Has scripts", body="# Main Instructions"
+        )
         scripts_dir = skill_dir / "scripts"
         scripts_dir.mkdir()
         (scripts_dir / "run.py").write_text("print('hello')")

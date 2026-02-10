@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 class TaskStatus(str, Enum):
     """Possible status outcomes from send_and_observe."""
+
     COMPLETED = "completed"
     FAILED = "failed"
     INPUT_REQUIRED = "input-required"
@@ -30,7 +31,9 @@ class A2AClientExtended:
         self._config = config
         self._client = A2AClient(base_url=config.url)
         if config.bearer_token:
-            self._client.http_client.headers["Authorization"] = f"Bearer {config.bearer_token}"
+            self._client.http_client.headers["Authorization"] = (
+                f"Bearer {config.bearer_token}"
+            )
 
     async def get_agent_card(self) -> dict:
         """Fetch agent card from /.well-known/agent-card.json"""
@@ -45,7 +48,7 @@ class A2AClientExtended:
                 "jsonrpc": "2.0",
                 "id": 1,
                 "method": "tasks/cancel",
-                "params": {"id": task_id}
+                "params": {"id": task_id},
             }
             response = await self._client.http_client.post("/", json=payload)
             response.raise_for_status()
@@ -127,7 +130,7 @@ class A2AClientExtended:
             except (ConnectionError, TimeoutError) as e:
                 if attempt == self._config.max_retries - 1:
                     raise
-                delay = self._config.retry_delay * (2 ** attempt)
+                delay = self._config.retry_delay * (2**attempt)
                 logger.warning(f"[A2A] Retry {attempt + 1}: {e}")
                 await asyncio.sleep(delay)
         raise RuntimeError("Max retries exceeded")
@@ -140,7 +143,7 @@ class A2AClientExtended:
             except (ConnectionError, TimeoutError) as e:
                 if attempt == self._config.max_retries - 1:
                     raise
-                delay = self._config.retry_delay * (2 ** attempt)
+                delay = self._config.retry_delay * (2**attempt)
                 logger.warning(f"[A2A] Retry {attempt + 1}: {e}")
                 await asyncio.sleep(delay)
         raise RuntimeError("Max retries exceeded")

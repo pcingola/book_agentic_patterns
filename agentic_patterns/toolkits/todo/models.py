@@ -14,6 +14,7 @@ TASK_LIST_FILE = PurePosixPath("/workspace/todo/tasks.json")
 
 class TaskState(str, Enum):
     """Task state enumeration."""
+
     COMPLETED = "completed"
     FAILED = "failed"
     IN_PROGRESS = "in_progress"
@@ -25,6 +26,7 @@ class TaskState(str, Enum):
 
 class Task(BaseModel):
     """Hierarchical task with description, state, and optional subtasks."""
+
     description: str
     state: TaskState = TaskState.PENDING
     parent: "TaskList | None" = None
@@ -119,6 +121,7 @@ class Task(BaseModel):
 
 class TaskList(BaseModel):
     """Collection of tasks with persistence via workspace isolation."""
+
     tasks: list[Task] = Field(default_factory=list)
     parent_task: Task | None = None
 
@@ -175,7 +178,11 @@ class TaskList(BaseModel):
 
         def create_tasks(task_data_list: list[dict], parent_list: "TaskList") -> None:
             for task_data in task_data_list:
-                task = Task(description=task_data["description"], state=TaskState(task_data["state"]), parent=parent_list)
+                task = Task(
+                    description=task_data["description"],
+                    state=TaskState(task_data["state"]),
+                    parent=parent_list,
+                )
                 parent_list.tasks.append(task)
                 if task_data.get("subtasks") and task_data["subtasks"].get("tasks"):
                     assert task.subtasks is not None

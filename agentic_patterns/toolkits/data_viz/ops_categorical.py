@@ -4,11 +4,28 @@ import matplotlib.figure
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from agentic_patterns.toolkits.data_viz.config import DEFAULT_FIGSIZE_HEIGHT, DEFAULT_FIGSIZE_WIDTH, DEFAULT_PALETTE, DEFAULT_STYLE
+from agentic_patterns.toolkits.data_viz.config import (
+    DEFAULT_FIGSIZE_HEIGHT,
+    DEFAULT_FIGSIZE_WIDTH,
+    DEFAULT_PALETTE,
+    DEFAULT_STYLE,
+)
 from agentic_patterns.toolkits.data_viz.models import PlotConfig
 
 
-def _count_plot(df, column, title=None, xlabel=None, ylabel=None, figsize_width=DEFAULT_FIGSIZE_WIDTH, figsize_height=DEFAULT_FIGSIZE_HEIGHT, style=DEFAULT_STYLE, palette=DEFAULT_PALETTE, hue_column=None, orient="v") -> matplotlib.figure.Figure:
+def _count_plot(
+    df,
+    column,
+    title=None,
+    xlabel=None,
+    ylabel=None,
+    figsize_width=DEFAULT_FIGSIZE_WIDTH,
+    figsize_height=DEFAULT_FIGSIZE_HEIGHT,
+    style=DEFAULT_STYLE,
+    palette=DEFAULT_PALETTE,
+    hue_column=None,
+    orient="v",
+) -> matplotlib.figure.Figure:
     sns.set_style(style)
     fig, ax = plt.subplots(figsize=(figsize_width, figsize_height))
     if orient == "h":
@@ -26,7 +43,17 @@ def _count_plot(df, column, title=None, xlabel=None, ylabel=None, figsize_width=
     return fig
 
 
-def _pie_chart(df, column, title=None, figsize_width=DEFAULT_FIGSIZE_WIDTH, figsize_height=DEFAULT_FIGSIZE_HEIGHT, style=DEFAULT_STYLE, palette=DEFAULT_PALETTE, top_n=None, autopct="%1.1f%%") -> matplotlib.figure.Figure:
+def _pie_chart(
+    df,
+    column,
+    title=None,
+    figsize_width=DEFAULT_FIGSIZE_WIDTH,
+    figsize_height=DEFAULT_FIGSIZE_HEIGHT,
+    style=DEFAULT_STYLE,
+    palette=DEFAULT_PALETTE,
+    top_n=None,
+    autopct="%1.1f%%",
+) -> matplotlib.figure.Figure:
     sns.set_style(style)
     fig, ax = plt.subplots(figsize=(figsize_width, figsize_height))
     counts = df[column].value_counts()
@@ -49,14 +76,34 @@ CATEGORICAL_OPERATIONS: dict[str, PlotConfig] = {
         name="count_plot",
         category="categorical",
         func=_count_plot,
-        parameters={"column": str, "title": None, "xlabel": None, "ylabel": None, "figsize_width": DEFAULT_FIGSIZE_WIDTH, "figsize_height": DEFAULT_FIGSIZE_HEIGHT, "style": DEFAULT_STYLE, "palette": DEFAULT_PALETTE, "hue_column": None, "orient": "v"},
+        parameters={
+            "column": str,
+            "title": None,
+            "xlabel": None,
+            "ylabel": None,
+            "figsize_width": DEFAULT_FIGSIZE_WIDTH,
+            "figsize_height": DEFAULT_FIGSIZE_HEIGHT,
+            "style": DEFAULT_STYLE,
+            "palette": DEFAULT_PALETTE,
+            "hue_column": None,
+            "orient": "v",
+        },
         description="Count plot showing frequency of each category. Use hue_column for grouped counts, orient='h' for horizontal.",
     ),
     "pie_chart": PlotConfig(
         name="pie_chart",
         category="categorical",
         func=_pie_chart,
-        parameters={"column": str, "title": None, "figsize_width": DEFAULT_FIGSIZE_WIDTH, "figsize_height": DEFAULT_FIGSIZE_HEIGHT, "style": DEFAULT_STYLE, "palette": DEFAULT_PALETTE, "top_n": None, "autopct": "%1.1f%%"},
+        parameters={
+            "column": str,
+            "title": None,
+            "figsize_width": DEFAULT_FIGSIZE_WIDTH,
+            "figsize_height": DEFAULT_FIGSIZE_HEIGHT,
+            "style": DEFAULT_STYLE,
+            "palette": DEFAULT_PALETTE,
+            "top_n": None,
+            "autopct": "%1.1f%%",
+        },
         description="Pie chart of value counts. Use top_n to limit categories (rest grouped as 'Other').",
     ),
 }

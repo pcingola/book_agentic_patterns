@@ -3,7 +3,6 @@
 This module handles running evaluations and determining pass/fail status.
 """
 
-import sys
 from dataclasses import dataclass
 
 from pydantic_evals.reporting import EvaluationReport
@@ -29,7 +28,12 @@ def average_assertions(report: EvaluationReport, min_score: float = 1.0) -> bool
     return False
 
 
-async def run_evaluation(discovered: DiscoveredDataset, print_options: PrintOptions, min_assertions: float = 1.0, verbose: bool = False) -> tuple[str, bool, EvaluationReport | None]:
+async def run_evaluation(
+    discovered: DiscoveredDataset,
+    print_options: PrintOptions,
+    min_assertions: float = 1.0,
+    verbose: bool = False,
+) -> tuple[str, bool, EvaluationReport | None]:
     """Run a single dataset evaluation.
 
     Returns (name, success, report).
@@ -50,14 +54,18 @@ async def run_evaluation(discovered: DiscoveredDataset, print_options: PrintOpti
         )
 
         if discovered.scorers:
-            success = all(scorer(report, min_assertions) for scorer in discovered.scorers)
+            success = all(
+                scorer(report, min_assertions) for scorer in discovered.scorers
+            )
         else:
             success = average_assertions(report, min_assertions)
 
         if not verbose:
             status = "PASSED" if success else "FAILED"
             avg = report.averages()
-            score_str = f"{avg.assertions:.3f}" if avg and avg.assertions is not None else "N/A"
+            score_str = (
+                f"{avg.assertions:.3f}" if avg and avg.assertions is not None else "N/A"
+            )
             print(f"{status} ({score_str})")
 
         return discovered.name, success, report
@@ -70,7 +78,12 @@ async def run_evaluation(discovered: DiscoveredDataset, print_options: PrintOpti
         return discovered.name, False, None
 
 
-async def run_all_evaluations(datasets: list[DiscoveredDataset], print_options: PrintOptions, min_assertions: float = 1.0, verbose: bool = False) -> bool:
+async def run_all_evaluations(
+    datasets: list[DiscoveredDataset],
+    print_options: PrintOptions,
+    min_assertions: float = 1.0,
+    verbose: bool = False,
+) -> bool:
     """Run all discovered datasets and print summary.
 
     Returns True if all evaluations pass.

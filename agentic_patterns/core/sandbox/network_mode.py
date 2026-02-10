@@ -7,6 +7,7 @@ from agentic_patterns.core.compliance.private_data import session_has_private_da
 
 class NetworkMode(str, Enum):
     """Docker network modes for sandbox containers."""
+
     FULL = "bridge"
     NONE = "none"
 

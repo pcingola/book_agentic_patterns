@@ -6,7 +6,9 @@ from pathlib import Path
 from agentic_patterns.core.connectors.sql.config import DATABASE_CACHE_DIR, DB_INFO_EXT
 from agentic_patterns.core.connectors.sql.connection import DbConnection
 from agentic_patterns.core.connectors.sql.db_info import DbInfo
-from agentic_patterns.core.connectors.sql.inspection.schema_inspector import DbSchemaInspector
+from agentic_patterns.core.connectors.sql.inspection.schema_inspector import (
+    DbSchemaInspector,
+)
 from agentic_patterns.core.connectors.sql.table_info import TableInfo
 
 
@@ -22,7 +24,11 @@ class DbSchemaExtractor:
         self.inspector: DbSchemaInspector | None = None
 
     def connect(self) -> "DbSchemaExtractor":
-        from agentic_patterns.core.connectors.sql.factories import create_connection, create_schema_inspector
+        from agentic_patterns.core.connectors.sql.factories import (
+            create_connection,
+            create_schema_inspector,
+        )
+
         self.connection = create_connection(self.db_id)
         self.connection.connect()
         self.inspector = create_schema_inspector(self.db_id, self.connection)
@@ -49,9 +55,16 @@ class DbSchemaExtractor:
             logger.info(f"Loading database info from cache: {cache_path}")
             return DbInfo.load(self.db_id, cache_path)
 
-        db_info = DbInfo(db_id=self.db_id, description="", tables=[], cache_file_path=cache_path if cache else None)
+        db_info = DbInfo(
+            db_id=self.db_id,
+            description="",
+            tables=[],
+            cache_file_path=cache_path if cache else None,
+        )
 
-        assert self.inspector is not None, "Inspector not initialized. Call connect() first."
+        assert self.inspector is not None, (
+            "Inspector not initialized. Call connect() first."
+        )
         table_names = self.inspector.get_tables()
         view_map = self.inspector.is_view_map()
 
@@ -67,7 +80,9 @@ class DbSchemaExtractor:
 
     def table_info(self, table_name: str, is_view: bool = False) -> TableInfo:
         """Extract schema information for a single table."""
-        assert self.inspector is not None, "Inspector not initialized. Call connect() first."
+        assert self.inspector is not None, (
+            "Inspector not initialized. Call connect() first."
+        )
         table = TableInfo(name=table_name, is_view=is_view, columns=[])
         columns = self.inspector.get_columns(table_name)
         for col in columns:

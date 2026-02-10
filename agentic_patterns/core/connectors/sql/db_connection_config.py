@@ -47,7 +47,9 @@ class DbConnectionConfigs:
 
     def get_config(self, db_id: str) -> DbConnectionConfig:
         if db_id not in self._configs:
-            raise ValueError(f"Database '{db_id}' not found. Available: {list(self._configs.keys())}")
+            raise ValueError(
+                f"Database '{db_id}' not found. Available: {list(self._configs.keys())}"
+            )
         return self._configs[db_id]
 
     def list_db_ids(self) -> list[str]:
@@ -63,9 +65,17 @@ class DbConnectionConfigs:
         for db_id, db_data in data["databases"].items():
             db_type = DatabaseType(db_data["type"].lower())
             dbname = db_data.get("dbname", "")
-            if db_type == DatabaseType.SQLITE and dbname and not Path(dbname).is_absolute():
+            if (
+                db_type == DatabaseType.SQLITE
+                and dbname
+                and not Path(dbname).is_absolute()
+            ):
                 dbname = str(yaml_path.parent / dbname)
-            sensitivity = DataSensitivity(db_data["sensitivity"]) if "sensitivity" in db_data else DataSensitivity.PUBLIC
+            sensitivity = (
+                DataSensitivity(db_data["sensitivity"])
+                if "sensitivity" in db_data
+                else DataSensitivity.PUBLIC
+            )
             self._configs[db_id] = DbConnectionConfig(
                 db_id=db_id,
                 type=db_type,

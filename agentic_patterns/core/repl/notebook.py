@@ -10,8 +10,15 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from agentic_patterns.core.repl.cell import Cell
-from agentic_patterns.core.repl.cell_utils import cleanup_temp_workbooks, extract_function_definitions
-from agentic_patterns.core.repl.config import DEFAULT_CELL_TIMEOUT, MAX_CELLS, SERVICE_NAME
+from agentic_patterns.core.repl.cell_utils import (
+    cleanup_temp_workbooks,
+    extract_function_definitions,
+)
+from agentic_patterns.core.repl.config import (
+    DEFAULT_CELL_TIMEOUT,
+    MAX_CELLS,
+    SERVICE_NAME,
+)
 from agentic_patterns.core.repl.enums import CellState
 
 logger = logging.getLogger(__name__)
@@ -34,13 +41,20 @@ class Notebook(BaseModel):
     def _get_session_notebook_dir(user_id: str, session_id: str) -> Path:
         """Get the path to the notebooks directory for a user/session."""
         from agentic_patterns.core.config.config import WORKSPACE_DIR
+
         return WORKSPACE_DIR / user_id / session_id / SERVICE_NAME
 
     @classmethod
     def _get_notebook_path(cls, user_id: str, session_id: str) -> Path:
         return cls._get_session_notebook_dir(user_id, session_id) / "cells.json"
 
-    async def add_cell(self, code: str, execute: bool = True, number: int | None = None, timeout: int = DEFAULT_CELL_TIMEOUT) -> Cell:
+    async def add_cell(
+        self,
+        code: str,
+        execute: bool = True,
+        number: int | None = None,
+        timeout: int = DEFAULT_CELL_TIMEOUT,
+    ) -> Cell:
         """Add a new cell to the notebook and optionally execute it."""
         logger.debug("Adding new cell to notebook %s", self.session_id)
         if len(self.cells) >= MAX_CELLS:
@@ -74,7 +88,9 @@ class Notebook(BaseModel):
         """Delete a cell by ID or number (0-based)."""
         if isinstance(cell_id_or_number, int):
             if cell_id_or_number < 0 or cell_id_or_number >= len(self.cells):
-                raise ValueError(f"Cell number {cell_id_or_number} out of range (0-{len(self.cells) - 1})")
+                raise ValueError(
+                    f"Cell number {cell_id_or_number} out of range (0-{len(self.cells) - 1})"
+                )
             del self.cells[cell_id_or_number]
         else:
             for i, cell in enumerate(self.cells):
@@ -86,9 +102,13 @@ class Notebook(BaseModel):
         self._renumber_cells()
         self.save()
 
-    async def execute_cell(self, cell_id_or_number: str | int, timeout: int = DEFAULT_CELL_TIMEOUT) -> Cell:
+    async def execute_cell(
+        self, cell_id_or_number: str | int, timeout: int = DEFAULT_CELL_TIMEOUT
+    ) -> Cell:
         """Execute a cell by ID or number (0-based)."""
-        logger.debug("Executing cell %s in notebook %s", cell_id_or_number, self.session_id)
+        logger.debug(
+            "Executing cell %s in notebook %s", cell_id_or_number, self.session_id
+        )
         cell = self[cell_id_or_number]
 
         self.execution_count += 1
@@ -116,7 +136,10 @@ class Notebook(BaseModel):
                             if import_stmt not in self.import_statements:
                                 self.import_statements.append(import_stmt)
                     elif isinstance(node, ast.ImportFrom) and node.module:
-                        names_str = ", ".join(name.name + (f" as {name.asname}" if name.asname else "") for name in node.names)
+                        names_str = ", ".join(
+                            name.name + (f" as {name.asname}" if name.asname else "")
+                            for name in node.names
+                        )
                         import_stmt = f"from {node.module} import {names_str}"
                         if import_stmt not in self.import_statements:
                             self.import_statements.append(import_stmt)
@@ -194,7 +217,11 @@ class Notebook(BaseModel):
         """Convert the notebook to Jupyter notebook format."""
         return {
             "metadata": {
-                "kernelspec": {"display_name": "Python 3", "language": "python", "name": "python3"},
+                "kernelspec": {
+                    "display_name": "Python 3",
+                    "language": "python",
+                    "name": "python3",
+                },
                 "language_info": {
                     "codemirror_mode": {"name": "ipython", "version": 3},
                     "file_extension": ".py",
@@ -219,7 +246,9 @@ class Notebook(BaseModel):
     def __getitem__(self, key: int | str) -> Cell:
         if isinstance(key, int):
             if key < 0 or key >= len(self.cells):
-                raise IndexError(f"Cell number {key} out of range (0-{len(self.cells) - 1})")
+                raise IndexError(
+                    f"Cell number {key} out of range (0-{len(self.cells) - 1})"
+                )
             return self.cells[key]
         else:
             for cell in self.cells:

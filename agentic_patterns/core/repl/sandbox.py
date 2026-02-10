@@ -54,7 +54,12 @@ async def execute_in_sandbox(
         }
         (temp_dir / "input.pkl").write_bytes(pickle.dumps(input_data))
 
-        command = [sys.executable, "-m", "agentic_patterns.core.repl.executor", str(temp_dir)]
+        command = [
+            sys.executable,
+            "-m",
+            "agentic_patterns.core.repl.executor",
+            str(temp_dir),
+        ]
 
         bind_mounts = [
             BindMount(workspace_path, "/workspace"),
@@ -74,14 +79,23 @@ async def execute_in_sandbox(
         if result.timed_out:
             return SubprocessResult(
                 state=CellState.TIMEOUT,
-                outputs=[CellOutput(output_type=OutputType.ERROR, content=f"Cell execution timed out after {timeout} seconds")],
+                outputs=[
+                    CellOutput(
+                        output_type=OutputType.ERROR,
+                        content=f"Cell execution timed out after {timeout} seconds",
+                    )
+                ],
             )
 
         output_path = temp_dir / "output.pkl"
         if output_path.exists():
             return pickle.loads(output_path.read_bytes())
 
-        error_msg = result.stderr.decode(errors="replace") if result.stderr else "Executor produced no output"
+        error_msg = (
+            result.stderr.decode(errors="replace")
+            if result.stderr
+            else "Executor produced no output"
+        )
         return SubprocessResult(
             state=CellState.ERROR,
             outputs=[CellOutput(output_type=OutputType.ERROR, content=error_msg)],

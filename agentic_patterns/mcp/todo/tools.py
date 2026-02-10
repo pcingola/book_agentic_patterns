@@ -12,7 +12,9 @@ def register_tools(mcp: FastMCP) -> None:
 
     @mcp.tool()
     @tool_permission(ToolPermission.WRITE)
-    async def add_task(description: str, parent_task_id: str | None = None, ctx: Context = None) -> str:
+    async def add_task(
+        description: str, parent_task_id: str | None = None, ctx: Context = None
+    ) -> str:
         """Add a task. Returns the new task ID (e.g. '1.3.2').
 
         Args:
@@ -28,7 +30,9 @@ def register_tools(mcp: FastMCP) -> None:
 
     @mcp.tool()
     @tool_permission(ToolPermission.WRITE)
-    async def add_tasks(descriptions: list[str], parent_task_id: str | None = None, ctx: Context = None) -> list[str]:
+    async def add_tasks(
+        descriptions: list[str], parent_task_id: str | None = None, ctx: Context = None
+    ) -> list[str]:
         """Add several tasks at once. Returns list of new task IDs.
 
         Args:
@@ -44,7 +48,9 @@ def register_tools(mcp: FastMCP) -> None:
 
     @mcp.tool()
     @tool_permission(ToolPermission.WRITE)
-    async def create_task_list(descriptions: list[str], ctx: Context = None) -> list[str]:
+    async def create_task_list(
+        descriptions: list[str], ctx: Context = None
+    ) -> list[str]:
         """Create a new task list replacing any existing one. Returns list of task IDs.
 
         Args:
@@ -72,7 +78,9 @@ def register_tools(mcp: FastMCP) -> None:
 
     @mcp.tool()
     @tool_permission(ToolPermission.WRITE)
-    async def update_task_status(task_id: str, status: str, ctx: Context = None) -> bool:
+    async def update_task_status(
+        task_id: str, status: str, ctx: Context = None
+    ) -> bool:
         """Update a task's status by ID.
 
         Args:
@@ -83,5 +91,7 @@ def register_tools(mcp: FastMCP) -> None:
             success = ops.update_task_status(task_id, status)
         except ValueError as e:
             raise ToolRetryError(str(e)) from e
-        await ctx.info(f"update_task_status: id={task_id} status={status} success={success}")
+        await ctx.info(
+            f"update_task_status: id={task_id} status={status} success={success}"
+        )
         return success

@@ -24,7 +24,7 @@ class TestOutputContainsJson(unittest.TestCase):
 
     def test_valid_json_array(self):
         evaluator = OutputContainsJson()
-        ctx = make_context('[1, 2, 3]')
+        ctx = make_context("[1, 2, 3]")
         result = evaluator.evaluate(ctx)
         self.assertTrue(result.value)
 

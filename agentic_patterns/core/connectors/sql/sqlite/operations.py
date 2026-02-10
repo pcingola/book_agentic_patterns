@@ -25,10 +25,14 @@ class DbOperationsSqlite(DbOperations):
     async def fetch_row_by_id(self, table: TableInfo, row_id: str) -> dict | None:
         pk_column = table.get_primary_key_column()
         if pk_column is None:
-            raise RuntimeError(f"Table '{table.name}' does not have a primary key column")
+            raise RuntimeError(
+                f"Table '{table.name}' does not have a primary key column"
+            )
         try:
             cursor = self.connection.cursor()
-            cursor.execute(f'SELECT * FROM "{table.name}" WHERE "{pk_column}" = ?', (row_id,))
+            cursor.execute(
+                f'SELECT * FROM "{table.name}" WHERE "{pk_column}" = ?', (row_id,)
+            )
             row = cursor.fetchone()
             if row is None:
                 return None
@@ -37,10 +41,14 @@ class DbOperationsSqlite(DbOperations):
         except sqlite3.Error as e:
             raise RuntimeError(f"Database error fetching row: {e}") from e
 
-    async def fetch_related_row(self, table: TableInfo, column_name: str, value: str) -> dict | None:
+    async def fetch_related_row(
+        self, table: TableInfo, column_name: str, value: str
+    ) -> dict | None:
         try:
             cursor = self.connection.cursor()
-            cursor.execute(f'SELECT * FROM "{table.name}" WHERE "{column_name}" = ?', (value,))
+            cursor.execute(
+                f'SELECT * FROM "{table.name}" WHERE "{column_name}" = ?', (value,)
+            )
             row = cursor.fetchone()
             if row is None:
                 return None

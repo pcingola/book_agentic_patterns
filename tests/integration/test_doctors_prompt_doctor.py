@@ -3,7 +3,11 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from agentic_patterns.core.doctors import PromptDoctor, PromptRecommendation, prompt_doctor
+from agentic_patterns.core.doctors import (
+    PromptDoctor,
+    PromptRecommendation,
+    prompt_doctor,
+)
 
 
 WELL_DEFINED_PROMPT = """## System Prompt

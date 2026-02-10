@@ -4,7 +4,7 @@ from docker.errors import DockerException, NotFound
 from fastmcp import Context, FastMCP
 
 from agentic_patterns.core.context.decorators import context_result
-from agentic_patterns.core.mcp import ToolFatalError, ToolRetryError
+from agentic_patterns.core.mcp import ToolFatalError
 from agentic_patterns.core.sandbox.config import SANDBOX_COMMAND_TIMEOUT
 from agentic_patterns.core.sandbox.manager import SandboxManager
 from agentic_patterns.core.tools.permissions import ToolPermission, tool_permission
@@ -30,7 +30,9 @@ def register_tools(mcp: FastMCP) -> None:
     @mcp.tool()
     @tool_permission(ToolPermission.WRITE)
     @context_result()
-    async def execute(command: str, timeout: int = SANDBOX_COMMAND_TIMEOUT, ctx: Context = None) -> str:
+    async def execute(
+        command: str, timeout: int = SANDBOX_COMMAND_TIMEOUT, ctx: Context = None
+    ) -> str:
         """Execute a shell command in the Docker sandbox. Returns exit code and output.
 
         Args:
@@ -38,7 +40,9 @@ def register_tools(mcp: FastMCP) -> None:
             timeout: Execution timeout in seconds.
         """
         try:
-            exit_code, output = _manager.execute_command(get_user_id(), get_session_id(), command, timeout)
+            exit_code, output = _manager.execute_command(
+                get_user_id(), get_session_id(), command, timeout
+            )
         except NotFound as e:
             raise ToolFatalError(str(e)) from e
         except DockerException as e:

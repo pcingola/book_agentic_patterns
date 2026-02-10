@@ -6,7 +6,10 @@ from pathlib import Path
 import chromadb
 from chromadb.api.types import EmbeddingFunction, Documents, Embeddings
 
-from agentic_patterns.core.vectordb.config import ChromaVectorDBConfig, load_vectordb_settings
+from agentic_patterns.core.vectordb.config import (
+    ChromaVectorDBConfig,
+    load_vectordb_settings,
+)
 from agentic_patterns.core.vectordb.embeddings import embed_texts, get_embedder
 
 _vector_dbs: dict[str, chromadb.Collection] = {}
@@ -16,7 +19,9 @@ _chroma_clients: dict[str, chromadb.PersistentClient] = {}
 class PydanticAIEmbeddingFunction(EmbeddingFunction):
     """Embedding function that wraps pydantic-ai embedder for use with Chroma."""
 
-    def __init__(self, embedding_config: str | None = None, config_path: Path | str | None = None):
+    def __init__(
+        self, embedding_config: str | None = None, config_path: Path | str | None = None
+    ):
         self._embedding_config = embedding_config
         self._config_path = config_path
         self._embedder = get_embedder(embedding_config, config_path)
@@ -26,18 +31,29 @@ class PydanticAIEmbeddingFunction(EmbeddingFunction):
         return "pydantic-ai"
 
     def get_config(self) -> dict[str, str | None]:
-        return {"embedding_config": self._embedding_config, "config_path": str(self._config_path) if self._config_path else None}
+        return {
+            "embedding_config": self._embedding_config,
+            "config_path": str(self._config_path) if self._config_path else None,
+        }
 
     @staticmethod
-    def build_from_config(config: dict[str, str | None]) -> "PydanticAIEmbeddingFunction":
-        return PydanticAIEmbeddingFunction(embedding_config=config.get("embedding_config"), config_path=config.get("config_path"))
+    def build_from_config(
+        config: dict[str, str | None],
+    ) -> "PydanticAIEmbeddingFunction":
+        return PydanticAIEmbeddingFunction(
+            embedding_config=config.get("embedding_config"),
+            config_path=config.get("config_path"),
+        )
 
     def __call__(self, input: Documents) -> Embeddings:
         loop = asyncio.get_event_loop()
         if loop.is_running():
             import nest_asyncio
+
             nest_asyncio.apply()
-        return asyncio.get_event_loop().run_until_complete(embed_texts(list(input), self._embedder))
+        return asyncio.get_event_loop().run_until_complete(
+            embed_texts(list(input), self._embedder)
+        )
 
 
 def get_vector_db(
@@ -52,6 +68,7 @@ def get_vector_db(
 
     if config_path is None:
         from agentic_patterns.core.config.config import MAIN_PROJECT_DIR
+
         config_path = MAIN_PROJECT_DIR / "config.yaml"
 
     settings = load_vectordb_settings(config_path)
@@ -63,6 +80,7 @@ def get_vector_db(
     persist_dir = Path(vdb_config.persist_directory)
     if not persist_dir.is_absolute():
         from agentic_patterns.core.config.config import MAIN_PROJECT_DIR
+
         persist_dir = MAIN_PROJECT_DIR / persist_dir
     persist_dir.mkdir(parents=True, exist_ok=True)
 
@@ -73,12 +91,20 @@ def get_vector_db(
     client = _chroma_clients[persist_key]
     embedding_fn = PydanticAIEmbeddingFunction(embedding_config, config_path)
 
-    collection = client.get_or_create_collection(name=collection_name, embedding_function=embedding_fn)
+    collection = client.get_or_create_collection(
+        name=collection_name, embedding_function=embedding_fn
+    )
     _vector_dbs[collection_name] = collection
     return collection
 
 
-def vdb_add(vdb: chromadb.Collection, text: str, doc_id: str, meta: dict | None = None, force: bool = False) -> str | None:
+def vdb_add(
+    vdb: chromadb.Collection,
+    text: str,
+    doc_id: str,
+    meta: dict | None = None,
+    force: bool = False,
+) -> str | None:
     """Add a document to the collection if it doesn't already exist."""
     if not force and vdb_has_id(vdb, doc_id):
         return None

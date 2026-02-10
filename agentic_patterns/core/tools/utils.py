@@ -18,7 +18,9 @@ def func_to_description(func: Callable) -> str:
     params = []
     for name, param in sig.parameters.items():
         param_type = hints.get(name, param.annotation)
-        type_str = _type_to_str(param_type) if param_type != inspect.Parameter.empty else "Any"
+        type_str = (
+            _type_to_str(param_type) if param_type != inspect.Parameter.empty else "Any"
+        )
 
         if param.default != inspect.Parameter.empty:
             params.append(f"{name}: {type_str} = {repr(param.default)}")
@@ -27,7 +29,9 @@ def func_to_description(func: Callable) -> str:
 
     # Get return type
     return_type = hints.get("return", sig.return_annotation)
-    return_str = _type_to_str(return_type) if return_type != inspect.Signature.empty else "None"
+    return_str = (
+        _type_to_str(return_type) if return_type != inspect.Signature.empty else "None"
+    )
 
     # Build the description
     lines = [f"Tool: {func.__name__}({', '.join(params)}) -> {return_str}"]

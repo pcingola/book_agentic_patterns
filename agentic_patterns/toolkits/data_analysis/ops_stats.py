@@ -10,7 +10,9 @@ STATS_OPERATIONS = {
         name="t_test_one_sample",
         category="stats",
         func=lambda df, column, population_mean=0: {
-            "statistic": stats.ttest_1samp(df[column].dropna(), population_mean).statistic,
+            "statistic": stats.ttest_1samp(
+                df[column].dropna(), population_mean
+            ).statistic,
             "p_value": stats.ttest_1samp(df[column].dropna(), population_mean).pvalue,
             "degrees_of_freedom": len(df[column].dropna()) - 1,
             "column": column,
@@ -27,8 +29,12 @@ STATS_OPERATIONS = {
         name="t_test_two_sample",
         category="stats",
         func=lambda df, column1, column2, equal_var=True: {
-            "statistic": stats.ttest_ind(df[column1].dropna(), df[column2].dropna(), equal_var=equal_var).statistic,
-            "p_value": stats.ttest_ind(df[column1].dropna(), df[column2].dropna(), equal_var=equal_var).pvalue,
+            "statistic": stats.ttest_ind(
+                df[column1].dropna(), df[column2].dropna(), equal_var=equal_var
+            ).statistic,
+            "p_value": stats.ttest_ind(
+                df[column1].dropna(), df[column2].dropna(), equal_var=equal_var
+            ).pvalue,
             "column1": column1,
             "column2": column2,
             "mean1": df[column1].mean(),
@@ -44,10 +50,18 @@ STATS_OPERATIONS = {
         name="chi_square_test",
         category="stats",
         func=lambda df, column1, column2: {
-            "statistic": stats.chi2_contingency(pd.crosstab(df[column1], df[column2])).statistic,
-            "p_value": stats.chi2_contingency(pd.crosstab(df[column1], df[column2])).pvalue,
-            "degrees_of_freedom": stats.chi2_contingency(pd.crosstab(df[column1], df[column2])).dof,
-            "expected_frequencies": stats.chi2_contingency(pd.crosstab(df[column1], df[column2])).expected_freq.tolist(),
+            "statistic": stats.chi2_contingency(
+                pd.crosstab(df[column1], df[column2])
+            ).statistic,
+            "p_value": stats.chi2_contingency(
+                pd.crosstab(df[column1], df[column2])
+            ).pvalue,
+            "degrees_of_freedom": stats.chi2_contingency(
+                pd.crosstab(df[column1], df[column2])
+            ).dof,
+            "expected_frequencies": stats.chi2_contingency(
+                pd.crosstab(df[column1], df[column2])
+            ).expected_freq.tolist(),
             "column1": column1,
             "column2": column2,
         },
@@ -76,8 +90,18 @@ STATS_OPERATIONS = {
         name="correlation_test",
         category="stats",
         func=lambda df, column1, column2, method="pearson": {
-            "correlation": (stats.pearsonr(df[column1].dropna(), df[column2].dropna()).statistic if method == "pearson" else stats.spearmanr(df[column1].dropna(), df[column2].dropna()).statistic),
-            "p_value": (stats.pearsonr(df[column1].dropna(), df[column2].dropna()).pvalue if method == "pearson" else stats.spearmanr(df[column1].dropna(), df[column2].dropna()).pvalue),
+            "correlation": (
+                stats.pearsonr(df[column1].dropna(), df[column2].dropna()).statistic
+                if method == "pearson"
+                else stats.spearmanr(
+                    df[column1].dropna(), df[column2].dropna()
+                ).statistic
+            ),
+            "p_value": (
+                stats.pearsonr(df[column1].dropna(), df[column2].dropna()).pvalue
+                if method == "pearson"
+                else stats.spearmanr(df[column1].dropna(), df[column2].dropna()).pvalue
+            ),
             "method": method,
             "column1": column1,
             "column2": column2,
@@ -91,10 +115,21 @@ STATS_OPERATIONS = {
         name="anova_one_way",
         category="stats",
         func=lambda df, value_column, group_column: {
-            "f_statistic": stats.f_oneway(*[group[value_column].dropna() for name, group in df.groupby(group_column)]).statistic,
-            "p_value": stats.f_oneway(*[group[value_column].dropna() for name, group in df.groupby(group_column)]).pvalue,
+            "f_statistic": stats.f_oneway(
+                *[
+                    group[value_column].dropna()
+                    for name, group in df.groupby(group_column)
+                ]
+            ).statistic,
+            "p_value": stats.f_oneway(
+                *[
+                    group[value_column].dropna()
+                    for name, group in df.groupby(group_column)
+                ]
+            ).pvalue,
             "degrees_of_freedom_between": len(df[group_column].unique()) - 1,
-            "degrees_of_freedom_within": len(df[value_column].dropna()) - len(df[group_column].unique()),
+            "degrees_of_freedom_within": len(df[value_column].dropna())
+            - len(df[group_column].unique()),
             "value_column": value_column,
             "group_column": group_column,
             "groups": list(df[group_column].unique()),
@@ -110,12 +145,20 @@ STATS_OPERATIONS = {
         category="stats",
         func=lambda df, value_column, group_column: {
             "statistic": stats.mannwhitneyu(
-                df[df[group_column] == df[group_column].unique()[0]][value_column].dropna(),
-                df[df[group_column] == df[group_column].unique()[1]][value_column].dropna(),
+                df[df[group_column] == df[group_column].unique()[0]][
+                    value_column
+                ].dropna(),
+                df[df[group_column] == df[group_column].unique()[1]][
+                    value_column
+                ].dropna(),
             ).statistic,
             "p_value": stats.mannwhitneyu(
-                df[df[group_column] == df[group_column].unique()[0]][value_column].dropna(),
-                df[df[group_column] == df[group_column].unique()[1]][value_column].dropna(),
+                df[df[group_column] == df[group_column].unique()[0]][
+                    value_column
+                ].dropna(),
+                df[df[group_column] == df[group_column].unique()[1]][
+                    value_column
+                ].dropna(),
             ).pvalue,
             "value_column": value_column,
             "group_column": group_column,

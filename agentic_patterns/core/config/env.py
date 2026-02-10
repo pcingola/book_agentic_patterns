@@ -1,4 +1,3 @@
-
 import logging
 import os
 from pathlib import Path
@@ -59,5 +58,8 @@ def load_env_variables():
 
         return env_file
     else:
-        logger.error("No '.env' file found in any of the search paths, or their parents: %s", env_dirs)
+        logger.error(
+            "No '.env' file found in any of the search paths, or their parents: %s",
+            env_dirs,
+        )
         sys.exit(1)

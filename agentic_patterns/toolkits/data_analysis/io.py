@@ -1,6 +1,6 @@
 """DataFrame I/O with workspace isolation."""
 
-from pathlib import Path, PurePosixPath
+from pathlib import PurePosixPath
 
 import pandas as pd
 
@@ -22,7 +22,9 @@ def load_df(workspace_path: str) -> pd.DataFrame:
     raise ValueError(f"Unsupported file format: {file_format}")
 
 
-def save_df(df: pd.DataFrame, workspace_path: str, file_format: FileFormat | None = None) -> None:
+def save_df(
+    df: pd.DataFrame, workspace_path: str, file_format: FileFormat | None = None
+) -> None:
     """Save a DataFrame to a workspace path."""
     host_path = workspace_to_host_path(PurePosixPath(workspace_path))
     host_path.parent.mkdir(parents=True, exist_ok=True)

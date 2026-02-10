@@ -9,5 +9,8 @@ Run with: fastmcp run agentic_patterns/mcp/template/server.py:mcp --transport ht
 from agentic_patterns.core.mcp import create_mcp_server
 from agentic_patterns.mcp.template.tools import register_tools
 
-mcp = create_mcp_server("template", instructions="Template MCP server with workspace, permissions, and compliance.")
+mcp = create_mcp_server(
+    "template",
+    instructions="Template MCP server with workspace, permissions, and compliance.",
+)
 register_tools(mcp)

@@ -6,8 +6,19 @@ from collections.abc import Callable
 from pathlib import Path
 
 from agentic_patterns.core.context.config import ContextConfig, load_context_config
-from agentic_patterns.core.context.models import FileExtractionResult, FileType, TruncationInfo
-from agentic_patterns.core.context.processors.common import check_and_apply_output_limit, create_error_result, create_file_metadata, format_truncation_summary, human_readable_size, truncate_string
+from agentic_patterns.core.context.models import (
+    FileExtractionResult,
+    FileType,
+    TruncationInfo,
+)
+from agentic_patterns.core.context.processors.common import (
+    check_and_apply_output_limit,
+    create_error_result,
+    create_file_metadata,
+    format_truncation_summary,
+    human_readable_size,
+    truncate_string,
+)
 
 
 def _truncate_structure(
@@ -26,9 +37,11 @@ def _truncate_structure(
         keys = list(data.keys())
         truncated_dict = {}
 
-        for i, key in enumerate(keys[:config.max_object_keys]):
+        for i, key in enumerate(keys[: config.max_object_keys]):
             value = data[key]
-            truncated_value = _truncate_structure(value, current_depth + 1, config, truncation_stats)
+            truncated_value = _truncate_structure(
+                value, current_depth + 1, config, truncation_stats
+            )
             truncated_dict[key] = truncated_value
 
             dict_str = json.dumps(truncated_dict, ensure_ascii=False)
@@ -48,13 +61,17 @@ def _truncate_structure(
     elif isinstance(data, list):
         truncated_list = []
 
-        for item in data[:config.max_array_items]:
-            truncated_item = _truncate_structure(item, current_depth + 1, config, truncation_stats)
+        for item in data[: config.max_array_items]:
+            truncated_item = _truncate_structure(
+                item, current_depth + 1, config, truncation_stats
+            )
             truncated_list.append(truncated_item)
 
         if len(data) > config.max_array_items:
             truncation_stats["array_truncations"] += 1
-            truncated_list.append(f"... [{len(data) - config.max_array_items} more items]")
+            truncated_list.append(
+                f"... [{len(data) - config.max_array_items} more items]"
+            )
 
         return truncated_list
 
@@ -123,7 +140,9 @@ def process_json(
         if tokenizer:
             truncation_info.tokens_shown = tokenizer(output.getvalue())
 
-        result_content = check_and_apply_output_limit(output.getvalue(), config.max_total_output, truncation_info)
+        result_content = check_and_apply_output_limit(
+            output.getvalue(), config.max_total_output, truncation_info
+        )
 
         extra_stats = _format_truncation_stats(truncation_stats)
         summary = format_truncation_summary(truncation_info, extra_stats)
@@ -131,7 +150,11 @@ def process_json(
             result_content += summary
 
         return FileExtractionResult(
-            content=result_content, success=True, file_type=FileType.JSON, truncation_info=truncation_info, metadata=metadata
+            content=result_content,
+            success=True,
+            file_type=FileType.JSON,
+            truncation_info=truncation_info,
+            metadata=metadata,
         )
 
     except json.JSONDecodeError as e:

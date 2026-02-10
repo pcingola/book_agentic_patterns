@@ -2,7 +2,14 @@
 
 import numpy as np
 import pandas as pd
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, mean_absolute_error, mean_squared_error, r2_score
+from sklearn.metrics import (
+    accuracy_score,
+    classification_report,
+    confusion_matrix,
+    mean_absolute_error,
+    mean_squared_error,
+    r2_score,
+)
 from sklearn.model_selection import train_test_split
 
 
@@ -16,21 +23,32 @@ def detect_model_type(target_series: pd.Series) -> str:
     return "regression"
 
 
-def train_and_fit_classifier(df: pd.DataFrame, target: str, features: list[str] | None, test_size: float, model, **kwargs) -> dict:
+def train_and_fit_classifier(
+    df: pd.DataFrame,
+    target: str,
+    features: list[str] | None,
+    test_size: float,
+    model,
+    **kwargs,
+) -> dict:
     """Train a classifier and return metrics."""
     if features is None:
         features = [col for col in df.columns if col != target]
     x = df[features]
     y = df[target]
 
-    non_numeric = [col for col in x.columns if not pd.api.types.is_numeric_dtype(x[col])]
+    non_numeric = [
+        col for col in x.columns if not pd.api.types.is_numeric_dtype(x[col])
+    ]
     if non_numeric:
         raise ValueError(
             f"Feature columns {non_numeric} contain non-numeric data. "
             f"Please preprocess these columns (e.g., use one-hot encoding) before training."
         )
 
-    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=test_size, random_state=kwargs.get("random_state"))
+    x_train, x_test, y_train, y_test = train_test_split(
+        x, y, test_size=test_size, random_state=kwargs.get("random_state")
+    )
     model.fit(x_train, y_train)
     y_pred = model.predict(x_test)
     return {
@@ -44,21 +62,32 @@ def train_and_fit_classifier(df: pd.DataFrame, target: str, features: list[str] 
     }
 
 
-def train_and_fit_regressor(df: pd.DataFrame, target: str, features: list[str] | None, test_size: float, model, **kwargs) -> dict:
+def train_and_fit_regressor(
+    df: pd.DataFrame,
+    target: str,
+    features: list[str] | None,
+    test_size: float,
+    model,
+    **kwargs,
+) -> dict:
     """Train a regressor and return metrics."""
     if features is None:
         features = [col for col in df.columns if col != target]
     x = df[features]
     y = df[target]
 
-    non_numeric = [col for col in x.columns if not pd.api.types.is_numeric_dtype(x[col])]
+    non_numeric = [
+        col for col in x.columns if not pd.api.types.is_numeric_dtype(x[col])
+    ]
     if non_numeric:
         raise ValueError(
             f"Feature columns {non_numeric} contain non-numeric data. "
             f"Please preprocess these columns (e.g., use one-hot encoding) before training."
         )
 
-    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=test_size, random_state=kwargs.get("random_state"))
+    x_train, x_test, y_train, y_test = train_test_split(
+        x, y, test_size=test_size, random_state=kwargs.get("random_state")
+    )
     model.fit(x_train, y_train)
     y_pred = model.predict(x_test)
     mse = mean_squared_error(y_test, y_pred)

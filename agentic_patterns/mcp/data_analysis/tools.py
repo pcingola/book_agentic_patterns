@@ -6,7 +6,10 @@ from agentic_patterns.core.context.decorators import context_result
 from agentic_patterns.core.mcp import ToolFatalError, ToolRetryError
 from agentic_patterns.tools.dynamic import generate_param_docs, get_param_signature
 from agentic_patterns.core.tools.permissions import ToolPermission, tool_permission
-from agentic_patterns.toolkits.data_analysis.executor import execute_operation, get_all_operations
+from agentic_patterns.toolkits.data_analysis.executor import (
+    execute_operation,
+    get_all_operations,
+)
 from agentic_patterns.toolkits.data_analysis.io import list_dataframe_files
 
 
@@ -52,7 +55,13 @@ def _generate_tool_function(op_name: str, op_config):
         raise ToolFatalError(str(e)) from e
 """
 
-    namespace = {"execute_operation": execute_operation, "op_name": op_name, "Context": Context, "ToolRetryError": ToolRetryError, "ToolFatalError": ToolFatalError}
+    namespace = {
+        "execute_operation": execute_operation,
+        "op_name": op_name,
+        "Context": Context,
+        "ToolRetryError": ToolRetryError,
+        "ToolFatalError": ToolFatalError,
+    }
     exec(func_code, namespace)  # noqa: S102
     tool_func = namespace[f"{op_name}_tool"]
 
@@ -84,7 +93,9 @@ def register_tools(mcp: FastMCP) -> None:
     for op_name, op_config in operations.items():
         tool_func = _generate_tool_function(op_name, op_config)
 
-        permission = ToolPermission.READ if op_config.view_only else ToolPermission.WRITE
+        permission = (
+            ToolPermission.READ if op_config.view_only else ToolPermission.WRITE
+        )
         tool_func = context_result(save=not op_config.view_only)(tool_func)
         tool_func = tool_permission(permission)(tool_func)
         mcp.tool()(tool_func)

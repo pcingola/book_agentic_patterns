@@ -1,4 +1,3 @@
-
 def str2bool(v: str | None) -> bool:
     """Convert a string to a boolean value."""
     if not v:

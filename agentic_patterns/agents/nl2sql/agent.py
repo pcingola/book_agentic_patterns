@@ -17,10 +17,14 @@ def create_nl2sql_agent(db_id: str) -> Agent:
     system_prompt = get_system_prompt()
     instructions = get_instructions(db_info)
     tools = get_all_tools(db_id)
-    return get_agent(system_prompt=system_prompt, instructions=instructions, tools=tools)
+    return get_agent(
+        system_prompt=system_prompt, instructions=instructions, tools=tools
+    )
 
 
-async def run_nl2sql_query(db_id: str, query: str, verbose: bool = False) -> tuple[Any, list]:
+async def run_nl2sql_query(
+    db_id: str, query: str, verbose: bool = False
+) -> tuple[Any, list]:
     """Run a natural language query against a specific database."""
     agent = create_nl2sql_agent(db_id=db_id)
     return await run_agent(agent, query, verbose=verbose)

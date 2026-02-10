@@ -5,8 +5,18 @@ from collections.abc import Callable
 from pathlib import Path
 
 from agentic_patterns.core.context.config import ContextConfig, load_context_config
-from agentic_patterns.core.context.models import FileExtractionResult, FileType, TruncationInfo
-from agentic_patterns.core.context.processors.common import check_and_apply_output_limit, count_lines, create_error_result, create_file_metadata, truncate_string
+from agentic_patterns.core.context.models import (
+    FileExtractionResult,
+    FileType,
+    TruncationInfo,
+)
+from agentic_patterns.core.context.processors.common import (
+    check_and_apply_output_limit,
+    count_lines,
+    create_error_result,
+    create_file_metadata,
+    truncate_string,
+)
 
 
 def detect_encoding(file_path: Path) -> str:
@@ -24,7 +34,9 @@ def detect_encoding(file_path: Path) -> str:
     return "latin-1"
 
 
-def read_line_range(file_path: Path, encoding: str, start: int, end: int) -> tuple[list[str], bool, bool]:
+def read_line_range(
+    file_path: Path, encoding: str, start: int, end: int
+) -> tuple[list[str], bool, bool]:
     """Read lines from start to end index without loading entire file.
 
     Returns (selected_lines, ended_at_eof, file_ends_with_newline).
@@ -62,23 +74,33 @@ def process_text(
         metadata = create_file_metadata(file_path, encoding=encoding)
 
         actual_start = start_line if start_line is not None else 0
-        actual_end = end_line if end_line is not None else actual_start + config.max_lines
+        actual_end = (
+            end_line if end_line is not None else actual_start + config.max_lines
+        )
 
         total_lines = count_lines(file_path, encoding)
 
         if total_lines == 0:
             return FileExtractionResult(
-                content="", success=True, file_type=file_type, truncation_info=TruncationInfo(), metadata=metadata
+                content="",
+                success=True,
+                file_type=file_type,
+                truncation_info=TruncationInfo(),
+                metadata=metadata,
             )
 
-        selected_lines, ended_at_eof, file_ends_with_newline = read_line_range(file_path, encoding, actual_start, actual_end)
+        selected_lines, ended_at_eof, file_ends_with_newline = read_line_range(
+            file_path, encoding, actual_start, actual_end
+        )
         lines_shown = len(selected_lines)
 
         output = io.StringIO()
         lines_truncated = 0
 
         for i, line in enumerate(selected_lines):
-            truncated_line, was_truncated = truncate_string(line, config.max_line_length)
+            truncated_line, was_truncated = truncate_string(
+                line, config.max_line_length
+            )
             if was_truncated:
                 lines_truncated += 1
 
@@ -94,7 +116,9 @@ def process_text(
             output.write("\n")
 
         truncation_info = TruncationInfo(
-            lines_shown=f"{lines_shown} of {total_lines}" if lines_shown < total_lines else None,
+            lines_shown=f"{lines_shown} of {total_lines}"
+            if lines_shown < total_lines
+            else None,
             total_output_limit_reached=output.tell() > config.max_total_output,
         )
 
@@ -102,10 +126,16 @@ def process_text(
             content_str = output.getvalue()
             truncation_info.tokens_shown = tokenizer(content_str)
 
-        result_content = check_and_apply_output_limit(output.getvalue(), config.max_total_output, truncation_info)
+        result_content = check_and_apply_output_limit(
+            output.getvalue(), config.max_total_output, truncation_info
+        )
 
         return FileExtractionResult(
-            content=result_content, success=True, file_type=file_type, truncation_info=truncation_info, metadata=metadata
+            content=result_content,
+            success=True,
+            file_type=file_type,
+            truncation_info=truncation_info,
+            metadata=metadata,
         )
 
     except Exception as e:
@@ -120,7 +150,13 @@ def process_code(
     tokenizer: Callable[[str], int] | None = None,
 ) -> FileExtractionResult:
     """Process code files with line range selection and truncation."""
-    result = process_text(file_path=file_path, start_line=start_line, end_line=end_line, config=config, tokenizer=tokenizer)
+    result = process_text(
+        file_path=file_path,
+        start_line=start_line,
+        end_line=end_line,
+        config=config,
+        tokenizer=tokenizer,
+    )
     if result.success:
         result.file_type = FileType.CODE
     return result

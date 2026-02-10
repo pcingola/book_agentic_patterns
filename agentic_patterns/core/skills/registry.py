@@ -51,12 +51,18 @@ class SkillRegistry:
                 try:
                     content = skill_md.read_text(encoding="utf-8")
                     frontmatter, _ = _parse_frontmatter(content)
-                    if frontmatter and "name" in frontmatter and "description" in frontmatter:
-                        self._metadata_cache.append(SkillMetadata(
-                            name=frontmatter["name"],
-                            description=frontmatter["description"],
-                            path=skill_dir,
-                        ))
+                    if (
+                        frontmatter
+                        and "name" in frontmatter
+                        and "description" in frontmatter
+                    ):
+                        self._metadata_cache.append(
+                            SkillMetadata(
+                                name=frontmatter["name"],
+                                description=frontmatter["description"],
+                                path=skill_dir,
+                            )
+                        )
                 except (OSError, UnicodeDecodeError):
                     continue
         self._discovered = True
@@ -81,7 +87,11 @@ class SkillRegistry:
         try:
             content = skill_md.read_text(encoding="utf-8")
             frontmatter, body = _parse_frontmatter(content)
-            if not frontmatter or "name" not in frontmatter or "description" not in frontmatter:
+            if (
+                not frontmatter
+                or "name" not in frontmatter
+                or "description" not in frontmatter
+            ):
                 return None
             return Skill(
                 name=frontmatter["name"],

@@ -26,14 +26,44 @@ from agentic_patterns.core.evals.runner import PrintOptions, run_all_evaluations
 async def main() -> int:
     """Main entry point for running evaluations."""
     parser = argparse.ArgumentParser(description="Run agent evaluations")
-    parser.add_argument("--evals-dir", type=Path, default=Path("evals"), help="Directory containing eval_*.py files")
-    parser.add_argument("--filter", type=str, help="Filter to run only matching evaluations")
-    parser.add_argument("--min-assertions", type=float, default=1.0, help="Minimum assertions average for pass")
-    parser.add_argument("--include-input", action="store_true", default=True, help="Include input in report")
-    parser.add_argument("--include-output", action="store_true", default=True, help="Include output in report")
-    parser.add_argument("--include-evaluator-failures", action="store_true", help="Include evaluator failures")
-    parser.add_argument("--include-reasons", action="store_true", help="Include reasons in report")
-    parser.add_argument("--verbose", action="store_true", help="Detailed discovery and execution info")
+    parser.add_argument(
+        "--evals-dir",
+        type=Path,
+        default=Path("evals"),
+        help="Directory containing eval_*.py files",
+    )
+    parser.add_argument(
+        "--filter", type=str, help="Filter to run only matching evaluations"
+    )
+    parser.add_argument(
+        "--min-assertions",
+        type=float,
+        default=1.0,
+        help="Minimum assertions average for pass",
+    )
+    parser.add_argument(
+        "--include-input",
+        action="store_true",
+        default=True,
+        help="Include input in report",
+    )
+    parser.add_argument(
+        "--include-output",
+        action="store_true",
+        default=True,
+        help="Include output in report",
+    )
+    parser.add_argument(
+        "--include-evaluator-failures",
+        action="store_true",
+        help="Include evaluator failures",
+    )
+    parser.add_argument(
+        "--include-reasons", action="store_true", help="Include reasons in report"
+    )
+    parser.add_argument(
+        "--verbose", action="store_true", help="Detailed discovery and execution info"
+    )
 
     args = parser.parse_args()
 
@@ -59,7 +89,9 @@ async def main() -> int:
     if args.filter and not args.verbose:
         print(f"Filter applied: {args.filter}")
 
-    success = await run_all_evaluations(datasets, print_options, args.min_assertions, args.verbose)
+    success = await run_all_evaluations(
+        datasets, print_options, args.min_assertions, args.verbose
+    )
     return 0 if success else 1
 
 

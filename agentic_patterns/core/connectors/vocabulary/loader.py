@@ -5,12 +5,26 @@ import logging
 from pathlib import Path
 
 from agentic_patterns.core.connectors.vocabulary.config import VOCABULARY_CACHE_DIR
-from agentic_patterns.core.connectors.vocabulary.models import SourceFormat, VocabularyConfig, VocabularyStrategy, VocabularyTerm
+from agentic_patterns.core.connectors.vocabulary.models import (
+    SourceFormat,
+    VocabularyConfig,
+    VocabularyStrategy,
+    VocabularyTerm,
+)
 from agentic_patterns.core.connectors.vocabulary.parser_obo import parse_obo
 from agentic_patterns.core.connectors.vocabulary.parser_owl import parse_owl
 from agentic_patterns.core.connectors.vocabulary.parser_rf2 import parse_rf2
-from agentic_patterns.core.connectors.vocabulary.parser_tabular import parse_csv, parse_gmt, parse_json_flat, parse_json_hierarchical, parse_mesh_xml
-from agentic_patterns.core.connectors.vocabulary.registry import Strategy, register_vocabulary
+from agentic_patterns.core.connectors.vocabulary.parser_tabular import (
+    parse_csv,
+    parse_gmt,
+    parse_json_flat,
+    parse_json_hierarchical,
+    parse_mesh_xml,
+)
+from agentic_patterns.core.connectors.vocabulary.registry import (
+    Strategy,
+    register_vocabulary,
+)
 from agentic_patterns.core.connectors.vocabulary.strategy_enum import StrategyEnum
 from agentic_patterns.core.connectors.vocabulary.strategy_rag import StrategyRag
 from agentic_patterns.core.connectors.vocabulary.strategy_tree import StrategyTree
@@ -28,7 +42,11 @@ def load_vocabulary(config: VocabularyConfig, base_dir: Path | None = None) -> S
     cache_path = VOCABULARY_CACHE_DIR / f"{config.name}.json"
 
     # Try cache first for enum/tree
-    if config.strategy in (VocabularyStrategy.ENUM, VocabularyStrategy.TREE) and cache_path.exists() and cache_path.stat().st_mtime > source_path.stat().st_mtime:
+    if (
+        config.strategy in (VocabularyStrategy.ENUM, VocabularyStrategy.TREE)
+        and cache_path.exists()
+        and cache_path.stat().st_mtime > source_path.stat().st_mtime
+    ):
         logger.info("Loading %s from cache", config.name)
         terms = _load_cache(cache_path)
     else:
@@ -50,7 +68,11 @@ def _create_backend(config: VocabularyConfig, terms: list[VocabularyTerm]) -> St
         case VocabularyStrategy.TREE:
             return StrategyTree(config.name, terms)
         case VocabularyStrategy.RAG:
-            backend = StrategyRag(config.name, collection=config.collection, embedding_config=config.embedding_config)
+            backend = StrategyRag(
+                config.name,
+                collection=config.collection,
+                embedding_config=config.embedding_config,
+            )
             for term in terms:
                 backend.add_term(term)
             return backend
@@ -95,13 +117,34 @@ def _parse(config: VocabularyConfig, source_path: Path) -> list[VocabularyTerm]:
         case SourceFormat.OWL:
             return parse_owl(source_path)
         case SourceFormat.JSON_FLAT:
-            return parse_json_flat(source_path, id_field=opts.get("id_field", "id"), label_field=opts.get("label_field", "label"), definition_field=opts.get("definition_field") or "definition")
+            return parse_json_flat(
+                source_path,
+                id_field=opts.get("id_field", "id"),
+                label_field=opts.get("label_field", "label"),
+                definition_field=opts.get("definition_field") or "definition",
+            )
         case SourceFormat.JSON_HIERARCHICAL:
-            return parse_json_hierarchical(source_path, id_field=opts.get("id_field", "id"), label_field=opts.get("label_field", "label"))
+            return parse_json_hierarchical(
+                source_path,
+                id_field=opts.get("id_field", "id"),
+                label_field=opts.get("label_field", "label"),
+            )
         case SourceFormat.CSV:
-            return parse_csv(source_path, id_field=opts.get("id_field", "id"), label_field=opts.get("label_field", "label"), definition_field=opts.get("definition_field", "definition"), delimiter=",")
+            return parse_csv(
+                source_path,
+                id_field=opts.get("id_field", "id"),
+                label_field=opts.get("label_field", "label"),
+                definition_field=opts.get("definition_field", "definition"),
+                delimiter=",",
+            )
         case SourceFormat.TSV:
-            return parse_csv(source_path, id_field=opts.get("id_field", "id"), label_field=opts.get("label_field", "label"), definition_field=opts.get("definition_field", "definition"), delimiter="\t")
+            return parse_csv(
+                source_path,
+                id_field=opts.get("id_field", "id"),
+                label_field=opts.get("label_field", "label"),
+                definition_field=opts.get("definition_field", "definition"),
+                delimiter="\t",
+            )
         case SourceFormat.MESH_XML:
             return parse_mesh_xml(source_path)
         case SourceFormat.GMT:

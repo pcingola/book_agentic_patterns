@@ -28,10 +28,13 @@ class SubprocessResult(BaseModel):
     namespace: dict[str, Any] = Field(default_factory=dict)
 
 
-def cleanup_temp_workbooks(user_id: str, session_id: str, workspace_dir: Path | None = None) -> None:
+def cleanup_temp_workbooks(
+    user_id: str, session_id: str, workspace_dir: Path | None = None
+) -> None:
     """Clean up temporary workbook files."""
     if workspace_dir is None:
         from agentic_patterns.core.config.config import WORKSPACE_DIR
+
         workspace_dir = WORKSPACE_DIR
 
     session_dir = workspace_dir / user_id / session_id / SERVICE_NAME
@@ -41,7 +44,9 @@ def cleanup_temp_workbooks(user_id: str, session_id: str, workspace_dir: Path | 
             shutil.rmtree(temp_dir)
             logger.info("Cleaned up temporary workbooks in %s", temp_dir)
         except Exception as e:
-            logger.exception("Failed to clean up temporary workbooks in %s: %s", temp_dir, e)
+            logger.exception(
+                "Failed to clean up temporary workbooks in %s: %s", temp_dir, e
+            )
 
 
 def execute_and_capture_last_expression(code: str, namespace: dict[str, Any]) -> Any:
@@ -70,7 +75,9 @@ def extract_function_definitions(code: str) -> list[str]:
             if isinstance(node, ast.FunctionDef):
                 lines = code.split("\n")
                 start_line = node.lineno - 1
-                end_line = node.end_lineno if hasattr(node, "end_lineno") else start_line + 1
+                end_line = (
+                    node.end_lineno if hasattr(node, "end_lineno") else start_line + 1
+                )
                 func_lines = lines[start_line:end_line]
                 func_def = "\n".join(func_lines)
                 function_defs.append(func_def)
@@ -93,14 +100,20 @@ def filter_picklable_namespace(
     builtin_functions = _get_builtin_function_names()
 
     temp_dir = get_temp_workbooks_dir(user_id, session_id, workspace_base)
-    openpyxl_items, openpyxl_keys, messages = filter_openpyxl_from_namespace(namespace, temp_dir)
+    openpyxl_items, openpyxl_keys, messages = filter_openpyxl_from_namespace(
+        namespace, temp_dir
+    )
 
     result = dict(openpyxl_items)
 
     for key, value in namespace.items():
         if key in openpyxl_keys:
             continue
-        if key in builtin_functions or key == "__builtins__" or isinstance(value, types.ModuleType):
+        if (
+            key in builtin_functions
+            or key == "__builtins__"
+            or isinstance(value, types.ModuleType)
+        ):
             continue
         if is_picklable(value):
             result[key] = value
@@ -122,11 +135,15 @@ def get_temp_workbooks_dir(
         session_dir = workspace_base / SERVICE_NAME
     else:
         from agentic_patterns.core.config.config import WORKSPACE_DIR
+
         if user_id is not None and session_id is not None:
             session_dir = WORKSPACE_DIR / user_id / session_id / SERVICE_NAME
         else:
             from agentic_patterns.core.user_session import get_session_id, get_user_id
-            session_dir = WORKSPACE_DIR / get_user_id() / get_session_id() / SERVICE_NAME
+
+            session_dir = (
+                WORKSPACE_DIR / get_user_id() / get_session_id() / SERVICE_NAME
+            )
 
     temp_dir = session_dir / ".mcp_repl_temp" / "workbooks"
     temp_dir.mkdir(parents=True, exist_ok=True)
@@ -144,7 +161,12 @@ def is_picklable(obj: Any) -> bool:
 
 
 def _get_builtin_function_names() -> set[str]:
-    return set(filter(lambda x: isinstance(getattr(builtins, x, None), types.BuiltinFunctionType), dir(builtins)))
+    return set(
+        filter(
+            lambda x: isinstance(getattr(builtins, x, None), types.BuiltinFunctionType),
+            dir(builtins),
+        )
+    )
 
 
 def _get_unpicklable_hint(key: str, value: Any) -> str | None:
@@ -180,6 +202,8 @@ def _get_unpicklable_hint(key: str, value: Any) -> str | None:
         return f"Note: '{key}' ({type_name}) not persisted - reconnect in next cell"
 
     if type_name == "socket" or module == "socket":
-        return f"Note: '{key}' (socket) not persisted - recreate connection in next cell"
+        return (
+            f"Note: '{key}' (socket) not persisted - recreate connection in next cell"
+        )
 
     return None
