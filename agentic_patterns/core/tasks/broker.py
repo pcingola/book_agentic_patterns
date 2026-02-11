@@ -15,16 +15,24 @@ class TaskBroker:
     """Coordination layer for task submission, observation, and dispatch."""
 
     def __init__(
-        self, store: TaskStore | None = None, poll_interval: float = 0.5, model=None
+        self, store: TaskStore | None = None, poll_interval: float = 0.5, model: Any = None
     ) -> None:
         self._store = store or TaskStoreJson()
-        self._worker = Worker(self._store, model=model)
         self._poll_interval = poll_interval
+        self._model = model
+        self._agent_specs: dict[str, Any] = {}
+        self._worker = Worker(self._store, model=model)
         self._dispatch_task: asyncio.Task | None = None
+        self._running: dict[str, asyncio.Task] = {}
         self._callbacks: dict[
             str,
             list[tuple[set[TaskState], Callable[[Task], Coroutine[Any, Any, None]]]],
         ] = {}
+
+    def register_agents(self, specs: dict[str, Any]) -> None:
+        """Register AgentSpecs so the worker can resolve them by name."""
+        self._agent_specs.update(specs)
+        self._worker = Worker(self._store, model=self._model, agent_specs=self._agent_specs)
 
     async def __aenter__(self) -> "TaskBroker":
         self._dispatch_task = asyncio.create_task(self._dispatch_loop())
@@ -55,6 +63,10 @@ class TaskBroker:
         task = await self._store.get(task_id)
         if task is None or task.state in TERMINAL_STATES:
             return task
+        # Cancel the asyncio.Task if running
+        running_task = self._running.get(task_id)
+        if running_task and not running_task.done():
+            running_task.cancel()
         updated = await self._store.update_state(task_id, TaskState.CANCELLED)
         await self._store.add_event(
             task_id,
@@ -66,6 +78,16 @@ class TaskBroker:
         )
         logger.info("Cancelled task %s", task_id[:8])
         return updated
+
+    async def cancel_all(self) -> None:
+        """Cancel all non-terminal tasks and their asyncio.Tasks."""
+        for task_id, atask in list(self._running.items()):
+            if not atask.done():
+                atask.cancel()
+        for task_id in list(self._running.keys()):
+            task = await self._store.get(task_id)
+            if task and task.state not in TERMINAL_STATES:
+                await self._store.update_state(task_id, TaskState.CANCELLED)
 
     async def notify(
         self,
@@ -108,13 +130,13 @@ class TaskBroker:
     # -- Dispatch --
 
     async def _dispatch_loop(self) -> None:
-        """Background loop that picks pending tasks and dispatches them to the worker."""
+        """Background loop that picks pending tasks and dispatches them concurrently."""
         while True:
             try:
                 task = await self._store.next_pending()
                 if task is not None:
-                    await self._worker.execute(task.id)
-                    await self._fire_callbacks(task.id)
+                    atask = asyncio.create_task(self._run_and_notify(task.id))
+                    self._running[task.id] = atask
                 else:
                     await asyncio.sleep(self._poll_interval)
             except asyncio.CancelledError:
@@ -122,6 +144,19 @@ class TaskBroker:
             except Exception:
                 logger.exception("Dispatch loop error")
                 await asyncio.sleep(self._poll_interval)
+
+    async def _run_and_notify(self, task_id: str) -> None:
+        """Run worker for a task, fire callbacks, handle cancellation."""
+        try:
+            await self._worker.execute(task_id)
+            await self._fire_callbacks(task_id)
+        except asyncio.CancelledError:
+            # Worker handles CancelledError internally (marks CANCELLED)
+            pass
+        except Exception:
+            logger.exception("Error running task %s", task_id[:8])
+        finally:
+            self._running.pop(task_id, None)
 
     async def _fire_callbacks(self, task_id: str) -> None:
         """Fire registered callbacks if the task state matches."""

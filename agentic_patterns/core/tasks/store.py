@@ -42,6 +42,64 @@ class TaskStore(ABC):
     ) -> Task | None: ...
 
 
+class TaskStoreMemory(TaskStore):
+    """In-memory dict-backed task store. No filesystem, ideal for notebooks."""
+
+    def __init__(self) -> None:
+        self._tasks: dict[str, Task] = {}
+        self._lock = asyncio.Lock()
+
+    async def add_event(self, task_id: str, event: TaskEvent) -> None:
+        async with self._lock:
+            task = self._tasks.get(task_id)
+            if task is None:
+                return
+            task.events.append(event)
+            task.updated_at = datetime.now(timezone.utc)
+
+    async def create(self, task: Task) -> Task:
+        async with self._lock:
+            self._tasks[task.id] = task
+            logger.debug("Created task %s", task.id[:8])
+            return task
+
+    async def get(self, task_id: str) -> Task | None:
+        async with self._lock:
+            return self._tasks.get(task_id)
+
+    async def list_by_state(self, state: TaskState) -> list[Task]:
+        async with self._lock:
+            return sorted(
+                [t for t in self._tasks.values() if t.state == state],
+                key=lambda t: t.created_at,
+            )
+
+    async def next_pending(self) -> Task | None:
+        tasks = await self.list_by_state(TaskState.PENDING)
+        return tasks[0] if tasks else None
+
+    async def update_state(
+        self,
+        task_id: str,
+        state: TaskState,
+        *,
+        result: str | None = None,
+        error: str | None = None,
+    ) -> Task | None:
+        async with self._lock:
+            task = self._tasks.get(task_id)
+            if task is None:
+                return None
+            task.state = state
+            if result is not None:
+                task.result = result
+            if error is not None:
+                task.error = error
+            task.updated_at = datetime.now(timezone.utc)
+            logger.debug("Task %s -> %s", task_id[:8], state.value)
+            return task
+
+
 class TaskStoreJson(TaskStore):
     """JSON file-backed task store. One JSON file per task."""
 

@@ -1,4 +1,4 @@
-"""OrchestratorAgent: Full agent with tools, MCP, A2A, and skills."""
+"""OrchestratorAgent: Full agent with tools, MCP, A2A, skills, and task broker."""
 
 import asyncio
 from collections.abc import Callable
@@ -14,7 +14,7 @@ from pydantic_ai.agent import AgentRun, AgentRunResult
 from pydantic_ai.messages import ModelMessage, TextPart, ToolCallPart
 from pydantic_ai.models import Model
 from pydantic_ai.mcp import MCPServerStreamableHTTP
-from pydantic_ai.usage import UsageLimits
+from pydantic_ai.usage import Usage, UsageLimits
 
 from agentic_patterns.core.a2a.client import A2AClientExtended, get_a2a_client
 from agentic_patterns.core.a2a.tool import build_coordinator_prompt, create_a2a_tool
@@ -24,6 +24,8 @@ from agentic_patterns.core.mcp import MCPClientConfig, load_mcp_settings
 from agentic_patterns.core.skills.models import Skill, SkillMetadata
 from agentic_patterns.core.skills.registry import SkillRegistry
 from agentic_patterns.core.skills.tools import list_available_skills
+from agentic_patterns.core.tasks.state import TERMINAL_STATES, TaskState
+from agentic_patterns.core.tasks.store import TaskStoreMemory
 
 NodeHook = Callable[[Any], None]
 
@@ -135,7 +137,7 @@ class AgentSpec(BaseModel):
 
 
 class OrchestratorAgent:
-    """Context manager for running an agent with tools, MCP, A2A, and skills."""
+    """Context manager for running an agent with tools, MCP, A2A, skills, and tasks."""
 
     def __init__(
         self, spec: AgentSpec, *, verbose: bool = False, on_node: NodeHook | None = None
@@ -148,6 +150,10 @@ class OrchestratorAgent:
         self._system_prompt: str = ""
         self._message_history: list[ModelMessage] = []
         self._runs: list[tuple[AgentRun, list]] = []
+        # Task broker (created when sub_agents are present)
+        self._broker = None
+        self._submitted_task_ids: list[str] = []
+        self._reported_task_ids: set[str] = set()
 
     async def __aenter__(self) -> "OrchestratorAgent":
         self._exit_stack = AsyncExitStack()
@@ -197,27 +203,84 @@ class OrchestratorAgent:
             ]
             tools.extend(get_skill_tools(registry))
 
-        # Create sub-agent delegation tool
+        # Create sub-agent tools via TaskBroker
         if self.spec.sub_agents:
             sub_map = {s.name: s for s in self.spec.sub_agents}
             names = list(sub_map.keys())
 
-            async def delegate(ctx: RunContext, agent_name: str, prompt: str) -> str:
-                """Delegate a task to a sub-agent."""
-                if agent_name not in sub_map:
-                    return (
-                        f"Unknown agent '{agent_name}'. Available: {', '.join(names)}"
-                    )
-                sub_spec = sub_map[agent_name]
-                async with OrchestratorAgent(sub_spec) as sub:
-                    result = await sub.run(prompt)
-                ctx.usage.incr(result.usage())
-                return result.output
+            # Create and start broker
+            from agentic_patterns.core.tasks.broker import TaskBroker
 
-            delegate.__doc__ = (
-                f"Delegate a task to a sub-agent. Available agents: {', '.join(names)}."
-            )
+            self._broker = TaskBroker(store=TaskStoreMemory(), poll_interval=0.3)
+            self._broker.register_agents(sub_map)
+            await self._exit_stack.enter_async_context(self._broker)
+
+            broker = self._broker
+            submitted = self._submitted_task_ids
+
+            async def delegate(ctx: RunContext, agent_name: str, prompt: str) -> str:
+                """Delegate a task to a sub-agent and wait for the result."""
+                if agent_name not in sub_map:
+                    return f"Unknown agent '{agent_name}'. Available: {', '.join(names)}"
+                task_id = await broker.submit(prompt, agent_name=agent_name)
+                submitted.append(task_id)
+                task = await broker.wait(task_id)
+                if task is None:
+                    return "Delegation failed: task not found"
+                if task.state == TaskState.COMPLETED:
+                    # Extract usage from the COMPLETED event and propagate
+                    for event in reversed(task.events):
+                        if event.payload.get("state") == TaskState.COMPLETED.value and "usage" in event.payload:
+                            u = event.payload["usage"]
+                            ctx.usage.incr(Usage(requests=u.get("requests", 0), request_tokens=u.get("request_tokens"), response_tokens=u.get("response_tokens"), total_tokens=u.get("total_tokens")))
+                            break
+                    return task.result or ""
+                return f"Delegation failed: {task.error or task.state.value}"
+
+            delegate.__doc__ = f"Delegate a task to a sub-agent and wait for the result. Available agents: {', '.join(names)}."
             tools.append(delegate)
+
+            async def submit_task(ctx: RunContext, agent_name: str, prompt: str) -> str:
+                """Submit a task to a sub-agent for background execution. Returns task_id."""
+                if agent_name not in sub_map:
+                    return f"Unknown agent '{agent_name}'. Available: {', '.join(names)}"
+                task_id = await broker.submit(prompt, agent_name=agent_name)
+                submitted.append(task_id)
+                return f"Task submitted: {task_id[:8]}"
+
+            submit_task.__doc__ = f"Submit a task to a sub-agent for background execution. Returns task_id. Available agents: {', '.join(names)}."
+            tools.append(submit_task)
+
+            async def check_tasks(ctx: RunContext) -> str:
+                """Check status of all submitted background tasks."""
+                if not submitted:
+                    return "No tasks submitted."
+                lines = []
+                for tid in submitted:
+                    task = await broker.poll(tid)
+                    if task is None:
+                        lines.append(f"- {tid[:8]}: not found")
+                        continue
+                    agent_name = task.metadata.get("agent_name", "unknown")
+                    status = task.state.value
+                    line = f"- {tid[:8]} ({agent_name}): {status}"
+                    if task.state == TaskState.COMPLETED and task.result:
+                        preview = task.result[:200]
+                        line += f"\n  Result: {preview}"
+                    elif task.state == TaskState.FAILED and task.error:
+                        line += f"\n  Error: {task.error}"
+                    else:
+                        # Show recent progress events
+                        progress = [e for e in task.events if e.event_type.value == "progress"]
+                        if progress:
+                            last = progress[-1]
+                            tool_name = last.payload.get("tool", "")
+                            arg = last.payload.get("arg", "")
+                            line += f"\n  Last: {tool_name} {arg}"
+                    lines.append(line)
+                return "\n".join(lines)
+
+            tools.append(check_tasks)
 
         # Build system prompt
         system_prompt = self._build_system_prompt(a2a_cards)
@@ -232,10 +295,14 @@ class OrchestratorAgent:
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
+        # Cancel all running tasks before tearing down
+        if self._broker:
+            await self._broker.cancel_all()
         if self._exit_stack:
             await self._exit_stack.__aexit__(exc_type, exc_val, exc_tb)
         self._mcp_connections = []
         self._agent = None
+        self._broker = None
 
     @property
     def system_prompt(self) -> str:
@@ -262,6 +329,9 @@ class OrchestratorAgent:
 
         from agentic_patterns.core.agents.utils import nodes_to_message_history
 
+        # Inject completed background tasks into the prompt
+        prompt = await self._inject_completed_tasks(prompt)
+
         history = (
             message_history
             if message_history is not None
@@ -280,6 +350,37 @@ class OrchestratorAgent:
         self._runs.append((agent_run, nodes))
         self._message_history.extend(nodes_to_message_history(nodes))
         return agent_run.result
+
+    async def _inject_completed_tasks(self, prompt: str) -> str:
+        """Prepend info about background tasks completed since last check."""
+        if not self._broker or not self._submitted_task_ids:
+            return prompt
+
+        injections = []
+        for tid in self._submitted_task_ids:
+            if tid in self._reported_task_ids:
+                continue
+            task = await self._broker.poll(tid)
+            if task is None or task.state not in TERMINAL_STATES:
+                continue
+            self._reported_task_ids.add(tid)
+            agent_name = task.metadata.get("agent_name", "unknown")
+            if task.state == TaskState.COMPLETED and task.result:
+                injections.append(
+                    f"[BACKGROUND TASK COMPLETED: {agent_name} (task_id={tid[:8]})]\n"
+                    f"Result: {task.result}"
+                )
+            elif task.state == TaskState.FAILED:
+                injections.append(
+                    f"[BACKGROUND TASK FAILED: {agent_name} (task_id={tid[:8]})]\n"
+                    f"Error: {task.error or 'unknown'}"
+                )
+
+        if not injections:
+            return prompt
+
+        header = "\n\n".join(injections)
+        return f"{header}\n\n{prompt}"
 
     def _build_system_prompt(self, a2a_cards: list[dict]) -> str:
         """Build combined system prompt from all sources.

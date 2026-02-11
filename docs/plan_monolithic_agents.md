@@ -6,7 +6,7 @@ All three agents use `OrchestratorAgent` from `core/agents/orchestrator.py`. V1 
 
 Skills are loaded from `SKILLS_DIR` (configured in `core/config/config.py`, defaults to `data/skills/`). The demo skills (code-review, pdf-processing) live there.
 
-## Library changes
+## Library changes -- DONE
 
 **`core/skills/tools.py`**: Add `get_all_tools(registry)` returning `[activate_skill]`. The `activate_skill` tool is a closure over the registry that calls `get_skill_instructions()` and prints `[SKILL ACTIVATED: name]`. This eliminates the boilerplate that was previously copy-pasted into every notebook.
 
@@ -14,7 +14,7 @@ Skills are loaded from `SKILLS_DIR` (configured in `core/config/config.py`, defa
 
 **`OrchestratorAgent`**: When skills are present, auto-add skill tools (from `core/skills/tools.get_all_tools()`) to the agent's tool list in `__aenter__`. The orchestrator already injects the skill catalog into the system prompt; now it also provides the activation tool.
 
-## Agent V3: The Skilled
+## Agent V3: The Skilled -- DONE
 
 **What it adds:** Progressive disclosure via skills. Instead of loading all specialized instructions into the system prompt upfront, the agent discovers skills at startup (metadata only -- name + description) and activates them on demand (loading full SKILL.md body). This keeps the system prompt lean until the agent actually needs a capability.
 
@@ -28,7 +28,7 @@ Skills are loaded from `SKILLS_DIR` (configured in `core/config/config.py`, defa
 
 **Implementation:** The notebook creates an `OrchestratorAgent` via `AgentSpec` with `skill_roots=[SKILLS_DIR]`. The orchestrator discovers skills, injects the catalog, and adds `activate_skill` automatically. The demo is a multi-turn conversation: turn 1 writes a script, turn 2 asks for a security review (the agent should activate the code-review skill on its own).
 
-## Agent V4: The Coordinator
+## Agent V4: The Coordinator -- DONE
 
 **What it adds:** Sub-agent delegation. Instead of giving the agent 40+ specialized tools (data analysis operations, SQL tools, etc.), it gets delegation tools: `ask_data_analyst(prompt)` and `ask_sql_analyst(prompt)`. Each delegation tool creates a specialist sub-agent internally, runs it with the prompt, propagates usage, and returns the result string. The coordinator agent decides *who* to delegate to; the sub-agent decides *how* to accomplish it.
 
@@ -42,19 +42,23 @@ Skills are loaded from `SKILLS_DIR` (configured in `core/config/config.py`, defa
 
 **Implementation:** Delegation tools follow the exact pattern from `agents/coordinator.py`: async function taking `RunContext` + `prompt`, creating sub-agent, running it, propagating `ctx.usage.incr()`. Reuse `agents/data_analysis.py` and `agents/sql.py` directly. These tools are passed via `AgentSpec.tools`.
 
-## Agent V5: The Full Agent (with Tasks)
+## Agent V5: The Full Agent (with Tasks) -- DONE
 
-**What it adds:** The async task system (`core/tasks/`) for background execution. The agent can submit long-running work to the `TaskBroker`, check status, and wait for completion. This is useful when delegations may take significant time -- instead of blocking the conversation, the agent submits a task and can do other work while waiting.
+**What it adds:** Unified task orchestration via `TaskBroker`. All sub-agent work (both synchronous `delegate` and async `submit_task`) flows through the broker, giving concurrent execution, progress events, error handling, and cancellation propagation. The `OrchestratorAgent` creates a `TaskBroker(store=TaskStoreMemory())` internally when `sub_agents` are present.
 
-**Tools:** Coordinator's 20 + `submit_task` + `check_task` + `wait_for_task` = 23 tools.
+**Tools:** Coordinator's 20 + `submit_task` + `check_tasks` = 22 tools. The existing `delegate` tool now routes through the broker (submit + wait) instead of inline execution.
 
-**Key concept:** Async task submission decouples the agent's conversation loop from long-running work. This is the bridge to the distributed version later -- in the infrastructure section, the TaskBroker becomes a real server, but the agent's interface (submit/check/wait) stays the same.
+**Key concept:** A delegation is just a "single-item task." Both synchronous and async paths flow through the same broker, providing visibility, cancellation, and usage tracking. Between turns, completed background tasks are automatically injected into the prompt.
 
-**Files to create:**
-- `prompts/the_complete_agent/agent_full.md` -- extends coordinator prompt with tasks section
+**Files created:**
+- `prompts/the_complete_agent/agent_full.md` -- extends coordinator prompt with async tasks section
 - `agentic_patterns/examples/the_complete_agent/example_agent_full.ipynb` -- notebook demo
 
-**Implementation:** Task tools wrap the `TaskBroker` API as agent-callable functions. The broker and dispatch loop run in the notebook's event loop. Task tools are passed via `AgentSpec.tools`.
+**Library changes:**
+- `core/tasks/store.py` -- Added `TaskStoreMemory` (dict-backed, no filesystem)
+- `core/tasks/broker.py` -- Added `register_agents()`, concurrent dispatch via `asyncio.create_task()`, `cancel_all()`, `_running` tracking
+- `core/tasks/worker.py` -- Added `agent_specs` support, `_execute_with_spec()` using `OrchestratorAgent`, `_make_node_hook()` for progress events, `CancelledError` handling
+- `core/agents/orchestrator.py` -- Broker-backed `delegate`, new `submit_task`/`check_tasks` tools, between-turn injection via `_inject_completed_tasks()`, `cancel_all()` in `__aexit__`
 
 ## Chapter text
 
@@ -73,4 +77,4 @@ Update `chapters/the_complete_agent/chapter.md` to add the three new links.
 | V2: Planner | 16 | + todo (planning) |
 | V3: Skilled | 17 | + skills (progressive disclosure) |
 | V4: Coordinator | 20 | + sub-agents + format conversion |
-| V5: Full Agent | 23 | + async tasks |
+| V5: Full Agent | 22 | + async tasks (submit_task, check_tasks) |

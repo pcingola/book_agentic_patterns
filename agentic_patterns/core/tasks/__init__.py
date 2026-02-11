@@ -7,5 +7,6 @@ from agentic_patterns.core.tasks.state import (
 from agentic_patterns.core.tasks.store import (
     TaskStore as TaskStore,
     TaskStoreJson as TaskStoreJson,
+    TaskStoreMemory as TaskStoreMemory,
 )
 from agentic_patterns.core.tasks.worker import Worker as Worker
