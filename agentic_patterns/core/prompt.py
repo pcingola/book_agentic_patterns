@@ -21,7 +21,7 @@ def _resolve_includes(text: str, base_dir: Path) -> str:
         if not include_path.exists():
             raise FileNotFoundError(f"Include file not found: {include_path}")
         included = include_path.read_text(encoding="utf-8")
-        text = text[:match.start()] + included + text[match.end():]
+        text = text[: match.start()] + included + text[match.end() :]
     return text
 
 

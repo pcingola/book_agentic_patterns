@@ -129,13 +129,17 @@ class AgentSpec(BaseModel):
         if self.a2a_clients:
             counts.append(f"a2a={len(self.a2a_clients)}")
         detail = ", ".join(counts)
-        return f"AgentSpec({self.name}, {detail})" if detail else f"AgentSpec({self.name})"
+        return (
+            f"AgentSpec({self.name}, {detail})" if detail else f"AgentSpec({self.name})"
+        )
 
 
 class OrchestratorAgent:
     """Context manager for running an agent with tools, MCP, A2A, and skills."""
 
-    def __init__(self, spec: AgentSpec, *, verbose: bool = False, on_node: NodeHook | None = None):
+    def __init__(
+        self, spec: AgentSpec, *, verbose: bool = False, on_node: NodeHook | None = None
+    ):
         self.spec = spec
         self._on_node = on_node or (_log_node if verbose else None)
         self._agent: Agent | None = None
@@ -175,13 +179,16 @@ class OrchestratorAgent:
                 registry = SkillRegistry()
                 registry.discover([SKILLS_DIR])
                 self.spec.skills = [
-                    s for m in registry.list_all()
+                    s
+                    for m in registry.list_all()
                     if (s := registry.get(m.name)) is not None
                 ]
 
         # Create skill tools
         if self.spec.skills:
-            from agentic_patterns.core.skills.tools import get_all_tools as get_skill_tools
+            from agentic_patterns.core.skills.tools import (
+                get_all_tools as get_skill_tools,
+            )
 
             registry = SkillRegistry()
             registry._metadata_cache = [
@@ -198,14 +205,18 @@ class OrchestratorAgent:
             async def delegate(ctx: RunContext, agent_name: str, prompt: str) -> str:
                 """Delegate a task to a sub-agent."""
                 if agent_name not in sub_map:
-                    return f"Unknown agent '{agent_name}'. Available: {', '.join(names)}"
+                    return (
+                        f"Unknown agent '{agent_name}'. Available: {', '.join(names)}"
+                    )
                 sub_spec = sub_map[agent_name]
                 async with OrchestratorAgent(sub_spec) as sub:
                     result = await sub.run(prompt)
                 ctx.usage.incr(result.usage())
                 return result.output
 
-            delegate.__doc__ = f"Delegate a task to a sub-agent. Available agents: {', '.join(names)}."
+            delegate.__doc__ = (
+                f"Delegate a task to a sub-agent. Available agents: {', '.join(names)}."
+            )
             tools.append(delegate)
 
         # Build system prompt
@@ -251,10 +262,16 @@ class OrchestratorAgent:
 
         from agentic_patterns.core.agents.utils import nodes_to_message_history
 
-        history = message_history if message_history is not None else (self._message_history or None)
+        history = (
+            message_history
+            if message_history is not None
+            else (self._message_history or None)
+        )
 
         nodes = []
-        async with self._agent.iter(prompt, usage_limits=usage_limits, message_history=history) as agent_run:
+        async with self._agent.iter(
+            prompt, usage_limits=usage_limits, message_history=history
+        ) as agent_run:
             async for node in agent_run:
                 nodes.append(node)
                 if self._on_node:
@@ -294,7 +311,11 @@ class OrchestratorAgent:
         if self.spec.system_prompt_path:
             prompt = load_prompt(self.spec.system_prompt_path, **variables)
         elif self.spec.system_prompt:
-            prompt = self.spec.system_prompt.format(**variables) if variables else self.spec.system_prompt
+            prompt = (
+                self.spec.system_prompt.format(**variables)
+                if variables
+                else self.spec.system_prompt
+            )
         else:
             prompt = ""
 

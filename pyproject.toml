@@ -34,6 +34,7 @@ dependencies = [
     "matplotlib>=3.10.8",
     "seaborn>=0.13.2",
     "ruff>=0.15.0",
+    "weasyprint>=68.1",
 ]
 
 [project.scripts]

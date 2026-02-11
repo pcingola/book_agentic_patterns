@@ -24,7 +24,9 @@ def _check_private_data(func_name: str) -> None:
     from agentic_patterns.core.compliance.private_data import session_has_private_data
 
     if session_has_private_data():
-        raise ToolPermissionError(f"Tool '{func_name}' blocked: session contains private data")
+        raise ToolPermissionError(
+            f"Tool '{func_name}' blocked: session contains private data"
+        )
 
 
 def tool_permission(*permissions: ToolPermission) -> Callable:
@@ -39,11 +41,13 @@ def tool_permission(*permissions: ToolPermission) -> Callable:
             return func
 
         if asyncio.iscoroutinefunction(func):
+
             @wraps(func)
             async def wrapper(*args, **kwargs):
                 _check_private_data(func.__name__)
                 return await func(*args, **kwargs)
         else:
+
             @wraps(func)
             def wrapper(*args, **kwargs):
                 _check_private_data(func.__name__)

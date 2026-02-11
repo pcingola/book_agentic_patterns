@@ -15,7 +15,7 @@ from typing import Any
 from agentic_patterns.core.repl.cell_output import CellOutput
 from agentic_patterns.core.repl.cell_utils import SubprocessResult
 from agentic_patterns.core.repl.enums import CellState, OutputType
-from agentic_patterns.core.sandbox import BindMount, get_sandbox
+from agentic_patterns.core.process_sandbox import BindMount, get_sandbox
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +32,7 @@ async def execute_in_sandbox(
 ) -> SubprocessResult:
     """Execute REPL code via the generic sandbox with pickle IPC."""
     from agentic_patterns.core.compliance.private_data import session_has_private_data
-    from agentic_patterns.core.sandbox import SandboxBubblewrap
+    from agentic_patterns.core.process_sandbox import SandboxBubblewrap
 
     sandbox = get_sandbox()
     is_bwrap = isinstance(sandbox, SandboxBubblewrap)

@@ -29,7 +29,12 @@ def get_spec(vocab_names: list[str] | None = None) -> AgentSpec:
     """Return an AgentSpec for the vocabulary agent."""
     instructions = _build_instructions(vocab_names)
     full_prompt = SYSTEM_PROMPT + "\n\n" + instructions
-    return AgentSpec(name="vocabulary_expert", description=DESCRIPTION, system_prompt=full_prompt, tools=_get_tools())
+    return AgentSpec(
+        name="vocabulary_expert",
+        description=DESCRIPTION,
+        system_prompt=full_prompt,
+        tools=_get_tools(),
+    )
 
 
 def _build_instructions(vocab_names: list[str] | None = None) -> str:

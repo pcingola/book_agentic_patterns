@@ -19,5 +19,14 @@ def create_agent() -> Agent:
 def get_spec() -> AgentSpec:
     """Return an AgentSpec for the data analysis agent."""
     prompt = load_prompt(PROMPTS_DIR / "a2a" / "data_analysis" / "system_prompt.md")
-    tools = file.get_all_tools() + csv.get_all_tools() + json.get_all_tools() + data_analysis.get_all_tools() + data_viz.get_all_tools() + repl.get_all_tools()
-    return AgentSpec(name="data_analyst", description=DESCRIPTION, system_prompt=prompt, tools=tools)
+    tools = (
+        file.get_all_tools()
+        + csv.get_all_tools()
+        + json.get_all_tools()
+        + data_analysis.get_all_tools()
+        + data_viz.get_all_tools()
+        + repl.get_all_tools()
+    )
+    return AgentSpec(
+        name="data_analyst", description=DESCRIPTION, system_prompt=prompt, tools=tools
+    )
