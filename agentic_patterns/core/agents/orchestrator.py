@@ -9,9 +9,9 @@ from typing import Any, Sequence
 import rich
 from pydantic import BaseModel, ConfigDict
 from pydantic_ai import Agent, RunContext
-from pydantic_ai._agent_graph import CallToolsNode
+from pydantic_ai._agent_graph import CallToolsNode, ModelRequestNode
 from pydantic_ai.agent import AgentRun, AgentRunResult
-from pydantic_ai.messages import ModelMessage, TextPart, ToolCallPart
+from pydantic_ai.messages import ModelMessage, TextPart, ToolCallPart, ToolReturnPart
 from pydantic_ai.models import Model
 from pydantic_ai.mcp import MCPServerStreamableHTTP
 from pydantic_ai.usage import RunUsage, UsageLimits
@@ -32,17 +32,21 @@ NodeHook = Callable[[Any], None]
 
 
 def _log_node(node) -> None:
-    """Default node hook: print model reasoning and tool calls."""
-    if not isinstance(node, CallToolsNode):
-        return
-    for part in node.model_response.parts:
-        if isinstance(part, TextPart) and part.content.strip():
-            line = part.content.strip().replace("\n", " ")[:120]
-            rich.print(f"  [dim]> {line}[/dim]")
-        elif isinstance(part, ToolCallPart):
-            args = part.args_as_dict() or {}
-            first_val = str(next(iter(args.values()), ""))[:80]
-            rich.print(f"  [green]{part.tool_name}[/green] {first_val}")
+    """Default node hook: print model reasoning, tool calls, and tool results."""
+    if isinstance(node, CallToolsNode):
+        for part in node.model_response.parts:
+            if isinstance(part, TextPart) and part.content.strip():
+                line = part.content.strip().replace("\n", " ")[:120]
+                rich.print(f"  [dim]> {line}[/dim]")
+            elif isinstance(part, ToolCallPart):
+                args = part.args_as_dict() or {}
+                params = " ".join(f"{k}={v}" for k, v in args.items())
+                rich.print(f"  [green]{part.tool_name}[/green] {params[:100]}")
+    elif isinstance(node, ModelRequestNode):
+        for part in node.request.parts:
+            if isinstance(part, ToolReturnPart):
+                content = str(part.content).replace("\n", " ")[:120]
+                rich.print(f"  [dim]  <- {part.tool_name}: {content}[/dim]")
 
 
 class AgentSpec(BaseModel):
@@ -275,7 +279,7 @@ class OrchestratorAgent:
                 for event in reversed(task.events):
                     if event.payload.get("state") == TaskState.COMPLETED.value and "usage" in event.payload:
                         u = event.payload["usage"]
-                        ctx.usage.incr(RunUsage(requests=u.get("requests", 0), input_tokens=u.get("input_tokens"), output_tokens=u.get("output_tokens"), total_tokens=u.get("total_tokens")))
+                        ctx.usage.incr(RunUsage(requests=u.get("requests", 0), input_tokens=u.get("input_tokens", 0), output_tokens=u.get("output_tokens", 0)))
                         break
                 return task.result or ""
             return f"Delegation failed: {task.error or task.state.value}"
