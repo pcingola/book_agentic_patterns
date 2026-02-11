@@ -4,8 +4,8 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
 
+import agentic_patterns.core.workspace as _ws
 from agentic_patterns.core.connectors.json import JsonConnector
 
 
@@ -13,21 +13,17 @@ class TestJsonConnector(unittest.TestCase):
     """Test JSON connector operations."""
 
     def setUp(self):
-        """Set up test fixtures."""
         self.temp_dir = tempfile.TemporaryDirectory()
         self.workspace_dir = Path(self.temp_dir.name)
-        self.patcher = patch(
-            "agentic_patterns.core.workspace.WORKSPACE_DIR", self.workspace_dir
-        )
-        self.patcher.start()
+        self._orig_workspace_dir = _ws.WORKSPACE_DIR
+        _ws.WORKSPACE_DIR = self.workspace_dir
 
         self.workspace_root = self.workspace_dir / "default_user" / "default_session"
         self.workspace_root.mkdir(parents=True, exist_ok=True)
         self.connector = JsonConnector()
 
     def tearDown(self):
-        """Clean up test fixtures."""
-        self.patcher.stop()
+        _ws.WORKSPACE_DIR = self._orig_workspace_dir
         self.temp_dir.cleanup()
 
     def _create_json_file(self, filename: str, data: dict | list) -> str:

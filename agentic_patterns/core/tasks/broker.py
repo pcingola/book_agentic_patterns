@@ -134,11 +134,10 @@ class TaskBroker:
         while True:
             try:
                 task = await self._store.next_pending()
-                if task is not None:
+                if task is not None and task.id not in self._running:
                     atask = asyncio.create_task(self._run_and_notify(task.id))
                     self._running[task.id] = atask
-                else:
-                    await asyncio.sleep(self._poll_interval)
+                await asyncio.sleep(self._poll_interval)
             except asyncio.CancelledError:
                 raise
             except Exception:

@@ -1,8 +1,8 @@
 import tempfile
 import unittest
 from pathlib import Path, PurePosixPath
-from unittest.mock import patch
 
+import agentic_patterns.core.workspace as _ws
 from agentic_patterns.core.user_session import set_user_session
 from agentic_patterns.core.workspace import (
     WorkspaceError,
@@ -21,14 +21,12 @@ class TestWorkspace(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.workspace_dir = Path(self.temp_dir.name)
-        self.patcher = patch(
-            "agentic_patterns.core.workspace.WORKSPACE_DIR", self.workspace_dir
-        )
-        self.patcher.start()
+        self._orig_workspace_dir = _ws.WORKSPACE_DIR
+        _ws.WORKSPACE_DIR = self.workspace_dir
         set_user_session("default_user", "default_session")
 
     def tearDown(self):
-        self.patcher.stop()
+        _ws.WORKSPACE_DIR = self._orig_workspace_dir
         self.temp_dir.cleanup()
 
     def test_workspace_to_host_path_converts_valid_path(self):

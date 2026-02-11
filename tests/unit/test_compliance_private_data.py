@@ -2,8 +2,8 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
 
+import agentic_patterns.core.compliance.private_data as _pd
 from agentic_patterns.core.compliance.private_data import (
     DataSensitivity,
     PRIVATE_DATA_FILENAME,
@@ -20,15 +20,12 @@ class TestPrivateData(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.workspace_dir = Path(self.temp_dir.name)
-        self.patcher = patch(
-            "agentic_patterns.core.compliance.private_data.PRIVATE_DATA_DIR",
-            self.workspace_dir,
-        )
-        self.patcher.start()
+        self._orig_private_data_dir = _pd.PRIVATE_DATA_DIR
+        _pd.PRIVATE_DATA_DIR = self.workspace_dir
         set_user_session("test_user", "test_session")
 
     def tearDown(self):
-        self.patcher.stop()
+        _pd.PRIVATE_DATA_DIR = self._orig_private_data_dir
         self.temp_dir.cleanup()
 
     def _private_data_path(self) -> Path:

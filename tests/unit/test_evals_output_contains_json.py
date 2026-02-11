@@ -1,15 +1,14 @@
 import unittest
-from unittest.mock import MagicMock
+from dataclasses import dataclass, field
+from typing import Any
 
 from agentic_patterns.core.evals.evaluators import OutputContainsJson
 
 
-def make_context(output, span_tree=None):
-    """Create a mock EvaluatorContext."""
-    ctx = MagicMock()
-    ctx.output = output
-    ctx.span_tree = span_tree
-    return ctx
+@dataclass
+class FakeContext:
+    output: Any = None
+    span_tree: Any = None
 
 
 class TestOutputContainsJson(unittest.TestCase):
@@ -17,27 +16,27 @@ class TestOutputContainsJson(unittest.TestCase):
 
     def test_valid_json_object(self):
         evaluator = OutputContainsJson()
-        ctx = make_context('{"key": "value"}')
+        ctx = FakeContext(output='{"key": "value"}')
         result = evaluator.evaluate(ctx)
         self.assertTrue(result.value)
         self.assertEqual(result.reason, "Valid JSON")
 
     def test_valid_json_array(self):
         evaluator = OutputContainsJson()
-        ctx = make_context("[1, 2, 3]")
+        ctx = FakeContext(output="[1, 2, 3]")
         result = evaluator.evaluate(ctx)
         self.assertTrue(result.value)
 
     def test_invalid_json(self):
         evaluator = OutputContainsJson()
-        ctx = make_context("not json at all")
+        ctx = FakeContext(output="not json at all")
         result = evaluator.evaluate(ctx)
         self.assertFalse(result.value)
         self.assertIn("Invalid JSON", result.reason)
 
     def test_none_output(self):
         evaluator = OutputContainsJson()
-        ctx = make_context(None)
+        ctx = FakeContext(output=None)
         result = evaluator.evaluate(ctx)
         self.assertFalse(result.value)
 

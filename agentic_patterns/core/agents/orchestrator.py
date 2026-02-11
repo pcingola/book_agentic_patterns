@@ -14,7 +14,7 @@ from pydantic_ai.agent import AgentRun, AgentRunResult
 from pydantic_ai.messages import ModelMessage, TextPart, ToolCallPart
 from pydantic_ai.models import Model
 from pydantic_ai.mcp import MCPServerStreamableHTTP
-from pydantic_ai.usage import Usage, UsageLimits
+from pydantic_ai.usage import RunUsage, UsageLimits
 
 from agentic_patterns.core.a2a.client import A2AClientExtended, get_a2a_client
 from agentic_patterns.core.a2a.tool import build_coordinator_prompt, create_a2a_tool
@@ -24,6 +24,7 @@ from agentic_patterns.core.mcp import MCPClientConfig, load_mcp_settings
 from agentic_patterns.core.skills.models import Skill, SkillMetadata
 from agentic_patterns.core.skills.registry import SkillRegistry
 from agentic_patterns.core.skills.tools import list_available_skills
+from agentic_patterns.core.tasks.models import EventType
 from agentic_patterns.core.tasks.state import TERMINAL_STATES, TaskState
 from agentic_patterns.core.tasks.store import TaskStoreMemory
 
@@ -160,139 +161,150 @@ class OrchestratorAgent:
         await self._exit_stack.__aenter__()
 
         tools: list[Any] = list(self.spec.tools)
+        a2a_cards = await self._connect_mcp_and_a2a(tools)
+        self._discover_skills()
+        self._add_skill_tools(tools)
+        await self._add_task_tools(tools)
 
-        # Create MCP connections
+        self._system_prompt = self._build_system_prompt(a2a_cards)
+        self._agent = await asyncio.to_thread(
+            get_agent, model=self.spec.model, system_prompt=self._system_prompt, tools=tools
+        )
+        return self
+
+    async def _connect_mcp_and_a2a(self, tools: list[Any]) -> list[dict]:
+        """Open MCP connections and create A2A delegation tools. Returns A2A cards."""
         for mcp_config in self.spec.mcp_servers:
-            mcp_client = MCPServerStreamableHTTP(
-                url=mcp_config.url, timeout=mcp_config.read_timeout
-            )
+            mcp_client = MCPServerStreamableHTTP(url=mcp_config.url, timeout=mcp_config.read_timeout)
             connection = await self._exit_stack.enter_async_context(mcp_client)
             self._mcp_connections.append(connection)
 
-        # Create A2A delegation tools
         a2a_cards: list[dict] = []
         for client in self.spec.a2a_clients:
             card = await client.get_agent_card()
             a2a_cards.append(card)
-            tool = create_a2a_tool(client, card)
-            tools.append(tool)
+            tools.append(create_a2a_tool(client, card))
+        return a2a_cards
 
-        # Discover skills from SKILLS_DIR if not provided explicitly
-        if not self.spec.skills:
-            from agentic_patterns.core.config.config import SKILLS_DIR
-
-            if SKILLS_DIR.exists():
-                registry = SkillRegistry()
-                registry.discover([SKILLS_DIR])
-                self.spec.skills = [
-                    s
-                    for m in registry.list_all()
-                    if (s := registry.get(m.name)) is not None
-                ]
-
-        # Create skill tools
+    def _discover_skills(self) -> None:
+        """Auto-discover skills from SKILLS_DIR when none are provided explicitly."""
         if self.spec.skills:
-            from agentic_patterns.core.skills.tools import (
-                get_all_tools as get_skill_tools,
-            )
+            return
+        from agentic_patterns.core.config.config import SKILLS_DIR
 
-            registry = SkillRegistry()
-            registry._metadata_cache = [
-                SkillMetadata(name=s.name, description=s.description, path=s.path)
-                for s in self.spec.skills
-            ]
-            tools.extend(get_skill_tools(registry))
+        if not SKILLS_DIR.exists():
+            return
+        registry = SkillRegistry()
+        registry.discover([SKILLS_DIR])
+        self.spec.skills = [
+            s for m in registry.list_all() if (s := registry.get(m.name)) is not None
+        ]
 
-        # Create sub-agent tools via TaskBroker
-        if self.spec.sub_agents:
-            sub_map = {s.name: s for s in self.spec.sub_agents}
-            names = list(sub_map.keys())
+    def _add_skill_tools(self, tools: list[Any]) -> None:
+        if not self.spec.skills:
+            return
+        from agentic_patterns.core.skills.tools import get_all_tools as get_skill_tools
 
-            # Create and start broker
-            from agentic_patterns.core.tasks.broker import TaskBroker
+        tools.extend(get_skill_tools(self._make_skill_registry()))
 
-            self._broker = TaskBroker(store=TaskStoreMemory(), poll_interval=0.3)
-            self._broker.register_agents(sub_map)
-            await self._exit_stack.enter_async_context(self._broker)
+    def _make_skill_registry(self) -> SkillRegistry:
+        """Create a SkillRegistry populated with current spec's skills."""
+        registry = SkillRegistry()
+        registry._metadata_cache = [
+            SkillMetadata(name=s.name, description=s.description, path=s.path)
+            for s in self.spec.skills
+        ]
+        return registry
 
-            broker = self._broker
-            submitted = self._submitted_task_ids
+    async def _add_task_tools(self, tools: list[Any]) -> None:
+        """Create broker-backed delegate, submit_task, and check_tasks tools."""
+        if not self.spec.sub_agents:
+            return
 
-            async def delegate(ctx: RunContext, agent_name: str, prompt: str) -> str:
-                """Delegate a task to a sub-agent and wait for the result."""
-                if agent_name not in sub_map:
-                    return f"Unknown agent '{agent_name}'. Available: {', '.join(names)}"
-                task_id = await broker.submit(prompt, agent_name=agent_name)
-                submitted.append(task_id)
-                task = await broker.wait(task_id)
+        sub_map = {s.name: s for s in self.spec.sub_agents}
+        names = list(sub_map.keys())
+
+        from agentic_patterns.core.tasks.broker import TaskBroker
+
+        self._broker = TaskBroker(store=TaskStoreMemory(), poll_interval=0.3)
+        self._broker.register_agents(sub_map)
+        await self._exit_stack.enter_async_context(self._broker)
+
+        broker = self._broker
+        submitted = self._submitted_task_ids
+
+        tools.append(self._make_delegate_tool(broker, submitted, sub_map, names))
+        tools.append(self._make_submit_task_tool(broker, submitted, sub_map, names))
+        tools.append(self._make_check_tasks_tool(broker, submitted))
+
+    @staticmethod
+    def _make_delegate_tool(
+        broker: Any, submitted: list[str], sub_map: dict[str, "AgentSpec"], names: list[str]
+    ) -> Any:
+        async def delegate(ctx: RunContext, agent_name: str, prompt: str) -> str:
+            """Delegate a task to a sub-agent and wait for the result."""
+            if agent_name not in sub_map:
+                return f"Unknown agent '{agent_name}'. Available: {', '.join(names)}"
+            task_id = await broker.submit(prompt, agent_name=agent_name)
+            submitted.append(task_id)
+            task = await broker.wait(task_id)
+            if task is None:
+                return "Delegation failed: task not found"
+            if task.state == TaskState.COMPLETED:
+                for event in reversed(task.events):
+                    if event.payload.get("state") == TaskState.COMPLETED.value and "usage" in event.payload:
+                        u = event.payload["usage"]
+                        ctx.usage.incr(RunUsage(requests=u.get("requests", 0), input_tokens=u.get("input_tokens"), output_tokens=u.get("output_tokens"), total_tokens=u.get("total_tokens")))
+                        break
+                return task.result or ""
+            return f"Delegation failed: {task.error or task.state.value}"
+
+        delegate.__doc__ = f"Delegate a task to a sub-agent and wait for the result. Available agents: {', '.join(names)}."
+        return delegate
+
+    @staticmethod
+    def _make_submit_task_tool(
+        broker: Any, submitted: list[str], sub_map: dict[str, "AgentSpec"], names: list[str]
+    ) -> Any:
+        async def submit_task(ctx: RunContext, agent_name: str, prompt: str) -> str:
+            """Submit a task to a sub-agent for background execution. Returns task_id."""
+            if agent_name not in sub_map:
+                return f"Unknown agent '{agent_name}'. Available: {', '.join(names)}"
+            task_id = await broker.submit(prompt, agent_name=agent_name)
+            submitted.append(task_id)
+            return f"Task submitted: {task_id[:8]}"
+
+        submit_task.__doc__ = f"Submit a task to a sub-agent for background execution. Returns task_id. Available agents: {', '.join(names)}."
+        return submit_task
+
+    @staticmethod
+    def _make_check_tasks_tool(broker: Any, submitted: list[str]) -> Any:
+        async def check_tasks(ctx: RunContext) -> str:
+            """Check status of all submitted background tasks."""
+            if not submitted:
+                return "No tasks submitted."
+            lines = []
+            for tid in submitted:
+                task = await broker.poll(tid)
                 if task is None:
-                    return "Delegation failed: task not found"
-                if task.state == TaskState.COMPLETED:
-                    # Extract usage from the COMPLETED event and propagate
-                    for event in reversed(task.events):
-                        if event.payload.get("state") == TaskState.COMPLETED.value and "usage" in event.payload:
-                            u = event.payload["usage"]
-                            ctx.usage.incr(Usage(requests=u.get("requests", 0), request_tokens=u.get("request_tokens"), response_tokens=u.get("response_tokens"), total_tokens=u.get("total_tokens")))
-                            break
-                    return task.result or ""
-                return f"Delegation failed: {task.error or task.state.value}"
+                    lines.append(f"- {tid[:8]}: not found")
+                    continue
+                agent_name = task.metadata.get("agent_name", "unknown")
+                status = task.state.value
+                line = f"- {tid[:8]} ({agent_name}): {status}"
+                if task.state == TaskState.COMPLETED and task.result:
+                    line += f"\n  Result: {task.result[:200]}"
+                elif task.state == TaskState.FAILED and task.error:
+                    line += f"\n  Error: {task.error}"
+                else:
+                    progress = [e for e in task.events if e.event_type == EventType.PROGRESS]
+                    if progress:
+                        last = progress[-1]
+                        line += f"\n  Last: {last.payload.get('tool', '')} {last.payload.get('arg', '')}"
+                lines.append(line)
+            return "\n".join(lines)
 
-            delegate.__doc__ = f"Delegate a task to a sub-agent and wait for the result. Available agents: {', '.join(names)}."
-            tools.append(delegate)
-
-            async def submit_task(ctx: RunContext, agent_name: str, prompt: str) -> str:
-                """Submit a task to a sub-agent for background execution. Returns task_id."""
-                if agent_name not in sub_map:
-                    return f"Unknown agent '{agent_name}'. Available: {', '.join(names)}"
-                task_id = await broker.submit(prompt, agent_name=agent_name)
-                submitted.append(task_id)
-                return f"Task submitted: {task_id[:8]}"
-
-            submit_task.__doc__ = f"Submit a task to a sub-agent for background execution. Returns task_id. Available agents: {', '.join(names)}."
-            tools.append(submit_task)
-
-            async def check_tasks(ctx: RunContext) -> str:
-                """Check status of all submitted background tasks."""
-                if not submitted:
-                    return "No tasks submitted."
-                lines = []
-                for tid in submitted:
-                    task = await broker.poll(tid)
-                    if task is None:
-                        lines.append(f"- {tid[:8]}: not found")
-                        continue
-                    agent_name = task.metadata.get("agent_name", "unknown")
-                    status = task.state.value
-                    line = f"- {tid[:8]} ({agent_name}): {status}"
-                    if task.state == TaskState.COMPLETED and task.result:
-                        preview = task.result[:200]
-                        line += f"\n  Result: {preview}"
-                    elif task.state == TaskState.FAILED and task.error:
-                        line += f"\n  Error: {task.error}"
-                    else:
-                        # Show recent progress events
-                        progress = [e for e in task.events if e.event_type.value == "progress"]
-                        if progress:
-                            last = progress[-1]
-                            tool_name = last.payload.get("tool", "")
-                            arg = last.payload.get("arg", "")
-                            line += f"\n  Last: {tool_name} {arg}"
-                    lines.append(line)
-                return "\n".join(lines)
-
-            tools.append(check_tasks)
-
-        # Build system prompt
-        system_prompt = self._build_system_prompt(a2a_cards)
-        self._system_prompt = system_prompt
-
-        # Create the agent off the event loop -- get_agent() does synchronous
-        # file I/O (reads config.yaml) and heavy construction (Agent + instrument).
-        self._agent = await asyncio.to_thread(
-            get_agent, model=self.spec.model, system_prompt=system_prompt, tools=tools
-        )
-
-        return self
+        return check_tasks
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         # Cancel all running tasks before tearing down
@@ -402,12 +414,7 @@ class OrchestratorAgent:
             variables["sub_agents_catalog"] = "\n".join(lines)
 
         if self.spec.skills:
-            registry = SkillRegistry()
-            registry._metadata_cache = [
-                SkillMetadata(name=s.name, description=s.description, path=s.path)
-                for s in self.spec.skills
-            ]
-            variables["skills_catalog"] = list_available_skills(registry)
+            variables["skills_catalog"] = list_available_skills(self._make_skill_registry())
 
         if self.spec.system_prompt_path:
             prompt = load_prompt(self.spec.system_prompt_path, **variables)
@@ -418,7 +425,7 @@ class OrchestratorAgent:
                 else self.spec.system_prompt
             )
         else:
-            prompt = ""
+            prompt = "\n\n".join(variables.values())
 
         if a2a_cards:
             prompt = prompt + "\n\n" + build_coordinator_prompt(a2a_cards)

@@ -1,6 +1,7 @@
 import asyncio
+import io
 import unittest
-from unittest.mock import patch
+from contextlib import redirect_stdout
 
 from agentic_patterns.core.doctors.base import DoctorBase
 from agentic_patterns.core.doctors.models import Recommendation
@@ -97,23 +98,24 @@ class TestDoctorBase(unittest.TestCase):
         doctor = MockDoctor()
         targets = ["a", "b", "c", "d"]
 
-        with patch("builtins.print") as mock_print:
+        buf = io.StringIO()
+        with redirect_stdout(buf):
             asyncio.run(doctor.analyze_batch(targets, batch_size=2, verbose=True))
 
-        self.assertEqual(mock_print.call_count, 2)
-        calls = [str(c) for c in mock_print.call_args_list]
-        self.assertTrue(any("batch 1/2" in c for c in calls))
-        self.assertTrue(any("batch 2/2" in c for c in calls))
+        output = buf.getvalue()
+        self.assertIn("batch 1/2", output)
+        self.assertIn("batch 2/2", output)
 
     def test_analyze_batch_no_output_when_not_verbose(self):
         """Test analyze_batch does not print when verbose=False."""
         doctor = MockDoctor()
         targets = ["a", "b", "c", "d"]
 
-        with patch("builtins.print") as mock_print:
+        buf = io.StringIO()
+        with redirect_stdout(buf):
             asyncio.run(doctor.analyze_batch(targets, batch_size=2, verbose=False))
 
-        mock_print.assert_not_called()
+        self.assertEqual(buf.getvalue(), "")
 
     def test_analyze_not_implemented(self):
         """Test DoctorBase.analyze raises NotImplementedError."""
