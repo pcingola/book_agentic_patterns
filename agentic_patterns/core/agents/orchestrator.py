@@ -1,4 +1,4 @@
-"""OrchestratorAgent: Full agent with tools, MCP, A2A, skills, and task broker."""
+"""OrchestratorAgent: Full agent with tools, MCP, A2A, skills, sub-agents, and tasks."""
 
 import asyncio
 from collections.abc import Callable
@@ -138,7 +138,27 @@ class AgentSpec(BaseModel):
 
 
 class OrchestratorAgent:
-    """Context manager for running an agent with tools, MCP, A2A, skills, and tasks."""
+    """Composes and runs a PydanticAI agent from an AgentSpec.
+
+    Takes a declarative AgentSpec and wires up all six capabilities: tools, MCP
+    servers, A2A clients, skills, sub-agents, and tasks. Used as an async context
+    manager: __aenter__ connects MCP servers, fetches A2A agent cards, discovers
+    skills, creates the task broker, builds the system prompt from templates and
+    catalogs, and instantiates the underlying PydanticAI Agent. __aexit__ cancels
+    running tasks and tears down connections.
+
+    The run() method executes a single turn. Message history accumulates across
+    calls, enabling multi-turn conversations. Between turns, completed background
+    tasks are automatically injected into the prompt.
+
+    Sub-agents and tasks share the same TaskBroker. When sub_agents are present,
+    the broker is created and three tools are added: delegate (submit + wait),
+    submit_task (fire-and-forget), and check_tasks (poll status). The system
+    prompt controls which tools the agent actually uses.
+
+    The context manager is re-entrant: infrastructure is rebuilt on each entry,
+    but message history persists across entries.
+    """
 
     def __init__(
         self, spec: AgentSpec, *, verbose: bool = False, on_node: NodeHook | None = None
@@ -151,7 +171,7 @@ class OrchestratorAgent:
         self._system_prompt: str = ""
         self._message_history: list[ModelMessage] = []
         self._runs: list[tuple[AgentRun, list]] = []
-        # Task broker (created when sub_agents are present)
+        # Task broker (powers both delegate and submit_task/check_tasks)
         self._broker = None
         self._submitted_task_ids: list[str] = []
         self._reported_task_ids: set[str] = set()
@@ -201,6 +221,7 @@ class OrchestratorAgent:
         ]
 
     def _add_skill_tools(self, tools: list[Any]) -> None:
+        """Add activate_skill tool when skills are present."""
         if not self.spec.skills:
             return
         from agentic_patterns.core.skills.tools import get_all_tools as get_skill_tools
@@ -217,7 +238,7 @@ class OrchestratorAgent:
         return registry
 
     async def _add_task_tools(self, tools: list[Any]) -> None:
-        """Create broker-backed delegate, submit_task, and check_tasks tools."""
+        """Create broker and add sub-agent (delegate) and task (submit_task, check_tasks) tools."""
         if not self.spec.sub_agents:
             return
 
@@ -318,7 +339,7 @@ class OrchestratorAgent:
 
     @property
     def system_prompt(self) -> str:
-        """Final system prompt including sub-agent and skill descriptions."""
+        """Final system prompt built from template, sub-agent catalog, skill catalog, and A2A cards."""
         return self._system_prompt
 
     @property
