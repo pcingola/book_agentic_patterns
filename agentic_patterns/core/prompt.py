@@ -10,20 +10,28 @@ from agentic_patterns.core.config.config import PROMPTS_DIR
 logger = logging.getLogger(__name__)
 
 
+def _resolve_includes(text: str, base_dir: Path) -> str:
+    """Resolve {% include 'path.md' %} directives relative to PROMPTS_DIR."""
+    include_re = re.compile(r"\{%\s*include\s+['\"](.+?)['\"]\s*%\}")
+    while True:
+        match = include_re.search(text)
+        if not match:
+            break
+        include_path = PROMPTS_DIR / match.group(1)
+        if not include_path.exists():
+            raise FileNotFoundError(f"Include file not found: {include_path}")
+        included = include_path.read_text(encoding="utf-8")
+        text = text[:match.start()] + included + text[match.end():]
+    return text
+
+
 def load_prompt(prompt_path: Path, **kwargs) -> str:
-    """Load a specific prompt file from the prompts directory.
+    """Load a prompt file, resolve includes, and substitute variables.
 
-    Args:
-        prompt_path: Path to the markdown file (e.g., PROMPTS_DIR / 'system_prompt.md')
-        **kwargs: Variables to substitute in the prompt template
-
-    Returns:
-        Content of the prompt file as a string, with variables substituted
-
-    Raises:
-        ValueError: If template has variables not provided in kwargs, or kwargs has unused variables
+    Supports {% include 'relative/path.md' %} directives resolved relative to PROMPTS_DIR.
     """
     template = prompt_path.read_text(encoding="utf-8")
+    template = _resolve_includes(template, prompt_path.parent)
 
     # Extract all variables from the template using regex
     template_vars = set(re.findall(r"\{([a-zA-Z_][a-zA-Z0-9_]*)\}", template))

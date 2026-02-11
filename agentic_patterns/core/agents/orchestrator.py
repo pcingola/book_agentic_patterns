@@ -140,6 +140,7 @@ class OrchestratorAgent:
         self._agent: Agent | None = None
         self._exit_stack: AsyncExitStack | None = None
         self._mcp_connections: list[Any] = []
+        self._system_prompt: str = ""
         self._message_history: list[ModelMessage] = []
         self._runs: list[tuple[AgentRun, list]] = []
 
@@ -208,6 +209,7 @@ class OrchestratorAgent:
 
         # Build system prompt
         system_prompt = self._build_system_prompt(a2a_cards)
+        self._system_prompt = system_prompt
 
         # Create the agent off the event loop -- get_agent() does synchronous
         # file I/O (reads config.yaml) and heavy construction (Agent + instrument).
@@ -222,6 +224,11 @@ class OrchestratorAgent:
             await self._exit_stack.__aexit__(exc_type, exc_val, exc_tb)
         self._mcp_connections = []
         self._agent = None
+
+    @property
+    def system_prompt(self) -> str:
+        """Final system prompt including sub-agent and skill descriptions."""
+        return self._system_prompt
 
     @property
     def runs(self) -> list[tuple[AgentRun, list]]:

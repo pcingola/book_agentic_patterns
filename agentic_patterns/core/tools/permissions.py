@@ -1,5 +1,6 @@
 """Tool permissions for controlling agent capabilities."""
 
+import asyncio
 from enum import Enum
 from functools import wraps
 from typing import Callable
@@ -19,6 +20,13 @@ class ToolPermissionError(Exception):
     pass
 
 
+def _check_private_data(func_name: str) -> None:
+    from agentic_patterns.core.compliance.private_data import session_has_private_data
+
+    if session_has_private_data():
+        raise ToolPermissionError(f"Tool '{func_name}' blocked: session contains private data")
+
+
 def tool_permission(*permissions: ToolPermission) -> Callable:
     """Decorator to attach permission requirements to a tool function.
 
@@ -30,17 +38,16 @@ def tool_permission(*permissions: ToolPermission) -> Callable:
         if ToolPermission.CONNECT not in permissions:
             return func
 
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            from agentic_patterns.core.compliance.private_data import (
-                session_has_private_data,
-            )
-
-            if session_has_private_data():
-                raise ToolPermissionError(
-                    f"Tool '{func.__name__}' blocked: session contains private data"
-                )
-            return func(*args, **kwargs)
+        if asyncio.iscoroutinefunction(func):
+            @wraps(func)
+            async def wrapper(*args, **kwargs):
+                _check_private_data(func.__name__)
+                return await func(*args, **kwargs)
+        else:
+            @wraps(func)
+            def wrapper(*args, **kwargs):
+                _check_private_data(func.__name__)
+                return func(*args, **kwargs)
 
         wrapper._permissions = func._permissions
         return wrapper

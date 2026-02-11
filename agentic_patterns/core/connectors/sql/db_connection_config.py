@@ -40,7 +40,15 @@ class DbConnectionConfigs:
     def get(cls) -> "DbConnectionConfigs":
         if cls._instance is None:
             cls._instance = cls()
+            cls._instance._auto_load()
         return cls._instance
+
+    def _auto_load(self) -> None:
+        """Auto-load from dbs.yaml if available."""
+        from agentic_patterns.core.connectors.sql.config import DBS_YAML_PATH
+
+        if DBS_YAML_PATH.exists():
+            self.load_from_yaml(DBS_YAML_PATH)
 
     def add(self, config: DbConnectionConfig) -> None:
         self._configs[config.db_id] = config

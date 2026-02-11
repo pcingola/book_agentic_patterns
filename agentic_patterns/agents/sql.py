@@ -5,7 +5,7 @@ from pydantic_ai import Agent
 from agentic_patterns.core.agents import AgentSpec, get_agent
 from agentic_patterns.core.config.config import PROMPTS_DIR
 from agentic_patterns.core.prompt import load_prompt
-from agentic_patterns.tools.sql import get_all_tools
+from agentic_patterns.tools import csv, file, sql
 
 DESCRIPTION = "Delegates SQL database queries, schema inspection, and data source questions."
 
@@ -19,4 +19,5 @@ def create_agent() -> Agent:
 def get_spec() -> AgentSpec:
     """Return an AgentSpec for the SQL agent."""
     prompt = load_prompt(PROMPTS_DIR / "a2a" / "nl2sql" / "system_prompt.md")
-    return AgentSpec(name="sql_analyst", description=DESCRIPTION, system_prompt=prompt, tools=get_all_tools())
+    tools = file.get_all_tools() + csv.get_all_tools() + sql.get_all_tools()
+    return AgentSpec(name="sql_analyst", description=DESCRIPTION, system_prompt=prompt, tools=tools)

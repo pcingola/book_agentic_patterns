@@ -1,0 +1,3 @@
+## File, CSV, and JSON tools
+
+Use file tools to read, list, and inspect any file in the workspace: `file_read`, `file_head`, `file_tail`, `file_find`, `file_list`. Use CSV tools to inspect and manipulate tabular data at the row level: `csv_headers` (column names), `csv_head`/`csv_tail` (preview rows), `csv_read_row`, `csv_find_rows`, `csv_append`, `csv_update_cell`, `csv_delete_rows`. Use JSON tools for structured data: `json_get` (JSONPath query), `json_keys`, `json_head`, `json_validate`, `json_set`, `json_merge`. These are essential for understanding file structure and column names before running analysis or visualization.
