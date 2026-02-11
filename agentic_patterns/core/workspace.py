@@ -8,6 +8,7 @@ When not set, defaults are used for development/testing.
 """
 
 import asyncio
+import shutil
 from pathlib import Path, PurePosixPath
 
 from agentic_patterns.core.config.config import SANDBOX_PREFIX, WORKSPACE_DIR
@@ -18,6 +19,22 @@ class WorkspaceError(Exception):
     """Raised for user-correctable workspace errors (invalid paths, missing files, etc.)."""
 
     pass
+
+
+def clean_up_session() -> None:
+    """Delete workspace files and reset compliance flags for the current session.
+
+    Intended for use at the top of example notebooks to start from a clean state.
+    """
+    host_root = WORKSPACE_DIR / get_user_id() / get_session_id()
+    if host_root.exists():
+        shutil.rmtree(host_root)
+
+    from agentic_patterns.core.compliance import PrivateData
+
+    pd = PrivateData(get_user_id(), get_session_id())
+    pd.has_private_data = False
+    pd.save()
 
 
 def _get_host_root() -> Path:

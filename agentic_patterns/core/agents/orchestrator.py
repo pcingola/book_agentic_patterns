@@ -51,6 +51,7 @@ class AgentSpec(BaseModel):
     description: str | None = None
     model: Model | None = None
     system_prompt: str | None = None
+    system_prompt_path: Path | None = None
     tools: list[Any] = []  # Tool | Callable - Pydantic can't validate these types
     mcp_servers: list[MCPClientConfig] = []
     a2a_clients: list[A2AClientExtended] = []
@@ -264,21 +265,23 @@ class OrchestratorAgent:
         return agent_run.result
 
     def _build_system_prompt(self, a2a_cards: list[dict]) -> str:
-        """Build combined system prompt from all sources."""
-        parts: list[str] = []
+        """Build combined system prompt from all sources.
 
-        if self.spec.system_prompt:
-            parts.append(self.spec.system_prompt)
+        When system_prompt_path is set, loads the template via load_prompt() and
+        substitutes {skills_catalog} and {sub_agents_catalog} variables from the
+        shared includes. Falls back to the literal system_prompt string otherwise.
+        """
+        from agentic_patterns.core.prompt import load_prompt
 
-        if a2a_cards:
-            parts.append(build_coordinator_prompt(a2a_cards))
+        # Build catalog values for template variables
+        variables: dict[str, str] = {}
 
         if self.spec.sub_agents:
-            lines = ["Available sub-agents (use the `delegate` tool to call them):"]
+            lines = []
             for sub in self.spec.sub_agents:
                 desc = sub.description or sub.name
                 lines.append(f"- {sub.name}: {desc}")
-            parts.append("\n".join(lines))
+            variables["sub_agents_catalog"] = "\n".join(lines)
 
         if self.spec.skills:
             registry = SkillRegistry()
@@ -286,9 +289,19 @@ class OrchestratorAgent:
                 SkillMetadata(name=s.name, description=s.description, path=s.path)
                 for s in self.spec.skills
             ]
-            parts.append("Available skills:\n" + list_available_skills(registry))
+            variables["skills_catalog"] = list_available_skills(registry)
 
-        return "\n\n".join(parts) if parts else ""
+        if self.spec.system_prompt_path:
+            prompt = load_prompt(self.spec.system_prompt_path, **variables)
+        elif self.spec.system_prompt:
+            prompt = self.spec.system_prompt.format(**variables) if variables else self.spec.system_prompt
+        else:
+            prompt = ""
+
+        if a2a_cards:
+            prompt = prompt + "\n\n" + build_coordinator_prompt(a2a_cards)
+
+        return prompt
 
     def __str__(self) -> str:
         return f"OrchestratorAgent({self.spec.name})"

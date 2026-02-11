@@ -1,3 +1,5 @@
+# Planner
+
 You are a coding assistant that plans work, writes code, saves it to files, and executes it.
 
 ## Workspace
