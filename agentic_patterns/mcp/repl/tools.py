@@ -5,7 +5,7 @@ from pathlib import PurePosixPath
 from fastmcp import Context, FastMCP
 
 from agentic_patterns.core.context.decorators import context_result
-from agentic_patterns.core.mcp import ToolRetryError
+from agentic_patterns.core.mcp import ToolFatalError, ToolRetryError
 from agentic_patterns.core.repl.config import DEFAULT_CELL_TIMEOUT
 from agentic_patterns.core.repl.notebook import Notebook
 from agentic_patterns.core.tools.permissions import ToolPermission, tool_permission
@@ -83,8 +83,10 @@ def register_tools(mcp: FastMCP) -> None:
             nb = _load_notebook()
             host_path = workspace_to_host_path(PurePosixPath(path))
             nb.save_as_ipynb(host_path)
-        except (ValueError, OSError) as e:
+        except ValueError as e:
             raise ToolRetryError(str(e)) from e
+        except OSError as e:
+            raise ToolFatalError(str(e)) from e
         await ctx.info(f"export_ipynb: {path}")
         return f"Notebook exported to {path}"
 
@@ -129,6 +131,9 @@ def register_tools(mcp: FastMCP) -> None:
     @context_result(save=False)
     async def show_notebook(ctx: Context = None) -> str:
         """Show all cells in the notebook."""
-        nb = _load_notebook()
+        try:
+            nb = _load_notebook()
+        except (ValueError, IndexError) as e:
+            raise ToolRetryError(str(e)) from e
         await ctx.info("show_notebook")
         return str(nb)

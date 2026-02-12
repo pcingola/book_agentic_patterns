@@ -61,7 +61,7 @@ The `workspace_to_host_path()` function retrieves the current user and session f
 
 The full set of operations maps to common file interactions: `read`, `head`, `tail`, `find`, `list` for reading, and `write`, `append`, `edit`, `delete` for writing. Each method carries a `@tool_permission` annotation (`READ` or `WRITE`) that declares its permission level, enabling the permission enforcement system described in the tools chapter.
 
-All operations return strings: either the requested content or a status message like `"Wrote 142 bytes to /workspace/notes.md"`. Errors raise standard Python exceptions (`FileNotFoundError`, `ValueError`, etc.), which PydanticAI catches and presents to the model as tool error messages. This keeps the agent loop stable -- a failed tool call produces a message the model can reason about and retry, rather than crashing the loop.
+All operations return strings: either the requested content or a status message like `"Wrote 142 bytes to /workspace/notes.md"`. Recoverable errors (`FileNotFoundError`, `ValueError`, etc.) are caught and re-raised as `ModelRetry`, which PydanticAI presents to the model as a retryable tool error. This keeps the agent loop stable -- a failed tool call produces a message the model can reason about and retry, rather than crashing the entire run.
 
 ## Key Takeaways
 

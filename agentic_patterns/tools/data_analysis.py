@@ -1,5 +1,7 @@
 """PydanticAI agent tools for data analysis -- wraps toolkits/data_analysis/."""
 
+from pydantic_ai import ModelRetry
+
 from agentic_patterns.core.context.decorators import context_result
 from agentic_patterns.core.tools.permissions import ToolPermission, tool_permission
 from agentic_patterns.tools.dynamic import generate_param_docs, get_param_signature
@@ -42,10 +44,17 @@ def _generate_tool_function(op_name: str, op_config):
 
     func_code += """
 
-    return await execute_operation(input_file, output_file, op_name, filtered_params)
+    try:
+        return await execute_operation(input_file, output_file, op_name, filtered_params)
+    except ValueError as e:
+        raise ModelRetry(str(e)) from e
 """
 
-    namespace = {"execute_operation": execute_operation, "op_name": op_name}
+    namespace = {
+        "execute_operation": execute_operation,
+        "op_name": op_name,
+        "ModelRetry": ModelRetry,
+    }
     exec(func_code, namespace)  # noqa: S102
     tool_func = namespace[f"{op_name}_tool"]
 

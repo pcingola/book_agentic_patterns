@@ -23,7 +23,7 @@ async def _call(coro) -> str:
         return await coro
     except _RETRYABLE as e:
         raise ToolRetryError(str(e)) from e
-    except OSError as e:
+    except (OSError, RuntimeError) as e:
         raise ToolFatalError(str(e)) from e
 
 

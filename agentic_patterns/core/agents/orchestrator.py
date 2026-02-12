@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, Sequence
 
 import rich
+import yaml
 from pydantic import BaseModel, ConfigDict
 from pydantic_ai import Agent, RunContext
 from pydantic_ai._agent_graph import CallToolsNode, ModelRequestNode
@@ -20,6 +21,7 @@ from agentic_patterns.core.a2a.client import A2AClientExtended, get_a2a_client
 from agentic_patterns.core.a2a.tool import build_coordinator_prompt, create_a2a_tool
 from agentic_patterns.core.agents.agents import get_agent
 from agentic_patterns.core.agents.models import get_model
+from agentic_patterns.core.config.config import MAIN_PROJECT_DIR, PROMPTS_DIR
 from agentic_patterns.core.mcp import MCPClientConfig, load_mcp_settings
 from agentic_patterns.core.skills.models import Skill, SkillMetadata
 from agentic_patterns.core.skills.registry import SkillRegistry
@@ -70,8 +72,9 @@ class AgentSpec(BaseModel):
         cls,
         name: str,
         *,
-        model_name: str = "default",
+        model_name: str | None = None,
         system_prompt: str | None = None,
+        system_prompt_path: Path | None = None,
         tool_names: list[str] | None = None,
         mcp_server_names: list[str] | None = None,
         a2a_client_names: list[str] | None = None,
@@ -79,13 +82,23 @@ class AgentSpec(BaseModel):
         skill_roots: list[Path] | None = None,
         config_path: Path | None = None,
     ) -> "AgentSpec":
-        """Load and resolve all components from config.yaml."""
+        """Load and resolve all components from config.yaml.
+
+        If an 'agents' section in config.yaml contains an entry for `name`,
+        its values are used as defaults. Explicit parameters override YAML values.
+        """
+        cfg = _load_agent_config(name, config_path)
+
+        model_name = model_name or cfg.get("model", "default")
         model = get_model(model_name, config_path)
 
-        tools: list[Any] = []
-        if tool_names:
-            tools = [_resolve_tool(t) for t in tool_names]
+        if system_prompt_path is None and "system_prompt" in cfg:
+            system_prompt_path = PROMPTS_DIR / cfg["system_prompt"]
 
+        tool_names = tool_names or cfg.get("tools")
+        tools: list[Any] = _resolve_tools(tool_names) if tool_names else []
+
+        mcp_server_names = mcp_server_names or cfg.get("mcp_servers")
         mcp_servers: list[MCPClientConfig] = []
         if mcp_server_names:
             settings = load_mcp_settings(config_path)
@@ -94,17 +107,23 @@ class AgentSpec(BaseModel):
                 if isinstance(config, MCPClientConfig):
                     mcp_servers.append(config)
 
+        a2a_client_names = a2a_client_names or cfg.get("a2a_clients")
         a2a_clients: list[A2AClientExtended] = []
         if a2a_client_names:
             a2a_clients = [get_a2a_client(n) for n in a2a_client_names]
 
+        sub_agent_refs = cfg.get("sub_agents", [])
+        sub_agents = [_resolve_ref(ref) for ref in sub_agent_refs]
+
+        skill_roots = skill_roots or [Path(p) for p in cfg.get("skill_roots", [])]
         skills: list[Skill] = []
         if skill_roots:
             registry = SkillRegistry()
             registry.discover(skill_roots)
+            skill_names = skill_names or cfg.get("skills")
             if skill_names:
-                for skill_name in skill_names:
-                    skill = registry.get(skill_name)
+                for sn in skill_names:
+                    skill = registry.get(sn)
                     if skill:
                         skills.append(skill)
             else:
@@ -115,30 +134,37 @@ class AgentSpec(BaseModel):
 
         return cls(
             name=name,
+            description=cfg.get("description"),
             model=model,
             system_prompt=system_prompt,
+            system_prompt_path=system_prompt_path,
             tools=tools,
             mcp_servers=mcp_servers,
             a2a_clients=a2a_clients,
             skills=skills,
+            sub_agents=sub_agents,
         )
 
     def __str__(self) -> str:
-        counts = []
+        lines = [f"AgentSpec({self.name})"]
         if self.tools:
-            counts.append(f"tools={len(self.tools)}")
-        if self.sub_agents:
-            counts.append(f"sub_agents={len(self.sub_agents)}")
-        if self.skills:
-            counts.append(f"skills={len(self.skills)}")
+            names = [getattr(t, "__name__", type(t).__name__) for t in self.tools]
+            lines.append(f"  tools: {', '.join(names)}")
         if self.mcp_servers:
-            counts.append(f"mcp={len(self.mcp_servers)}")
+            names = [s.name or s.url for s in self.mcp_servers]
+            lines.append(f"  mcp_servers: {', '.join(names)}")
         if self.a2a_clients:
-            counts.append(f"a2a={len(self.a2a_clients)}")
-        detail = ", ".join(counts)
-        return (
-            f"AgentSpec({self.name}, {detail})" if detail else f"AgentSpec({self.name})"
-        )
+            names = [c._config.name or c._config.url for c in self.a2a_clients]
+            lines.append(f"  a2a_clients: {', '.join(names)}")
+        if self.sub_agents:
+            names = [s.name for s in self.sub_agents]
+            lines.append(f"  sub_agents: {', '.join(names)}")
+        if self.skills:
+            names = [s.name for s in self.skills]
+            lines.append(f"  skills: {', '.join(names)}")
+        if self.system_prompt_path:
+            lines.append(f"  prompt: {self.system_prompt_path.name}")
+        return "\n".join(lines)
 
 
 class OrchestratorAgent:
@@ -197,7 +223,11 @@ class OrchestratorAgent:
         if mcp_toolsets:
             agent_kwargs["toolsets"] = mcp_toolsets
         self._agent = await asyncio.to_thread(
-            get_agent, model=self.spec.model, system_prompt=self._system_prompt, tools=tools, **agent_kwargs
+            get_agent,
+            model=self.spec.model,
+            system_prompt=self._system_prompt,
+            tools=tools,
+            **agent_kwargs,
         )
         if mcp_toolsets:
             await self._exit_stack.enter_async_context(self._agent)
@@ -207,7 +237,11 @@ class OrchestratorAgent:
         """Create MCP server toolset objects to pass to the PydanticAI Agent."""
         toolsets = []
         for mcp_config in self.spec.mcp_servers:
-            toolsets.append(MCPServerStreamableHTTP(url=mcp_config.url, timeout=mcp_config.read_timeout))
+            toolsets.append(
+                MCPServerStreamableHTTP(
+                    url=mcp_config.url, timeout=mcp_config.read_timeout
+                )
+            )
         return toolsets
 
     async def _connect_a2a(self, tools: list[Any]) -> list[dict]:
@@ -260,7 +294,9 @@ class OrchestratorAgent:
 
         from agentic_patterns.core.tasks.broker import TaskBroker
 
-        self._broker = TaskBroker(store=TaskStoreMemory(), poll_interval=0.3, activity=self._activity)
+        self._broker = TaskBroker(
+            store=TaskStoreMemory(), poll_interval=0.3, activity=self._activity
+        )
         self._broker.register_agents(sub_map)
         await self._exit_stack.enter_async_context(self._broker)
 
@@ -273,7 +309,10 @@ class OrchestratorAgent:
 
     @staticmethod
     def _make_delegate_tool(
-        broker: Any, submitted: list[str], sub_map: dict[str, "AgentSpec"], names: list[str]
+        broker: Any,
+        submitted: list[str],
+        sub_map: dict[str, "AgentSpec"],
+        names: list[str],
     ) -> Any:
         async def delegate(ctx: RunContext, agent_name: str, prompt: str) -> str:
             """Delegate a task to a sub-agent and wait for the result."""
@@ -286,9 +325,18 @@ class OrchestratorAgent:
                 return "Delegation failed: task not found"
             if task.state == TaskState.COMPLETED:
                 for event in reversed(task.events):
-                    if event.payload.get("state") == TaskState.COMPLETED.value and "usage" in event.payload:
+                    if (
+                        event.payload.get("state") == TaskState.COMPLETED.value
+                        and "usage" in event.payload
+                    ):
                         u = event.payload["usage"]
-                        ctx.usage.incr(RunUsage(requests=u.get("requests", 0), input_tokens=u.get("input_tokens", 0), output_tokens=u.get("output_tokens", 0)))
+                        ctx.usage.incr(
+                            RunUsage(
+                                requests=u.get("requests", 0),
+                                input_tokens=u.get("input_tokens", 0),
+                                output_tokens=u.get("output_tokens", 0),
+                            )
+                        )
                         break
                 return task.result or ""
             return f"Delegation failed: {task.error or task.state.value}"
@@ -298,7 +346,10 @@ class OrchestratorAgent:
 
     @staticmethod
     def _make_submit_task_tool(
-        broker: Any, submitted: list[str], sub_map: dict[str, "AgentSpec"], names: list[str]
+        broker: Any,
+        submitted: list[str],
+        sub_map: dict[str, "AgentSpec"],
+        names: list[str],
     ) -> Any:
         async def submit_task(ctx: RunContext, agent_name: str, prompt: str) -> str:
             """Submit a task to a sub-agent for background execution. Returns task_id."""
@@ -331,7 +382,9 @@ class OrchestratorAgent:
 
             # Check if any newly terminal tasks appeared since last call.
             newly_terminal = any(
-                line for line in lines if "completed" in line or "failed" in line or "cancelled" in line
+                line
+                for line in lines
+                if "completed" in line or "failed" in line or "cancelled" in line
             )
             if newly_terminal:
                 return "\n".join(lines)
@@ -454,7 +507,9 @@ class OrchestratorAgent:
             variables["sub_agents_catalog"] = "\n".join(lines)
 
         if self.spec.skills:
-            variables["skills_catalog"] = list_available_skills(self._make_skill_registry())
+            variables["skills_catalog"] = list_available_skills(
+                self._make_skill_registry()
+            )
 
         if self.spec.system_prompt_path:
             prompt = load_prompt(self.spec.system_prompt_path, **variables)
@@ -502,18 +557,36 @@ async def _collect_status(broker: Any, submitted: list[str]) -> tuple[list[str],
     return lines, all_terminal
 
 
-def _resolve_tool(tool_ref: str) -> Any:
-    """Resolve tool reference like 'module.path:function_name' to Tool or Callable."""
-    if ":" not in tool_ref:
+def _load_agent_config(name: str, config_path: Path | None = None) -> dict:
+    """Load agent config from the 'agents' section of config.yaml. Returns {} if not found."""
+    path = config_path or MAIN_PROJECT_DIR / "config.yaml"
+    if not path.exists():
+        return {}
+    with open(path) as f:
+        data = yaml.safe_load(f) or {}
+    return data.get("agents", {}).get(name, {})
+
+
+def _resolve_ref(ref: str) -> Any:
+    """Resolve 'module.path:callable_name', import it, and call it."""
+    if ":" not in ref:
         raise ValueError(
-            f"Invalid tool reference '{tool_ref}'. Expected 'module.path:function_name'"
+            f"Invalid reference '{ref}'. Expected 'module.path:callable_name'"
         )
-
-    module_path, func_name = tool_ref.rsplit(":", 1)
-
+    module_path, func_name = ref.rsplit(":", 1)
     import importlib
 
     module = importlib.import_module(module_path)
-    func = getattr(module, func_name)
+    return getattr(module, func_name)()
 
-    return func
+
+def _resolve_tools(refs: list[str]) -> list[Any]:
+    """Resolve tool factory references and flatten lists."""
+    tools: list[Any] = []
+    for ref in refs:
+        result = _resolve_ref(ref)
+        if isinstance(result, list):
+            tools.extend(result)
+        else:
+            tools.append(result)
+    return tools

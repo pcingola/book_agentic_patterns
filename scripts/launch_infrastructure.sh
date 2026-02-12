@@ -53,9 +53,19 @@ start_mcp sql 8011
 start_mcp repl 8105
 start_mcp vocabulary 8106
 
-# TODO: replace with proper readiness check (poll each MCP port)
-echo "Waiting for MCP servers to start..."
-sleep 5
+MCP_PORTS=(8100 8101 8102 8103 8010 8104 8011 8105 8106)
+MAX_WAIT=30
+for port in "${MCP_PORTS[@]}"; do
+    elapsed=0
+    while ! curl -s -o /dev/null "http://localhost:${port}/mcp" 2>/dev/null; do
+        sleep 1
+        elapsed=$((elapsed + 1))
+        if [ "$elapsed" -ge "$MAX_WAIT" ]; then
+            echo "MCP server on port $port did not become ready in ${MAX_WAIT}s" >&2
+            exit 1
+        fi
+    done
+done
 
 check_pids || { echo "An MCP server failed to start" >&2; exit 1; }
 

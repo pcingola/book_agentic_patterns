@@ -15,7 +15,12 @@ logger = logging.getLogger(__name__)
 
 
 def _usage_to_dict(usage: RunUsage) -> dict:
-    return {"requests": usage.requests, "input_tokens": usage.input_tokens, "output_tokens": usage.output_tokens, "total_tokens": usage.total_tokens}
+    return {
+        "requests": usage.requests,
+        "input_tokens": usage.input_tokens,
+        "output_tokens": usage.output_tokens,
+        "total_tokens": usage.total_tokens,
+    }
 
 
 class Worker:
@@ -42,11 +47,15 @@ class Worker:
         try:
             agent_name = task.metadata.get("agent_name")
             if agent_name and agent_name in self._agent_specs:
-                result, usage_dict = await self._execute_with_spec(task_id, task.input, agent_name)
+                result, usage_dict = await self._execute_with_spec(
+                    task_id, task.input, agent_name
+                )
             else:
                 result, usage_dict = await self._execute_bare(task)
 
-            await self._transition(task_id, TaskState.COMPLETED, result=result, usage=usage_dict)
+            await self._transition(
+                task_id, TaskState.COMPLETED, result=result, usage=usage_dict
+            )
             logger.info("Task %s completed", task_id[:8])
 
         except asyncio.CancelledError:
@@ -59,27 +68,48 @@ class Worker:
             await self._transition(task_id, TaskState.FAILED, error=error_msg)
             logger.error("Task %s failed: %s", task_id[:8], error_msg)
 
-    async def _transition(self, task_id: str, state: TaskState, *, result: str | None = None, error: str | None = None, **event_extra: Any) -> None:
+    async def _transition(
+        self,
+        task_id: str,
+        state: TaskState,
+        *,
+        result: str | None = None,
+        error: str | None = None,
+        **event_extra: Any,
+    ) -> None:
         """Update store state and emit a STATE_CHANGE event in one step."""
         await self._store.update_state(task_id, state, result=result, error=error)
         await self._store.add_event(
             task_id,
-            TaskEvent(task_id=task_id, event_type=EventType.STATE_CHANGE, payload={"state": state.value, **event_extra}),
+            TaskEvent(
+                task_id=task_id,
+                event_type=EventType.STATE_CHANGE,
+                payload={"state": state.value, **event_extra},
+            ),
         )
 
     async def _execute_bare(self, task: Any) -> tuple[str, dict]:
         """Fallback: run with bare get_agent()/run_agent() (backward compat)."""
         from agentic_patterns.core.agents import get_agent, run_agent
 
-        system_prompt = task.metadata.get("system_prompt", "You are a helpful assistant.")
+        system_prompt = task.metadata.get(
+            "system_prompt", "You are a helpful assistant."
+        )
         config_name = task.metadata.get("config_name", "default")
-        agent = await asyncio.to_thread(get_agent, model=self._model, config_name=config_name, system_prompt=system_prompt)
+        agent = await asyncio.to_thread(
+            get_agent,
+            model=self._model,
+            config_name=config_name,
+            system_prompt=system_prompt,
+        )
         agent_run, _ = await run_agent(agent, task.input)
         if agent_run is None:
             raise RuntimeError("Agent run returned None")
         return str(agent_run.result.output), _usage_to_dict(agent_run.result.usage())
 
-    async def _execute_with_spec(self, task_id: str, prompt: str, agent_name: str) -> tuple[str, dict]:
+    async def _execute_with_spec(
+        self, task_id: str, prompt: str, agent_name: str
+    ) -> tuple[str, dict]:
         """Run via OrchestratorAgent using the registered AgentSpec."""
         from agentic_patterns.core.agents.orchestrator import OrchestratorAgent
 
@@ -104,12 +134,26 @@ class Worker:
                     args = part.args_as_dict() or {}
                     first_val = str(next(iter(args.values()), ""))[:80]
                     loop.create_task(
-                        store.add_event(task_id, TaskEvent(task_id=task_id, event_type=EventType.PROGRESS, payload={"tool": part.tool_name, "arg": first_val}))
+                        store.add_event(
+                            task_id,
+                            TaskEvent(
+                                task_id=task_id,
+                                event_type=EventType.PROGRESS,
+                                payload={"tool": part.tool_name, "arg": first_val},
+                            ),
+                        )
                     )
                 elif isinstance(part, TextPart) and part.content.strip():
                     snippet = part.content.strip().replace("\n", " ")[:120]
                     loop.create_task(
-                        store.add_event(task_id, TaskEvent(task_id=task_id, event_type=EventType.LOG, payload={"message": snippet}))
+                        store.add_event(
+                            task_id,
+                            TaskEvent(
+                                task_id=task_id,
+                                event_type=EventType.LOG,
+                                payload={"message": snippet},
+                            ),
+                        )
                     )
 
         return hook

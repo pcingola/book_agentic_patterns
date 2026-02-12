@@ -11,6 +11,7 @@ from typing import Any
 
 from jsonpath_ng import parse as jsonpath_parse
 from jsonpath_ng.exceptions import JsonPathParserError
+from pydantic_ai import ModelRetry
 
 from agentic_patterns.core.connectors.file import FileConnector
 from agentic_patterns.core.context.decorators import context_result
@@ -187,206 +188,263 @@ class JsonConnector(FileConnector):
     @tool_permission(ToolPermission.WRITE)
     def append(self, path: str, json_path: str, value: str) -> str:
         """Append a value to an array at a specific JSONPath."""
-        parsed_value = json.loads(value)
-        host_path, data = self._read_json(path)
+        try:
+            parsed_value = json.loads(value)
+            host_path, data = self._read_json(path)
 
-        target = _get_value_at_path(data, json_path)
-        if not isinstance(target, list):
-            raise TypeError(
-                f"Target at {json_path} is not an array (type: {type(target).__name__})"
-            )
+            target = _get_value_at_path(data, json_path)
+            if not isinstance(target, list):
+                raise TypeError(
+                    f"Target at {json_path} is not an array (type: {type(target).__name__})"
+                )
 
-        target.append(parsed_value)
-        self._write_json(host_path, data)
-        return f"Appended value to {json_path} in {path} (now {len(target)} items)"
+            target.append(parsed_value)
+            self._write_json(host_path, data)
+            return f"Appended value to {json_path} in {path} (now {len(target)} items)"
+        except (
+            FileNotFoundError,
+            ValueError,
+            KeyError,
+            TypeError,
+            json.JSONDecodeError,
+        ) as e:
+            raise ModelRetry(str(e)) from e
 
     @tool_permission(ToolPermission.WRITE)
     def delete_key(self, path: str, json_path: str) -> str:
         """Delete a key at a specific JSONPath."""
-        if json_path == "$":
-            raise ValueError("Cannot delete entire document (root path not allowed)")
-        if _is_wildcard_path(json_path):
-            raise ValueError(f"Wildcard paths not allowed for deletes: {json_path}")
+        try:
+            if json_path == "$":
+                raise ValueError(
+                    "Cannot delete entire document (root path not allowed)"
+                )
+            if _is_wildcard_path(json_path):
+                raise ValueError(f"Wildcard paths not allowed for deletes: {json_path}")
 
-        host_path, data = self._read_json(path)
-        _delete_at_path(data, json_path)
-        self._write_json(host_path, data)
-        return f"Deleted {json_path} from {path}"
+            host_path, data = self._read_json(path)
+            _delete_at_path(data, json_path)
+            self._write_json(host_path, data)
+            return f"Deleted {json_path} from {path}"
+        except (FileNotFoundError, ValueError, KeyError, TypeError) as e:
+            raise ModelRetry(str(e)) from e
 
     @tool_permission(ToolPermission.READ)
     @context_result()
     def get(self, path: str, json_path: str) -> str:
         """Get a value or subtree using JSONPath syntax."""
-        host_path, data = self._read_json(path)
-        value = _get_value_at_path(data, json_path)
-
-        if isinstance(value, (str, int, float, bool, type(None))):
-            return json.dumps(value, ensure_ascii=False)
-
-        import tempfile
-
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False, encoding="utf-8"
-        ) as tmp:
-            json.dump(value, tmp, ensure_ascii=False, indent=2)
-            tmp_path = Path(tmp.name)
-
         try:
-            result = process_json(tmp_path)
-            if not result.success:
-                raise ValueError(f"Failed to process result: {result.content}")
-            return result.content
-        finally:
-            tmp_path.unlink()
+            host_path, data = self._read_json(path)
+            value = _get_value_at_path(data, json_path)
+
+            if isinstance(value, (str, int, float, bool, type(None))):
+                return json.dumps(value, ensure_ascii=False)
+
+            import tempfile
+
+            with tempfile.NamedTemporaryFile(
+                mode="w", suffix=".json", delete=False, encoding="utf-8"
+            ) as tmp:
+                json.dump(value, tmp, ensure_ascii=False, indent=2)
+                tmp_path = Path(tmp.name)
+
+            try:
+                result = process_json(tmp_path)
+                if not result.success:
+                    raise ValueError(f"Failed to process result: {result.content}")
+                return result.content
+            finally:
+                tmp_path.unlink()
+        except (FileNotFoundError, ValueError, KeyError) as e:
+            raise ModelRetry(str(e)) from e
 
     @tool_permission(ToolPermission.READ)
     @context_result()
     def head(self, path: str, json_path: str = "$", n: int = 10) -> str:
         """Return the first N keys or elements at a JSONPath."""
-        _, data = self._read_json(path)
-        if n <= 0:
-            raise ValueError("Count must be positive")
-        value = _get_value_at_path(data, json_path)
-        sliced, total = _slice_value(value, n, from_end=False)
-        return _format_sliced(sliced, n, total, from_end=False, json_path=json_path)
+        try:
+            _, data = self._read_json(path)
+            if n <= 0:
+                raise ValueError("Count must be positive")
+            value = _get_value_at_path(data, json_path)
+            sliced, total = _slice_value(value, n, from_end=False)
+            return _format_sliced(sliced, n, total, from_end=False, json_path=json_path)
+        except (FileNotFoundError, ValueError, KeyError) as e:
+            raise ModelRetry(str(e)) from e
 
     @tool_permission(ToolPermission.READ)
     @context_result()
     def keys(self, path: str, json_path: str = "$") -> str:
         """List keys at a specific path in the JSON structure."""
-        _, data = self._read_json(path)
-        value = _get_value_at_path(data, json_path)
+        try:
+            _, data = self._read_json(path)
+            value = _get_value_at_path(data, json_path)
 
-        if isinstance(value, dict):
-            key_info = []
-            for key, val in value.items():
-                type_name = type(val).__name__
-                if isinstance(val, dict):
-                    type_name = f"object ({len(val)} keys)"
-                elif isinstance(val, list):
-                    type_name = f"array ({len(val)} items)"
-                key_info.append(f"{key} ({type_name})")
-            return f"Keys at {json_path}: {', '.join(key_info)}"
+            if isinstance(value, dict):
+                key_info = []
+                for key, val in value.items():
+                    type_name = type(val).__name__
+                    if isinstance(val, dict):
+                        type_name = f"object ({len(val)} keys)"
+                    elif isinstance(val, list):
+                        type_name = f"array ({len(val)} items)"
+                    key_info.append(f"{key} ({type_name})")
+                return f"Keys at {json_path}: {', '.join(key_info)}"
 
-        elif isinstance(value, list):
-            return f"[Array with {len(value)} items at {json_path}]"
+            elif isinstance(value, list):
+                return f"[Array with {len(value)} items at {json_path}]"
 
-        else:
-            type_name = type(value).__name__
-            return f"[Value at {json_path} is type: {type_name}]"
+            else:
+                type_name = type(value).__name__
+                return f"[Value at {json_path} is type: {type_name}]"
+        except (FileNotFoundError, ValueError, KeyError) as e:
+            raise ModelRetry(str(e)) from e
 
     @tool_permission(ToolPermission.WRITE)
     def merge(self, path: str, json_path: str, updates: str) -> str:
         """Merge updates into an object at a specific JSONPath without replacing it entirely."""
-        parsed_updates = json.loads(updates)
-        if not isinstance(parsed_updates, dict):
-            raise TypeError(
-                f"Updates must be a JSON object, not {type(parsed_updates).__name__}"
-            )
+        try:
+            parsed_updates = json.loads(updates)
+            if not isinstance(parsed_updates, dict):
+                raise TypeError(
+                    f"Updates must be a JSON object, not {type(parsed_updates).__name__}"
+                )
 
-        host_path, data = self._read_json(path)
-        target = _get_value_at_path(data, json_path)
-        if not isinstance(target, dict):
-            raise TypeError(
-                f"Target at {json_path} is not an object (type: {type(target).__name__})"
-            )
+            host_path, data = self._read_json(path)
+            target = _get_value_at_path(data, json_path)
+            if not isinstance(target, dict):
+                raise TypeError(
+                    f"Target at {json_path} is not an object (type: {type(target).__name__})"
+                )
 
-        target.update(parsed_updates)
-        self._write_json(host_path, data)
-        return f"Merged {len(parsed_updates)} keys into {json_path} in {path}"
+            target.update(parsed_updates)
+            self._write_json(host_path, data)
+            return f"Merged {len(parsed_updates)} keys into {json_path} in {path}"
+        except (
+            FileNotFoundError,
+            ValueError,
+            KeyError,
+            TypeError,
+            json.JSONDecodeError,
+        ) as e:
+            raise ModelRetry(str(e)) from e
 
     @tool_permission(ToolPermission.READ)
     @context_result()
     def query(self, path: str, json_path: str, max_results: int = 20) -> str:
         """Query JSON using extended JSONPath with filters. Examples: $.body[?name =~ "breast"], $.items[?(@.age > 30)]."""
-        _, data = self._read_json(path)
-
-        from jsonpath_ng.ext import parse as ext_parse
-
         try:
-            parsed = ext_parse(json_path)
-        except Exception as e:
-            raise ValueError(f"Invalid JSONPath expression '{json_path}': {e}") from e
+            _, data = self._read_json(path)
 
-        matches = parsed.find(data)
-        if not matches:
-            return f"No matches found for: {json_path}"
+            from jsonpath_ng.ext import parse as ext_parse
 
-        total = len(matches)
-        values = [m.value for m in matches[:max_results]]
-        result = json.dumps(values, ensure_ascii=False, indent=2)
-        if total > max_results:
-            result += f"\n\n[Showing {max_results} of {total} matches]"
-        else:
-            result = f"[{total} match{'es' if total != 1 else ''}]\n{result}"
-        return result
+            try:
+                parsed = ext_parse(json_path)
+            except Exception as e:
+                raise ValueError(
+                    f"Invalid JSONPath expression '{json_path}': {e}"
+                ) from e
+
+            matches = parsed.find(data)
+            if not matches:
+                return f"No matches found for: {json_path}"
+
+            total = len(matches)
+            values = [m.value for m in matches[:max_results]]
+            result = json.dumps(values, ensure_ascii=False, indent=2)
+            if total > max_results:
+                result += f"\n\n[Showing {max_results} of {total} matches]"
+            else:
+                result = f"[{total} match{'es' if total != 1 else ''}]\n{result}"
+            return result
+        except (FileNotFoundError, ValueError, KeyError) as e:
+            raise ModelRetry(str(e)) from e
 
     @tool_permission(ToolPermission.READ)
     def schema(self, path: str, json_path: str = "$", max_depth: int = 4) -> str:
         """Show the structure of a JSON file: keys, types, nesting, and array sizes."""
-        _, data = self._read_json(path)
-        value = _get_value_at_path(data, json_path)
-        lines = _describe_schema(value, json_path, max_depth)
-        return "\n".join(lines)
+        try:
+            _, data = self._read_json(path)
+            value = _get_value_at_path(data, json_path)
+            lines = _describe_schema(value, json_path, max_depth)
+            return "\n".join(lines)
+        except (FileNotFoundError, ValueError, KeyError) as e:
+            raise ModelRetry(str(e)) from e
 
     @tool_permission(ToolPermission.WRITE)
     def set(self, path: str, json_path: str, value: str) -> str:
         """Set a value at a specific JSONPath, preserving the rest of the file."""
-        if json_path == "$":
-            raise ValueError("Cannot replace entire document (root path not allowed)")
-        if _is_wildcard_path(json_path):
-            raise ValueError(f"Wildcard paths not allowed for writes: {json_path}")
+        try:
+            if json_path == "$":
+                raise ValueError(
+                    "Cannot replace entire document (root path not allowed)"
+                )
+            if _is_wildcard_path(json_path):
+                raise ValueError(f"Wildcard paths not allowed for writes: {json_path}")
 
-        parsed_value = json.loads(value)
-        if len(value) > 10 * 1024:
-            raise ValueError(
-                f"Value is very large ({len(value) / 1024:.1f} KB). Consider breaking into smaller updates."
-            )
+            parsed_value = json.loads(value)
+            if len(value) > 10 * 1024:
+                raise ValueError(
+                    f"Value is very large ({len(value) / 1024:.1f} KB). Consider breaking into smaller updates."
+                )
 
-        host_path, data = self._read_json(path)
-        _set_value_at_path(data, json_path, parsed_value)
-        self._write_json(host_path, data)
+            host_path, data = self._read_json(path)
+            _set_value_at_path(data, json_path, parsed_value)
+            self._write_json(host_path, data)
 
-        value_preview = value if len(value) <= 50 else f"{value[:47]}..."
-        return f"Updated {json_path} = {value_preview} in {path}"
+            value_preview = value if len(value) <= 50 else f"{value[:47]}..."
+            return f"Updated {json_path} = {value_preview} in {path}"
+        except (
+            FileNotFoundError,
+            ValueError,
+            KeyError,
+            TypeError,
+            json.JSONDecodeError,
+        ) as e:
+            raise ModelRetry(str(e)) from e
 
     @tool_permission(ToolPermission.READ)
     @context_result()
     def tail(self, path: str, json_path: str = "$", n: int = 10) -> str:
         """Return the last N keys or elements at a JSONPath."""
-        _, data = self._read_json(path)
-        if n <= 0:
-            raise ValueError("Count must be positive")
-        value = _get_value_at_path(data, json_path)
-        sliced, total = _slice_value(value, n, from_end=True)
-        return _format_sliced(sliced, n, total, from_end=True, json_path=json_path)
+        try:
+            _, data = self._read_json(path)
+            if n <= 0:
+                raise ValueError("Count must be positive")
+            value = _get_value_at_path(data, json_path)
+            sliced, total = _slice_value(value, n, from_end=True)
+            return _format_sliced(sliced, n, total, from_end=True, json_path=json_path)
+        except (FileNotFoundError, ValueError, KeyError) as e:
+            raise ModelRetry(str(e)) from e
 
     @tool_permission(ToolPermission.READ)
     def validate(self, path: str) -> str:
         """Validate JSON syntax and structure."""
-        host_path = self._translate_path(path)
-        if not host_path.exists():
-            raise FileNotFoundError(f"File not found: {path}")
-
         try:
-            with open(host_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-        except json.JSONDecodeError as e:
-            return f"Invalid JSON at line {e.lineno}, column {e.colno}: {e.msg}"
+            host_path = self._translate_path(path)
+            if not host_path.exists():
+                raise FileNotFoundError(f"File not found: {path}")
 
-        size_bytes = host_path.stat().st_size
-        size_kb = size_bytes / 1024
+            try:
+                with open(host_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+            except json.JSONDecodeError as e:
+                return f"Invalid JSON at line {e.lineno}, column {e.colno}: {e.msg}"
 
-        if isinstance(data, dict):
-            keys = list(data.keys())
-            if len(keys) <= 10:
-                key_list = ", ".join(keys)
-                return f"Valid JSON: {len(keys)} keys at root ({key_list}), size: {size_kb:.1f} KB"
+            size_bytes = host_path.stat().st_size
+            size_kb = size_bytes / 1024
+
+            if isinstance(data, dict):
+                keys = list(data.keys())
+                if len(keys) <= 10:
+                    key_list = ", ".join(keys)
+                    return f"Valid JSON: {len(keys)} keys at root ({key_list}), size: {size_kb:.1f} KB"
+                else:
+                    key_list = ", ".join(keys[:10])
+                    return f"Valid JSON: {len(keys)} keys at root ({key_list}, ...), size: {size_kb:.1f} KB"
+            elif isinstance(data, list):
+                return f"Valid JSON: array with {len(data)} items at root, size: {size_kb:.1f} KB"
             else:
-                key_list = ", ".join(keys[:10])
-                return f"Valid JSON: {len(keys)} keys at root ({key_list}, ...), size: {size_kb:.1f} KB"
-        elif isinstance(data, list):
-            return f"Valid JSON: array with {len(data)} items at root, size: {size_kb:.1f} KB"
-        else:
-            type_name = type(data).__name__
-            return f"Valid JSON: {type_name} at root, size: {size_kb:.1f} KB"
+                type_name = type(data).__name__
+                return f"Valid JSON: {type_name} at root, size: {size_kb:.1f} KB"
+        except FileNotFoundError as e:
+            raise ModelRetry(str(e)) from e

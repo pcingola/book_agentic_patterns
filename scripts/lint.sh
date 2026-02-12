@@ -7,8 +7,10 @@ source "${SCRIPT_DIR}/config.sh"
 
 cd "${PROJECT_DIR}"
 
-# Run ruff linter
-ruff check agentic_patterns/ tests/
-
-# Run ruff formatter check
-ruff format --check agentic_patterns/ tests/
+if [[ "${1:-}" == "--fix" ]]; then
+    ruff check --fix agentic_patterns/ tests/
+    ruff format agentic_patterns/ tests/
+else
+    ruff check agentic_patterns/ tests/
+    ruff format --check agentic_patterns/ tests/
+fi

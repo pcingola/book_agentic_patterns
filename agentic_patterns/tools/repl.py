@@ -2,6 +2,8 @@
 
 from pathlib import PurePosixPath
 
+from pydantic_ai import ModelRetry
+
 from agentic_patterns.core.context.decorators import context_result
 from agentic_patterns.core.repl.config import DEFAULT_CELL_TIMEOUT
 from agentic_patterns.core.repl.notebook import Notebook
@@ -29,26 +31,35 @@ def get_all_tools() -> list:
     @tool_permission(ToolPermission.WRITE)
     async def repl_delete_cell(cell_number: int) -> str:
         """Delete a cell by number (0-based)."""
-        nb = _load_notebook()
-        nb.delete_cell(cell_number)
-        return f"Cell {cell_number} deleted."
+        try:
+            nb = _load_notebook()
+            nb.delete_cell(cell_number)
+            return f"Cell {cell_number} deleted."
+        except (ValueError, IndexError) as e:
+            raise ModelRetry(str(e)) from e
 
     @tool_permission(ToolPermission.WRITE)
     @context_result()
     async def repl_execute_cell(code: str, timeout: int = DEFAULT_CELL_TIMEOUT) -> str:
         """Add and execute a new Python cell. Returns cell output."""
-        nb = _load_notebook()
-        cell = await nb.add_cell(code, execute=True, timeout=timeout)
-        return str(cell)
+        try:
+            nb = _load_notebook()
+            cell = await nb.add_cell(code, execute=True, timeout=timeout)
+            return str(cell)
+        except ValueError as e:
+            raise ModelRetry(str(e)) from e
 
     @tool_permission(ToolPermission.WRITE)
     @context_result()
     async def repl_export_ipynb(path: str) -> str:
         """Export the notebook to a .ipynb file at the given workspace path."""
-        nb = _load_notebook()
-        host_path = workspace_to_host_path(PurePosixPath(path))
-        nb.save_as_ipynb(host_path)
-        return f"Notebook exported to {path}"
+        try:
+            nb = _load_notebook()
+            host_path = workspace_to_host_path(PurePosixPath(path))
+            nb.save_as_ipynb(host_path)
+            return f"Notebook exported to {path}"
+        except ValueError as e:
+            raise ModelRetry(str(e)) from e
 
     @tool_permission(ToolPermission.WRITE)
     @context_result()
@@ -56,15 +67,21 @@ def get_all_tools() -> list:
         cell_number: int, timeout: int = DEFAULT_CELL_TIMEOUT
     ) -> str:
         """Re-execute an existing cell by number (0-based)."""
-        nb = _load_notebook()
-        cell = await nb.execute_cell(cell_number, timeout=timeout)
-        return str(cell)
+        try:
+            nb = _load_notebook()
+            cell = await nb.execute_cell(cell_number, timeout=timeout)
+            return str(cell)
+        except (ValueError, IndexError) as e:
+            raise ModelRetry(str(e)) from e
 
     @tool_permission(ToolPermission.READ)
     async def repl_show_cell(cell_number: int) -> str:
         """Show a single cell by number (0-based)."""
-        nb = _load_notebook()
-        return str(nb[cell_number])
+        try:
+            nb = _load_notebook()
+            return str(nb[cell_number])
+        except (ValueError, IndexError) as e:
+            raise ModelRetry(str(e)) from e
 
     @tool_permission(ToolPermission.READ)
     @context_result(save=False)

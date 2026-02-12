@@ -13,6 +13,7 @@ from agentic_patterns.core.config.config import MAIN_PROJECT_DIR
 class MCPClientConfig(BaseModel):
     """Configuration for connecting to an external MCP server."""
 
+    name: str = ""
     type: str = Field(default="client")
     url: str
     url_isolated: str | None = None
@@ -88,7 +89,7 @@ def load_mcp_settings(config_path: Path | str | None = None) -> MCPSettings:
             config_type = config_data.get("type", "client")
             match config_type:
                 case "client":
-                    mcp_servers[name] = MCPClientConfig(**config_data)
+                    mcp_servers[name] = MCPClientConfig(name=name, **config_data)
                 case "server":
                     mcp_servers[name] = MCPServerConfig(**config_data)
                 case _:

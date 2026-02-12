@@ -37,7 +37,9 @@ class TaskBroker:
     def register_agents(self, specs: dict[str, Any]) -> None:
         """Register AgentSpecs so the worker can resolve them by name."""
         self._agent_specs.update(specs)
-        self._worker = Worker(self._store, model=self._model, agent_specs=self._agent_specs)
+        self._worker = Worker(
+            self._store, model=self._model, agent_specs=self._agent_specs
+        )
 
     async def __aenter__(self) -> "TaskBroker":
         self._dispatch_task = asyncio.create_task(self._dispatch_loop())

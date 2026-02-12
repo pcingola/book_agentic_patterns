@@ -2,8 +2,11 @@
 
 from pathlib import PurePosixPath
 
+from pydantic_ai import ModelRetry
+
 from agentic_patterns.core.tools.permissions import ToolPermission, tool_permission
 from agentic_patterns.core.workspace import (
+    WorkspaceError,
     host_to_workspace_path,
     workspace_to_host_path,
 )
@@ -25,16 +28,19 @@ def get_all_tools() -> list:
             input_file: Path to input file (must start with /workspace/).
             output_format: Target format (md, csv, pdf, docx, html).
         """
-        fmt = OutputFormat(output_format.lower())
-        host_input = workspace_to_host_path(PurePosixPath(input_file))
-        if not host_input.exists():
-            raise ValueError(f"File not found: {input_file}")
+        try:
+            fmt = OutputFormat(output_format.lower())
+            host_input = workspace_to_host_path(PurePosixPath(input_file))
+            if not host_input.exists():
+                raise ValueError(f"File not found: {input_file}")
 
-        result = convert(host_input, fmt)
+            result = convert(host_input, fmt)
 
-        if isinstance(result, str):
-            return result
-        # Binary output -- result is a host Path
-        return f"Converted file saved to {host_to_workspace_path(result)}"
+            if isinstance(result, str):
+                return result
+            # Binary output -- result is a host Path
+            return f"Converted file saved to {host_to_workspace_path(result)}"
+        except (ValueError, WorkspaceError) as e:
+            raise ModelRetry(str(e)) from e
 
     return [convert_document]

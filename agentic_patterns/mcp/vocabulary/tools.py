@@ -16,7 +16,10 @@ def register_tools(mcp: FastMCP) -> None:
     @tool_permission(ToolPermission.READ)
     async def vocab_list(ctx: Context = None) -> str:
         """List all available vocabularies."""
-        result = _connector.list_vocabularies()
+        try:
+            result = _connector.list_vocabularies()
+        except (KeyError, ValueError) as e:
+            raise ToolRetryError(str(e)) from e
         if ctx:
             await ctx.info("vocab_list")
         return result
@@ -45,7 +48,9 @@ def register_tools(mcp: FastMCP) -> None:
 
     @mcp.tool()
     @tool_permission(ToolPermission.READ)
-    async def vocab_search(vocab_name: str, query: str, max_results: int = 10, ctx: Context = None) -> str:
+    async def vocab_search(
+        vocab_name: str, query: str, max_results: int = 10, ctx: Context = None
+    ) -> str:
         """Search for terms matching a text query."""
         result = _connector.search(vocab_name, query, max_results)
         if ctx:
@@ -56,7 +61,9 @@ def register_tools(mcp: FastMCP) -> None:
 
     @mcp.tool()
     @tool_permission(ToolPermission.READ)
-    async def vocab_validate(vocab_name: str, term_code: str, ctx: Context = None) -> str:
+    async def vocab_validate(
+        vocab_name: str, term_code: str, ctx: Context = None
+    ) -> str:
         """Validate whether a term code exists. Suggests corrections if invalid."""
         result = _connector.validate(vocab_name, term_code)
         if ctx:
@@ -67,7 +74,9 @@ def register_tools(mcp: FastMCP) -> None:
 
     @mcp.tool()
     @tool_permission(ToolPermission.READ)
-    async def vocab_suggest(vocab_name: str, text: str, max_results: int = 10, ctx: Context = None) -> str:
+    async def vocab_suggest(
+        vocab_name: str, text: str, max_results: int = 10, ctx: Context = None
+    ) -> str:
         """Get semantic suggestions for free text (RAG vocabularies only)."""
         result = _connector.suggest(vocab_name, text, max_results)
         if ctx:
@@ -89,7 +98,9 @@ def register_tools(mcp: FastMCP) -> None:
 
     @mcp.tool()
     @tool_permission(ToolPermission.READ)
-    async def vocab_children(vocab_name: str, term_code: str, ctx: Context = None) -> str:
+    async def vocab_children(
+        vocab_name: str, term_code: str, ctx: Context = None
+    ) -> str:
         """Get direct children of a term."""
         result = _connector.children(vocab_name, term_code)
         if ctx:
@@ -100,7 +111,9 @@ def register_tools(mcp: FastMCP) -> None:
 
     @mcp.tool()
     @tool_permission(ToolPermission.READ)
-    async def vocab_ancestors(vocab_name: str, term_code: str, max_depth: int = 10, ctx: Context = None) -> str:
+    async def vocab_ancestors(
+        vocab_name: str, term_code: str, max_depth: int = 10, ctx: Context = None
+    ) -> str:
         """Get ancestor chain to root."""
         result = _connector.ancestors(vocab_name, term_code, max_depth)
         if ctx:
@@ -111,7 +124,9 @@ def register_tools(mcp: FastMCP) -> None:
 
     @mcp.tool()
     @tool_permission(ToolPermission.READ)
-    async def vocab_descendants(vocab_name: str, term_code: str, max_depth: int = 10, ctx: Context = None) -> str:
+    async def vocab_descendants(
+        vocab_name: str, term_code: str, max_depth: int = 10, ctx: Context = None
+    ) -> str:
         """Get all descendants up to max_depth."""
         result = _connector.descendants(vocab_name, term_code, max_depth)
         if ctx:
@@ -122,7 +137,9 @@ def register_tools(mcp: FastMCP) -> None:
 
     @mcp.tool()
     @tool_permission(ToolPermission.READ)
-    async def vocab_relationships(vocab_name: str, term_code: str, ctx: Context = None) -> str:
+    async def vocab_relationships(
+        vocab_name: str, term_code: str, ctx: Context = None
+    ) -> str:
         """Get all typed relationships for a term."""
         result = _connector.relationships(vocab_name, term_code)
         if ctx:
@@ -133,7 +150,9 @@ def register_tools(mcp: FastMCP) -> None:
 
     @mcp.tool()
     @tool_permission(ToolPermission.READ)
-    async def vocab_related(vocab_name: str, term_code: str, relation_type: str, ctx: Context = None) -> str:
+    async def vocab_related(
+        vocab_name: str, term_code: str, relation_type: str, ctx: Context = None
+    ) -> str:
         """Get terms connected by a specific relation type."""
         result = _connector.related(vocab_name, term_code, relation_type)
         if ctx:

@@ -6,7 +6,13 @@ import logging
 from pathlib import Path
 from typing import Sequence
 
-from pydantic_ai import AgentRun, CallToolsNode, ModelMessage, ModelRequestNode, UserPromptNode
+from pydantic_ai import (
+    AgentRun,
+    CallToolsNode,
+    ModelMessage,
+    ModelRequestNode,
+    UserPromptNode,
+)
 import rich
 from fastmcp import Context
 from pydantic_ai.agent import Agent

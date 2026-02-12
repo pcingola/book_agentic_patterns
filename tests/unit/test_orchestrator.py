@@ -133,7 +133,7 @@ class TestOrchestratorAgent(unittest.IsolatedAsyncioTestCase):
             self.assertIsNotNone(agent._agent)
 
         self.assertIsNone(agent._agent)
-        self.assertEqual(agent._mcp_connections, [])
+        self.assertIsNone(agent._broker)
 
 
 if __name__ == "__main__":

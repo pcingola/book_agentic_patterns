@@ -56,7 +56,10 @@ def register_tools(mcp: FastMCP) -> None:
         Args:
             descriptions: List of item descriptions for the new list.
         """
-        item_ids = ops.todo_create_list(descriptions)
+        try:
+            item_ids = ops.todo_create_list(descriptions)
+        except (ValueError, KeyError) as e:
+            raise ToolRetryError(str(e)) from e
         await ctx.info(f"todo_create_list: ids={item_ids}")
         return item_ids
 
@@ -64,7 +67,10 @@ def register_tools(mcp: FastMCP) -> None:
     @tool_permission(ToolPermission.WRITE)
     async def todo_delete(item_id: str, ctx: Context = None) -> bool:
         """Delete a todo item by ID (e.g. '1.3.2'). Returns True if deleted."""
-        success = ops.todo_delete(item_id)
+        try:
+            success = ops.todo_delete(item_id)
+        except (ValueError, KeyError) as e:
+            raise ToolRetryError(str(e)) from e
         await ctx.info(f"todo_delete: id={item_id} success={success}")
         return success
 
@@ -72,7 +78,10 @@ def register_tools(mcp: FastMCP) -> None:
     @tool_permission(ToolPermission.READ)
     async def todo_show(ctx: Context = None) -> str:
         """Show all todo items as a markdown checklist."""
-        md = ops.todo_show()
+        try:
+            md = ops.todo_show()
+        except (ValueError, KeyError) as e:
+            raise ToolRetryError(str(e)) from e
         await ctx.info("todo_show")
         return md
 
@@ -89,7 +98,7 @@ def register_tools(mcp: FastMCP) -> None:
         """
         try:
             success = ops.todo_update_status(item_id, status)
-        except ValueError as e:
+        except (ValueError, KeyError) as e:
             raise ToolRetryError(str(e)) from e
         await ctx.info(
             f"todo_update_status: id={item_id} status={status} success={success}"

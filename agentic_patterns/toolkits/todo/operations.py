@@ -50,7 +50,9 @@ def todo_add(description: str, parent_item_id: str | None = None) -> str:
     return item_id
 
 
-def todo_add_many(descriptions: list[str], parent_item_id: str | None = None) -> list[str]:
+def todo_add_many(
+    descriptions: list[str], parent_item_id: str | None = None
+) -> list[str]:
     """Add several todo items at once. Returns list of new item IDs."""
     todo_list = _get_todo_list()
     item_ids = [_add_one(d, parent_item_id, todo_list) for d in descriptions]

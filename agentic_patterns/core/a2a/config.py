@@ -7,12 +7,13 @@ from pathlib import Path
 import yaml
 from pydantic import BaseModel, Field
 
-from agentic_patterns.core.config.config import AGENTIC_PATTERNS_PROJECT_DIR
+from agentic_patterns.core.config.config import MAIN_PROJECT_DIR
 
 
 class A2AClientConfig(BaseModel):
     """Configuration for an A2A client."""
 
+    name: str = ""
     url: str
     timeout: int = Field(default=300)
     poll_interval: float = Field(default=1.0)
@@ -71,7 +72,7 @@ def load_a2a_settings(config_path: Path | str | None = None) -> A2ASettings:
         return _settings
 
     if config_path is None:
-        config_path = AGENTIC_PATTERNS_PROJECT_DIR / "config.yaml"
+        config_path = MAIN_PROJECT_DIR / "config.yaml"
     config_path = Path(config_path)
 
     if not config_path.exists():
@@ -84,7 +85,7 @@ def load_a2a_settings(config_path: Path | str | None = None) -> A2ASettings:
     if "a2a" in data and "clients" in data["a2a"]:
         for name, config_data in data["a2a"]["clients"].items():
             config_data = _expand_config_vars(config_data)
-            clients[name] = A2AClientConfig(**config_data)
+            clients[name] = A2AClientConfig(name=name, **config_data)
 
     _settings = A2ASettings(clients=clients)
     return _settings

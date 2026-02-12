@@ -3,7 +3,11 @@ import unittest
 
 from pydantic_ai.messages import ToolCallPart
 
-from agentic_patterns.core.agents.orchestrator import AgentSpec, OrchestratorAgent, _collect_status
+from agentic_patterns.core.agents.orchestrator import (
+    AgentSpec,
+    OrchestratorAgent,
+    _collect_status,
+)
 from agentic_patterns.core.tasks.broker import TaskBroker
 from agentic_patterns.core.tasks.models import Task
 from agentic_patterns.core.tasks.state import TaskState
@@ -12,13 +16,14 @@ from agentic_patterns.testing import ModelMock
 
 
 class TestEventDrivenWait(unittest.IsolatedAsyncioTestCase):
-
     async def test_broker_signals_activity_on_completion(self) -> None:
         """Broker sets the activity event when a task completes."""
         activity = asyncio.Event()
         store = TaskStoreMemory()
         model = ModelMock(responses=["the answer"])
-        async with TaskBroker(store=store, model=model, poll_interval=0.05, activity=activity) as broker:
+        async with TaskBroker(
+            store=store, model=model, poll_interval=0.05, activity=activity
+        ) as broker:
             await broker.submit("question")
             await asyncio.wait_for(activity.wait(), timeout=5)
         self.assertTrue(activity.is_set())
@@ -29,7 +34,9 @@ class TestEventDrivenWait(unittest.IsolatedAsyncioTestCase):
         store = TaskStoreMemory()
         model = ModelMock(responses=[RuntimeError("boom")])
         with self.assertLogs("agentic_patterns.core.tasks", level="ERROR"):
-            async with TaskBroker(store=store, model=model, poll_interval=0.05, activity=activity) as broker:
+            async with TaskBroker(
+                store=store, model=model, poll_interval=0.05, activity=activity
+            ) as broker:
                 task_id = await broker.submit("fail")
                 await asyncio.wait_for(activity.wait(), timeout=5)
                 task = await broker.poll(task_id)
@@ -89,11 +96,16 @@ class TestEventDrivenWait(unittest.IsolatedAsyncioTestCase):
         sub_model = ModelMock(responses=["42"])
         sub_spec = AgentSpec(name="calc", description="Calculator", model=sub_model)
 
-        orch_model = ModelMock(responses=[
-            ToolCallPart(tool_name="submit_task", args={"agent_name": "calc", "prompt": "2+2"}),
-            ToolCallPart(tool_name="wait", args={}),
-            "Done",
-        ])
+        orch_model = ModelMock(
+            responses=[
+                ToolCallPart(
+                    tool_name="submit_task",
+                    args={"agent_name": "calc", "prompt": "2+2"},
+                ),
+                ToolCallPart(tool_name="wait", args={}),
+                "Done",
+            ]
+        )
         spec = AgentSpec(name="orch", model=orch_model, sub_agents=[sub_spec])
         async with OrchestratorAgent(spec) as agent:
             result = await agent.run("test")
@@ -104,11 +116,16 @@ class TestEventDrivenWait(unittest.IsolatedAsyncioTestCase):
         sub_model = ModelMock(responses=["result"], sleep_time=10)
         sub_spec = AgentSpec(name="slow", description="Slow agent", model=sub_model)
 
-        orch_model = ModelMock(responses=[
-            ToolCallPart(tool_name="submit_task", args={"agent_name": "slow", "prompt": "work"}),
-            ToolCallPart(tool_name="wait", args={"timeout": 1}),
-            "Timed out",
-        ])
+        orch_model = ModelMock(
+            responses=[
+                ToolCallPart(
+                    tool_name="submit_task",
+                    args={"agent_name": "slow", "prompt": "work"},
+                ),
+                ToolCallPart(tool_name="wait", args={"timeout": 1}),
+                "Timed out",
+            ]
+        )
         spec = AgentSpec(name="orch", model=orch_model, sub_agents=[sub_spec])
         async with OrchestratorAgent(spec) as agent:
             result = await agent.run("test")

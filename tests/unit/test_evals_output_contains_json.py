@@ -1,5 +1,5 @@
 import unittest
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 from agentic_patterns.core.evals.evaluators import OutputContainsJson
