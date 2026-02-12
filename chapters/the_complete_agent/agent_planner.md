@@ -1,6 +1,6 @@
 ## Agent V2: The Planner
 
-The Planner extends the Coder with task management. It receives the same file and sandbox tools, plus six todo tools for creating and tracking a task list. The total grows from 10 to 16 tools. More importantly, the system prompt changes: the agent is now instructed to plan before executing.
+The Planner extends the Coder with task management. It receives the same file and sandbox tools, plus todo tools for creating and tracking a task list. The important change is in the system prompt: the agent is now instructed to plan before executing.
 
 ### System Prompt
 
@@ -19,7 +19,7 @@ tools = get_file_tools() + get_sandbox_tools() + get_todo_tools()
 agent = get_agent(system_prompt=system_prompt, tools=tools)
 ```
 
-The `get_todo_tools()` call returns six functions: `todo_create_list`, `todo_add`, `todo_add_many`, `todo_delete`, `todo_update_status`, and `todo_show`. Items have hierarchical IDs (e.g., "1", "1.1", "1.2") and four possible states: pending, in_progress, completed, and failed.
+`get_todo_tools()` provides functions for creating lists, adding items, updating status, and displaying the plan. Items have hierarchical IDs (e.g., "1", "1.1", "1.2") and four possible states: pending, in_progress, completed, and failed.
 
 ### Execution
 
@@ -33,6 +33,6 @@ This pattern scales better to complex tasks. The Coder might lose track of subta
 
 The two agents illustrate a pattern: the same reasoning loop, given more tools and a revised prompt, produces qualitatively different behavior. The Coder is reactive (write, execute, check). The Planner is proactive (plan, then execute against the plan). Neither required changes to the agent infrastructure, the model configuration, or the execution pipeline. The difference is entirely in the tools and the prompt.
 
-This is also the limit of what a monolithic agent can do well. As we add more capabilities -- data analysis, document conversion, API access, vocabulary resolution -- the tool list grows, the system prompt becomes longer, and the agent must choose from an increasingly large set of options on every turn. The next sections address this by decomposing the monolith into specialized services.
+This is also the limit of what a flat tool list can handle well. As we add more capabilities -- data analysis, document conversion, API access, vocabulary resolution -- the tool list grows, the system prompt becomes longer, and the agent must choose from an increasingly large set of options on every turn. The next sections address this with progressive disclosure and delegation.
 
 The full example is in `agentic_patterns/examples/the_complete_agent/example_agent_planner.ipynb`.

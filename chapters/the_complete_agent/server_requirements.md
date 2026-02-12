@@ -1,0 +1,43 @@
+## Server Requirements
+
+The Full Agent (V5) is the most capable monolithic agent in this progression, but it runs entirely within a single process. The next step decomposes it into independently deployable services: MCP servers for tool access and A2A servers for agent delegation. Before building those services, it is worth collecting the essential requirements that every production MCP and A2A server must satisfy. These requirements were introduced across earlier chapters -- in the MCP architecture and tools sections, the A2A protocol and security sections, and the execution infrastructure chapter. This section consolidates them as a practical checklist.
+
+### MCP Server Requirements
+
+**Authentication.** Every MCP server must authenticate incoming requests. The pattern used throughout this book is JWT-based: an `AuthSessionMiddleware` extracts `sub` and `session_id` claims from the token and propagates them into contextvars via `set_user_session()`. Tools never receive identity as a parameter. Instead, they call `get_user_id()` or `get_session_id()` to retrieve it from context. This keeps tool signatures clean and prevents an agent from impersonating another user by passing a different identity.
+
+**Workspace isolation.** All file I/O must go through `workspace_to_host_path()` and `host_to_workspace_path()`. Agents see paths under `/workspace/...` and never touch host filesystem paths directly. Each user-session pair gets its own directory. This prevents path traversal attacks and ensures that one session cannot read or modify another session's files.
+
+**Context management.** Tools that return large results -- a SQL query returning thousands of rows, a log search spanning megabytes -- must use the `@context_result()` decorator. It automatically truncates the response to a size the model can process and saves the full output to the workspace for later retrieval. Without this, a single tool call can exhaust the model's context window, degrading all subsequent reasoning. Named presets (`"default"`, `"sql_query"`, `"log_search"`) provide type-aware truncation strategies.
+
+**Permissions.** Every tool must declare what it does through `@tool_permission()` with one of three levels: `READ` for data retrieval, `WRITE` for mutations, and `CONNECT` for external network access. This metadata enables runtime enforcement. When a session contains private data, tools marked `CONNECT` are automatically blocked -- the agent cannot reach external services through MCP tools once sensitive data enters the session. Permissions are the application-level complement to the network-level isolation described next.
+
+**Compliance.** Tools that access sensitive data must register it explicitly by calling `PrivateData().add_private_dataset(name, sensitivity)`. The private data state is persisted outside the workspace so the agent cannot tamper with it. Once flagged, the sensitivity level acts as a one-way ratchet: it can escalate but never decrease within a session. Downstream guardrails use this state to block tools and network access.
+
+**Connectors.** Domain data access lives in connector classes, not directly in tool functions. Connectors inherit from `Connector`, use static methods, enforce workspace isolation, apply `@context_result()` for large responses, and carry no MCP or PydanticAI dependencies. Tools are thin wrappers that add MCP decorators and error conversion. This separation lets the same data logic be used from PydanticAI tools, MCP servers, or any other interface without duplication.
+
+**Configuration.** Server configuration belongs in `config.yaml` under the `mcp_servers` key, with `${VAR}` syntax for environment variable expansion. The `.env` file holds environment variables; `config.yaml` references them. This avoids scattering connection strings, timeouts, and feature flags across code.
+
+**Error handling.** MCP tools use a two-tier error model. Retryable errors (bad input, missing file, validation failure) are raised as `ToolRetryError` -- the agent sees these as structured observations and can adjust its next call. Fatal errors (broken invariants, misconfiguration) are raised as `ToolFatalError` with a `[FATAL]` prefix that signals the agent to stop retrying. The one pattern to avoid is wrapping the entire tool body in a catch-all: this hides bugs by converting code errors into retryable tool errors, making failures invisible rather than recoverable.
+
+**Network isolation.** MCP servers run inside Docker containers with network mode determined by data sensitivity. Sessions without private data get bridge networking (full connectivity). Sessions with private data get `network_mode="none"` (no external access). The pattern is to deploy two containers from the same image -- one on bridge, one isolated -- and configure `url_isolated` in the client config. The `MCPServerPrivateData` client switches to the isolated instance automatically and irreversibly when private data enters the session. This is defense-in-depth: even if a tool permission check has a bug, the network kill switch ensures data cannot leave.
+
+**Logging.** MCP servers should emit log messages via `ctx.info()`, `ctx.warning()`, and similar methods for significant operations: file reads, compliance flag changes, connection events. The MCP client configures a `log_handler` that surfaces these as standard Python log entries, giving operators visibility into what the agent is doing inside MCP tool calls.
+
+**Testing.** Unit tests use FastMCP's in-memory client to test tools without starting a server process. Tests live in `tests/unit/` and `tests/integration/`, following the same structure as the rest of the codebase.
+
+### A2A Server Requirements
+
+**Server creation.** An A2A server is a PydanticAI agent exposed via `agent.to_a2a(name, description, skills)`. The `skills` list must reflect the agent's actual capabilities. For simple agents whose capabilities come directly from tool functions, `tool_to_skill()` converts each function to a `Skill` by extracting the name and docstring. When capabilities come from sub-agents, MCP servers, or loaded skills, the skill declarations must be written explicitly -- otherwise the Agent Card will mislead coordinators that rely on it for routing decisions.
+
+**Authentication.** A2A servers receive a Bearer token in the `Authorization` header. The server must extract it and call `set_user_session_from_token(token)` to propagate identity into the same contextvars used by MCP. This ensures that the same `get_user_id()` / `get_session_id()` mechanism works regardless of whether a tool was called through an MCP server or delegated through an A2A server. Identity propagation happens before any task logic runs.
+
+**Configuration.** A2A client configs live in `config.yaml` under the `a2a.clients` key, following the same `${VAR}` environment variable expansion pattern as MCP. Each entry specifies the server URL and an optional `bearer_token` for injecting authorization headers.
+
+**Coordination.** The `create_coordinator()` factory fetches Agent Cards from configured A2A clients, creates one delegation tool per agent, and auto-generates a system prompt that describes each agent's capabilities. Delegation tools return structured status strings -- `[COMPLETED]`, `[INPUT_REQUIRED:task_id=...]`, `[FAILED]`, `[CANCELLED]`, `[TIMEOUT]` -- so the coordinator agent can reason about outcomes and decide whether to retry, ask for clarification, or report failure.
+
+**Resilience.** The `A2AClientExtended` wraps the base client with three reliability features: exponential backoff retry for transient network failures, configurable timeout with automatic cancellation when the deadline expires, and an `is_cancelled` callback for cooperative cancellation. These handle the reality that A2A calls cross network boundaries where failures are routine rather than exceptional.
+
+**Prompts.** System prompts and templates must be stored as markdown files in dedicated directories under `prompts/a2a/`, loaded via `load_prompt()`. Hardcoded prompt strings in Python files make it difficult to review, version, and compose prompts. Each A2A server gets its own subdirectory (e.g., `prompts/a2a/nl2sql/system_prompt.md`) to keep prompt files from different servers from colliding.
+
+**Testing.** The `MockA2AServer` supports unit and integration testing without LLM calls. Configure deterministic responses with `on_prompt(prompt, result=...)` for exact matches or `on_pattern(regex, ...)` for flexible matching. Simulated delays via `on_prompt_delayed(prompt, polls, result=...)` test polling logic. After running tests, inspect `received_prompts` and `cancelled_task_ids` for assertions about what the agent actually sent.

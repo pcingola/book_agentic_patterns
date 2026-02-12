@@ -1,6 +1,6 @@
 ## Agent V1: The Coder
 
-The Coder is the simplest useful agent: it writes files and executes them. Its ten tools come from two modules -- file operations for workspace I/O and a sandbox for Docker execution.
+The Coder is the simplest useful agent: it writes files and executes them. Its tools come from two modules -- file operations for workspace I/O and a sandbox for Docker execution.
 
 ### System Prompt
 
@@ -21,7 +21,7 @@ tools = get_file_tools() + get_sandbox_tools()
 agent = get_agent(system_prompt=system_prompt, tools=tools)
 ```
 
-The `get_file_tools()` call returns nine functions (file_read, file_head, file_tail, file_find, file_list, file_write, file_append, file_edit, file_delete). The `get_sandbox_tools()` call returns one function (sandbox_execute). Plain list concatenation produces the full tool list. No registration, no configuration -- just functions.
+`get_file_tools()` returns file operations (read, write, edit, find, list, etc.) and `get_sandbox_tools()` returns `sandbox_execute`. Plain list concatenation produces the full tool list. No registration, no configuration -- just functions.
 
 ### Execution
 

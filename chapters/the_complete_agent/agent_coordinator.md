@@ -1,6 +1,6 @@
 ## Agent V4: The Coordinator
 
-The Skilled agent has 17 tools. If we now add data analysis operations, SQL queries, visualization tools, and vocabulary lookups directly, the tool list explodes past 40. Worse, the agent must choose among all of them on every turn, even when a task clearly belongs to one domain. The Coordinator solves tool explosion by delegating to sub-agents instead of absorbing their tools.
+If we add data analysis operations, SQL queries, visualization tools, and vocabulary lookups directly to the Skilled agent, the tool list explodes. Worse, the agent must choose among all of them on every turn, even when a task clearly belongs to one domain. The Coordinator solves tool explosion by delegating to sub-agents instead of absorbing their tools.
 
 ### Delegation Over Accumulation
 
@@ -30,7 +30,7 @@ spec = AgentSpec(
 
 When `sub_agents` is non-empty, the `OrchestratorAgent` creates a `TaskBroker` internally and auto-generates three delegation tools: `delegate`, `submit_task`, and `wait`. It also injects a sub-agent catalog into the system prompt via `{% include 'shared/sub_agents.md' %}`, listing each sub-agent's name and description so the agent knows who to call.
 
-The coordinator's direct tools handle file I/O, sandbox execution, task management, skills, and format conversion (`convert_document` for transforming documents between PDF, DOCX, MD, CSV, and other formats). Domain-specific work routes through delegation. The total tool count grows modestly -- the coordinator has more capabilities than the Skilled agent but fewer tools than it would need if every capability were a direct tool.
+The coordinator's direct tools handle file I/O, sandbox execution, task management, skills, and format conversion (`convert_document` for transforming documents between PDF, DOCX, MD, CSV, and other formats). Domain-specific work routes through delegation. The coordinator has far more capabilities than the Skilled agent but fewer tools than it would need if every capability were a direct tool.
 
 ### Execution
 

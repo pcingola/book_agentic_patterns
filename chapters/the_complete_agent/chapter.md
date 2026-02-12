@@ -13,3 +13,5 @@
 [Agent V4: The Coordinator](./agent_coordinator.md)
 
 [Agent V5: The Full Agent](./agent_full.md)
+
+[Server Requirements](./server_requirements.md)

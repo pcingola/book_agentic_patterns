@@ -35,7 +35,7 @@ spec = AgentSpec(
 agent = OrchestratorAgent(spec, verbose=True)
 ```
 
-The orchestrator adds `activate_skill` behind the scenes, bringing the total from 16 to 17 tools. The agent code does not reference skills directly -- it declares a prompt that includes `{% include 'shared/skills.md' %}` and the orchestrator fills in the catalog and provides the tool.
+The orchestrator adds `activate_skill` behind the scenes. The agent code does not reference skills directly -- it declares a prompt that includes `{% include 'shared/skills.md' %}` and the orchestrator fills in the catalog and provides the tool.
 
 ### Execution
 

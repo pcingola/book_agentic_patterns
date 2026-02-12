@@ -245,7 +245,7 @@ Production infrastructure for running agent-generated code safely: sandbox isola
 - [x] Skill Sandbox -- Read-only mounted container allowing execution of skill scripts while preventing modifications to the skill library
 - [x] Hands-on: MCP Server Isolation -- Interactive notebook demonstrating dual-instance MCP isolation with workspace, permissions, and private data flagging
 
-### Chapter: The Complete Agent (TODO)
+### Chapter: [The Complete Agent](chapters/the_complete_agent/chapter.md)
 
 - [x] Core agent
 - [x] CodeAct: mcp_sandbox
@@ -262,7 +262,8 @@ Production infrastructure for running agent-generated code safely: sandbox isola
   - [x] a2a-nl2sql
   - [x] a2a-data-analysis
   - [x] a2a-data-viz
-  - [ ] Format conversion: PPT, Word, PDF, HTML <-> Markdown
+  - [x] Format conversion: PPT, Word, PDF, HTML <-> Markdown
+- [ ] 
 
 ### Chapter: Research & Science Agents (TODO)
 

@@ -46,8 +46,8 @@ Each worker instantiates a fresh `OrchestratorAgent` from the sub-agent's `Agent
 
 ### The Monolithic Limit
 
-The Full Agent is the most capable monolithic agent in this progression: 17 direct tools, three delegation tools, sub-agents with their own tool sets, skills loaded on demand, and concurrent task execution. It remains a single `OrchestratorAgent` running from a notebook -- no MCP servers, no A2A protocol, no network calls.
+The Full Agent is the most capable monolithic agent in this progression: direct tools for file I/O, sandbox execution, task management, and format conversion; delegation tools for sub-agents; skills loaded on demand; and concurrent task execution. It remains a single `OrchestratorAgent` running from a notebook -- no MCP servers, no A2A protocol, no network calls.
 
-This is deliberate. Everything built so far -- planning, skills, delegation, async tasks -- works within a single process. The patterns are the same ones that will later drive the distributed system, but here they are validated without infrastructure complexity. The next sections decompose this monolith into independently deployable services, replacing direct tool calls with MCP and sub-agent specs with A2A.
+This is deliberate. Everything built so far -- planning, skills, delegation, async tasks -- works within a single process. The patterns are the same ones that will later drive the distributed system, but here they are validated without infrastructure complexity.
 
 The full example is in `agentic_patterns/examples/the_complete_agent/example_agent_full.ipynb`.
