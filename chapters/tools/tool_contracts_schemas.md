@@ -26,7 +26,7 @@ From this definition, the runtime derives a schema that is passed to the languag
 
 ### Structured output and tool calls
 
-Once tool contracts are available, the model is constrained to produce structured output. Instead of emitting free-form text, it must either select a tool and provide arguments conforming to its schema, or emit a structured final result.
+As discussed in the structured output section, constraining model responses to well-defined schemas is a foundational pattern. Within tool contracts, this principle applies directly: once contracts are available, the model is constrained to produce structured output. Instead of emitting free-form text, it must either select a tool and provide arguments conforming to its schema, or emit a structured final result.
 
 Conceptually, a tool call looks like:
 

@@ -124,77 +124,10 @@ print(agent_run.result.output)
 
 The model tracks constraints across multiple steps. Without CoT, it might violate a constraint or produce an inconsistent answer. With CoT, each constraint is explicitly checked, reducing errors.
 
-## When Chain-of-Thought Helps
-
-Chain-of-Thought is most valuable for tasks that involve:
-
-**Multi-step arithmetic or algebra**: Calculations requiring intermediate results before reaching the final answer.
-
-**Logical deduction**: Problems with multiple constraints that must be satisfied simultaneously.
-
-**Planning and decomposition**: Breaking down a complex goal into a sequence of actions.
-
-**Commonsense reasoning**: Drawing inferences that require background knowledge or multiple logical steps.
-
-**Symbolic manipulation**: Transforming expressions according to rules (e.g., simplifying equations, parsing structured data).
-
-Chain-of-Thought is less valuable for tasks where the model can pattern-match directly, such as sentiment analysis, simple classification, or retrieval-based question answering. If the task doesn't require reasoning, adding CoT just increases token usage without improving accuracy.
-
-## Trade-offs and Limitations
-
-Chain-of-Thought is not a silver bullet. It introduces several trade-offs:
-
-**Increased token usage**: Generating reasoning steps consumes more tokens than direct answers. This increases cost and latency.
-
-**Reasoning may contain errors**: The model can produce plausible-sounding reasoning that is logically incorrect. The final answer may be right despite wrong reasoning, or wrong despite correct reasoning.
-
-**Not a guarantee of correctness**: CoT increases the probability of correct answers, but does not guarantee them. For high-stakes applications, consider verifying the reasoning or using additional validation techniques.
-
-**Format compliance**: The model may not always follow the requested format perfectly. Be prepared to parse free-form reasoning even when you request structured steps.
-
-Despite these limitations, Chain-of-Thought remains one of the most effective techniques for improving reasoning in large language models. It serves as a foundation for more advanced patterns like self-reflection, tree-of-thought, and verification, which build on explicit reasoning to further improve accuracy and reliability.
-
-## Implementation Patterns
-
-When implementing Chain-of-Thought in production systems, consider these patterns:
-
-**Use system prompts**: Put CoT instructions in the system prompt so they persist across multiple turns without repeating them in every user message.
-
-```python
-system_prompt = "Solve problems step by step. Show your reasoning."
-agent = get_agent(system_prompt=system_prompt)
-```
-
-**Choose format granularity**: Decide whether to specify an exact format ("Step 1:", "Step 2:") or use free-form reasoning ("Think step by step"). Structured formats are easier to parse but may constrain the model. Free-form prompts are more flexible but harder to parse.
-
-**Verify reasoning programmatically**: For tasks with verifiable steps (like arithmetic), extract and check intermediate results programmatically. If the calculation in "Step 1" is wrong, flag it before accepting the final answer.
-
-**Combine with other patterns**: Chain-of-Thought works well with self-reflection (critique your own reasoning), few-shot learning (show examples of good reasoning), and verification (check your answer).
-
-**Monitor token usage**: Track how much additional cost CoT introduces. For some applications, the improved accuracy justifies the cost. For others, you may need to tune the level of reasoning detail.
-
-## How It Connects to Other Patterns
-
-Chain-of-Thought is a foundational pattern that enables more sophisticated techniques:
-
-**Self-reflection**: After generating reasoning, ask the model to critique it. Did I make any logical errors? Are there alternative interpretations?
-
-**Tree-of-Thought**: Instead of a single reasoning chain, explore multiple reasoning paths and select the best one.
-
-**Verification**: Use a separate agent to verify each reasoning step, catching errors before they propagate.
-
-**ReAct**: Interleave reasoning with actions. Think about what to do, execute an action, observe the result, then reason about the next step.
-
-All of these patterns depend on explicit reasoning. Chain-of-Thought provides the substrate that makes advanced agentic patterns possible.
-
 ## Key Takeaways
 
 Chain-of-Thought improves reasoning by externalizing intermediate steps. Instead of opaque predictions, the model generates transparent reasoning traces that can be inspected, debugged, and verified.
 
 The simplest implementation is zero-shot CoT: just add "Think step by step" to your prompt. For more control, specify a structured format or provide few-shot examples of step-by-step reasoning.
 
-Chain-of-Thought is most valuable for multi-step reasoning tasks: arithmetic, logic, planning, and constraint satisfaction. It is less valuable for tasks that can be solved by pattern matching alone.
-
-CoT increases token usage and latency but improves accuracy and transparency. The trade-off is worthwhile for tasks where reasoning quality matters more than speed or cost.
-
-Chain-of-Thought serves as a foundational pattern for more advanced agentic techniques. By making reasoning explicit, it enables self-reflection, verification, and structured exploration of reasoning paths.
+CoT is most valuable for multi-step reasoning tasks (arithmetic, logic, planning, constraint satisfaction) and less valuable for tasks that can be solved by pattern matching alone. It increases token usage and latency but improves accuracy and transparency.

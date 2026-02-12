@@ -14,7 +14,7 @@ A minimal API request contains a model identifier and messages array:
 
 ```json
 {
-  "model": "gpt-5",
+  "model": "gpt-4o",
   "messages": [
     {"role": "system", "content": "You are a helpful translator."},
     {"role": "user", "content": "Translate to French: I like coffee."}
@@ -22,7 +22,7 @@ A minimal API request contains a model identifier and messages array:
 }
 ```
 
-The `model` field specifies which model variant to use. Different models have different capabilities, costs, and context windows. For example, `gpt-4-turbo` offers a larger context window than base `gpt-4`, while `gpt-3.5-turbo` provides faster, cheaper responses.
+The `model` field specifies which model variant to use. Different models have different capabilities, costs, and context windows. For example, `gpt-4o` offers a large context window while `gpt-4o-mini` provides faster, cheaper responses.
 
 The `messages` array represents the conversation history. Order matters: messages are processed sequentially, building context as the model reads through them.
 
@@ -44,7 +44,7 @@ Beyond the required fields, numerous optional parameters control model behavior:
 
 ```json
 {
-  "model": "gpt-4",
+  "model": "gpt-4o",
   "messages": [...],
   "temperature": 0.7,
   "max_tokens": 500,
@@ -79,7 +79,7 @@ The API returns a response containing the generated message plus extensive metad
   "id": "chatcmpl-8x7KqZ1J3f5n6C9",
   "object": "chat.completion",
   "created": 1704982847,
-  "model": "gpt-4-0613",
+  "model": "gpt-4o-2024-08-06",
   "choices": [{
     "index": 0,
     "message": {
@@ -127,7 +127,7 @@ When creating an agent, you declare available tools using JSON Schema:
 
 ```json
 {
-  "model": "gpt-4",
+  "model": "gpt-4o",
   "messages": [...],
   "tools": [{
     "type": "function",
@@ -195,7 +195,7 @@ After executing the function, you send results back using a tool message:
 
 ```json
 {
-  "model": "gpt-4",
+  "model": "gpt-4o",
   "messages": [
     {"role": "system", "content": "..."},
     {"role": "user", "content": "What's the weather in Paris?"},
@@ -339,7 +339,7 @@ Each provider has different parameter names, authentication methods, and endpoin
 
 ```python
 # Pydantic-ai abstraction
-model = OpenAIChatModel(model_name='gpt-4', api_key='...')
+model = OpenAIChatModel(model_name='gpt-4o', api_key='...')
 # or
 model = BedrockConverseModel(model_name='anthropic.claude-v2', region='us-east-1')
 
@@ -474,7 +474,7 @@ async def run_weather_agent(user_prompt: str) -> str:
 
     async with httpx.AsyncClient() as client:
         while True:
-            payload = {"model": "gpt-4", "messages": messages, "tools": tools}
+            payload = {"model": "gpt-4o", "messages": messages, "tools": tools}
             response = await client.post(url, json=payload, headers=headers)
             data = response.json()
 
@@ -512,7 +512,7 @@ def get_weather_impl(location: str) -> dict:
 ```python
 from pydantic_ai import Agent
 
-agent = Agent("openai:gpt-4", system_prompt="You are a helpful weather assistant.")
+agent = Agent("openai:gpt-4o", system_prompt="You are a helpful weather assistant.")
 
 @agent.tool
 def get_weather(location: str) -> dict:

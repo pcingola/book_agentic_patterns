@@ -83,7 +83,7 @@ The function returns two objects:
 
 **agent_run**: Pydantic-ai's `AgentRun` object containing the complete execution context including the final result, token usage, and metadata.
 
-**nodes**: A list of execution events (user messages, model responses, tool calls, tool results) that occurred during the agent's execution. This provides visibility into what the agent did.
+**nodes**: A list of Pydantic-AI graph nodes (`UserPromptNode`, `ModelRequestNode`, `CallToolsNode`) representing each step that occurred during the agent's execution. This provides visibility into what the agent did.
 
 ### Step 3: Access Results
 

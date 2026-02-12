@@ -28,3 +28,4 @@
 26. PydanticAI. *Advanced Tool Features (Dynamic Tools)*. Documentation, 2024. https://ai.pydantic.dev/tools-advanced/
 27. PydanticAI. *Deferred Tools*. Documentation, 2024. https://ai.pydantic.dev/deferred-tools/
 28. PydanticAI. *Model Context Protocol Overview*. Documentation, 2024. https://ai.pydantic.dev/mcp/overview/
+29. LangGraph. *Human-in-the-Loop Concepts*. Documentation, 2024. https://langchain-ai.github.io/langgraph/concepts/human_in_the_loop/

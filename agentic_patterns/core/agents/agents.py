@@ -6,7 +6,7 @@ import logging
 from pathlib import Path
 from typing import Sequence
 
-from pydantic_ai import AgentRun, ModelMessage
+from pydantic_ai import AgentRun, CallToolsNode, ModelMessage, ModelRequestNode, UserPromptNode
 import rich
 from fastmcp import Context
 from pydantic_ai.agent import Agent
@@ -14,6 +14,8 @@ from pydantic_ai.settings import ModelSettings
 from pydantic_ai.usage import UsageLimits
 
 from agentic_patterns.core.agents.models import _get_model_from_config, _get_config
+
+AgentNode = UserPromptNode | ModelRequestNode | CallToolsNode
 
 
 logger = logging.getLogger(__name__)
@@ -73,19 +75,19 @@ async def run_agent(
     verbose: bool = False,
     catch_exceptions: bool = False,
     ctx: Context | None = None,
-) -> tuple[AgentRun | None, list[ModelMessage]]:
+) -> tuple[AgentRun | None, list[AgentNode]]:
     """
     Run the agent with the given prompt and log the execution details.
     Args:
         agent (Agent): The PydanticAI agent to run.
         prompt (str | list[str]): The input prompt(s) for the agent.
+        message_history (Sequence[ModelMessage] | None): Optional message history for multi-turn conversations.
         usage_limits (UsageLimits | None): Optional usage limits for the agent.
         verbose (bool): If True, enables verbose logging.
         catch_exceptions (bool): If True, catches exceptions during agent run.
-        parent_logger (ObjectLogger | None): Optional parent logger for hierarchical logging.
         ctx (Context | None): Optional FastMCP context for logging messages to the MCP client.
     Returns:
-        AgentRun, list[ModelMessage]: The agent run object and the list of model messages.
+        AgentRun, list[AgentNode]: The agent run object and the list of agent nodes.
     """
     # Results
     agent_run, nodes = None, []

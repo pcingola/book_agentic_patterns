@@ -42,7 +42,7 @@ Modularity predates "agents" by decades. In classic software engineering, inform
 
 As systems grew, the same pressure pushed modularity "out of process" into services: independently deployable components with explicit network contracts. This trajectory is often summarized as monolith -> modules/packages -> services/SOA -> microservices, with the key idea remaining constant: smaller components, clear interfaces, and ownership boundaries. ([martinfowler.com][12])
 
-In LLM systems, modularity reappeared in a new form around 2022-2023: language models began to *route* to external tools and specialized components rather than "do everything in weights." Neuro-symbolic and tool-augmented architectures (e.g., MRKL) made modular routing explicit, while ReAct showed the practical value of interleaving reasoning with actions (tool calls) during execution. ([arXiv][3]) Toolformer then pushed toward models that can learn to decide *when* to call tools. ([arXiv][4])
+In LLM systems, modularity reappeared in a new form around 2022-2023: language models began to *route* to external tools and specialized components rather than "do everything in weights." Neuro-symbolic and tool-augmented architectures (e.g., MRKL) made modular routing explicit ([arXiv][9]), while ReAct showed the practical value of interleaving reasoning with actions (tool calls) during execution. ([arXiv][10]) Toolformer then pushed toward models that can learn to decide *when* to call tools. ([arXiv][4])
 
 ### From hand-built intelligence to scalable methods
 
@@ -54,6 +54,8 @@ Modern LLM agents reintroduce an old temptation in a new form: over-fitting beha
 [2]: https://www.jmlr.org/papers/volume3/bengio03a/bengio03a.pdf
 [3]: https://arxiv.org/abs/1904.09751
 [4]: https://arxiv.org/abs/2302.04761
+[9]: https://arxiv.org/abs/2205.00445
+[10]: https://arxiv.org/abs/2210.03629
 [11]: https://dl.acm.org/doi/10.1145/361598.361623
 [12]: https://martinfowler.com/articles/microservices.html
 [26]: https://www.cs.utexas.edu/~eunsol/courses/data/bitter_lesson.pdf

@@ -28,10 +28,3 @@ This running example is intentionally ambitious. It includes multiple agents wit
 
 The purpose of this example is not to prescribe a single “correct” architecture, but to provide a concrete anchor for discussion. Abstract ideas become easier to reason about when they are consistently mapped onto the same system, and design trade-offs become clearer when their consequences are traced across multiple chapters.
 
-### References
-
-1. Russell, S., Norvig, P. *Artificial Intelligence: A Modern Approach*. Pearson, 2021.
-2. Wooldridge, M. *An Introduction to MultiAgent Systems*. Wiley, 2009.
-3. Sutton, R. S., Barto, A. G. *Reinforcement Learning: An Introduction*. MIT Press, 2018.
-4. Amodei, D. et al. *Concrete Problems in AI Safety*. arXiv, 2016.
-5. OpenAI. *Planning and Acting with Large Language Models*. OpenAI research blog, 2023.

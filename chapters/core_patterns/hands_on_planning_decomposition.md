@@ -6,9 +6,9 @@ This hands-on explores planning and decomposition using `example_planning_decomp
 
 ## Model Selection: Why Non-Thinking Models Matter Here
 
-The notebook uses `config_name="fast"` to select a non-thinking model (Claude 3.5 Sonnet) rather than the default thinking model (Claude Sonnet 4.5). This choice is deliberate.
+The notebook uses `config_name="fast"` to select a non-thinking model rather than the default thinking model. This choice is deliberate.
 
-Modern frontier models like Claude Sonnet 4.5 have extended thinking capabilities baked in. When given a complex task, they spend significant time reasoning internally before responding, sometimes several minutes per request. This is valuable for difficult problems requiring deep analysis, but counterproductive for planning workflows where we want multiple quick iterations.
+Modern frontier models with extended thinking capabilities spend significant time reasoning internally before responding, sometimes several minutes per request. This is valuable for difficult problems requiring deep analysis, but counterproductive for planning workflows where we want multiple quick iterations.
 
 Planning and decomposition already externalizes reasoning through explicit prompts. We ask the model to show its plan, validate it, decompose steps, and so on. The thinking happens in the conversation, not hidden inside the model. Using a thinking model on top of this would be redundant: the model thinks internally, then produces a plan, which we then ask it to think about again.
 

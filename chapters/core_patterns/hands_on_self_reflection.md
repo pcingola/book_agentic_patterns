@@ -146,7 +146,7 @@ These patterns can be combined. An agent might use CoT to generate a solution, s
 
 ## Implementation Notes
 
-The example uses the same patterns established in Chapter 1: message history through `nodes_to_message_history` to extract conversation state after each turn, sequential turns where each prompt builds on the previous response, and agent reuse where the same agent instance handles all turns for consistency.
+The example uses the same patterns established earlier in this chapter: message history through `nodes_to_message_history` to extract conversation state after each turn, sequential turns where each prompt builds on the previous response, and agent reuse where the same agent instance handles all turns for consistency.
 
 This demonstrates that self-reflection is built from primitives you already know: multi-turn conversations with carefully crafted prompts that direct the agent's attention to evaluating its own output.
 

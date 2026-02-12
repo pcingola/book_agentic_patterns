@@ -15,7 +15,7 @@ async def run_agent(
         verbose: bool = False,
         catch_exceptions: bool = False,
         ctx: Context | None = None,
-    ) -> tuple[AgentRun | None, list[ModelMessage]]:
+    ) -> tuple[AgentRun | None, list]:
 
     agent_run, nodes = None, []
     try:
@@ -24,6 +24,8 @@ async def run_agent(
                 nodes.append(node)
                 if ctx:
                     await ctx.debug(f"MCP server {ctx.fastmcp.name}: {node}")
+                if verbose:
+                    rich.print(f"[green]Agent step:[/green] {node}")
     except Exception as e:
         if verbose:
             rich.print(f"[red]Error running agent:[/red] {e}")
@@ -53,7 +55,7 @@ async for node in agent_run:
     nodes.append(node)
 ```
 
-The `agent_run` object is an async iterator that yields execution events (called "nodes") one at a time. Each node represents something that happened during agent execution: a user message, a model response, a tool call, or a tool result.
+The `agent_run` object is an async iterator that yields Pydantic-AI graph nodes one at a time. Each node is one of three types: `UserPromptNode` (user input), `ModelRequestNode` (a new model request), or `CallToolsNode` (tool execution requested by the model).
 
 Why async? Because each iteration might involve waiting for the model to generate tokens, for tools to execute, or for network I/O. Using `async for` allows other coroutines to run while we wait, making the system efficient.
 

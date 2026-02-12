@@ -4,7 +4,17 @@ The workspace pattern addresses a fundamental tension in agentic systems: models
 
 The workspace solves this by providing a shared, persistent file system where tools externalize large outputs. Instead of returning a full dataset, a tool writes it to disk and returns a concise summary with the file path. The agent's context stays small and focused on reasoning, while the workspace holds the unbounded material.
 
-This hands-on explores the workspace pattern through `example_workspace.ipynb`, demonstrating path translation, the write-and-summarize pattern, context capture in tools, user isolation, and security boundaries.
+This hands-on explores the workspace pattern through `example_workspace.ipynb`, demonstrating path translation, the write-and-summarize pattern, user isolation, and security boundaries.
+
+## Identity and Context
+
+The workspace resolves user and session identity from contextvars. At the request boundary (middleware, MCP handler, etc.), a single call to `set_user_session()` establishes the identity for all downstream code:
+
+```python
+set_user_session("alice", "session_001")
+```
+
+All workspace functions read this identity automatically. There is no need to pass context explicitly into tools or workspace calls. In production, this is set by middleware from JWT claims or session cookies. In notebooks, it is called directly at the top of the session.
 
 ## The Dual Path System
 
@@ -14,26 +24,20 @@ The workspace module provides functions to translate between these two views:
 
 ```python
 sandbox_path = "/workspace/reports/analysis.json"
-host_path = workspace_to_host_path(PurePosixPath(sandbox_path), ctx)
+host_path = workspace_to_host_path(PurePosixPath(sandbox_path))
 
 print(f"Agent sees:    {sandbox_path}")
 print(f"Actual file:   {host_path}")
 ```
 
-The `ctx` parameter carries identity information extracted from the request. In production, this comes from JWT claims or session cookies. For the notebook, we simulate it with a dictionary:
-
-```python
-ctx = {"user_id": "alice", "session_id": "session_001"}
-```
-
-The translation function uses this context to route the file to the correct user's directory. Alice's `/workspace/report.json` and Bob's `/workspace/report.json` resolve to completely different host paths.
+The translation function uses the identity from contextvars to route the file to the correct user's directory. Alice's `/workspace/report.json` and Bob's `/workspace/report.json` resolve to completely different host paths.
 
 ## Write Large Output, Return Summary
 
 The core pattern is straightforward: when a tool produces output too large to return directly, it writes the full result to the workspace and returns only a summary with the file path.
 
 ```python
-def analyze_dataset(query: str, ctx) -> str:
+def analyze_dataset(query: str) -> str:
     """Analyze data and save results to workspace."""
     result = {
         "query": query,
@@ -43,9 +47,9 @@ def analyze_dataset(query: str, ctx) -> str:
     }
 
     output_path = "/workspace/analysis/result.json"
-    write_to_workspace(output_path, json.dumps(result, indent=2), ctx)
+    write_to_workspace(output_path, json.dumps(result, indent=2))
 
-    return f"""Analysis complete. Rows: {result['row_count']}, Mean: {result['statistics']['mean']}
+    return f"""Analysis complete. Rows: {result["row_count"]}, Mean: {result["statistics"]["mean"]}
 Full results: {output_path}"""
 ```
 
@@ -53,39 +57,29 @@ The tool generates a result with 1000 data points, but returns only the row coun
 
 This pattern keeps the agent's context efficient. A conversation that processes multiple datasets doesn't accumulate megabytes of raw data in its prompt history.
 
-## Capturing Context in Agent Tools
+## Tools Inside Agents
 
-When tools run inside an agent loop, the agent framework calls them with only the parameters the model specifies. The model doesn't know about `ctx` - it only sees the tool's public interface. We need a way to inject the context without exposing it as a tool parameter.
-
-The solution is closures. A factory function captures `ctx` and returns tool functions that close over it:
+Since user and session identity lives in contextvars, tools that use the workspace are plain functions. There is no need for closures or factory functions to inject context -- workspace functions pick up the identity automatically:
 
 ```python
-def make_workspace_tools(ctx):
-    """Create workspace tools with captured context."""
+def search_data(query: str) -> str:
+    """Search dataset and save results to workspace."""
+    matches = [{"id": i, "name": f"item_{i}", "score": 0.9 - i*0.01} for i in range(500)]
 
-    def search_data(query: str) -> str:
-        """Search dataset and save results to workspace."""
-        matches = [{"id": i, "name": f"item_{i}", "score": 0.9 - i*0.01} for i in range(500)]
+    output_path = "/workspace/search_results.json"
+    write_to_workspace(output_path, json.dumps(matches))
 
-        output_path = "/workspace/search_results.json"
-        write_to_workspace(output_path, json.dumps(matches), ctx)
+    return f"Found {len(matches)} matches. Top 3: {matches[:3]}. Full results: {output_path}"
 
-        return f"Found {len(matches)} matches. Top 3: {matches[:3]}. Full results: {output_path}"
-
-    def read_file(path: str) -> str:
-        """Read a file from the workspace."""
-        return read_from_workspace(path, ctx)
-
-    return [search_data, read_file]
+def read_file(path: str) -> str:
+    """Read a file from the workspace."""
+    return read_from_workspace(path)
 ```
 
-The model sees `search_data(query: str)` and `read_file(path: str)`. It doesn't see `ctx`. But when the tools execute, they have access to the context through the closure. This is a common pattern for injecting runtime dependencies into tools without polluting their public signatures.
-
-The agent can then use these tools naturally:
+The model sees `search_data(query: str)` and `read_file(path: str)`. The identity resolution happens transparently inside the workspace functions. The agent can use these tools directly:
 
 ```python
-tools = make_workspace_tools(ctx)
-agent = get_agent(tools=tools)
+agent = get_agent(tools=[search_data, read_file])
 
 prompt = "Search for sensor data and tell me how many results were found."
 agent_run, nodes = await run_agent(agent, prompt, verbose=True)
@@ -96,12 +90,12 @@ agent_run, nodes = await run_agent(agent, prompt, verbose=True)
 Each user and session gets an isolated directory. Two users writing to the same sandbox path produce files in different locations:
 
 ```python
-bob_ctx = {"user_id": "bob", "session_id": "session_001"}
+set_user_session("bob", "session_001")
+write_to_workspace("/workspace/secret.txt", "Bob's private data")
+bob_path = workspace_to_host_path(PurePosixPath("/workspace/secret.txt"))
 
-write_to_workspace("/workspace/secret.txt", "Bob's private data", bob_ctx)
-
-bob_path = workspace_to_host_path(PurePosixPath("/workspace/secret.txt"), bob_ctx)
-alice_path = workspace_to_host_path(PurePosixPath("/workspace/secret.txt"), ctx)
+set_user_session("alice", "session_001")
+alice_path = workspace_to_host_path(PurePosixPath("/workspace/secret.txt"))
 
 print(f"Bob's file:   {bob_path}")
 print(f"Alice's file: {alice_path}")
@@ -115,7 +109,7 @@ The workspace enforces security boundaries through path validation. Attempts to 
 
 ```python
 try:
-    workspace_to_host_path(PurePosixPath("/workspace/../../../etc/passwd"), ctx)
+    workspace_to_host_path(PurePosixPath("/workspace/../../../etc/passwd"))
 except WorkspaceError as e:
     print(f"Blocked: {e}")
 ```
@@ -140,7 +134,7 @@ The workspace provides a shared file system for externalizing large artifacts. A
 
 Tools should write large outputs to the workspace and return concise summaries with file paths. This keeps the agent's context small and focused.
 
-Closures capture context for tools running inside agents. The factory pattern creates tools that close over `ctx` without exposing it as a parameter.
+User and session identity is managed through contextvars, set once at the request boundary. Workspace functions resolve identity automatically, so tools are plain functions with no special context-passing machinery.
 
 User isolation happens at the path translation layer. Different users writing to the same sandbox path produce files in different host directories.
 

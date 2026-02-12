@@ -30,7 +30,7 @@ def requires_approval(tool_name: str, args: dict) -> bool:
 
 When approval is required, the agent should emit a structured “tool request” that is easy to review: tool name, arguments, rationale, expected side effects, and a rollback story (if any). The approval channel can also support *human steering*: the reviewer edits arguments, adds constraints, or supplies missing context, then resumes the run.
 
-HITL is increasingly described as a first-class mechanism in agent frameworks, where certain tool calls can be flagged for approval based on context or arguments. ([GitHub][41])
+HITL is increasingly described as a first-class mechanism in agent frameworks, where certain tool calls can be flagged for approval based on context or arguments. [29]
 
 ### Dynamic tools
 
@@ -59,7 +59,7 @@ def prepare_tools(all_tools: list, state: dict) -> list:
     return [t for t in all_tools if t.meta.get("risk") in {"low"}]
 ```
 
-This pattern is explicitly supported in modern tool systems as an agent-wide hook to filter/modify tool definitions step-by-step. ([Pydantic AI][42])
+This pattern is explicitly supported in modern tool systems as an agent-wide hook to filter/modify tool definitions step-by-step. [26]
 
 ### Deferred tools
 
@@ -93,7 +93,7 @@ for call in deferred.calls:
 final = agent.resume_with_results(history=deferred.history, results=approved_results)
 ```
 
-This “pause with requests → resume with results” mechanism is described directly in deferred-tool documentation. ([Pydantic AI][43])
+This "pause with requests → resume with results" mechanism is described directly in deferred-tool documentation. [27]
 
 ### Tool doctor (development-time focus)
 
@@ -137,15 +137,11 @@ In short, the tool doctor belongs squarely in the development loop. It formalize
 
 Advanced tool use is best understood as a *control architecture* around the basic tool loop:
 
-1. **Prepare toolset (dynamic tools):** expose only relevant/safe tools for this step. ([Pydantic AI][42])
+1. **Prepare toolset (dynamic tools):** expose only relevant/safe tools for this step. [26]
 2. **Model proposes tool calls:** possibly multiple calls in a plan.
-3. **Gate execution (HITL policy):** auto-run safe calls; defer risky calls for approval. ([GitHub][41])
-4. **Pause/resume (deferred tools):** return structured requests; later resume with structured results. ([Pydantic AI][43])
+3. **Gate execution (HITL policy):** auto-run safe calls; defer risky calls for approval. [29]
+4. **Pause/resume (deferred tools):** return structured requests; later resume with structured results. [27]
 5. **Diagnose and improve (tool doctor):** if failures recur, repair the tool contract (and optionally code), then re-run.
 
 This combination preserves autonomy where it is safe and cheap, while providing strong guarantees—reviewability, auditability, and controllable side effects—where it matters.
-
-[41]: https://langchain-ai.github.io/langgraph/concepts/human_in_the_loop/
-[42]: https://ai.pydantic.dev/tools-advanced/
-[43]: https://ai.pydantic.dev/deferred-tools/
 
