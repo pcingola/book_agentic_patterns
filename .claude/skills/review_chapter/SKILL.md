@@ -1,7 +1,6 @@
 ---
 name: review_chapter
 description: Review chapter
-disable-model-invocation: true
 ---
 
 # Review: Chapter "$ARGUMENTS"

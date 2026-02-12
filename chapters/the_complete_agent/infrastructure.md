@@ -10,16 +10,17 @@ The monolithic agent imports tools as Python functions and passes them via the `
 
 Similarly, the monolithic agent declares `sub_agents` -- a list of `AgentSpec` objects that the `TaskBroker` instantiates on demand. The infrastructure agent declares `a2a_clients` instead, each pointing to a running A2A server. The `OrchestratorAgent` fetches each server's agent card, generates a delegation tool per card via `create_a2a_tool()`, and appends the agent descriptions to the system prompt.
 
-The resulting `AgentSpec` has no `tools` and no `sub_agents`:
+The resulting config has no `tools` and no `sub_agents`:
 
-```python
-spec = AgentSpec(
-    name="infrastructure_agent",
-    system_prompt_path=PROMPTS_DIR / "the_complete_agent" / "agent_infrastructure.md",
-    mcp_servers=mcp_servers,     # file_ops, sandbox, todo, format_conversion
-    a2a_clients=a2a_clients,     # nl2sql, data_analysis, vocabulary
-)
+```yaml
+agents:
+  infrastructure_agent:
+    system_prompt: the_complete_agent/agent_infrastructure.md
+    mcp_servers: [file_ops, sandbox, todo, format_conversion]
+    a2a_clients: [nl2sql, data_analysis, vocabulary]
 ```
+
+The notebook loads it with `AgentSpec.from_config("infrastructure_agent")`, same as V3-V5.
 
 ### MCP Servers as Tool Providers
 

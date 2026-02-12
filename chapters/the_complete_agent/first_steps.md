@@ -1,5 +1,0 @@
-## First Steps
-
-The first two agents are built by composing tools that already exist in the library. The building blocks come from three tool modules: file tools (`agentic_patterns/tools/file.py`) for workspace I/O, sandbox tools (`agentic_patterns/tools/sandbox.py`) for Docker execution, and todo tools (`agentic_patterns/tools/todo.py`) for task tracking. All three follow the same pattern: a `get_all_tools()` function returns a list of plain functions passed directly to PydanticAI's `Agent(tools=[...])`.
-
-The two agents differ in which tools they receive and what their system prompt instructs. The Coder (V1) combines file and sandbox tools; its prompt describes a write-execute-inspect workflow. The Planner (V2) adds todo tools and a planning step: break the task into steps first, then execute against the plan. The progression demonstrates a principle that recurs throughout this chapter -- adding capabilities to an agent is primarily a matter of adding tools and updating the system prompt.

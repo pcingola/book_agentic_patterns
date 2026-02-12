@@ -140,9 +140,9 @@ Model Context Protocol: open standard for tool discovery, structured interaction
 
 - [x] Introduction -- MCP as an open protocol standardizing how AI models discover and interact with external tools and context
 - [x] Historical Perspective -- Agent architectures and tool-augmented LMs converging on LSP-inspired protocol design
+- [x] Architecture -- Client-server lifecycle, layered server architecture, capability exposure, authorization, and transport
 - [x] Tools -- MCP's execution boundary where model intent becomes validated, observable actions with structured inputs/outputs
 - [x] Features -- Prompts, resources, sampling, and elicitation for inspectable and scalable agent behavior
-- [x] Architecture -- Client-server lifecycle, layered server architecture, capability exposure, authorization, and transport
 - [x] Hands-on: Introduction -- Progressive exercises from raw protocol messages through agent integration to full feature sets
 - [x] Hands-on: MCP STDIO Transport -- JSON-RPC message exchange between client and server subprocess for local development
 - [x] Hands-on: MCP Tools with Agents -- Agent frameworks handling MCP mechanics to invoke server tools via STDIO or HTTP
@@ -181,6 +181,10 @@ Sub-agent delegation, skill packaging and discovery, task lifecycle management, 
 - [x] Hands-on: Skills -- Skill discovery via registry, activation, and usage with progressive disclosure
 - [x] References
 
+### Section: Production, Scaling & Enterprise
+
+Into: Introduction to section, what we are building and how
+
 ### Chapter: [Evals](chapters/evals/chapter.md)
 
 Testing, debugging, and evaluating agentic systems: deterministic testing with mocks, eval frameworks, and AI-powered quality analyzers.
@@ -193,6 +197,7 @@ Testing, debugging, and evaluating agentic systems: deterministic testing with m
 - [x] Hands-on: Deterministic Testing -- Replacing non-deterministic LLMs with ModelMock and tool_mock for controlled testing
 - [x] Hands-on: Basic Evals -- Three evaluation approaches: string matching, structured output assertions, and LLM-as-a-Judge
 - [x] Hands-on: Pydantic Evals Framework -- Structured abstractions (Cases, Evaluators, Datasets) for maintainable evaluation suites
+- [x] Hands-on: Eval Runner and Custom Evaluators -- Convention-based auto-discovery of eval files, custom evaluators, and CLI integration for CI pipelines
 - [x] Hands-on: Doctors -- AI-powered quality analyzers assessing prompts, tools, MCP servers, A2A cards, and Skills
 - [x] References
 
@@ -230,40 +235,32 @@ Chat UIs with Chainlit and AG-UI protocol, error propagation across distributed 
 - [x] Hands-on: AG-UI Side-Channels -- REST side-channels for file uploads and user feedback alongside the event stream
 - [x] References
 
-### Section: Production, Scaling & Enterprise
-
-Into: Introduction to section, what we are building and how
-
 ### Chapter: [Execution Infrastructure](chapters/execution_infrastructure/chapter.md)
 
 Production infrastructure for running agent-generated code safely: sandbox isolation, REPL, kill switch, MCP server isolation, and skill sandboxing.
 
-- [x] Sandbox -- Process isolation (bubblewrap/subprocess) constraining code execution to prevent unauthorized filesystem and network access
+- [x] Sandbox -- Process and container isolation with filesystem, network, and resource constraints including data-sensitivity-driven network kill switch
 - [x] REPL -- Jupyter-like notebook pattern for iterative code execution in shared stateful environments with persistence and isolation
-- [x] Kill Switch -- Binary network isolation (Docker network_mode="none") when private data enters an agent session
 - [x] MCP Server Isolation -- Dual-container routing tool calls to isolated vs unrestricted instances based on session data sensitivity
 - [x] Skill Sandbox -- Read-only mounted container allowing execution of skill scripts while preventing modifications to the skill library
+- [x] Hands-on: Introduction -- Overview of isolation exercises from process sandboxes through MCP server dual-instance routing
 - [x] Hands-on: MCP Server Isolation -- Interactive notebook demonstrating dual-instance MCP isolation with workspace, permissions, and private data flagging
+- [x] References
 
 ### Chapter: [The Complete Agent](chapters/the_complete_agent/chapter.md)
 
-- [x] Core agent
-- [x] CodeAct: mcp_sandbox
-- [x] Run skills
-- [x] Run sub-agents
-- [x] Workspace / Userspace
-- [x] MCPs:
-  - [x] mcp-todo
-  - [x] mcp-file-edit
-  - [x] mcp-data-analysis
-  - [x] mcp-data-viz
-  - [x] mcp-format-conversion
-- [x] A2A servers:
-  - [x] a2a-nl2sql
-  - [x] a2a-data-analysis
-  - [x] a2a-data-viz
-  - [x] Format conversion: PPT, Word, PDF, HTML <-> Markdown
-- [ ] 
+Five progressively capable monolithic agents combining all prior patterns, then decomposition into distributed MCP/A2A services.
+
+- [x] Introduction -- Building a complete agent incrementally from simple to full capability, validating each layer before adding the next
+- [x] First Steps -- Composing existing file, sandbox, and todo tools into the first two agent variants
+- [x] Agent V1: The Coder -- Simplest useful agent with file operations and Docker sandbox for write-execute-inspect loops
+- [x] Agent V2: The Planner -- Adding todo tools and a plan-first workflow for structured task decomposition before execution
+- [x] Agent V3: The Skilled -- Progressive disclosure of specialized instructions via on-demand skill activation from a catalog
+- [x] Agent V4: The Coordinator -- Delegating to domain-specific sub-agents instead of accumulating tools in a single agent
+- [x] Agent V5: The Full Agent -- Asynchronous task submission with event-driven wait for concurrent sub-agent execution
+- [x] Server Requirements -- Consolidated checklist of authentication, workspace, context, permissions, and compliance requirements for MCP and A2A servers
+- [x] Infrastructure -- Decomposing the monolithic agent into distributed MCP servers and A2A services with identical agent architecture
+- [x] References
 
 ### Chapter: Research & Science Agents (TODO)
 

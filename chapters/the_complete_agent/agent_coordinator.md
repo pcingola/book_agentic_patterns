@@ -10,25 +10,26 @@ Each sub-agent is defined as an `AgentSpec` with its own name, description, syst
 
 ### Tool Composition
 
-The coordinator declares sub-agents in its `AgentSpec`:
+The coordinator's config adds format conversion tools and declares sub-agents:
 
-```python
-spec = AgentSpec(
-    name="coordinator",
-    system_prompt_path=PROMPTS_DIR / "the_complete_agent" / "agent_coordinator.md",
-    tools=(
-        get_file_tools() + get_sandbox_tools()
-        + get_todo_tools() + get_format_conversion_tools()
-    ),
-    sub_agents=[
-        get_data_analysis_spec(),
-        get_sql_spec(),
-        get_vocabulary_spec(),
-    ],
-)
+```yaml
+agents:
+  coordinator:
+    system_prompt: the_complete_agent/agent_coordinator.md
+    tools:
+      - agentic_patterns.tools.file:get_all_tools
+      - agentic_patterns.tools.sandbox:get_all_tools
+      - agentic_patterns.tools.todo:get_all_tools
+      - agentic_patterns.tools.format_conversion:get_all_tools
+    sub_agents:
+      - agentic_patterns.agents.data_analysis:get_spec
+      - agentic_patterns.agents.sql:get_spec
+      - agentic_patterns.agents.vocabulary:get_spec
 ```
 
-When `sub_agents` is non-empty, the `OrchestratorAgent` creates a `TaskBroker` internally and auto-generates three delegation tools: `delegate`, `submit_task`, and `wait`. It also injects a sub-agent catalog into the system prompt via `{% include 'shared/sub_agents.md' %}`, listing each sub-agent's name and description so the agent knows who to call.
+Each `sub_agents` entry points to a `get_spec()` factory that returns an `AgentSpec` with its own name, description, system prompt, and tool list. The notebook loads everything with `AgentSpec.from_config("coordinator")`.
+
+When `sub_agents` is non-empty, the `OrchestratorAgent` creates a `TaskBroker` internally and auto-generates a `delegate` tool. It also injects a sub-agent catalog into the system prompt via `{% include 'shared/sub_agents.md' %}`, listing each sub-agent's name and description so the agent knows who to call.
 
 The coordinator's direct tools handle file I/O, sandbox execution, task management, skills, and format conversion (`convert_document` for transforming documents between PDF, DOCX, MD, CSV, and other formats). Domain-specific work routes through delegation. The coordinator has far more capabilities than the Skilled agent but fewer tools than it would need if every capability were a direct tool.
 

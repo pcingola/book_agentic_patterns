@@ -24,18 +24,28 @@ This is tier 1 of the disclosure hierarchy. The agent knows what skills exist bu
 
 ### Tool Composition
 
-The Skilled agent uses `OrchestratorAgent` instead of the bare `get_agent()` / `run_agent()` pair from V1 and V2. The orchestrator handles skill discovery, prompt injection, and tool wiring automatically. The notebook only provides the base tools and the prompt path:
+The Skilled agent uses `OrchestratorAgent` instead of the bare `get_agent()` / `run_agent()` pair from V1 and V2. The orchestrator handles skill discovery, prompt injection, and tool wiring automatically.
+
+From this point on, agent definitions live in `config.yaml` rather than in Python code. Each entry declares a system prompt path, tool modules, and optional sub-agents or MCP servers:
+
+```yaml
+agents:
+  skilled:
+    system_prompt: the_complete_agent/agent_skilled.md
+    tools:
+      - agentic_patterns.tools.file:get_all_tools
+      - agentic_patterns.tools.sandbox:get_all_tools
+      - agentic_patterns.tools.todo:get_all_tools
+```
+
+The notebook loads this with a single call:
 
 ```python
-spec = AgentSpec(
-    name="skilled",
-    system_prompt_path=PROMPTS_DIR / "the_complete_agent" / "agent_skilled.md",
-    tools=get_file_tools() + get_sandbox_tools() + get_todo_tools(),
-)
+spec = AgentSpec.from_config("skilled")
 agent = OrchestratorAgent(spec, verbose=True)
 ```
 
-The orchestrator adds `activate_skill` behind the scenes. The agent code does not reference skills directly -- it declares a prompt that includes `{% include 'shared/skills.md' %}` and the orchestrator fills in the catalog and provides the tool.
+`from_config()` resolves the prompt path relative to `PROMPTS_DIR`, imports each tool module, calls its `get_all_tools()`, and assembles the `AgentSpec`. The orchestrator then adds `activate_skill` behind the scenes. The agent code does not reference skills directly -- the prompt includes `{% include 'shared/skills.md' %}` and the orchestrator fills in the catalog and provides the tool.
 
 ### Execution
 

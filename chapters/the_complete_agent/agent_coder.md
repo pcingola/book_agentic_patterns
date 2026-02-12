@@ -1,6 +1,6 @@
 ## Agent V1: The Coder
 
-The Coder is the simplest useful agent: it writes files and executes them. Its tools come from two modules -- file operations for workspace I/O and a sandbox for Docker execution.
+The Coder is the simplest useful agent: it writes files and executes them. Its tools come from two modules -- file operations (`agentic_patterns/tools/file.py`) for workspace I/O and a sandbox (`agentic_patterns/tools/sandbox.py`) for Docker execution. Both follow the same pattern used by all tool modules in the library: a `get_all_tools()` function returns a list of plain functions passed directly to PydanticAI's `Agent(tools=[...])`.
 
 ### System Prompt
 

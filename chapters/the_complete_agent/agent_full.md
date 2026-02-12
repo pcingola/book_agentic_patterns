@@ -12,25 +12,24 @@ Between turns, the `OrchestratorAgent` automatically checks for completed backgr
 
 ### Tool Composition
 
-The notebook code is identical to V4 -- same tools, same sub-agents, different prompt:
+The config is identical to V4 -- same tools, same sub-agents, different prompt:
 
-```python
-spec = AgentSpec(
-    name="full_agent",
-    system_prompt_path=PROMPTS_DIR / "the_complete_agent" / "agent_full.md",
-    tools=(
-        get_file_tools() + get_sandbox_tools()
-        + get_todo_tools() + get_format_conversion_tools()
-    ),
-    sub_agents=[
-        get_data_analysis_spec(),
-        get_sql_spec(),
-        get_vocabulary_spec(),
-    ],
-)
+```yaml
+agents:
+  full_agent:
+    system_prompt: the_complete_agent/agent_full.md
+    tools:
+      - agentic_patterns.tools.file:get_all_tools
+      - agentic_patterns.tools.sandbox:get_all_tools
+      - agentic_patterns.tools.todo:get_all_tools
+      - agentic_patterns.tools.format_conversion:get_all_tools
+    sub_agents:
+      - agentic_patterns.agents.data_analysis:get_spec
+      - agentic_patterns.agents.sql:get_spec
+      - agentic_patterns.agents.vocabulary:get_spec
 ```
 
-The `OrchestratorAgent` generates the same three tools (`delegate`, `submit_task`, `wait`) regardless of which prompt is used. The difference is that the Full Agent's prompt instructs the agent when to use each mode, while the Coordinator's prompt only mentions `delegate`. The capability was always there; the prompt unlocks it.
+The `OrchestratorAgent` generates `delegate`, `submit_task`, and `wait` tools whenever sub-agents are present. The difference is that the Full Agent's prompt instructs the agent when to use each mode, while the Coordinator's prompt only mentions `delegate`. The capability was always there; the prompt unlocks it.
 
 ### Execution
 
