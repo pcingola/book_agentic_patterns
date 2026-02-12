@@ -156,9 +156,10 @@ class OrchestratorAgent:
     tasks are automatically injected into the prompt.
 
     Sub-agents and tasks share the same TaskBroker. When sub_agents are present,
-    the broker is created and three tools are added: delegate (submit + wait),
-    submit_task (fire-and-forget), and check_tasks (poll status). The system
-    prompt controls which tools the agent actually uses.
+    the broker is created and three tools are added: delegate (submit + wait for
+    one task), submit_task (fire-and-forget), and wait (event-driven block until
+    background work completes). The system prompt controls which tools the agent
+    actually uses.
 
     The context manager is re-entrant: infrastructure is rebuilt on each entry,
     but message history persists across entries.
@@ -175,8 +176,9 @@ class OrchestratorAgent:
         self._system_prompt: str = ""
         self._message_history: list[ModelMessage] = []
         self._runs: list[tuple[AgentRun, list]] = []
-        # Task broker (powers both delegate and submit_task/check_tasks)
+        # Task broker (powers both delegate and submit_task/wait)
         self._broker = None
+        self._activity = asyncio.Event()
         self._submitted_task_ids: list[str] = []
         self._reported_task_ids: set[str] = set()
 
@@ -242,7 +244,7 @@ class OrchestratorAgent:
         return registry
 
     async def _add_task_tools(self, tools: list[Any]) -> None:
-        """Create broker and add sub-agent (delegate) and task (submit_task, check_tasks) tools."""
+        """Create broker and add sub-agent (delegate) and task (submit_task, wait) tools."""
         if not self.spec.sub_agents:
             return
 
@@ -251,7 +253,7 @@ class OrchestratorAgent:
 
         from agentic_patterns.core.tasks.broker import TaskBroker
 
-        self._broker = TaskBroker(store=TaskStoreMemory(), poll_interval=0.3)
+        self._broker = TaskBroker(store=TaskStoreMemory(), poll_interval=0.3, activity=self._activity)
         self._broker.register_agents(sub_map)
         await self._exit_stack.enter_async_context(self._broker)
 
@@ -260,7 +262,7 @@ class OrchestratorAgent:
 
         tools.append(self._make_delegate_tool(broker, submitted, sub_map, names))
         tools.append(self._make_submit_task_tool(broker, submitted, sub_map, names))
-        tools.append(self._make_check_tasks_tool(broker, submitted))
+        tools.append(self._make_wait_tool(broker, submitted))
 
     @staticmethod
     def _make_delegate_tool(
@@ -302,34 +304,41 @@ class OrchestratorAgent:
         submit_task.__doc__ = f"Submit a task to a sub-agent for background execution. Returns task_id. Available agents: {', '.join(names)}."
         return submit_task
 
-    @staticmethod
-    def _make_check_tasks_tool(broker: Any, submitted: list[str]) -> Any:
-        async def check_tasks(ctx: RunContext) -> str:
-            """Check status of all submitted background tasks."""
+    def _make_wait_tool(self, broker: Any, submitted: list[str]) -> Any:
+        activity = self._activity
+        DEFAULT_TIMEOUT = 120
+
+        async def wait(ctx: RunContext, timeout: int = DEFAULT_TIMEOUT) -> str:
+            """Wait for background tasks to complete. Blocks until at least one finishes or timeout fires. Returns status and results for all submitted tasks."""
             if not submitted:
                 return "No tasks submitted."
-            lines = []
-            for tid in submitted:
-                task = await broker.poll(tid)
-                if task is None:
-                    lines.append(f"- {tid[:8]}: not found")
-                    continue
-                agent_name = task.metadata.get("agent_name", "unknown")
-                status = task.state.value
-                line = f"- {tid[:8]} ({agent_name}): {status}"
-                if task.state == TaskState.COMPLETED and task.result:
-                    line += f"\n  Result: {task.result[:200]}"
-                elif task.state == TaskState.FAILED and task.error:
-                    line += f"\n  Error: {task.error}"
-                else:
-                    progress = [e for e in task.events if e.event_type == EventType.PROGRESS]
-                    if progress:
-                        last = progress[-1]
-                        line += f"\n  Last: {last.payload.get('tool', '')} {last.payload.get('arg', '')}"
-                lines.append(line)
+
+            # Clear-then-check pattern: safe against races because the store
+            # is updated before the event is set.
+            activity.clear()
+
+            # Collect current state -- anything already terminal is returned immediately.
+            lines, all_terminal = await _collect_status(broker, submitted)
+            if all_terminal:
+                return "\n".join(lines)
+
+            # Check if any newly terminal tasks appeared since last call.
+            newly_terminal = any(
+                line for line in lines if "completed" in line or "failed" in line or "cancelled" in line
+            )
+            if newly_terminal:
+                return "\n".join(lines)
+
+            # Block until signaled or timeout.
+            try:
+                await asyncio.wait_for(activity.wait(), timeout=timeout)
+            except asyncio.TimeoutError:
+                pass
+
+            lines, _ = await _collect_status(broker, submitted)
             return "\n".join(lines)
 
-        return check_tasks
+        return wait
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         # Cancel all running tasks before tearing down
@@ -459,6 +468,32 @@ class OrchestratorAgent:
 
     def __str__(self) -> str:
         return f"OrchestratorAgent({self.spec.name})"
+
+
+async def _collect_status(broker: Any, submitted: list[str]) -> tuple[list[str], bool]:
+    """Return status lines for all submitted tasks and whether all are terminal."""
+    lines: list[str] = []
+    all_terminal = True
+    for tid in submitted:
+        task = await broker.poll(tid)
+        if task is None:
+            lines.append(f"- {tid[:8]}: not found")
+            continue
+        agent_name = task.metadata.get("agent_name", "unknown")
+        status = task.state.value
+        line = f"- {tid[:8]} ({agent_name}): {status}"
+        if task.state == TaskState.COMPLETED and task.result:
+            line += f"\n  Result: {task.result[:200]}"
+        elif task.state == TaskState.FAILED and task.error:
+            line += f"\n  Error: {task.error}"
+        elif task.state not in TERMINAL_STATES:
+            all_terminal = False
+            progress = [e for e in task.events if e.event_type == EventType.PROGRESS]
+            if progress:
+                last = progress[-1]
+                line += f"\n  Last: {last.payload.get('tool', '')} {last.payload.get('arg', '')}"
+        lines.append(line)
+    return lines, all_terminal
 
 
 def _resolve_tool(tool_ref: str) -> Any:

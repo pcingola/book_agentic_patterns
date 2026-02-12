@@ -1,157 +1,157 @@
-"""Unit tests for the Todo TaskList model."""
+"""Unit tests for the TodoList model."""
 
 import unittest
 from typing import cast
 
-from agentic_patterns.toolkits.todo.models import Task, TaskList, TaskState
+from agentic_patterns.toolkits.todo.models import TodoItem, TodoList, TodoState
 
 
-class TestTaskListModel(unittest.TestCase):
-    """Test cases for the TaskList model."""
+class TestTodoListModel(unittest.TestCase):
+    """Test cases for the TodoList model."""
 
     def setUp(self):
-        self.task_list = TaskList()
-        self.task1 = self.task_list.add_task("Task 1")
-        self.task2 = self.task_list.add_task("Task 2")
-        task1_subtasks = cast(TaskList, self.task1.subtasks)
-        self.subtask1 = task1_subtasks.add_task("Subtask 1.1")
+        self.todo_list = TodoList()
+        self.item1 = self.todo_list.add_item("Item 1")
+        self.item2 = self.todo_list.add_item("Item 2")
+        item1_subtasks = cast(TodoList, self.item1.subtasks)
+        self.sub_item1 = item1_subtasks.add_item("Sub-item 1.1")
 
-    def test_add_task(self):
-        task_list = TaskList()
-        task = task_list.add_task("New task")
-        self.assertEqual(len(task_list.tasks), 1)
-        self.assertEqual(task_list.tasks[0], task)
-        self.assertEqual(task.description, "New task")
-        self.assertEqual(task.parent, task_list)
+    def test_add_item(self):
+        todo_list = TodoList()
+        item = todo_list.add_item("New item")
+        self.assertEqual(len(todo_list.items), 1)
+        self.assertEqual(todo_list.items[0], item)
+        self.assertEqual(item.description, "New item")
+        self.assertEqual(item.parent, todo_list)
 
-    def test_get_task_by_id(self):
-        self.assertEqual(self.task_list.get_task_by_id("1"), self.task1)
-        self.assertEqual(self.task_list.get_task_by_id("2"), self.task2)
-        self.assertEqual(self.task_list.get_task_by_id("1.1"), self.subtask1)
-        self.assertIsNone(self.task_list.get_task_by_id("3"))
-        self.assertIsNone(self.task_list.get_task_by_id("1.2"))
+    def test_get_item_by_id(self):
+        self.assertEqual(self.todo_list.get_item_by_id("1"), self.item1)
+        self.assertEqual(self.todo_list.get_item_by_id("2"), self.item2)
+        self.assertEqual(self.todo_list.get_item_by_id("1.1"), self.sub_item1)
+        self.assertIsNone(self.todo_list.get_item_by_id("3"))
+        self.assertIsNone(self.todo_list.get_item_by_id("1.2"))
 
-    def test_update_task_state(self):
-        self.task_list.update_task_state("1", TaskState.IN_PROGRESS)
-        self.assertEqual(self.task1.state, TaskState.IN_PROGRESS)
+    def test_update_item_state(self):
+        self.todo_list.update_item_state("1", TodoState.IN_PROGRESS)
+        self.assertEqual(self.item1.state, TodoState.IN_PROGRESS)
 
-        self.task_list.update_task_state("1.1", TaskState.COMPLETED)
-        self.assertEqual(self.subtask1.state, TaskState.COMPLETED)
+        self.todo_list.update_item_state("1.1", TodoState.COMPLETED)
+        self.assertEqual(self.sub_item1.state, TodoState.COMPLETED)
 
-        result = self.task_list.update_task_state("3", TaskState.FAILED)
+        result = self.todo_list.update_item_state("3", TodoState.FAILED)
         self.assertFalse(result)
 
     def test_to_markdown(self):
-        markdown = self.task_list.to_markdown()
-        self.assertIn("# Task List", markdown)
-        self.assertIn("- [ ] 1: Task 1", markdown)
-        self.assertIn("- [ ] 2: Task 2", markdown)
-        self.assertIn("- [ ] 1.1: Subtask 1.1", markdown)
+        markdown = self.todo_list.to_markdown()
+        self.assertIn("# Todo List", markdown)
+        self.assertIn("- [ ] 1: Item 1", markdown)
+        self.assertIn("- [ ] 2: Item 2", markdown)
+        self.assertIn("- [ ] 1.1: Sub-item 1.1", markdown)
 
-    def test_delete_task_and_renumber(self):
-        task_list = TaskList()
+    def test_delete_item_and_renumber(self):
+        todo_list = TodoList()
         for i in range(1, 11):
-            task_list.add_task(f"Main Task {i}")
+            todo_list.add_item(f"Main Item {i}")
 
-        task1 = task_list.get_task_by_id("1")
-        assert task1 is not None
-        assert task1.subtasks is not None
-        subtask1 = task1.subtasks.add_task("Subtask 1.1")
+        item1 = todo_list.get_item_by_id("1")
+        assert item1 is not None
+        assert item1.subtasks is not None
+        sub_item1 = item1.subtasks.add_item("Sub-item 1.1")
 
-        assert subtask1.subtasks is not None
-        subtask1.subtasks.add_task("Nested Task 1.1.1")
-        subtask1.subtasks.add_task("Nested Task 1.1.2")
+        assert sub_item1.subtasks is not None
+        sub_item1.subtasks.add_item("Nested Item 1.1.1")
+        sub_item1.subtasks.add_item("Nested Item 1.1.2")
 
-        markdown = task_list.to_markdown()
-        self.assertIn("- [ ] 1.1.1: Nested Task 1.1.1", markdown)
-        self.assertIn("- [ ] 1.1.2: Nested Task 1.1.2", markdown)
+        markdown = todo_list.to_markdown()
+        self.assertIn("- [ ] 1.1.1: Nested Item 1.1.1", markdown)
+        self.assertIn("- [ ] 1.1.2: Nested Item 1.1.2", markdown)
 
-        task_list.delete("1.1.1")
+        todo_list.delete("1.1.1")
 
-        updated_markdown = task_list.to_markdown()
-        self.assertIn("- [ ] 1.1.1: Nested Task 1.1.2", updated_markdown)
+        updated_markdown = todo_list.to_markdown()
+        self.assertIn("- [ ] 1.1.1: Nested Item 1.1.2", updated_markdown)
         self.assertNotIn("- [ ] 1.1.2:", updated_markdown)
 
-        updated_subsubtask = subtask1.subtasks.get_task_by_id("1")
-        assert updated_subsubtask is not None
-        self.assertEqual(updated_subsubtask.description, "Nested Task 1.1.2")
-        self.assertEqual(updated_subsubtask.get_id("1.1"), "1.1.1")
+        updated_sub_sub_item = sub_item1.subtasks.get_item_by_id("1")
+        assert updated_sub_sub_item is not None
+        self.assertEqual(updated_sub_sub_item.description, "Nested Item 1.1.2")
+        self.assertEqual(updated_sub_sub_item.get_id("1.1"), "1.1.1")
 
     def test_delete_method(self):
-        task_list = TaskList()
-        task1 = task_list.add_task("Task 1")
-        task_list.add_task("Task 2")
-        task_list.add_task("Task 3")
+        todo_list = TodoList()
+        item1 = todo_list.add_item("Item 1")
+        todo_list.add_item("Item 2")
+        todo_list.add_item("Item 3")
 
-        subtask1 = task1.add_task("Subtask 1.1")
-        task1.add_task("Subtask 1.2")
-        subtask1.add_task("Nested 1.1.1")
+        sub_item1 = item1.add_item("Sub-item 1.1")
+        item1.add_item("Sub-item 1.2")
+        sub_item1.add_item("Nested 1.1.1")
 
-        # Delete top-level task
-        self.assertTrue(task_list.delete("2"))
-        self.assertEqual(len(task_list.tasks), 2)
-        self.assertEqual(task_list.tasks[0].description, "Task 1")
-        self.assertEqual(task_list.tasks[1].description, "Task 3")
-        self.assertEqual(task_list.tasks[1].get_id(), "2")
+        # Delete top-level item
+        self.assertTrue(todo_list.delete("2"))
+        self.assertEqual(len(todo_list.items), 2)
+        self.assertEqual(todo_list.items[0].description, "Item 1")
+        self.assertEqual(todo_list.items[1].description, "Item 3")
+        self.assertEqual(todo_list.items[1].get_id(), "2")
 
-        # Delete subtask
-        self.assertTrue(task_list.delete("1.2"))
-        assert task1.subtasks is not None
-        self.assertEqual(len(task1.subtasks.tasks), 1)
-        self.assertEqual(task1.subtasks.tasks[0].description, "Subtask 1.1")
+        # Delete sub-item
+        self.assertTrue(todo_list.delete("1.2"))
+        assert item1.subtasks is not None
+        self.assertEqual(len(item1.subtasks.items), 1)
+        self.assertEqual(item1.subtasks.items[0].description, "Sub-item 1.1")
 
-        # Delete nested subtask
-        self.assertTrue(task_list.delete("1.1.1"))
-        assert subtask1.subtasks is not None
-        self.assertEqual(len(subtask1.subtasks.tasks), 0)
+        # Delete nested sub-item
+        self.assertTrue(todo_list.delete("1.1.1"))
+        assert sub_item1.subtasks is not None
+        self.assertEqual(len(sub_item1.subtasks.items), 0)
 
-        # Non-existent tasks
-        self.assertFalse(task_list.delete("4"))
-        self.assertFalse(task_list.delete("1.3"))
-        self.assertFalse(task_list.delete("1.1.2"))
+        # Non-existent items
+        self.assertFalse(todo_list.delete("4"))
+        self.assertFalse(todo_list.delete("1.3"))
+        self.assertFalse(todo_list.delete("1.1.2"))
 
-    def test_task_list_equality(self):
-        task_list1 = TaskList()
-        task_list2 = TaskList()
-        self.assertEqual(task_list1, task_list2)
+    def test_todo_list_equality(self):
+        todo_list1 = TodoList()
+        todo_list2 = TodoList()
+        self.assertEqual(todo_list1, todo_list2)
 
-        task1_1 = task_list1.add_task("Task 1")
-        task_list1.add_task("Task 2")
-        task2_1 = task_list2.add_task("Task 1")
-        task_list2.add_task("Task 2")
-        self.assertEqual(task_list1, task_list2)
+        item1_1 = todo_list1.add_item("Item 1")
+        todo_list1.add_item("Item 2")
+        item2_1 = todo_list2.add_item("Item 1")
+        todo_list2.add_item("Item 2")
+        self.assertEqual(todo_list1, todo_list2)
 
-        task1_1.add_task("Subtask 1.1")
-        self.assertNotEqual(task_list1, task_list2)
+        item1_1.add_item("Sub-item 1.1")
+        self.assertNotEqual(todo_list1, todo_list2)
 
-        task2_1.add_task("Subtask 1.1")
-        self.assertEqual(task_list1, task_list2)
+        item2_1.add_item("Sub-item 1.1")
+        self.assertEqual(todo_list1, todo_list2)
 
-        # parent_task references don't cause infinite recursion
-        task = Task(description="Parent")
-        task_list3 = TaskList(parent_task=task)
-        task_list4 = TaskList()
-        self.assertEqual(task_list3, task_list4)
+        # parent_item references don't cause infinite recursion
+        item = TodoItem(description="Parent")
+        todo_list3 = TodoList(parent_item=item)
+        todo_list4 = TodoList()
+        self.assertEqual(todo_list3, todo_list4)
 
-        task_list3.add_task("Task in list 3")
-        self.assertNotEqual(task_list3, task_list4)
+        todo_list3.add_item("Item in list 3")
+        self.assertNotEqual(todo_list3, todo_list4)
 
-    def test_delete_subtask_specific(self):
-        task_list = TaskList()
-        parent_task = task_list.add_task("Parent Task")
-        parent_task.add_task("Subtask to keep")
-        subtask2 = parent_task.add_task("Subtask to delete")
+    def test_delete_sub_item_specific(self):
+        todo_list = TodoList()
+        parent_item = todo_list.add_item("Parent Item")
+        parent_item.add_item("Sub-item to keep")
+        sub_item2 = parent_item.add_item("Sub-item to delete")
 
-        assert parent_task.subtasks is not None
-        self.assertEqual(len(parent_task.subtasks.tasks), 2)
+        assert parent_item.subtasks is not None
+        self.assertEqual(len(parent_item.subtasks.items), 2)
 
-        subtask2_id = subtask2.get_id("1")
-        success = task_list.delete(subtask2_id)
+        sub_item2_id = sub_item2.get_id("1")
+        success = todo_list.delete(sub_item2_id)
 
         self.assertTrue(success)
-        self.assertEqual(len(parent_task.subtasks.tasks), 1)
-        self.assertEqual(parent_task.subtasks.tasks[0].description, "Subtask to keep")
-        self.assertIsNone(task_list.get_task_by_id(subtask2_id))
+        self.assertEqual(len(parent_item.subtasks.items), 1)
+        self.assertEqual(parent_item.subtasks.items[0].description, "Sub-item to keep")
+        self.assertIsNone(todo_list.get_item_by_id(sub_item2_id))
 
 
 if __name__ == "__main__":

@@ -15,11 +15,16 @@ class TaskBroker:
     """Coordination layer for task submission, observation, and dispatch."""
 
     def __init__(
-        self, store: TaskStore | None = None, poll_interval: float = 0.5, model: Any = None
+        self,
+        store: TaskStore | None = None,
+        poll_interval: float = 0.5,
+        model: Any = None,
+        activity: asyncio.Event | None = None,
     ) -> None:
         self._store = store or TaskStoreJson()
         self._poll_interval = poll_interval
         self._model = model
+        self._activity = activity
         self._agent_specs: dict[str, Any] = {}
         self._worker = Worker(self._store, model=model)
         self._dispatch_task: asyncio.Task | None = None
@@ -156,6 +161,8 @@ class TaskBroker:
             logger.exception("Error running task %s", task_id[:8])
         finally:
             self._running.pop(task_id, None)
+            if self._activity is not None:
+                self._activity.set()
 
     async def _fire_callbacks(self, task_id: str) -> None:
         """Fire registered callbacks if the task state matches."""

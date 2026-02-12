@@ -1,4 +1,4 @@
-"""PydanticAI agent tools for task management -- wraps toolkits/todo/."""
+"""PydanticAI agent tools for todo management -- wraps toolkits/todo/."""
 
 from agentic_patterns.core.tools.permissions import ToolPermission, tool_permission
 from agentic_patterns.toolkits.todo import operations as ops
@@ -8,42 +8,42 @@ def get_all_tools() -> list:
     """Get all todo tools for use with PydanticAI agents."""
 
     @tool_permission(ToolPermission.WRITE)
-    async def add_task(description: str, parent_task_id: str | None = None) -> str:
-        """Add a task. Returns the new task ID (e.g. '1.3.2')."""
-        return ops.add_task(description, parent_task_id)
+    async def todo_add(description: str, parent_item_id: str | None = None) -> str:
+        """Add a todo item. Returns the new item ID (e.g. '1.3.2')."""
+        return ops.todo_add(description, parent_item_id)
 
     @tool_permission(ToolPermission.WRITE)
-    async def add_tasks(
-        descriptions: list[str], parent_task_id: str | None = None
+    async def todo_add_many(
+        descriptions: list[str], parent_item_id: str | None = None
     ) -> list[str]:
-        """Add several tasks at once. Returns list of new task IDs."""
-        return ops.add_tasks(descriptions, parent_task_id)
+        """Add several todo items at once. Returns list of new item IDs."""
+        return ops.todo_add_many(descriptions, parent_item_id)
 
     @tool_permission(ToolPermission.WRITE)
-    async def create_task_list(descriptions: list[str]) -> list[str]:
-        """Create a new task list replacing any existing one. Returns list of task IDs."""
-        return ops.create_task_list(descriptions)
+    async def todo_create_list(descriptions: list[str]) -> list[str]:
+        """Create a new todo list replacing any existing one. Returns list of item IDs."""
+        return ops.todo_create_list(descriptions)
 
     @tool_permission(ToolPermission.WRITE)
-    async def delete_task(task_id: str) -> bool:
-        """Delete a task by ID (e.g. '1.3.2'). Returns True if deleted."""
-        return ops.delete_task(task_id)
+    async def todo_delete(item_id: str) -> bool:
+        """Delete a todo item by ID (e.g. '1.3.2'). Returns True if deleted."""
+        return ops.todo_delete(item_id)
 
     @tool_permission(ToolPermission.READ)
-    async def show_task_list() -> str:
-        """Show all tasks as a markdown checklist."""
-        return ops.show_task_list()
+    async def todo_show() -> str:
+        """Show all todo items as a markdown checklist."""
+        return ops.todo_show()
 
     @tool_permission(ToolPermission.WRITE)
-    async def update_task_status(task_id: str, status: str) -> bool:
-        """Update a task's status by ID. status: pending, in_progress, completed, or failed."""
-        return ops.update_task_status(task_id, status)
+    async def todo_update_status(item_id: str, status: str) -> bool:
+        """Update a todo item's status by ID. status: pending, in_progress, completed, or failed."""
+        return ops.todo_update_status(item_id, status)
 
     return [
-        add_task,
-        add_tasks,
-        create_task_list,
-        delete_task,
-        show_task_list,
-        update_task_status,
+        todo_add,
+        todo_add_many,
+        todo_create_list,
+        todo_delete,
+        todo_show,
+        todo_update_status,
     ]

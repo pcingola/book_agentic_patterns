@@ -102,7 +102,7 @@ toolkits/*          Business logic. Pure Python: models, operations, I/O.
 
 Connectors (`core/connectors/`) are for data source access. Toolkits are for everything else: domain logic, operations, services.
 
-**todo/**: Task management business logic. `models.py` defines `Task`, `TaskList`, `TaskState` enum with hierarchical task IDs and workspace persistence. `operations.py` exposes plain functions (`add_task`, `add_tasks`, `create_task_list`, `delete_task`, `show_task_list`, `update_task_status`) with in-memory cache keyed by (user_id, session_id). Raises `ValueError`/`KeyError` on errors.
+**todo/**: Todo management business logic. `models.py` defines `TodoItem`, `TodoList`, `TodoState` enum with hierarchical item IDs and workspace persistence. `operations.py` exposes plain functions (`todo_add`, `todo_add_many`, `todo_create_list`, `todo_delete`, `todo_show`, `todo_update_status`) with in-memory cache keyed by (user_id, session_id). Raises `ValueError`/`KeyError` on errors.
 
 **data_analysis/**: DataFrame analysis operations. `config.py`, `enums.py`, `models.py` for configuration and `OperationConfig` registry model. `io.py` for loading/saving DataFrames (CSV/pickle). `display.py` for DataFrame-to-string formatting. `ml_helpers.py` for ML utilities. `executor.py` provides `execute_operation()` and `get_all_operations()` -- loads DataFrames, runs operations, saves results, returns formatted strings. Raises `ValueError` for retryable errors, `RuntimeError` for fatal errors. Operation registries: `ops_eda.py`, `ops_stats.py`, `ops_transform.py`, `ops_classification.py`, `ops_regression.py`, `ops_feature_importance.py`.
 
@@ -124,7 +124,7 @@ PydanticAI agent tool wrappers -- top-level peer of `toolkits/` and `mcp/`. Each
 
 **template/**: Reference implementation of a production MCP server demonstrating requirements 1-9 and 11 from `docs/mcp_requirements.md`. `server.py` uses `create_mcp_server()` with `AuthSessionMiddleware` pre-wired. `tools.py` registers four tools showing `@tool_permission`, `@context_result()`, workspace path translation, `ToolRetryError`/`ToolFatalError`, `PrivateData` flagging, and `ctx.info()` logging. The interactive client example is in `agentic_patterns/examples/execution_infrastructure/example_mcp_isolation.ipynb`.
 
-**todo/**: Thin MCP wrapper for task management. `server.py` + `tools.py` only. Delegates to `toolkits/todo/operations`, adds `ctx: Context`, converts exceptions to `ToolRetryError`. Six tools: add_task, add_tasks, create_task_list, delete_task, show_task_list, update_task_status.
+**todo/**: Thin MCP wrapper for todo management. `server.py` + `tools.py` only. Delegates to `toolkits/todo/operations`, adds `ctx: Context`, converts exceptions to `ToolRetryError`. Six tools: todo_add, todo_add_many, todo_create_list, todo_delete, todo_show, todo_update_status.
 
 **data_analysis/**: Thin MCP wrapper for DataFrame analysis. `server.py` + `tools.py` only. Delegates to `toolkits/data_analysis/executor`. Dynamically generates tools from the operation registry using `tools/dynamic` helpers. Converts `ValueError` to `ToolRetryError`, `RuntimeError` to `ToolFatalError`.
 

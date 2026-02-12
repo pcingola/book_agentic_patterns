@@ -9,10 +9,10 @@ from agentic_patterns.mcp.todo.tools import register_tools
 mcp = create_mcp_server(
     "todo",
     instructions=(
-        "A 'to do' server for managing task lists (i.e. 'to do' lists). "
-        "The 'to do' lists are shown as Markdown checklists. "
-        "Task IDs are hierarchical (e.g. '1.3.2' means task 2 under task 3 under task 1). "
-        "All task lists are private to the user/session."
+        "A 'to do' server for managing todo lists. "
+        "The todo lists are shown as Markdown checklists. "
+        "Item IDs are hierarchical (e.g. '1.3.2' means item 2 under item 3 under item 1). "
+        "All todo lists are private to the user/session."
     ),
 )
 register_tools(mcp)
