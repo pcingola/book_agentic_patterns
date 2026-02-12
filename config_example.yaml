@@ -1,9 +1,15 @@
 models:
   default:
     model_family: openai
-    model_name: gpt-52
-    api_key: sk-proj-your-openai-api-key-here
+    model_name: gpt-4o
+    api_key: your-openai-api-key-here
     timeout: 120
+
+  fast:
+    model_family: openai
+    model_name: gpt-4o-mini
+    api_key: your-openai-api-key-here
+    timeout: 60
 
   azure_gpt4:
     model_family: azure
@@ -72,7 +78,7 @@ embeddings:
   ollama_local:
     provider: ollama
     model_name: nomic-embed-text
-    url: http://localhost:11434
+    url: http://localhost:11434/v1
 
   sentence_transformers:
     provider: sentence_transformers
@@ -120,3 +126,126 @@ vectordb:
   postgres:
     backend: pgvector
     connection_string: postgresql://user:password@localhost:5432/vectordb
+
+openapi:
+  request_timeout: 30
+  max_retries: 3
+  categorization_batch_size: 10
+
+mcp_servers:
+  filesystem:
+    type: client
+    url: http://localhost:8001/mcp
+    read_timeout: 300
+
+  code_analysis:
+    type: client
+    url: http://localhost:8002/mcp
+    read_timeout: 60
+
+  template:
+    type: client
+    url: http://localhost:8000/mcp
+    url_isolated: http://localhost:8001/mcp
+    read_timeout: 60
+
+  data_analysis:
+    type: client
+    url: http://localhost:8010/mcp
+    read_timeout: 300
+
+  sql:
+    type: client
+    url: http://localhost:8011/mcp
+    read_timeout: 120
+
+  my_server:
+    type: server
+    name: "My MCP Server"
+    instructions: "Provides code analysis tools"
+    port: 8003
+
+  # Infrastructure MCP clients (used by the distributed agent)
+  file_ops:
+    type: client
+    url: http://localhost:8100/mcp
+    read_timeout: 300
+
+  sandbox:
+    type: client
+    url: http://localhost:8101/mcp
+    read_timeout: 300
+
+  todo:
+    type: client
+    url: http://localhost:8102/mcp
+    read_timeout: 60
+
+  format_conversion:
+    type: client
+    url: http://localhost:8103/mcp
+    read_timeout: 120
+
+  data_viz:
+    type: client
+    url: http://localhost:8104/mcp
+    read_timeout: 300
+
+  repl:
+    type: client
+    url: http://localhost:8105/mcp
+    read_timeout: 300
+
+  vocabulary:
+    type: client
+    url: http://localhost:8106/mcp
+    read_timeout: 60
+
+a2a:
+  clients:
+    nl2sql:
+      url: http://localhost:8200
+      timeout: 300
+    data_analysis:
+      url: http://localhost:8201
+      timeout: 300
+    vocabulary:
+      url: http://localhost:8202
+      timeout: 300
+
+agents:
+  skilled:
+    system_prompt: the_complete_agent/agent_skilled.md
+    tools:
+      - agentic_patterns.tools.file:get_all_tools
+      - agentic_patterns.tools.sandbox:get_all_tools
+      - agentic_patterns.tools.todo:get_all_tools
+
+  coordinator:
+    system_prompt: the_complete_agent/agent_coordinator.md
+    tools:
+      - agentic_patterns.tools.file:get_all_tools
+      - agentic_patterns.tools.sandbox:get_all_tools
+      - agentic_patterns.tools.todo:get_all_tools
+      - agentic_patterns.tools.format_conversion:get_all_tools
+    sub_agents:
+      - agentic_patterns.agents.data_analysis:get_spec
+      - agentic_patterns.agents.sql:get_spec
+      - agentic_patterns.agents.vocabulary:get_spec
+
+  full_agent:
+    system_prompt: the_complete_agent/agent_full.md
+    tools:
+      - agentic_patterns.tools.file:get_all_tools
+      - agentic_patterns.tools.sandbox:get_all_tools
+      - agentic_patterns.tools.todo:get_all_tools
+      - agentic_patterns.tools.format_conversion:get_all_tools
+    sub_agents:
+      - agentic_patterns.agents.data_analysis:get_spec
+      - agentic_patterns.agents.sql:get_spec
+      - agentic_patterns.agents.vocabulary:get_spec
+
+  infrastructure_agent:
+    system_prompt: the_complete_agent/agent_infrastructure.md
+    mcp_servers: [file_ops, sandbox, todo, format_conversion]
+    a2a_clients: [nl2sql, data_analysis, vocabulary]
