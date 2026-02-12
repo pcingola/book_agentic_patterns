@@ -19,13 +19,13 @@ tools = get_file_tools() + get_sandbox_tools() + get_todo_tools()
 agent = get_agent(system_prompt=system_prompt, tools=tools)
 ```
 
-The `get_todo_tools()` call returns six functions: `create_task_list`, `add_task`, `add_tasks`, `delete_task`, `update_task_status`, and `show_task_list`. Tasks have hierarchical IDs (e.g., "1", "1.1", "1.2") and four possible states: pending, in_progress, completed, and failed.
+The `get_todo_tools()` call returns six functions: `todo_create_list`, `todo_add`, `todo_add_many`, `todo_delete`, `todo_update_status`, and `todo_show`. Items have hierarchical IDs (e.g., "1", "1.1", "1.2") and four possible states: pending, in_progress, completed, and failed.
 
 ### Execution
 
 When given a multi-step task -- for example, "create a CSV file with sales data, write a processing script, execute it, and verify the results" -- the Planner's execution trace shows a different structure than the Coder's.
 
-The agent first calls `create_task_list` with descriptions for each step. It then iterates through the list: calling `update_task_status` to mark each step as in_progress, performing the work (file writes, sandbox execution), and marking the step as completed. At the end, it calls `show_task_list` to display the final state. The result is a checklist showing all steps completed.
+The agent first calls `todo_create_list` with descriptions for each step. It then iterates through the list: calling `todo_update_status` to mark each step as in_progress, performing the work (file writes, sandbox execution), and marking the step as completed. At the end, it calls `todo_show` to display the final state. The result is a checklist showing all steps completed.
 
 This pattern scales better to complex tasks. The Coder might lose track of subtasks in a long execution, especially if errors require backtracking. The Planner maintains an explicit record of what has been done and what remains.
 

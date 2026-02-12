@@ -122,7 +122,7 @@ agentic_patterns/
 
 `toolkits/todo/models.py` -- move from `mcp/todo/models.py` as-is.
 
-`toolkits/todo/operations.py` -- extract from `mcp/todo/tools.py`: the cache (`_cache`), `_cache_key()`, `_get_task_list()`, `_new_task_list()`, `_save()`, `_add_one()`. Expose as plain functions: `add_task()`, `add_tasks()`, `create_task_list()`, `delete_task()`, `show_task_list()`, `update_task_status()`. No MCP imports, raise `ValueError`/`KeyError`.
+`toolkits/todo/operations.py` -- extract from `mcp/todo/tools.py`: the cache (`_cache`), `_cache_key()`, `_get_todo_list()`, `_new_todo_list()`, `_save()`, `_add_one()`. Expose as plain functions: `todo_add()`, `todo_add_many()`, `todo_create_list()`, `todo_delete()`, `todo_show()`, `todo_update_status()`. No MCP imports, raise `ValueError`/`KeyError`.
 
 `tools/todo.py` -- `get_all_tools()` returning plain functions that call `toolkits.todo.operations`.
 
