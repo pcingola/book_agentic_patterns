@@ -42,12 +42,12 @@ The `@context_result` decorator wraps tool functions to intercept large results.
 from agentic_patterns.core.context.decorators import context_result
 
 @context_result()
-def query_sales(ctx=None) -> str:
+def query_sales() -> str:
     """Query sales data with automatic truncation."""
     return generate_sales_data(500)
 
 @context_result()
-def search_logs(keyword: str, ctx=None) -> str:
+def search_logs(keyword: str) -> str:
     """Search application logs for a keyword."""
     logs = generate_log_data(300)
     matching = [line for line in logs.split("\n") if keyword.upper() in line.upper()]
@@ -125,11 +125,9 @@ result, _ = await run_agent(agent, prompt, verbose=True)
 
 The agent calls `search_logs("ERROR")`, receives a preview of matching log lines, and summarizes the error patterns it observes. The preview shows enough context (timestamps, components, messages) for meaningful analysis without consuming excessive context.
 
-## The ctx Parameter
+## Workspace Isolation
 
-The decorated functions include an optional `ctx` parameter. This carries context information (user ID, session ID) used by the workspace for file isolation. In the notebook examples, `ctx` defaults to `None`, which uses default workspace paths. In production, the agent framework passes context through this parameter, enabling multi-tenant isolation.
-
-The decorator extracts `ctx` from keyword arguments and passes it to the workspace functions when saving the full result. Tools don't need special handling; they simply declare the parameter with a default value.
+When the decorator saves full results to the workspace, it relies on the core library's user session context (`user_session.py`) to determine the correct workspace path. In notebooks, default values for user and session ID are used automatically. In production, middleware sets the user session at the request boundary, and the workspace functions route files to the correct tenant directory without any tool-level configuration.
 
 ## Connection to Token Budgeting
 
@@ -143,6 +141,6 @@ Large tool outputs degrade agent performance by consuming context and overwhelmi
 
 The pattern saves complete results to the workspace and returns previews with file paths. Type-aware truncation ensures previews remain coherent for CSV, JSON, logs, and other formats.
 
-Tools remain simple. They return full results as strings; the decorator handles context management. The `ctx` parameter enables workspace isolation without polluting the tool's public interface.
+Tools remain simple. They return full results as strings; the decorator handles context management. Workspace isolation is handled transparently through the core library's user session context.
 
 Design system prompts to guide agents on working with previews. Agents should summarize visible patterns and note that full data is available for detailed analysis when needed.

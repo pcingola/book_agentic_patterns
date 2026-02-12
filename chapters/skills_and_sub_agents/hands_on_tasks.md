@@ -1,6 +1,6 @@
 ## Hands-On: Tasks
 
-This hands-on explores `example_tasks.ipynb` and the `core/tasks/` module, which implements the task lifecycle concepts from the previous section. The module has four files: `state.py` (the state enum), `models.py` (data models), `store.py` (persistence), `worker.py` (sub-agent execution), and `broker.py` (coordination).
+This hands-on explores `example_tasks.ipynb` and the `core/tasks/` module, which implements the task lifecycle concepts from the previous section. The module has five files: `state.py` (the state enum), `models.py` (data models), `store.py` (persistence), `worker.py` (sub-agent execution), and `broker.py` (coordination).
 
 ### State and Models
 
@@ -75,7 +75,7 @@ async def execute(self, task_id: str) -> None:
     await self._store.update_state(task_id, TaskState.COMPLETED, result=result)
 ```
 
-Read the metadata, create an agent, run it, write the result. If the agent raises an exception, the worker catches it and transitions the task to `FAILED` with the error message. The worker itself is stateless -- it holds a reference to the store but maintains no task-specific data.
+Read the metadata, create an agent, run it, write the result. If the agent raises an exception, the worker catches it and transitions the task to `FAILED` with the error message. The worker itself is stateless -- it holds a reference to the store but maintains no task-specific data. The actual implementation also supports `AgentSpec`-based execution for composition with `OrchestratorAgent`, and emits progress and log events via a node hook so that observers can track what the sub-agent is doing in real time.
 
 ### Broker
 

@@ -65,3 +65,5 @@ Within this pattern, long-running tasks can be understood as distributed convers
 
 Because long-running tasks operate over extended periods, failure is not exceptional but expected. The pattern therefore emphasizes retries, checkpoints, and escalation. Agents may automatically retry failed sub-tasks, switch strategies, or pause execution pending human review. Human-in-the-loop integration fits naturally at well-defined checkpoints, where the current task state can be inspected and adjusted without restarting the entire process.
 
+The concepts introduced here are implemented in later chapters. The [Skills, Sub-Agents & Tasks chapter](../skills_and_sub_agents/chapter.md) covers sub-agent delegation, task lifecycle management with durable state, and the task broker that coordinates background execution. The [The Complete Agent chapter](../the_complete_agent/chapter.md) brings these patterns together into a unified agent that orchestrates sub-agents, tasks, and event-driven coordination.
+

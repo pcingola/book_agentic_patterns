@@ -2,7 +2,7 @@
 
 Evaluating a Retrieval-Augmented Generation (RAG) system means measuring, in a principled way, how well retrieval and generation jointly support factual, relevant, and grounded answers.
 
-## Evaluation layers in RAG systems
+### Evaluation layers in RAG systems
 
 A modern RAG system is best evaluated as a pipeline with interacting components rather than a single black box. Each layer answers a different question: *are we retrieving the right things, are we selecting the right evidence, and does the final answer correctly use that evidence?*
 
@@ -10,12 +10,16 @@ A modern RAG system is best evaluated as a pipeline with interacting components 
 
 Vector search evaluation focuses on the quality of nearest-neighbor retrieval in embedding space, independent of any downstream generation. The goal is to assess whether semantically relevant items are geometrically close to the query embedding.
 
-Typical metrics are based on ranked retrieval. Recall@k measures whether at least one relevant item appears in the top-k results, which is particularly important in RAG because downstream components only see a small retrieved set. Precision@k captures how many of the retrieved items are relevant, but is often secondary to recall in early retrieval stages. Mean Reciprocal Rank (MRR) emphasizes how early the first relevant item appears, reflecting latency-sensitive pipelines. Normalized Discounted Cumulative Gain (nDCG) generalizes these ideas when relevance is graded rather than binary.
+Typical metrics are based on ranked retrieval. Recall@k measures the fraction of relevant items that appear in the top-k results, which is particularly important in RAG because downstream components only see a small retrieved set. A related metric, Hit@k, checks whether *at least one* relevant item appears in the top-k, which is often sufficient in RAG systems where even a single relevant passage can ground a correct answer. Precision@k captures how many of the retrieved items are relevant, but is often secondary to recall in early retrieval stages. Mean Reciprocal Rank (MRR) emphasizes how early the first relevant item appears, reflecting latency-sensitive pipelines. Normalized Discounted Cumulative Gain (nDCG) generalizes these ideas when relevance is graded rather than binary.
 
 In practice, vector search evaluation requires a labeled dataset of queries paired with relevant documents or passages. These labels are often incomplete or noisy, which is why recall-oriented metrics are preferred: they are more robust to missing judgments.
 
 ```python
 def recall_at_k(retrieved_ids, relevant_ids, k):
+    top_k = set(retrieved_ids[:k])
+    return len(top_k & relevant_ids) / len(relevant_ids) if relevant_ids else 0.0
+
+def hit_at_k(retrieved_ids, relevant_ids, k):
     top_k = set(retrieved_ids[:k])
     return int(len(top_k & relevant_ids) > 0)
 ```
@@ -57,7 +61,7 @@ def judge_groundedness(answer, context):
 This level answers the question users actually care about: *does the system produce a correct, well-supported answer?*
 
 
-## Measuring improvements in RAG systems
+### Measuring improvements in RAG systems
 
 Evaluating a single snapshot of a RAG system is rarely sufficient. What matters in practice is measuring *improvement* as the system evolves.
 

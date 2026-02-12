@@ -29,7 +29,7 @@ The `to_a2a()` method transforms a PydanticAI agent into an ASGI application tha
 Start the server with uvicorn:
 
 ```bash
-uvicorn agentic_patterns.a2a.example_a2a_server:app --host 0.0.0.0 --port 8000
+uvicorn agentic_patterns.examples.a2a.example_a2a_server:app --host 0.0.0.0 --port 8000
 ```
 
 ## Discovering the Agent

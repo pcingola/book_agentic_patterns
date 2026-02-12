@@ -37,16 +37,16 @@ agent = get_agent(tools=tools)
 app = agent.to_a2a(name="Arithmetic", description="An agent that can perform basic arithmetic operations", skills=skills)
 ```
 
-The `tool_to_skill()` helper converts tool functions into A2A Skill objects by extracting the function name and docstring. When the agent is exposed via `to_a2a()`, these skills appear in the Agent Card, making them discoverable by clients.
+The `tool_to_skill()` helper (also available from `core/a2a/utils.py` for reuse across servers) converts tool functions into A2A Skill objects by extracting the function name and docstring. When the agent is exposed via `to_a2a()`, these skills appear in the Agent Card, making them discoverable by clients.
 
 Start both servers before running the notebook:
 
 ```bash
 # Terminal 1
-uvicorn agentic_patterns.a2a.example_a2a_server_1:app --host 0.0.0.0 --port 8000
+uvicorn agentic_patterns.examples.a2a.example_a2a_server_1:app --host 0.0.0.0 --port 8000
 
 # Terminal 2
-uvicorn agentic_patterns.a2a.example_a2a_server_2:app --host 0.0.0.0 --port 8001
+uvicorn agentic_patterns.examples.a2a.example_a2a_server_2:app --host 0.0.0.0 --port 8001
 ```
 
 ## Discovering Agent Capabilities
@@ -168,6 +168,39 @@ agent_run, _ = await run_agent(agent=coordinator, prompt=prompt, message_history
 ```
 
 The conversation flows naturally across specialists. The coordinator remembers the previous result (42246913578), understands that subtracting gives 42000000000, and correctly routes the area calculation to the AreaCalculator agent with radius 21000000000.
+
+## From Manual to Core Library
+
+The coordinator above builds everything manually: agent card fetching, prompt construction, and a route tool with an inline polling loop. This is useful for understanding the protocol mechanics, but the core library provides production-ready utilities that automate these patterns.
+
+`A2AClientExtended` (`core/a2a/client.py`) wraps the base `fasta2a` client with retry, timeout, and cancellation. `create_a2a_tool()` (`core/a2a/tool.py`) wraps an A2A client and agent card into a PydanticAI tool that handles the full delegation lifecycle and returns formatted status strings (`[COMPLETED]`, `[INPUT_REQUIRED:task_id=...]`, `[FAILED]`). `create_coordinator()` (`core/a2a/coordinator.py`) combines these into a ready-to-use coordinator agent: it fetches agent cards, creates delegation tools, and builds a system prompt automatically:
+
+```python
+from agentic_patterns.core.a2a import create_coordinator, A2AClientConfig
+
+coordinator = await create_coordinator(
+    clients=[
+        A2AClientConfig(url="http://localhost:8000"),
+        A2AClientConfig(url="http://localhost:8001"),
+    ]
+)
+```
+
+This produces an agent equivalent to the one built manually, with the addition of exponential backoff retry, configurable timeouts, and cooperative cancellation.
+
+For testing without running LLM-backed agents, `MockA2AServer` (`core/a2a/mock.py`) implements the A2A JSON-RPC interface with configurable responses:
+
+```python
+from agentic_patterns.core.a2a.mock import MockA2AServer
+
+mock = MockA2AServer(name="Arithmetic")
+mock.on_prompt("add 2 and 3", result="5")
+mock.on_pattern(r"subtract.*", result="0")
+
+app = mock.to_app()  # FastAPI instance for test clients
+```
+
+After a test run, `mock.received_prompts` lists all prompts received and `mock.cancelled_task_ids` tracks cancellation requests.
 
 ## Key Takeaways
 

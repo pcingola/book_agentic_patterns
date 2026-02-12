@@ -58,7 +58,7 @@ The following snippets illustrate an implementation shape that avoids coupling y
 # Data model: store raw events, plus optional extracted "facts" with provenance.
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Literal, Optional
+from typing import Literal
 
 Role = Literal["system", "developer", "user", "assistant", "tool"]
 
@@ -68,8 +68,8 @@ class MessageEvent:
     ts: datetime
     role: Role
     content: str
-    tool_name: Optional[str] = None
-    request_id: Optional[str] = None  # correlate tool calls / retries
+    tool_name: str | None = None
+    request_id: str | None = None  # correlate tool calls / retries
 
 @dataclass
 class MemoryFact:

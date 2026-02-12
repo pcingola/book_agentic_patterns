@@ -1,104 +1,75 @@
 ## Task Lifecycle in Agent-to-Agent (A2A) Systems
 
-In A2A systems, a task is a durable, observable unit of work whose lifecycle is decoupled from synchronous execution through streaming, polling, notifications, and explicit coordination components.
+In A2A systems, a task is a durable, observable unit of work whose lifecycle is decoupled from synchronous execution through explicit state management, multiple observation channels, and a layered execution architecture.
 
 
 ### Asynchronous Execution as a First-Class Concept
 
 A2A tasks are explicitly designed to be asynchronous. Once a task is created, the initiating agent does not assume immediate completion. Instead, progress and results are exposed incrementally through well-defined observation mechanisms. This makes tasks suitable for long-running reasoning, external tool calls, delegation chains, and human approval steps.
 
-Asynchrony in A2A is not an implementation detail but a protocol-level guarantee: every task can be observed, resumed, or completed independently of the original request–response channel.
+Asynchrony in A2A is not an implementation detail but a protocol-level guarantee: every task can be observed, resumed, or completed independently of the original request-response channel.
 
 
-### Streaming Task Updates
+### Task States
 
-Streaming provides a push-based mechanism for observing task progress as it happens. Rather than waiting for a task to complete, an agent may subscribe to a stream of events emitted by the executing agent. These events can include state transitions, partial outputs, logs, or structured intermediate results.
+Tasks progress through well-defined states: `working` (in progress), `completed` (terminal), `failed` (terminal), `canceled` (terminal), `rejected` (terminal), and `input-required` (the agent needs additional information to proceed). A special `auth-required` state signals authentication issues. The full state machine and transition semantics are covered in [A2A in Detail](./details.md).
 
-Conceptually, streaming turns a task into an event source. Each emitted event is associated with the task identifier, preserving causal ordering and traceability across agents.
-
-```python
-# Conceptual structure of a streamed task update
-event = {
-    "task_id": "a2a-task-42",
-    "event_type": "progress",
-    "payload": {"stage": "analysis", "percent": 60},
-    "timestamp": now(),
-}
-```
-
-This model aligns with modern server-sent events and async streaming patterns. In practice, agent runtimes inspired by Pydantic AI expose streaming as an optional observation channel, allowing clients to switch seamlessly between synchronous completion and live progress reporting.
-
-
-### Polling as a Baseline Observation Mechanism
-
-Polling remains a core part of the A2A task model. Any agent can query the current state of a task at arbitrary times using its task identifier. Polling is intentionally simple and robust, making it suitable for environments where streaming connections are not feasible or reliable.
-
-Polling provides a consistent fallback mechanism that guarantees eventual visibility of task outcomes, even in the presence of network interruptions or restarts.
+The core library defines a `TaskStatus` enum (`core/a2a/client.py`) that maps protocol states to client-side outcomes:
 
 ```python
-# Conceptual polling response
-status = {
-    "task_id": "a2a-task-42",
-    "state": "running",
-    "last_update": "2026-01-10T10:15:00Z",
-}
+class TaskStatus(str, Enum):
+    COMPLETED = "completed"
+    FAILED = "failed"
+    INPUT_REQUIRED = "input-required"
+    CANCELLED = "cancelled"
+    TIMEOUT = "timeout"
 ```
 
-From a design perspective, streaming and polling are complementary rather than competing approaches. Streaming optimizes for latency and responsiveness, while polling guarantees durability and simplicity.
+`TIMEOUT` is a client-side addition. The protocol itself does not define a timeout state, but real-world clients need a bounded wait.
 
 
-### Push Notifications and External Callbacks
+### Observation Mechanisms
 
-Push notifications extend the task model beyond agent-to-agent communication. Instead of requiring an agent to actively poll or maintain a stream, a task can be configured to notify external systems when specific conditions are met, such as completion or failure.
+Three complementary mechanisms make task state observable. **Streaming** provides real-time push-based updates as typed events (status transitions, artifact chunks, messages). **Polling** is a simple, robust baseline: any client can query a task's current state at any time using its task ID, guaranteeing eventual visibility even across network interruptions. **Push notifications** extend observability to external systems via webhooks, enabling event-driven architectures without persistent connections.
 
-These notifications are typically delivered via HTTP callbacks or messaging systems and are defined declaratively as part of task configuration.
+These are protocol-level guarantees, not optional features. The [details section](./details.md) covers their wire-level format, `StreamResponse` envelope structure, chunked artifact semantics, and idempotency requirements.
+
+
+### Execution Architecture
+
+A2A servers typically decompose into three layers that separate protocol handling from task execution.
+
+**Storage** persists task state, artifacts, and history so that tasks survive process restarts and can be re-queried or re-streamed. The core library's `core/tasks/` module defines `TaskStore` as an abstract interface with two implementations: `TaskStoreJson` persists one JSON file per task in `DATA_DIR/tasks/` for single-node deployments, while `TaskStoreMemory` uses an in-memory dictionary for notebooks and tests.
+
+**Workers** are stateless executors that pick up tasks, run the agent logic, and emit progress updates. The core library's `Worker` class executes tasks by running agents via `OrchestratorAgent`, emits `PROGRESS` and `LOG` events for background tracking, and handles `CancelledError` for cooperative cancellation. Because all durable state lives in the store, workers can scale horizontally and restart safely.
+
+**The broker** coordinates between task producers and workers. `TaskBroker` manages submission, observation (poll, stream, wait, cancel), and dispatch. It accepts an optional `asyncio.Event` for event-driven signaling when tasks reach terminal states, replacing polling-based coordination. An event-driven wait pattern using a clear-then-check sequence prevents race conditions between task completion and the coordinator checking for results.
+
+This architecture mirrors established distributed systems patterns. The PydanticAI ecosystem reflects this directly: `agent.to_a2a()` creates the HTTP ingress layer, while the broker and worker handle scheduling and execution internally.
+
+
+### Client-Side Resilience
+
+Reliable A2A communication requires handling network failures, timeouts, and cancellation on the client side. The core library's `A2AClientExtended` (`core/a2a/client.py`) wraps the base `fasta2a.A2AClient` with production-ready behavior:
+
+**Retry with exponential backoff.** Transient `ConnectionError` and `TimeoutError` on both sends and polls are retried with configurable delay and maximum attempts.
+
+**Timeout with auto-cancel.** A configurable deadline bounds the total wait time. When exceeded, the client cancels the remote task before returning a `TIMEOUT` status.
+
+**Cooperative cancellation.** An `is_cancelled` callback is checked on every poll cycle, allowing callers to abort long-running operations gracefully.
+
+**`send_and_observe()`** encapsulates the complete send-then-poll loop and returns a `(TaskStatus, task)` tuple:
 
 ```python
-# Conceptual push notification configuration
-notification = {
-    "on": ["completed", "failed"],
-    "target": "https://example.com/task-callback",
-}
+from agentic_patterns.core.a2a import A2AClientExtended, A2AClientConfig
+
+client = A2AClientExtended(A2AClientConfig(url="http://billing-agent:8000", timeout=300))
+status, task = await client.send_and_observe("Reconcile invoice #4812")
 ```
 
-This pattern is especially relevant in enterprise environments, where tasks may need to trigger downstream workflows, update dashboards, or notify humans without tight coupling to the agent runtime.
-
-
-### Task Storage and Persistence
-
-Durability is a defining property of A2A tasks. Tasks are expected to outlive individual processes, network connections, and even agent restarts. To support this, task state is persisted in a storage layer that records inputs, state transitions, artifacts, and outputs.
-
-Persistent storage enables several critical behaviors: recovery after failure, replay of task history for auditing, and coordination across multiple workers. It also enforces the principle that a task identifier is the single source of truth for the unit of work.
-
-Agent runtimes built around A2A concepts treat storage as an explicit abstraction rather than an internal cache, ensuring that task state can be shared, inspected, or migrated if needed.
-
-
-### Workers as Task Executors
-
-A worker is the execution component responsible for advancing tasks through their lifecycle. Workers pick up tasks from storage or a coordination layer, perform the required reasoning or tool invocation, and emit updates as execution progresses.
-
-Importantly, workers are stateless with respect to task identity. All durable state is stored externally, which allows workers to scale horizontally, restart safely, and cooperate on large task volumes.
-
-```python
-# Conceptual worker loop
-while True:
-    task = next_runnable_task()
-    execute_step(task)
-    persist_update(task)
-```
-
-This separation mirrors established distributed systems patterns and is directly reflected in FastMCP-style agent servers, where execution logic is isolated from task persistence and coordination.
-
-
-### The Task Broker and Coordination
-
-The task broker acts as the coordination hub between task producers and workers. Its responsibilities include routing tasks to available workers, enforcing concurrency limits, and ensuring fair scheduling across agents or tenants.
-
-In multi-agent systems, the broker becomes essential for preventing overload and for managing large numbers of concurrent tasks. It also provides a natural integration point for policies such as prioritization, rate limiting, or isolation between independent workflows.
-
-Conceptually, the broker decouples *who wants work done* from *who is currently able to do it*, enabling flexible deployment and scaling strategies.
+Client configuration is loaded from YAML (`config.yaml` under `a2a.clients`) with `${VAR}` environment variable expansion, following the same pattern used by MCP and model configurations elsewhere in the platform.
 
 
 ### Putting It All Together
 
-Streaming, polling, push notifications, storage, workers, and brokers form a coherent execution model around the A2A task abstraction. Tasks are created once, stored durably, executed by interchangeable workers, coordinated by a broker, and observed through multiple complementary channels. This design allows A2A systems to support deep agent collaboration, long-running workflows, and enterprise-grade reliability without sacrificing transparency or control.
+Tasks, observation mechanisms, storage, workers, and brokers form a coherent execution model. Tasks are created once, stored durably, executed by interchangeable workers, coordinated by a broker, and observed through streaming, polling, or push notifications. On the client side, `A2AClientExtended` encapsulates the retry, timeout, and cancellation logic needed for reliable communication. This layered design supports long-running workflows and enterprise-grade reliability while keeping each component independently testable and replaceable.

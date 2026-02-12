@@ -92,3 +92,5 @@ Event-driven agents trade explicit control flow for flexibility. This increases 
 
 Despite these challenges, event-driven agents are increasingly central to real-world agentic systems. They provide a scalable and resilient foundation for long-lived, interactive agents that must operate reliably in asynchronous, distributed environments.
 
+The event-driven wait pattern is implemented concretely in the [Skills, Sub-Agents & Tasks chapter](../skills_and_sub_agents/chapter.md), where the task broker uses `asyncio.Event` to signal background task completion without polling. The [The Complete Agent chapter](../the_complete_agent/chapter.md) shows the full integration, where an orchestrator agent submits tasks, yields control, and resumes when events arrive.
+

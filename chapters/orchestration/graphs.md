@@ -6,7 +6,7 @@ The graph pattern models agent execution as a directed graph of states and trans
 
 In agentic systems, a graph is composed of nodes, edges, and shared state, with execution defined as traversal through this structure. A node represents a semantically meaningful unit of work, such as invoking a model, calling a tool, validating an intermediate result, or coordinating with another agent. Nodes are deliberately coarse-grained, reflecting conceptual steps in reasoning or action rather than low-level operations.
 
-Edges define the possible transitions between nodes. These transitions may be unconditional, rule-based, or dependent on runtime state, including model outputs. Unlike workflows, graphs naturally support branching, merging, and cycles, which makes them well suited for retry loops, refinement processes, conditional escalation, and adaptive strategies.
+Edges define the possible transitions between nodes. These transitions may be unconditional, rule-based, or dependent on runtime state, including model outputs. Where workflows are linear pipelines with a fixed sequence of stages, graphs add branching, merging, and cycles. This makes them well suited for retry loops, refinement processes, conditional escalation, and adaptive strategies.
 
 State is the explicit data structure that flows through the graph. It accumulates inputs, intermediate artifacts, decisions, and metadata produced by nodes. Because state is explicit and typed, it can be validated at boundaries, persisted between steps, replayed for debugging, or partially reconstructed after failure. This explicitness is a key difference from prompt-centric approaches, where state is often implicit and difficult to reason about.
 

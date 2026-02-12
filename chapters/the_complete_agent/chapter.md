@@ -15,3 +15,5 @@
 [Agent V5: The Full Agent](./agent_full.md)
 
 [Server Requirements](./server_requirements.md)
+
+[Infrastructure](./infrastructure.md)

@@ -4,11 +4,11 @@
 
 [Historical Perspective](./historical_perspective.md)
 
+[Architecture](./architecture.md)
+
 [Tools](./tools.md)
 
 [Features](./features.md)
-
-[Architecture](./architecture.md)
 
 [Hands-On: Introduction](./hands_on_intro.md)
 

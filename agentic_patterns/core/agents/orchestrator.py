@@ -172,7 +172,6 @@ class OrchestratorAgent:
         self._on_node = on_node or (_log_node if verbose else None)
         self._agent: Agent | None = None
         self._exit_stack: AsyncExitStack | None = None
-        self._mcp_connections: list[Any] = []
         self._system_prompt: str = ""
         self._message_history: list[ModelMessage] = []
         self._runs: list[tuple[AgentRun, list]] = []
@@ -187,24 +186,32 @@ class OrchestratorAgent:
         await self._exit_stack.__aenter__()
 
         tools: list[Any] = list(self.spec.tools)
-        a2a_cards = await self._connect_mcp_and_a2a(tools)
+        mcp_toolsets = self._create_mcp_toolsets()
+        a2a_cards = await self._connect_a2a(tools)
         self._discover_skills()
         self._add_skill_tools(tools)
         await self._add_task_tools(tools)
 
         self._system_prompt = self._build_system_prompt(a2a_cards)
+        agent_kwargs: dict[str, Any] = {}
+        if mcp_toolsets:
+            agent_kwargs["toolsets"] = mcp_toolsets
         self._agent = await asyncio.to_thread(
-            get_agent, model=self.spec.model, system_prompt=self._system_prompt, tools=tools
+            get_agent, model=self.spec.model, system_prompt=self._system_prompt, tools=tools, **agent_kwargs
         )
+        if mcp_toolsets:
+            await self._exit_stack.enter_async_context(self._agent)
         return self
 
-    async def _connect_mcp_and_a2a(self, tools: list[Any]) -> list[dict]:
-        """Open MCP connections and create A2A delegation tools. Returns A2A cards."""
+    def _create_mcp_toolsets(self) -> list[MCPServerStreamableHTTP]:
+        """Create MCP server toolset objects to pass to the PydanticAI Agent."""
+        toolsets = []
         for mcp_config in self.spec.mcp_servers:
-            mcp_client = MCPServerStreamableHTTP(url=mcp_config.url, timeout=mcp_config.read_timeout)
-            connection = await self._exit_stack.enter_async_context(mcp_client)
-            self._mcp_connections.append(connection)
+            toolsets.append(MCPServerStreamableHTTP(url=mcp_config.url, timeout=mcp_config.read_timeout))
+        return toolsets
 
+    async def _connect_a2a(self, tools: list[Any]) -> list[dict]:
+        """Fetch A2A agent cards and create delegation tools. Returns A2A cards."""
         a2a_cards: list[dict] = []
         for client in self.spec.a2a_clients:
             card = await client.get_agent_card()
@@ -346,7 +353,6 @@ class OrchestratorAgent:
             await self._broker.cancel_all()
         if self._exit_stack:
             await self._exit_stack.__aexit__(exc_type, exc_val, exc_tb)
-        self._mcp_connections = []
         self._agent = None
         self._broker = None
 

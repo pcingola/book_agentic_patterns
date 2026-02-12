@@ -24,6 +24,8 @@ def authenticate_request(http_request):
     )
 ```
 
+In the core library, this pattern is implemented by `AuthSessionMiddleware` (`core/a2a/middleware.py`), a Starlette middleware that extracts the Bearer token from the `Authorization` header and calls `set_user_session_from_token()` to propagate the authenticated identity into contextvars. Token creation and validation use HS256 JWT via `core/auth.py`, with secrets read from environment variables.
+
 An important design constraint is that task payloads are treated as untrusted data until authentication has completed. Identity verification is therefore orthogonal to task semantics.
 
 ### Authorization and Capability Scoping
@@ -96,6 +98,8 @@ def create_delegation_token(parent_ctx, allowed_ops, ttl):
 ```
 
 This design prevents privilege amplification across agent networks and ensures that delegation chains remain auditable and bounded.
+
+In the core library, bearer tokens are propagated through `A2AClientConfig.bearer_token`. When configured, `A2AClientExtended` injects the token as an `Authorization: Bearer` header on every request to the remote agent, keeping credential management in configuration rather than scattered across delegation logic.
 
 ### Auditability and Non-Repudiation
 

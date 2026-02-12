@@ -30,7 +30,7 @@ This configuration block is what makes A2A “async-first” without making simp
 
 The `blocking` flag is normative and affects correctness expectations:
 
-* In blocking mode, the server **MUST** wait for terminal states (`completed`, `failed`, `cancelled`, `rejected`) and include the final task state with artifacts/status. ([A2A Protocol][13])
+* In blocking mode, the server **MUST** wait for terminal states (`completed`, `failed`, `canceled`, `rejected`) and include the final task state with artifacts/status. ([A2A Protocol][13])
 * In non-blocking mode, the server **MUST** return right after task creation and expects the client to continue via `GetTask`, subscription, or push. ([A2A Protocol][13])
 
 This matters because it pushes queueing/execution details out of band: even if the server’s internal worker system is distributed, the *observable* behavior must match these semantics.
@@ -71,7 +71,7 @@ Treating outputs as artifacts rather than “just text” is what allows A2A to 
 
 #### Task states and task status updates
 
-Tasks have states; the spec enumerates states including working, input-required, cancelled (terminal), rejected (terminal), and auth-required (special: not terminal and not “interrupted” in the same way as input-required). ([A2A Protocol][13])
+Tasks have states; the spec enumerates states including working, input-required, canceled (terminal), rejected (terminal), and auth-required (special: not terminal and not “interrupted” in the same way as input-required). ([A2A Protocol][13])
 
 A task’s status container includes the current state, optional associated message, and timestamp. ([A2A Protocol][13])
 
@@ -298,7 +298,7 @@ function handle_send_message(request, service_params):
     broker.enqueue(task.id, request.message, request.metadata)  // schedules work
 
     if request.configuration.blocking == true:
-        task = wait_until_terminal(task.id)      // completed/failed/cancelled/rejected
+        task = wait_until_terminal(task.id)      // completed/failed/canceled/rejected
         resp = { task: task }
     else:
         resp = { task: task }                    // in-progress snapshot

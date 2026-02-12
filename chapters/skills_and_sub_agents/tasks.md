@@ -4,11 +4,12 @@ Sub-agents are fire-and-forget: the coordinator calls, awaits, and moves on. Thi
 
 ### State Machine
 
-A task moves through a small set of states: pending, running, completed, failed, cancelled. Terminal states (completed, failed, cancelled) end the lifecycle. No transitions out of a terminal state are allowed.
+A task moves through a small set of states: pending, running, completed, failed, input_required, cancelled. Terminal states (completed, failed, cancelled) end the lifecycle. No transitions out of a terminal state are allowed. The `input_required` state is non-terminal -- it signals that the worker needs external input before it can continue, and the task resumes once that input is provided.
 
 ```
 pending --> running --> completed
                    \-> failed
+                   \-> input_required --> running
          \-> cancelled
 ```
 
