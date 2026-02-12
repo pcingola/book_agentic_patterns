@@ -2,6 +2,8 @@
 
 Document ingestion is the process that transforms raw, heterogeneous source material into a structured, searchable representation suitable for retrieval-augmented generation.
 
+![Document ingestion and retrieval workflow](img/rag_workflow.png)
+
 ### The document ingestion pipeline
 
 At a conceptual level, document ingestion is a deterministic transformation pipeline. Its purpose is not to answer queries, but to prepare a stable corpus over which retrieval can operate efficiently and reproducibly.

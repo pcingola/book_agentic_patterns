@@ -1,5 +1,7 @@
 # Chapter: Tools
 
+[Introduction](./introduction.md)
+
 [Historical Perspectives](./historical_perspectives.md)
 
 [Tool Use](./core_pattern.md)

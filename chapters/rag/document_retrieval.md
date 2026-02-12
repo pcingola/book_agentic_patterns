@@ -93,3 +93,26 @@ This combination is especially powerful in domains with rich schemas, such as sc
 ### Retrieval as a system, not a single model
 
 A key insight in modern RAG is that retrieval quality emerges from the interaction of stages rather than from any single algorithm. Query rewriting increases recall, candidate generation ensures coverage, scoring and re-ranking enforce relevance, and filtering guarantees validity. Treating retrieval as a modular pipeline allows systematic evaluation, targeted optimization, and controlled trade-offs between cost and quality.
+
+### Putting it together: a simple RAG pipeline
+
+In its simplest form, a RAG system can be described as a linear pipeline: ingest documents, retrieve relevant chunks, and generate an answer conditioned on them. The following pseudocode illustrates the core idea, omitting implementation details:
+
+```python
+# Offline ingestion
+chunks = chunk_documents(documents)
+vectors = embed(chunks)
+index.store(vectors, metadata=chunks.metadata)
+
+# Online query
+query_vector = embed(query)
+retrieved_chunks = index.search(query_vector, top_k=5)
+
+# Generation
+context = "\n".join(chunk.text for chunk in retrieved_chunks)
+answer = llm.generate(
+    prompt=f"Use the following context to answer the question:\n{context}\n\nQuestion: {query}"
+)
+```
+
+Despite its simplicity, this pattern already delivers most of the benefits associated with RAG. The model is guided by retrieved evidence, answers can be traced back to source documents, and updating knowledge only requires re-ingesting data rather than retraining the model. More advanced systems extend this basic flow with richer chunking strategies, hybrid retrieval, iterative querying, and explicit evaluation loops, but the foundational pattern remains the same: retrieval first, generation second, with a clear boundary between the two.

@@ -69,6 +69,7 @@ Foundational reasoning patterns from zero-shot prompting through structured plan
 
 Tool use as the fundamental agent pattern: discovery, schemas, permissions, workspaces, and introduction to MCP.
 
+- [x] Introduction -- From reasoning to action: tool use as the fundamental agent pattern and chapter roadmap
 - [x] Historical Perspectives -- Evolution from symbolic AI blackboard architectures to modern LLM tool-calling with MCP
 - [x] Tool Use -- The core pattern: models reasoning about capabilities, invoking them with structured inputs, and incorporating results
 - [x] Structured output -- Constraining outputs to schemas for validation, decision-making, and control flow boundaries
@@ -90,6 +91,7 @@ Tool use as the fundamental agent pattern: discovery, schemas, permissions, work
 
 Structuring multi-agent execution through workflows, graphs, delegation, and asynchronous task patterns.
 
+- [x] Introduction -- Why single-agent tool use is not enough and what coordination patterns this chapter covers
 - [x] Historical Perspective -- From Petri nets and actor models through workflow systems to modern LLM-based orchestration
 - [x] Workflows -- Explicit control structures coordinating multiple agent stages through defined transitions and hand-offs
 - [x] Graphs -- Directed state machines with typed state, conditional edges, branching, cycles, and explicit control flow
@@ -239,6 +241,7 @@ Chat UIs with Chainlit and AG-UI protocol, error propagation across distributed 
 
 Production infrastructure for running agent-generated code safely: sandbox isolation, REPL, kill switch, MCP server isolation, and skill sandboxing.
 
+- [x] Introduction -- Agents generating arbitrary code need execution infrastructure beyond tool permissions, progressing from sandbox to REPL to MCP server isolation
 - [x] Sandbox -- Process and container isolation with filesystem, network, and resource constraints including data-sensitivity-driven network kill switch
 - [x] REPL -- Jupyter-like notebook pattern for iterative code execution in shared stateful environments with persistence and isolation
 - [x] MCP Server Isolation -- Dual-container routing tool calls to isolated vs unrestricted instances based on session data sensitivity

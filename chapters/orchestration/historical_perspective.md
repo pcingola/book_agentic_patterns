@@ -1,5 +1,7 @@
 ## Historical Perspective
 
+The Tools chapter traced how agents gained the ability to act -- calling APIs, querying databases, executing code -- through structured tool calls that replaced ad-hoc text parsing. Once individual agents could reliably use tools, the next architectural pressure was coordination: how to structure the flow of work when a task involves multiple agents, multiple steps, or both.
+
 The orchestration patterns examined in this chapter draw on intellectual traditions that span several decades. Understanding this history clarifies why certain abstractions recur and why modern agentic systems, despite relying on large language models, continue to employ architectural ideas first developed long before deep learning existed.
 
 The computational foundations emerged in the 1960s and 1970s. Petri nets and finite state machines established that complex system behavior could be represented as explicit states connected by transitions governed by formal rules. Around the same time, the actor model introduced the idea of autonomous computational entities that communicate exclusively through asynchronous message passing, eliminating shared state and global control flow. These early formalisms captured two complementary intuitions: that behavior can be modeled as traversal through a well-defined structure, and that independent agents can coordinate without centralized control. Both ideas remain central to contemporary orchestration.

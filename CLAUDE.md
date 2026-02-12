@@ -170,7 +170,7 @@ Code examples organized by chapter (Jupyter notebooks and Python scripts):
 
 ## Chapters
 
-Chapters in `chapters/`: foundations, core_patterns, tools, context_memory, orchestration, rag, mcp, a2a, skills_and_sub_agents, evals, execution_infrastructure, data_sources_and_connectors, ui, the_complete_agent. Each contains `chapter.md` index linking to section files and hands-on exercises. Master index in `chapters.md` at root. The execution_infrastructure chapter covers: Sandbox, REPL, MCP Server Isolation, Skill Sandbox, and Hands-On MCP Server Isolation. The the_complete_agent chapter progressively builds five agent variants from simple to complex: V1 Coder (file + sandbox tools), V2 Planner (adds todo tools), V3 Skilled (progressive skill disclosure), V4 Coordinator (sub-agent delegation), V5 Full Agent (unified async task orchestration with event-driven wait).
+Chapters in `chapters/`: foundations, core_patterns, tools, context_memory, orchestration, rag, mcp, a2a, skills_and_sub_agents, evals, execution_infrastructure, data_sources_and_connectors, ui, the_complete_agent. Each contains `chapter.md` index linking to section files and hands-on exercises. Master index in `chapters.md` at root. The execution_infrastructure chapter covers: Sandbox, REPL, MCP Server Isolation, Skill Sandbox, and Hands-On MCP Server Isolation. The the_complete_agent chapter progressively builds five agent variants from simple to complex: V1 Coder (file + sandbox tools), V2 Planner (adds todo tools), V3 Skilled (progressive skill disclosure), V4 Coordinator (sub-agent delegation), V5 Full Agent (unified async task orchestration with event-driven wait). It also covers Server Requirements (consolidated checklist for MCP/A2A servers) and Infrastructure (decomposing the monolithic agent into distributed MCP servers and A2A services).
 
 ## Scripts
 
@@ -187,6 +187,7 @@ All scripts in `scripts/` follow the `config.sh` pattern (sets PROJECT_DIR, load
 - `annotate_schema.sh` - Runs AI schema annotation pipeline
 - `download_vocabularies.sh` - Downloads vocabulary resources
 - `ingest_openapi.sh` - Ingests OpenAPI specs
+- `launch_infrastructure.sh` - Launches distributed agent architecture (MCP servers + A2A servers) with port allocation and process cleanup
 - `make.py` - Python utility for book compilation
 - `fix_references.py` - Reference fixing utility
 
@@ -214,10 +215,6 @@ The `docs/` directory contains reference documentation for the key technologies 
 
 `docs/agui.md` -- AG-UI (Agent-User Interaction) Protocol: event-based protocol for connecting AI agents to user-facing applications. Covers concepts (agents, architecture, events, messages, middleware, serialization, state, tools), SDK references (JavaScript and Python), quickstart guides, and draft proposals.
 
-`docs/mcp_template.md` -- Design guide for building production FastMCP servers: component architecture, tool registration, workspace/session isolation, large data handling, middleware, authentication, Docker setup.
-
-`docs/mcp_sql.md` -- Design document for the NL2SQL MCP system: five-layer architecture, schema extraction, AI-powered enum detection, NL2SQL agents, database-agnostic design, security patterns.
-
 `docs/skills_specification.md` -- Agent Skills specification: overview, integration approaches, SKILL.md format, directory structure, progressive disclosure, validation.
 
 `docs/tasks.md` -- Task system design document: async task submission, observation (poll/stream/wait), worker execution, state machine.
@@ -225,12 +222,6 @@ The `docs/` directory contains reference documentation for the key technologies 
 `docs/mcp_requirements.md` -- Checklist of requirements for production MCP servers: auth, workspace, context, permissions, compliance, connectors, config, errors, Docker, testing.
 
 `docs/a2a_requirements.md` -- Requirements for A2A servers: server creation via `get_agent()`/`to_a2a()`, auth with Bearer token propagation, client config, coordination with delegation tools, resilience (retry/timeout/cancel), prompt management, testing with `MockA2AServer`. Includes template implementation plan.
-
-`docs/refactor_mcp_connectors.md` -- Design document for the toolkits refactoring: extracting business logic from MCP servers into `toolkits/`, creating PydanticAI tool wrappers in `tools/`, and simplifying MCP wrappers to thin delegation layers. Fully implemented.
-
-`docs/plan_monolithic_agents.md` -- Design for the five-agent progression (V1-V5) in the_complete_agent chapter: tool sets, library changes, prompt composition strategy.
-
-`docs/plan_event_driven_wait.md` -- Design for event-driven task waiting: unified `asyncio.Event` replaces polling-based `check_tasks`, timeout control, race condition safety via clear-then-check pattern.
 
 Each index file (`*.md`) links to detailed section files in corresponding subdirectories (`a2a_specification/`, `agui/`, `fastmcp/`, `mcp/`, `pydantic-ai/`, `skills_specification/`). Original unprocessed source files are in `docs/original/`.
 
