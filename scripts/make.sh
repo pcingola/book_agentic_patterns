@@ -16,7 +16,7 @@ if [ -f "$PROJECT_DIR/title_page.md" ]; then
     cat "$PROJECT_DIR/title_page.md" > "$OUTPUT_DIR/book.md"
 fi
 
-CHAPTERS="foundations core_patterns tools orchestration rag context_memory mcp a2a skills connectors execution_infrastructure"
+CHAPTERS=$(sed -n 's|.*](chapters/\([^/]*\)/chapter\.md).*|\1|p' "$PROJECT_DIR/chapters.md")
 
 for chapter_name in $CHAPTERS; do
     chapter_dir="$PROJECT_DIR/chapters/$chapter_name"
