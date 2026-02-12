@@ -59,9 +59,9 @@ The `workspace_to_host_path()` function retrieves the current user and session f
 
 ## FileConnector Operations
 
-The full set of operations maps to common file interactions: `read`, `head`, `tail`, `find`, `list` for reading, and `write`, `append`, `edit`, `delete` for writing. Permission enforcement happens at the tool layer (covered in the tools chapter), not inside the connector itself.
+The full set of operations maps to common file interactions: `read`, `head`, `tail`, `find`, `list` for reading, and `write`, `append`, `edit`, `delete` for writing. Each method carries a `@tool_permission` annotation (`READ` or `WRITE`) that declares its permission level, enabling the permission enforcement system described in the tools chapter.
 
-All operations return strings: either the requested content or a status message like `"Wrote 142 bytes to /workspace/notes.md"`. Errors are returned as strings prefixed with `[Error]` rather than raised as exceptions. This design keeps the agent loop stable -- a failed tool call produces a message the model can reason about and retry, rather than crashing the loop.
+All operations return strings: either the requested content or a status message like `"Wrote 142 bytes to /workspace/notes.md"`. Errors raise standard Python exceptions (`FileNotFoundError`, `ValueError`, etc.), which PydanticAI catches and presents to the model as tool error messages. This keeps the agent loop stable -- a failed tool call produces a message the model can reason about and retry, rather than crashing the loop.
 
 ## Key Takeaways
 

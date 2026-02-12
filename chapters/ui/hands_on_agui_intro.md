@@ -59,6 +59,6 @@ Vite serves the frontend on `http://localhost:5173`. Both frontend and backend m
 
 ### Swapping Backends
 
-The same frontend works unchanged against all three backend versions. With v1, you get a plain chat. With v2, tool calls appear in the conversation. With v3, the state panel comes alive. The frontend has a text input in the header that lets you change the backend URL at runtime, making it easy to switch between versions without restarting.
+A single frontend connects to all backend versions. The frontend includes all features from v1 through v5 (chat, tools, state, file uploads, feedback), but features whose endpoints do not exist on a given backend simply remain inactive. With v1, you get a plain chat. With v2, tool calls appear in the conversation. With v3, the state panel comes alive. With v4 and v5, file uploads and feedback buttons become functional. The frontend has a text input in the header that lets you change the backend URL at runtime, making it easy to switch between versions without restarting.
 
-No frontend code changes needed -- the protocol handles everything.
+No frontend code changes needed -- the protocol and side-channel endpoints handle everything.

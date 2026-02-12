@@ -77,6 +77,8 @@ class MCPServerPrivateData(MCPServerStrict):
 
 Both connections are alive for the entire session. There is no reconnection or context teardown at the switch point -- `_target()` simply starts returning the isolated instance instead of the normal one. From PydanticAI's perspective, nothing changed; the toolset object is the same, it just routes internally.
 
+Note that `_target()` calls `session_has_private_data()` with no arguments -- it reads the user and session identity from contextvars, which are set at the request boundary by the middleware layer. This differs from the sandbox's `get_network_mode(user_id, session_id)`, which takes explicit parameters because it operates outside the request context (container lifecycle management runs independently of any single request). The two mechanisms check the same underlying `PrivateData` state; they just resolve the session identity differently.
+
 The `get_mcp_client()` factory returns `MCPServerPrivateData` when `url_isolated` is present in config, and a plain `MCPServerStrict` otherwise. Callers do not need to know which variant they got:
 
 ```python

@@ -106,16 +106,44 @@ Separating *output storage* from *output references* is also important. Binary d
 
 ### Asynchronous execution and concurrency
 
-In agent platforms, REPL execution often happens inside servers that must remain responsive. Blocking execution directly in the event loop does not scale. The cell's `execute` method is async, but the actual subprocess call is synchronous. The bridge between the two is `asyncio.to_thread()`, which offloads the blocking sandbox call to a worker thread while keeping the event loop free.
+In agent platforms, REPL execution often happens inside servers that must remain responsive. Even though the sandbox itself uses `asyncio.create_subprocess_exec` (which is async), the agent's code running inside the subprocess can be CPU-intensive -- data transformations, model training, heavy computation -- and the subprocess communication can block for the duration. Running this directly on the event loop would stall all other concurrent requests.
 
-```
-async def execute(self, namespace, timeout, ...):
-    self.state = CellState.RUNNING
-    result = await asyncio.to_thread(self._execute_sync, ...)
-    self.state = result.state
+The solution is a two-layer execution model. The cell's `execute` method is async and uses `asyncio.to_thread()` to offload the entire execution to a worker thread. Inside that thread, a fresh event loop runs the async sandbox call:
+
+```python
+class Cell(BaseModel):
+    async def execute(self, namespace, timeout, import_statements, function_definitions, user_id, session_id):
+        self.state = CellState.RUNNING
+        self.executed_at = datetime.now()
+
+        await asyncio.to_thread(
+            self._execute_sync, namespace, timeout,
+            import_statements or [], function_definitions or [],
+            user_id, session_id,
+        )
+
+    def _execute_sync(self, namespace, timeout, import_statements, function_definitions, user_id, session_id):
+        workspace_path = WORKSPACE_DIR / user_id / session_id
+
+        loop = asyncio.new_event_loop()
+        try:
+            result = loop.run_until_complete(
+                execute_in_sandbox(
+                    code=self.code, namespace=namespace,
+                    import_statements=import_statements,
+                    function_definitions=function_definitions,
+                    timeout=timeout, user_id=user_id,
+                    session_id=session_id, workspace_path=workspace_path,
+                )
+            )
+        finally:
+            loop.close()
+
+        self.state = result.state
+        namespace.update(result.namespace)
 ```
 
-This separation allows multiple agents or sessions to execute cells concurrently while preserving responsiveness.
+The `asyncio.to_thread` call is the key boundary: it moves the blocking work off the main event loop's thread, so the server remains responsive to other requests. Inside the worker thread, `asyncio.new_event_loop()` creates a private loop that drives the async subprocess communication. This pattern allows multiple agents or sessions to execute cells concurrently without blocking each other.
 
 ### Sessions, persistence, and multi-user concerns
 

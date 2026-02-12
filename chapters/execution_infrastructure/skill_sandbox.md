@@ -16,29 +16,36 @@ The result is two distinct zones inside the container. `/workspace` is the agent
 
 ### Wiring Skills to the Sandbox
 
-The `create_skill_sandbox_manager()` factory builds a `SandboxManager` with read-only mounts derived from the skill registry. It iterates over all discovered skills, maps each skill's `scripts/` directory to a container path under `/skills/{skill_name}/scripts/`, and passes the result as read-only mounts:
+`SandboxManager` accepts an optional `read_only_mounts` dictionary at construction time. This dictionary is passed through to every `ContainerConfig` created by the manager, so every container -- across all sessions -- sees the same read-only mounts:
 
 ```python
-def create_skill_sandbox_manager(registry: SkillRegistry) -> SandboxManager:
-    read_only_mounts = {}
-    for meta in registry.list_all():
-        scripts_dir = meta.path / "scripts"
-        if scripts_dir.exists():
-            read_only_mounts[str(scripts_dir)] = f"{SKILLS_CONTAINER_ROOT}/{meta.path.name}/scripts"
-    return SandboxManager(read_only_mounts=read_only_mounts)
+class SandboxManager:
+    def __init__(self, read_only_mounts: dict[str, str] | None = None) -> None:
+        self._client: docker.DockerClient | None = None
+        self._read_only_mounts: dict[str, str] = read_only_mounts or {}
+        self._sessions: dict[tuple[str, str], SandboxSession] = {}
 ```
 
-Every container created by this manager -- across all sessions -- sees the same skill scripts at the same container paths.
-
-The `run_skill_script` function bridges the skill registry and the sandbox. It looks up the skill by name, resolves the script to a container path, and dispatches execution via `SandboxManager.execute_command`:
+To wire skills into the sandbox, the caller iterates over the skill registry and builds the mount dictionary. Each skill's `scripts/` directory is mapped to a container path under `/skills/{skill_name}/scripts/`:
 
 ```python
-container_path = f"{SKILLS_CONTAINER_ROOT}/{skill.path.name}/scripts/{script_name}"
+read_only_mounts = {}
+for meta in registry.list_all():
+    scripts_dir = meta.path / "scripts"
+    if scripts_dir.exists():
+        read_only_mounts[str(scripts_dir)] = f"/skills/{meta.path.name}/scripts"
+manager = SandboxManager(read_only_mounts=read_only_mounts)
+```
+
+Skill execution then dispatches through `SandboxManager.execute_command`, which handles session lifecycle internally -- creating or reusing containers as needed:
+
+```python
+container_path = f"/skills/{skill.path.name}/scripts/{script_name}"
 command = f"python {container_path} {args}" if script_name.endswith(".py") else f"bash {container_path} {args}"
-return manager.execute_command(user_id, session_id, command)
+manager.execute_command(user_id, session_id, command)
 ```
 
-Because `execute_command` calls `get_or_create_session` internally, skill execution benefits from the same lifecycle management, network isolation, and workspace persistence described in previous sections. If the session already has a container, the command runs there. If not, a new container is created with both the writable workspace and the read-only skill mounts. If `PrivateData` triggers a network ratchet mid-conversation, the recreated container preserves both mount types.
+Because `execute_command` manages the full container lifecycle, skill execution benefits from the same network isolation and workspace persistence described in previous sections. If the session already has a container, the command runs there. If not, a new container is created with both the writable workspace and the read-only skill mounts. If `PrivateData` triggers a network ratchet mid-conversation, the recreated container preserves both mount types.
 
 ### Why Read-Only Matters
 

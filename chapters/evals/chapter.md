@@ -16,6 +16,8 @@
 
 [Hands-On: Pydantic Evals Framework](./hands_on_evals_pydantic_ai.md)
 
+[Hands-On: Eval Runner and Custom Evaluators](./hands_on_evals_runner.md)
+
 [Hands-On: Doctors](./hands_on_doctors.md)
 
 [References](./references.md)

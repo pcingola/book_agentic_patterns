@@ -23,9 +23,9 @@ spec = AgentSpec(
 
 ### MCP Servers as Tool Providers
 
-The coordinator connects to four MCP servers for its direct tools: `file_ops` (file read/write/list), `sandbox` (Docker execution), `todo` (task management), and `format_conversion` (document conversion). Each runs as an independent HTTP service started via `fastmcp run ... --transport http --port N`.
+The coordinator connects to four MCP servers for its direct tools: `file_ops` (file, CSV, and JSON operations), `sandbox` (Docker execution), `todo` (task management), and `format_conversion` (document conversion). Each runs as an independent HTTP service started via `fastmcp run ... --transport http --port N`.
 
-The A2A servers also connect to MCP servers internally. The `data_analysis` A2A server connects to four: `data_analysis` (DataFrame operations), `data_viz` (plotting), `file_ops` (file I/O for the data agent), and `repl` (Python notebook execution). The `nl2sql` A2A server connects to `sql`. The `vocabulary` A2A server connects to `vocabulary`. All MCP connections are declared in `config.yaml` under `mcp_servers`.
+The A2A servers also connect to MCP servers internally. The `data_analysis` A2A server connects to four: `data_analysis` (DataFrame operations), `data_viz` (plotting), `file_ops` (file, CSV, and JSON I/O), and `repl` (Python notebook execution). The monolithic version imported file, CSV, and JSON tools from three separate modules; the distributed version consolidates them into a single `file_ops` MCP server. The `nl2sql` A2A server connects to `sql`. The `vocabulary` A2A server connects to `vocabulary`. All MCP connections are declared in `config.yaml` under `mcp_servers`.
 
 ### A2A Servers as Delegation Targets
 

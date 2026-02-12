@@ -11,6 +11,7 @@ from agentic_patterns.core.context.processors import (
     read_line_range,
 )
 from agentic_patterns.core.context.reader import read_file_as_string
+from agentic_patterns.core.tools.permissions import ToolPermission, tool_permission
 from agentic_patterns.core.workspace import workspace_to_host_path
 
 
@@ -21,6 +22,7 @@ class FileConnector(Connector):
         """Translate sandbox path to host path. Raises WorkspaceError on invalid paths."""
         return workspace_to_host_path(PurePosixPath(path))
 
+    @tool_permission(ToolPermission.WRITE)
     def append(self, path: str, content: str) -> str:
         """Append content to the end of a file."""
         host_path = self._translate_path(path)
@@ -30,6 +32,7 @@ class FileConnector(Connector):
             f.write(content)
         return f"Appended {len(content)} bytes to {path}"
 
+    @tool_permission(ToolPermission.WRITE)
     def delete(self, path: str) -> str:
         """Delete a file."""
         host_path = self._translate_path(path)
@@ -38,6 +41,7 @@ class FileConnector(Connector):
         host_path.unlink()
         return f"Deleted {path}"
 
+    @tool_permission(ToolPermission.WRITE)
     def edit(self, path: str, start_line: int, end_line: int, new_content: str) -> str:
         """Replace lines start_line to end_line (1-indexed, inclusive) with new_content."""
         host_path = self._translate_path(path)
@@ -68,6 +72,7 @@ class FileConnector(Connector):
         lines_added = len(new_lines)
         return f"Replaced lines {start_line}-{end_idx} ({lines_removed} lines) with {lines_added} lines in {path}"
 
+    @tool_permission(ToolPermission.READ)
     @context_result()
     def find(self, path: str, query: str) -> str:
         """Search file contents for a string, returning matching lines."""
@@ -90,6 +95,7 @@ class FileConnector(Connector):
         header = f"[{len(matches)} match(es) for '{query}' in {path}]"
         return f"{header}\n" + "\n".join(matches)
 
+    @tool_permission(ToolPermission.READ)
     def head(self, path: str, n: int = 10) -> str:
         """Read the first N lines of a file."""
         host_path = self._translate_path(path)
@@ -109,6 +115,7 @@ class FileConnector(Connector):
             return f"[Lines 1-{len(lines)} of {total_lines}]\n{content}"
         return content
 
+    @tool_permission(ToolPermission.READ)
     @context_result()
     def list(self, path: str, pattern: str = "*") -> str:
         """List files matching a glob pattern."""
@@ -136,6 +143,7 @@ class FileConnector(Connector):
 
         return f"[{len(matches)} file(s) in {path}]\n" + "\n".join(matches)
 
+    @tool_permission(ToolPermission.READ)
     @context_result()
     def read(self, path: str) -> str:
         """Read entire file with automatic truncation for large files."""
@@ -144,6 +152,7 @@ class FileConnector(Connector):
             raise FileNotFoundError(f"File not found: {path}")
         return read_file_as_string(host_path)
 
+    @tool_permission(ToolPermission.READ)
     def tail(self, path: str, n: int = 10) -> str:
         """Read the last N lines of a file."""
         host_path = self._translate_path(path)
@@ -164,6 +173,7 @@ class FileConnector(Connector):
             return f"[Lines {start + 1}-{total_lines} of {total_lines}]\n{content}"
         return content
 
+    @tool_permission(ToolPermission.WRITE)
     def write(self, path: str, content: str) -> str:
         """Write or overwrite a file."""
         host_path = self._translate_path(path)

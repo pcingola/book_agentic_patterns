@@ -16,6 +16,8 @@ The progression is from general to specific. The Sandbox section introduces the 
 
 [Skill Sandbox](./skill_sandbox.md)
 
+[Hands-On: Introduction](./hands_on_intro.md)
+
 [Hands-On: MCP Server Isolation](./hands_on_mcp_isolation.md)
 
 ## References

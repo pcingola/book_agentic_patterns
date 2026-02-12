@@ -18,7 +18,14 @@ On Linux, [bubblewrap](https://github.com/containers/bubblewrap) (`bwrap`) provi
 
 ```python
 class SandboxBubblewrap(Sandbox):
-    def _build_command(self, command, bind_mounts, isolate_network, isolate_pid, cwd):
+    def _build_command(
+        self,
+        command: list[str],
+        bind_mounts: list[BindMount],
+        isolate_network: bool,
+        isolate_pid: bool,
+        cwd: str | None,
+    ) -> list[str]:
         cmd = [
             "bwrap",
             "--ro-bind", "/usr", "/usr",
@@ -31,19 +38,29 @@ class SandboxBubblewrap(Sandbox):
             "--dev", "/dev",
             "--tmpfs", "/tmp",
         ]
-        # User-specified mounts
+
+        # Bind Python prefix so the child can import installed packages
+        python_prefix = Path(sys.prefix)
+        if python_prefix != Path("/usr"):
+            cmd.extend(["--ro-bind", str(python_prefix), str(python_prefix)])
+
         for mount in bind_mounts:
             flag = "--ro-bind" if mount.readonly else "--bind"
             cmd.extend([flag, str(mount.source), mount.target])
-        # Optional namespace isolation
+
         if isolate_pid:
             cmd.append("--unshare-pid")
         if isolate_network:
             cmd.append("--unshare-net")
-        ...
+        if cwd:
+            cmd.extend(["--chdir", cwd])
+
+        cmd.append("--")
+        cmd.extend(command)
+        return cmd
 ```
 
-The child process sees a read-only root filesystem, a private `/tmp`, and only the bind mounts explicitly granted. PID and network namespaces can be unshared independently. This is lightweight (no daemon, no images, no layers) and fast to start.
+The child process sees a read-only root filesystem, a private `/tmp`, and only the bind mounts explicitly granted. The Python prefix is mounted read-only so that installed packages remain importable inside the sandbox. PID and network namespaces can be unshared independently. This is lightweight (no daemon, no images, no layers) and fast to start.
 
 ### Fallback: Plain Subprocess
 

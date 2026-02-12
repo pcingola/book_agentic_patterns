@@ -134,28 +134,27 @@ This is one of the rare places where “generic” remains very effective: the c
 
 ### OpenAPI / REST API connectors
 
-HTTP APIs can be too generic to be reliable for agents unless the connector gives the agent meaningful structure: what endpoints exist, what parameters are required, what schemas are expected, how authentication works, and how pagination or idempotency is handled.
+HTTP APIs can be too generic to be reliable for agents unless the connector gives the agent meaningful structure: what endpoints exist, what parameters are required, what schemas are expected, and how authentication is handled.
 
-OpenAPI is the standard mechanism for supplying that structure. When an API is described with OpenAPI, a connector can list endpoints, describe the request/response shapes, validate inputs, and normalize error handling and pagination without embedding service-specific code in the agent. ([OpenAPI Initiative Publications][1])
+OpenAPI is the standard mechanism for supplying that structure. When an API is described with OpenAPI, a connector can list endpoints, describe the request/response shapes, and normalize error handling without embedding service-specific code in the agent. ([OpenAPI Initiative Publications][1])
 
 A practical agent-facing surface looks like this:
 
 ```python
 # Discovery
-api.list_endpoints()                       # e.g., "GET /tickets", "POST /tickets"
-api.describe("POST /tickets")              # summary, required fields, auth scopes
+api.list_apis()                                                    # all registered APIs
+api.list_endpoints(api_id="ticketing")                             # endpoints for one API
+api.show_api_summary(api_id="ticketing")                           # categorized overview
+api.show_endpoint_details(api_id="ticketing",                      # parameters, schemas,
+                          method="POST", path="/tickets")           # request/response shapes
 
-# Safe calling with validation
-req = {"title": "VPN broken", "priority": "P1", "assignee": "netops"}
-api.validate("POST /tickets", req)         # schema + enum checks + required fields
-resp2 = api.call("POST /tickets", req, idempotency_key="case-1042")
-
-# Pagination normalization
-for page in api.paginate("GET /tickets", params={"status": "open"}, page_size=200):
-    process(page.items)
+# Calling with structured parameters
+api.call_endpoint(api_id="ticketing", method="POST", path="/tickets",
+                  body={"title": "VPN broken", "priority": "P1"},
+                  output_file="/workspace/results/ticket.json")
 ```
 
-The design goal is to avoid a “generic API connector” that is just `http_get(url)` and `http_post(url, body)`. Those primitives push complexity onto the agent, which then must infer required fields, handle pagination styles, encode authentication correctly, and interpret error responses. By contrast, an OpenAPI-driven connector can make the agent reliably productive by turning undocumented details into discoverable tool affordances, and by ensuring that calls are validated before they hit production services. ([OpenAPI Initiative Publications][1], [OpenAPI Initiative Blog][2])
+The design goal is to avoid a "generic API connector" that is just `http_get(url)` and `http_post(url, body)`. Those primitives push complexity onto the agent, which then must infer required fields, encode authentication correctly, and interpret error responses. By contrast, an OpenAPI-driven connector can make the agent reliably productive by turning undocumented details into discoverable tool affordances. The agent discovers what is available, inspects the details, and then makes a validated call -- the same exploration-then-action workflow a developer would follow, but driven entirely by the model's reasoning. ([OpenAPI Initiative Publications][1], [OpenAPI Initiative Blog][2])
 
 ### Graph and relationship connectors
 

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
 import re
+import threading
 import uuid
 from collections.abc import Callable
 from pathlib import Path
@@ -89,6 +91,32 @@ async def mcp_to_skills(
         Skill(id=t.name, name=t.name, description=t.description or t.name)
         for t in tools
     ]
+
+
+def mcp_to_skills_sync(
+    config_name: str, config_path: Path | str | None = None
+) -> list[Skill]:
+    """Sync wrapper for mcp_to_skills. Safe to call even if an event loop is running."""
+    try:
+        return asyncio.run(mcp_to_skills(config_name, config_path))
+    except RuntimeError:
+        # An event loop is already running (e.g. uvicorn import) -- run in a new thread.
+        result: list[Skill] = []
+        error: BaseException | None = None
+
+        def _target() -> None:
+            nonlocal result, error
+            try:
+                result = asyncio.run(mcp_to_skills(config_name, config_path))
+            except BaseException as e:
+                error = e
+
+        t = threading.Thread(target=_target)
+        t.start()
+        t.join()
+        if error is not None:
+            raise error
+        return result
 
 
 def skill_metadata_to_a2a_skill(meta: SkillMetadata) -> Skill:

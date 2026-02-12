@@ -90,11 +90,11 @@ recipe_agent = get_agent(
 )
 
 async def transform_recipe(customer_order: CustomerOrder) -> Recipe:
-    res, nodes = await run_agent(recipe_agent, format_as_xml(customer_order), verbose=True)
-    return res
+    agent_run, nodes = await run_agent(recipe_agent, format_as_xml(customer_order), verbose=True)
+    return agent_run.result.output
 ```
 
-The `transform_recipe` function is the task being evaluated. It takes a typed input, runs the agent, and returns a typed output.
+The `transform_recipe` function is the task being evaluated. It takes a typed input, runs the agent, and extracts the typed output from the run result.
 
 The dataset uses LLMJudge for semantic evaluation:
 

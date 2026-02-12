@@ -3,6 +3,12 @@ set -o pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/config.sh"
 
+free_port() {
+    local pid
+    pid=$(lsof -ti :"$1" 2>/dev/null) || return 0
+    kill "$pid" 2>/dev/null || true
+}
+
 PIDS=()
 cleanup() {
     for pid in "${PIDS[@]}"; do
@@ -12,15 +18,27 @@ cleanup() {
 }
 trap cleanup EXIT
 
+check_pids() {
+    for pid in "${PIDS[@]}"; do
+        if ! kill -0 "$pid" 2>/dev/null; then
+            return 1
+        fi
+    done
+}
+
 start_mcp() {
     local module="$1" port="$2"
-    fastmcp run "agentic_patterns/mcp/${module}/server.py:mcp" --transport http --port "$port" &
+    free_port "$port"
+    fastmcp run "agentic_patterns/mcp/${module}/server.py:mcp" --transport http --port "$port" \
+        > >(sed -u "s/^/[mcp:${module}] /") 2>&1 &
     PIDS+=($!)
 }
 
 start_a2a() {
     local module="$1" port="$2"
-    uvicorn "agentic_patterns.a2a.${module}.server:app" --port "$port" &
+    free_port "$port"
+    uvicorn "agentic_patterns.a2a.${module}.server:app" --port "$port" \
+        > >(sed -u "s/^/[a2a:${module}] /") 2>&1 &
     PIDS+=($!)
 }
 
@@ -35,11 +53,19 @@ start_mcp sql 8011
 start_mcp repl 8105
 start_mcp vocabulary 8106
 
-sleep 2
+# TODO: replace with proper readiness check (poll each MCP port)
+echo "Waiting for MCP servers to start..."
+sleep 5
+
+check_pids || { echo "An MCP server failed to start" >&2; exit 1; }
 
 # A2A servers
 start_a2a nl2sql 8200
 start_a2a data_analysis 8201
 start_a2a vocabulary 8202
 
-wait
+# Wait for any process to exit -- if one dies, kill the rest.
+while true; do
+    check_pids || exit 1
+    sleep 1
+done

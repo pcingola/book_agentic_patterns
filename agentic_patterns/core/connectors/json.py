@@ -15,6 +15,7 @@ from jsonpath_ng.exceptions import JsonPathParserError
 from agentic_patterns.core.connectors.file import FileConnector
 from agentic_patterns.core.context.decorators import context_result
 from agentic_patterns.core.context.processors.json_processor import process_json
+from agentic_patterns.core.tools.permissions import ToolPermission, tool_permission
 
 
 def _parse_jsonpath(json_path: str) -> Any:
@@ -183,6 +184,7 @@ class JsonConnector(FileConnector):
             json.dump(data, f, ensure_ascii=False, indent=2)
             f.write("\n")
 
+    @tool_permission(ToolPermission.WRITE)
     def append(self, path: str, json_path: str, value: str) -> str:
         """Append a value to an array at a specific JSONPath."""
         parsed_value = json.loads(value)
@@ -198,6 +200,7 @@ class JsonConnector(FileConnector):
         self._write_json(host_path, data)
         return f"Appended value to {json_path} in {path} (now {len(target)} items)"
 
+    @tool_permission(ToolPermission.WRITE)
     def delete_key(self, path: str, json_path: str) -> str:
         """Delete a key at a specific JSONPath."""
         if json_path == "$":
@@ -210,6 +213,7 @@ class JsonConnector(FileConnector):
         self._write_json(host_path, data)
         return f"Deleted {json_path} from {path}"
 
+    @tool_permission(ToolPermission.READ)
     @context_result()
     def get(self, path: str, json_path: str) -> str:
         """Get a value or subtree using JSONPath syntax."""
@@ -235,6 +239,7 @@ class JsonConnector(FileConnector):
         finally:
             tmp_path.unlink()
 
+    @tool_permission(ToolPermission.READ)
     @context_result()
     def head(self, path: str, json_path: str = "$", n: int = 10) -> str:
         """Return the first N keys or elements at a JSONPath."""
@@ -245,6 +250,7 @@ class JsonConnector(FileConnector):
         sliced, total = _slice_value(value, n, from_end=False)
         return _format_sliced(sliced, n, total, from_end=False, json_path=json_path)
 
+    @tool_permission(ToolPermission.READ)
     @context_result()
     def keys(self, path: str, json_path: str = "$") -> str:
         """List keys at a specific path in the JSON structure."""
@@ -269,6 +275,7 @@ class JsonConnector(FileConnector):
             type_name = type(value).__name__
             return f"[Value at {json_path} is type: {type_name}]"
 
+    @tool_permission(ToolPermission.WRITE)
     def merge(self, path: str, json_path: str, updates: str) -> str:
         """Merge updates into an object at a specific JSONPath without replacing it entirely."""
         parsed_updates = json.loads(updates)
@@ -288,6 +295,7 @@ class JsonConnector(FileConnector):
         self._write_json(host_path, data)
         return f"Merged {len(parsed_updates)} keys into {json_path} in {path}"
 
+    @tool_permission(ToolPermission.READ)
     @context_result()
     def query(self, path: str, json_path: str, max_results: int = 20) -> str:
         """Query JSON using extended JSONPath with filters. Examples: $.body[?name =~ "breast"], $.items[?(@.age > 30)]."""
@@ -313,6 +321,7 @@ class JsonConnector(FileConnector):
             result = f"[{total} match{'es' if total != 1 else ''}]\n{result}"
         return result
 
+    @tool_permission(ToolPermission.READ)
     def schema(self, path: str, json_path: str = "$", max_depth: int = 4) -> str:
         """Show the structure of a JSON file: keys, types, nesting, and array sizes."""
         _, data = self._read_json(path)
@@ -320,6 +329,7 @@ class JsonConnector(FileConnector):
         lines = _describe_schema(value, json_path, max_depth)
         return "\n".join(lines)
 
+    @tool_permission(ToolPermission.WRITE)
     def set(self, path: str, json_path: str, value: str) -> str:
         """Set a value at a specific JSONPath, preserving the rest of the file."""
         if json_path == "$":
@@ -340,6 +350,7 @@ class JsonConnector(FileConnector):
         value_preview = value if len(value) <= 50 else f"{value[:47]}..."
         return f"Updated {json_path} = {value_preview} in {path}"
 
+    @tool_permission(ToolPermission.READ)
     @context_result()
     def tail(self, path: str, json_path: str = "$", n: int = 10) -> str:
         """Return the last N keys or elements at a JSONPath."""
@@ -350,6 +361,7 @@ class JsonConnector(FileConnector):
         sliced, total = _slice_value(value, n, from_end=True)
         return _format_sliced(sliced, n, total, from_end=True, json_path=json_path)
 
+    @tool_permission(ToolPermission.READ)
     def validate(self, path: str) -> str:
         """Validate JSON syntax and structure."""
         host_path = self._translate_path(path)

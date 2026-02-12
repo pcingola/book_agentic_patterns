@@ -13,6 +13,7 @@ from agentic_patterns.core.context.processors.csv_processor import (
     _detect_delimiter,
     process_csv,
 )
+from agentic_patterns.core.tools.permissions import ToolPermission, tool_permission
 
 
 class CsvConnector(FileConnector):
@@ -23,6 +24,7 @@ class CsvConnector(FileConnector):
     Added: delete_rows, find_rows, headers, read_row, update_cell, update_row.
     """
 
+    @tool_permission(ToolPermission.WRITE)
     def append(self, path: str, values: dict[str, str] | list[str]) -> str:
         """Append a new row to the end of the CSV."""
         host_path = self._translate_path(path)
@@ -57,6 +59,7 @@ class CsvConnector(FileConnector):
 
         return f"Appended 1 row to {path} (now {row_count + 1} rows)"
 
+    @tool_permission(ToolPermission.WRITE)
     def delete_rows(self, path: str, column: str | int, value: str) -> str:
         """Delete rows matching a condition."""
         host_path = self._translate_path(path)
@@ -92,6 +95,7 @@ class CsvConnector(FileConnector):
         col_name = header[col_idx] if isinstance(column, int) else column
         return f"Deleted {deleted_count} row(s) where {col_name}='{value}' from {path}"
 
+    @tool_permission(ToolPermission.READ)
     @context_result()
     def find_rows(
         self, path: str, column: str | int, value: str, limit: int = 10
@@ -146,6 +150,7 @@ class CsvConnector(FileConnector):
             if temp_file.exists():
                 temp_file.unlink()
 
+    @tool_permission(ToolPermission.READ)
     @context_result()
     def head(self, path: str, n: int = 10) -> str:
         """Read first N rows with automatic column/cell truncation."""
@@ -160,6 +165,7 @@ class CsvConnector(FileConnector):
             raise ValueError(f"Failed to read CSV: {result.content}")
         return result.content
 
+    @tool_permission(ToolPermission.READ)
     def headers(self, path: str) -> str:
         """Get CSV column headers with automatic truncation for wide tables."""
         host_path = self._translate_path(path)
@@ -185,6 +191,7 @@ class CsvConnector(FileConnector):
 
         return f"Columns ({total_cols} total): {', '.join(header)}"
 
+    @tool_permission(ToolPermission.READ)
     def read_row(self, path: str, row_number: int) -> str:
         """Read a specific row by 1-indexed row number with automatic column truncation."""
         host_path = self._translate_path(path)
@@ -202,6 +209,7 @@ class CsvConnector(FileConnector):
 
         return f"[Row {row_number}]\n{result.content}"
 
+    @tool_permission(ToolPermission.READ)
     @context_result()
     def tail(self, path: str, n: int = 10) -> str:
         """Read last N rows with automatic column/cell truncation."""
@@ -248,6 +256,7 @@ class CsvConnector(FileConnector):
             if temp_file.exists():
                 temp_file.unlink()
 
+    @tool_permission(ToolPermission.WRITE)
     def update_cell(
         self, path: str, row_number: int, column: str | int, value: str
     ) -> str:
@@ -284,6 +293,7 @@ class CsvConnector(FileConnector):
         col_name = header[col_idx] if isinstance(column, int) else column
         return f"Updated row {row_number}, column '{col_name}' to '{value}' in {path}"
 
+    @tool_permission(ToolPermission.WRITE)
     def update_row(
         self, path: str, key_column: str | int, key_value: str, updates: dict[str, str]
     ) -> str:

@@ -53,7 +53,7 @@ class Dataset(Generic[InputsT, OutputT]):
     evaluators: list[Evaluator[InputsT, OutputT]]
 ```
 
-This structure captures the core idea: datasets describe intent, experiments execute the system, and reports summarize what happened, including per-case outputs and per-evaluation reasons, plus links back to execution traces when available. ([Pydantic AI][1])
+This structure captures the core idea: datasets describe intent, experiments execute the system, and reports summarize what happened, including per-case outputs and per-evaluation reasons, plus links back to execution traces when available. These abstractions are illustrative: they show the essential concepts that any eval system needs. The pydantic-evals library, used in the hands-on sections, provides its own concrete implementations of these same ideas (with classes like `EvaluatorContext` instead of `EvalContext`, and richer return types), but the underlying pattern is identical. ([Pydantic AI][1])
 
 ### Structured-output evals vs free-form evals
 

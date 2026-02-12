@@ -94,7 +94,7 @@ async def add(ctx: RunContext[StateDeps[CalculatorState]], a: int, b: int) -> To
     """Add two numbers and update the state."""
     result = a + b
     state = ctx.deps.state
-    state.history.append(f"{a} + {b} = {result}")
+    state.history.append(f"{a} add {b} = {result}")
     state.last_result = result
     return ToolReturn(
         return_value=f"Result: {result}",
