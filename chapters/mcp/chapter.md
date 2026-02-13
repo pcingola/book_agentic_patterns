@@ -1,4 +1,4 @@
-# Chapter: MCP (Model Context Protocol)
+# Chapter: Model Context Protocol (MCP)
 
 [Intro](./introduction.md)
 

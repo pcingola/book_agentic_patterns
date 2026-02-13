@@ -1,4 +1,4 @@
-# Chapter: A2A Protocol
+# Chapter: Agent2Agent Protocol (A2A)
 
 [Introduction](./introduction.md)
 

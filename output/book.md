@@ -8005,7 +8005,7 @@ Tool call/return pairing is preserved automatically. The compactor finds safe bo
 \ 
 \newpage
 
-# Chapter: MCP (Model Context Protocol)
+# Chapter: Model Context Protocol (MCP)
 
 ## Introduction
 
@@ -8958,7 +8958,7 @@ Prompts centralize instruction management on the server, separating behavioral d
 \ 
 \newpage
 
-# Chapter: A2A Protocol
+# Chapter: Agent2Agent Protocol (A2A)
 
 ## Introduction
 
