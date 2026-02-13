@@ -5,9 +5,9 @@ When an agent run spans multiple layers -- tools, sub-agents, inter-agent protoc
 The challenge is translation at boundaries. When a tool error crosses into an agent framework, it must become something the framework can act on (retry, abort, ask the user). When a sub-agent failure crosses into a coordinator, it must become something the coordinator model can reason about. When all recovery options are exhausted, the failure must reach the UI as a clean terminal signal rather than a stream that silently dies. This section walks through what each layer in our stack provides -- MCP, A2A, PydanticAI, AG-UI -- where the translation gaps are, and how the project bridges them. Earlier chapters covered MCP tool errors (Tools chapter), A2A task lifecycle (A2A chapter), and MCP elicitation (MCP Features chapter); the focus here is on what happens when these layers are stacked.
 
 
-### Error representations across the stack
+#### Error representations across the stack
 
-#### MCP
+##### MCP
 
 MCP defines two error paths, covered in the Tools chapter. Protocol errors are standard JSON-RPC error responses (unknown tool, invalid arguments, internal error) that indicate the call never executed. Tool execution errors are successful JSON-RPC responses whose result carries `isError: true`, indicating the tool ran and failed. ([MCP Spec][ep-1])
 
@@ -24,7 +24,7 @@ A tool error result looks like this on the wire:
 }
 ```
 
-#### PydanticAI
+##### PydanticAI
 
 PydanticAI draws a sharp line between two kinds of tool failure. `ModelRetry` means "the model made a fixable mistake -- give it the error message and let it try again with different arguments". Any other exception means "something is genuinely broken -- abort the run". The tool manager only catches `ModelRetry` (and `ValidationError` for argument validation); everything else propagates up uncaught and ends the agent run.
 
@@ -54,7 +54,7 @@ PydanticAI also handles MCP tool errors internally, but with a different policy.
 
 This creates a subtle inconsistency worth being aware of. Consider the same `ValueError` raised in two contexts: as a direct PydanticAI tool, it ends the run immediately. As an MCP tool, FastMCP catches it, wraps it in a `ToolError`, the server converts that to `isError: true`, PydanticAI's MCP toolset sees the error flag, and raises `ModelRetry` -- giving the model a chance to retry. Same exception, same tool logic, different behavior depending on the deployment boundary. The MCP path is more forgiving because it has no way to distinguish "bad arguments the model could fix" from "infrastructure failure that will never recover" -- everything is flattened into `isError: true`. When moving tools between direct registration and MCP servers, keep this asymmetry in mind: you may need to add explicit `ModelRetry` raises in the direct version to match the retry behavior you relied on through MCP.
 
-#### A2A
+##### A2A
 
 A2A uses the same two-level error model as MCP but expressed differently, as covered in the A2A chapter. Protocol errors follow JSON-RPC conventions: standard codes `-32700` through `-32603` for parse/request/method/params/internal errors, plus A2A-specific codes in the `-32001` to `-32009` range for domain errors like `TaskNotFoundError` (`-32001`), `TaskNotCancelableError` (`-32002`), and `VersionNotSupportedError` (`-32009`). ([A2A Spec][ep-5])
 
@@ -76,12 +76,12 @@ Execution failures surface as task state transitions rather than exceptions. Whe
 
 This design is deliberate: failure is an outcome of the task lifecycle, not a transport-level exception. The caller inspects the task state rather than catching an exception across a process boundary.
 
-#### AG-UI
+##### AG-UI
 
 PydanticAI's `AGUIAdapter` runs the agent via `run_stream()` and converts agent events into AG-UI SSE events. When the agent run completes normally, the stream ends with a `RunFinished` event. When the run raises an exception, the adapter catches it and terminates the SSE stream. The frontend observes this as a stream that ends without a `RunFinished` event -- there is no structured `RunError` object in the AG-UI event vocabulary. The frontend must therefore treat an abnormally terminated stream as a failed run. ([PydanticAI AG-UI][ep-6])
 
 
-### Bridging the A2A boundary
+#### Bridging the A2A boundary
 
 The A2A boundary is where the project needs explicit translation logic, because A2A task outcomes arrive as state transitions but PydanticAI expects either return values or exceptions. The project's `create_a2a_tool()` in `agentic_patterns/core/a2a/tool.py` bridges this gap.
 
@@ -113,17 +113,17 @@ This reveals the same kind of inconsistency noted in the MCP section, now at the
 Same sub-agent, same error, different outcome depending on whether there is a protocol boundary between them. The A2A path is more resilient because the protocol forces every outcome through a state machine that the coordinator can inspect. The in-process path preserves Python's exception semantics, which are faster and simpler but offer the coordinator no opportunity to recover. If you need the coordinator to handle sub-agent failures gracefully in the in-process case, you must wrap the `sub_agent.run()` call in a try/except yourself and translate exceptions into return values the model can act on -- essentially reimplementing what the A2A boundary does automatically.
 
 
-### Cancellation
+#### Cancellation
 
-#### MCP
+##### MCP
 
 MCP supports best-effort cancellation of in-flight requests via the `notifications/cancelled` notification, which carries the `requestId` and an optional `reason` string. Receivers may ignore the notification if the request is unknown, already completed, or not cancelable. The `initialize` request must not be cancelled. For task-augmented requests (the experimental tasks feature), `tasks/cancel` must be used instead of `notifications/cancelled`. ([MCP Spec][ep-7])
 
-#### A2A
+##### A2A
 
 A2A provides the `CancelTask` JSON-RPC method, which takes a task ID and transitions the task to the `canceled` state. The operation returns `TaskNotCancelableError` (`-32002`) for tasks already in a terminal state (`completed`, `failed`, `canceled`, `rejected`). Once canceled, the task must remain in `canceled` state even if execution continues internally -- the protocol treats cancellation as a commitment, not a suggestion. ([A2A Spec][ep-8])
 
-#### Project integration
+##### Project integration
 
 The project's `A2AClientExtended.send_and_observe()` accepts an `is_cancelled` callback that is checked on each poll iteration. When the callback returns `True`, the client calls `cancel_task()` and returns `(TaskStatus.CANCELLED, None)` without waiting for the server to acknowledge:
 
@@ -136,16 +136,16 @@ if is_cancelled and is_cancelled():
 
 This pattern composes across layers. A coordinator agent can pass its own cancellation signal through to sub-agents by providing an `is_cancelled` callback when creating the A2A tool via `create_a2a_tool()`. The callback bridges whatever cancellation mechanism the outer layer uses (a flag, a threading event, a frontend disconnect) into the A2A polling loop.
 
-#### AG-UI
+##### AG-UI
 
 When the frontend disconnects the SSE stream, the server-side `StreamingResponse` loses its consumer. The ASGI framework can detect this (the send channel raises an exception), which propagates up through the adapter. If the adapter is currently awaiting sub-agent results, the cancellation callback can trigger, propagating the disconnect downstream as A2A task cancellations.
 
 
-### Human-in-the-loop
+#### Human-in-the-loop
 
 Three mechanisms at three layers provide structured human interaction, each designed for different communication boundaries.
 
-#### MCP elicitation
+##### MCP elicitation
 
 MCP elicitation, introduced in the MCP Features chapter, allows servers to request structured input from the user via the `elicitation/create` method. Form mode collects data through a flat JSON Schema, and URL mode directs the user to an external URL for sensitive interactions (credentials, OAuth flows) where the data must not pass through the MCP client. ([MCP Spec][ep-9])
 
@@ -171,13 +171,13 @@ The response uses a three-action model: `accept` (with data for form mode), `dec
 }
 ```
 
-#### A2A input-required
+##### A2A input-required
 
 A2A models human interaction as a task state. When an agent needs clarification, the task enters `input-required` -- an interrupted state, not a terminal one. In blocking mode, `input-required` breaks the blocking wait, returning control to the client. The client then sends a new message with the same `taskId` and `contextId` to continue the conversation. ([A2A Spec][ep-10])
 
 This mechanism is broader than MCP elicitation: it represents any situation where the remote agent cannot proceed without external input, whether that input comes from a human, another system, or the coordinating agent itself. The task remains in `input-required` until a new message arrives or the task is cancelled.
 
-#### Project integration
+##### Project integration
 
 The project's `create_a2a_tool()` returns `[INPUT_REQUIRED:task_id=xyz] question` when a sub-agent task enters the `input-required` state. The coordinator's system prompt, built by `build_coordinator_prompt()`, instructs the model to handle this:
 
@@ -189,7 +189,7 @@ to continue.
 
 The coordinator model reads the question, presents it to the user through the normal chat flow, and when the user responds, calls the delegation tool again with the same `task_id` and the user's answer as the `prompt`. The `send_and_observe()` method sends this as a continuation message on the existing task, and the sub-agent resumes.
 
-#### Interaction with timeouts
+##### Interaction with timeouts
 
 When a task is legitimately waiting for human input, that waiting time must not be confused with a hung operation. The `input-required` state breaks the polling loop in `send_and_observe()` immediately (it is handled alongside terminal states in the `match` block), so the timeout counter does not accumulate during the period the user is thinking. The timeout only applies to the active polling phases when the task is in `working` state.
 

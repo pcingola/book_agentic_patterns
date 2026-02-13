@@ -2,7 +2,7 @@
 
 The previous hands-on explored the raw MCP protocol, showing the JSON-RPC messages that flow between client and server. In practice, agent frameworks handle this protocol transparently. This hands-on demonstrates how agents connect to MCP servers and use their tools through `example_agent_mcp_client_stdio.ipynb` and `example_agent_mcp_client_http.ipynb`.
 
-## The MCP Server
+### The MCP Server
 
 Before connecting an agent, we need an MCP server that exposes tools. The file `example_mcp_server.py` defines a minimal server:
 
@@ -21,7 +21,7 @@ The `@mcp.tool()` decorator registers the function as an MCP tool. FastMCP extra
 
 This is the same tool definition pattern used in Chapter 3, but now the tool lives in a separate process. The agent doesn't import the function directly; it communicates with it through the MCP protocol.
 
-## STDIO Transport
+### STDIO Transport
 
 The STDIO transport spawns the MCP server as a subprocess and communicates through pipes. This is the simplest approach for local development because everything runs in a single command.
 
@@ -48,7 +48,7 @@ The `async with agent` context manager triggers the MCP handshake: initializatio
 
 The STDIO transport is self-contained. The notebook cell that creates `MCPServerStdio` is sufficient; no separate terminal or server startup is needed.
 
-## HTTP Transport
+### HTTP Transport
 
 For remote servers or when the MCP server needs to persist across multiple client sessions, HTTP transport is appropriate. Unlike STDIO, the server must be started separately before the client connects.
 
@@ -74,7 +74,7 @@ agent = get_agent(toolsets=[server])
 
 The HTTP transport adds a deployment step but enables scenarios that STDIO cannot: multiple clients sharing one server, servers running on remote machines, and servers that maintain state across sessions.
 
-## What the Agent Sees
+### What the Agent Sees
 
 Regardless of transport, the agent framework performs the same operations:
 
@@ -86,7 +86,7 @@ Regardless of transport, the agent framework performs the same operations:
 
 The model never knows whether tools come from MCP servers, local functions, or other sources. It sees tool schemas and decides when to call them based on the task. This abstraction is the point of MCP: tools become interchangeable components that can be developed, deployed, and composed independently.
 
-## Key Takeaways
+### Key Takeaways
 
 MCP servers expose tools through a standard protocol. The `@mcp.tool()` decorator in FastMCP handles schema generation and registration.
 

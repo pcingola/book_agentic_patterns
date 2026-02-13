@@ -2,7 +2,7 @@
 
 Tool contracts and schemas define the precise, machine-verifiable interface through which a language model reasons about, invokes, composes, and recovers from interactions with external tools.
 
-### Tools as explicit contracts
+#### Tools as explicit contracts
 
 A tool is defined not by its implementation, but by its *contract*. This contract specifies the tool’s name, intent, inputs, outputs, and operational constraints. In Python-centric systems, contracts are naturally derived from function signatures, type annotations, and docstrings.
 
@@ -24,7 +24,7 @@ def get_weather(req: WeatherRequest) -> WeatherResponse:
 
 From this definition, the runtime derives a schema that is passed to the language model. The model never sees executable code—only the interface. This separation is critical: the model reasons about *capabilities*, not implementations.
 
-### Structured output and tool calls
+#### Structured output and tool calls
 
 As discussed in the structured output section, constraining model responses to well-defined schemas is a foundational pattern. Within tool contracts, this principle applies directly: once contracts are available, the model is constrained to produce structured output. Instead of emitting free-form text, it must either select a tool and provide arguments conforming to its schema, or emit a structured final result.
 
@@ -42,7 +42,7 @@ Conceptually, a tool call looks like:
 
 Arguments are validated before execution. If validation fails, the error is returned to the model as structured feedback, allowing it to correct itself. Structured output thus replaces brittle parsing with explicit, enforceable contracts.
 
-### The tool call loop
+#### The tool call loop
 
 Tool use occurs inside a loop. The model emits a structured action, the framework validates and executes it, and the result is appended to the agent’s state before the model continues.
 
@@ -59,7 +59,7 @@ while True:
 
 This loop is the operational core of agentic systems. Contracts and schemas ensure that every transition—generation, execution, and state update—is well defined and inspectable.
 
-### Explicit termination via final schemas
+#### Explicit termination via final schemas
 
 To avoid ambiguous stopping conditions, frameworks introduce an explicit final schema. Rather than replying with unconstrained text, the model must emit a structured object representing completion.
 
@@ -70,7 +70,7 @@ class FinalResult(BaseModel):
 
 Termination is therefore a validated action, not an implicit convention. This guarantees that every agent run ends in a well-typed result, simplifying downstream processing, logging, and evaluation.
 
-### Retries as part of the contract
+#### Retries as part of the contract
 
 Retries are not an implementation detail; they are part of the tool contract. A tool’s schema and documentation can communicate whether retries are safe, under what conditions they should occur, and which inputs must remain stable.
 
@@ -86,7 +86,7 @@ When a tool fails, the failure is returned as structured data rather than an exc
 
 This design shifts retry logic from opaque control flow into the reasoning loop itself.
 
-### Parallel tool calls
+#### Parallel tool calls
 
 Not all tool calls are sequential. In many cases, the model can identify independent actions that may be executed concurrently. Modern agent runtimes allow the model to emit *multiple* tool calls in a single step when their contracts indicate no dependency.
 
@@ -103,7 +103,7 @@ The framework executes these calls in parallel and returns their results togethe
 
 Parallelism is only safe because contracts make dependencies explicit. Without schemas, concurrent execution would be speculative; with schemas, it becomes a controlled optimization.
 
-### Why this pattern matters
+#### Why this pattern matters
 
 Tool contracts and schemas transform tool use from an informal convention into a disciplined interface. They enable validation before execution, structured feedback after execution, principled retries, safe parallelism, and explicit termination.
 

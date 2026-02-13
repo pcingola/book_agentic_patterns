@@ -4,7 +4,7 @@ The OpenAPI connector lets an agent interact with any REST API described by an O
 
 This hands-on walks through `example_openapi.ipynb`, where an agent queries the cBioPortal cancer genomics API to retrieve all available studies, then a second agent uses the JsonConnector to explore and extract information from the saved results.
 
-## API Configuration and Ingestion
+### API Configuration and Ingestion
 
 Before the connector can work, the API spec must be ingested. Configuration lives in `apis.yaml`, which declares an identifier, a human-readable name, the spec URL, and an optional `base_url` override:
 
@@ -17,7 +17,7 @@ Before the connector can work, the API spec must be ingested. Configuration live
 
 The ingestion CLI (`python -m agentic_patterns.core.connectors.openapi.cli.ingest cbioportal`) fetches the spec, parses all endpoints, runs AI-powered annotation to generate descriptions and categories, and caches the result as a JSON file. This is a one-time offline step. At runtime, `ApiInfos.get()` loads the cached metadata without re-fetching the spec.
 
-## Loading API Metadata
+### Loading API Metadata
 
 The first code cell loads the cached API metadata and prints it to confirm the connector knows about the cBioPortal API:
 
@@ -28,7 +28,7 @@ print(api_infos)
 
 `ApiInfos` is a singleton registry. It reads `apis.yaml` for connection config and loads the cached JSON files produced by the ingestion step. The `print()` output shows each registered API with its endpoint count and categories.
 
-## The Agent with OpenAPI Tools
+### The Agent with OpenAPI Tools
 
 The five tools are created by `get_all_tools()`, which instantiates an `OpenApiConnector` and wraps each of its methods as an agent tool with appropriate permissions (`READ` for discovery operations, `CONNECT` for listing and calling):
 
@@ -47,7 +47,7 @@ The tools are:
 
 The agent receives no instructions about cBioPortal's URL structure, authentication, or endpoint paths. It discovers everything through the tools. This is the core difference from a generic HTTP tool: the connector provides structured discovery, so the agent can reason about what is available rather than guessing URLs.
 
-## Running the Query
+### Running the Query
 
 The prompt asks the agent to find all available cancer studies and save the results:
 
@@ -62,7 +62,7 @@ With `verbose=True`, you can observe the agent's reasoning. It typically calls `
 
 The `call_endpoint` tool uses the `@context_result()` decorator (covered in detail in the Context & Memory chapter). This decorator intercepts tool return values and, when the result exceeds a configurable size threshold, saves the full content to a file in the workspace and returns only a truncated preview to the agent. The agent sees enough data to reason about the structure and contents, while the complete result remains available on disk for downstream processing or human inspection. This pattern is essential for tools that may return unbounded data -- API responses, query results, file contents -- where injecting the full output into the conversation would exhaust context limits or degrade model performance.
 
-## Chaining with the JsonConnector
+### Chaining with the JsonConnector
 
 The second half of the notebook demonstrates connector chaining. The OpenAPI agent produced a JSON file; now a second agent equipped with JsonConnector tools operates on it:
 
@@ -88,12 +88,12 @@ json_query = """Using the file /workspace/cancer_studies.json:
 
 The agent calls `schema` to understand the structure, then `query` with a JSONPath expression to filter breast cancer studies. It works entirely from the file, with no API calls.
 
-## Connector Layering
+### Connector Layering
 
 This example illustrates a pattern that recurs throughout the connector architecture. The OpenAPI connector handles the API interaction layer: discovery, validation, HTTP execution, response persistence. The JsonConnector handles the data inspection layer: schema discovery, querying, filtering. Neither agent knows about the other. The workspace filesystem is the integration surface -- one agent writes, another reads.
 
 This layering reflects the chapter's core design principle: connectors expose a small number of predictable operations rather than raw access primitives. The agent never constructs URLs, parses HTTP headers, or navigates raw JSON arrays. Each connector provides the right level of abstraction for its data source, and the agent reasons at that level.
 
-## Key Takeaways
+### Key Takeaways
 
 The OpenAPI connector turns API specifications into discoverable, callable tool surfaces. Ingestion happens once offline; at runtime the agent discovers endpoints, inspects parameters, and makes validated calls without any hard-coded API knowledge. Large responses are persisted to the workspace and truncated in context, keeping the agent loop efficient. Connector chaining through the workspace filesystem lets specialized agents collaborate on different aspects of the same data without coupling.

@@ -2,7 +2,7 @@
 
 Self-reflection is a reasoning pattern where an agent explicitly examines and critiques its own output before revising it. This hands-on explores the self-reflection cycle using `example_self_reflection.ipynb`, demonstrating how agents can improve their solutions through iterative self-critique.
 
-## The Three-Turn Reflection Cycle
+### The Three-Turn Reflection Cycle
 
 A typical self-reflection pattern unfolds in three distinct turns:
 
@@ -14,11 +14,11 @@ A typical self-reflection pattern unfolds in three distinct turns:
 
 This cycle differs from simply reprompting the agent because the critique is grounded in the agent's own prior output and structured around explicit evaluation criteria.
 
-## Example: Email Validation Function
+### Example: Email Validation Function
 
 The notebook demonstrates self-reflection using a code generation task: writing a Python function to validate email addresses.
 
-### Turn 1: Initial Solution
+#### Turn 1: Initial Solution
 
 ```python
 from agentic_patterns.core.agents import get_agent, run_agent
@@ -35,7 +35,7 @@ print(agent_run_1.result.output)
 
 The agent generates an initial implementation. This first attempt often works for common cases but may miss edge cases, security issues, or robustness concerns. A typical first solution might use simple string operations or basic regex patterns that handle obvious valid and invalid formats but lack sophistication.
 
-### Turn 2: Self-Reflection
+#### Turn 2: Self-Reflection
 
 ```python
 message_history = nodes_to_message_history(nodes_1)
@@ -57,7 +57,7 @@ The agent might identify issues such as the regex pattern not handling valid int
 
 This reflection step is where second-order reasoning occurs. The agent reasons not just about email validation, but about its own reasoning process and implementation choices.
 
-### Turn 3: Revised Solution
+#### Turn 3: Revised Solution
 
 ```python
 message_history = nodes_to_message_history(nodes_2)
@@ -70,7 +70,7 @@ print(agent_run_3.result.output)
 
 The agent now produces a revised implementation incorporating the improvements identified during reflection. The revised solution typically addresses the specific issues mentioned in the critique: stricter validation rules, edge case handling, security considerations, or adherence to relevant standards.
 
-## Why Message History Matters
+### Why Message History Matters
 
 Each turn builds on the previous one through message history. Without this continuity, the pattern breaks down. Turn 2 needs the initial solution to critique it. Without message history, the agent wouldn't know what code to review. Turn 3 needs both the solution and the critique. The agent must understand what problems were identified to fix them.
 
@@ -85,7 +85,7 @@ Turn 3 - User: "Provide an improved version..."
 Turn 3 - Agent: [Revised solution]
 ```
 
-## Comparison: With and Without Reflection
+### Comparison: With and Without Reflection
 
 The notebook includes a comparison showing what happens when you ask directly for a robust solution without the reflection cycle:
 
@@ -103,13 +103,13 @@ Adding the word "robust" to the prompt tells the model to be more careful, but i
 
 The reflection cycle offers several advantages over direct prompting. It provides transparency by making the critique explicit, showing why changes were made. It uses structured evaluation with explicit criteria rather than vague instructions like "be robust." The cycle can repeat multiple times if the first revision still has issues. The critique can be logged or analyzed to understand common failure modes.
 
-## When Self-Reflection Helps
+### When Self-Reflection Helps
 
 Self-reflection is particularly effective for tasks where correctness can be evaluated by examining the output: code generation to check for bugs, edge cases, security issues, or adherence to best practices; structured output to verify JSON schemas, API response formats, or configuration files; logical reasoning to identify gaps in argumentation or unsupported claims; and constraint satisfaction to ensure all requirements from a specification are met.
 
 Self-reflection is less effective when evaluation requires external validation that the agent cannot perform, such as empirical testing against a test suite, user feedback on subjective preferences, or verification against external databases or APIs.
 
-## Reflection Criteria
+### Reflection Criteria
 
 The quality of reflection depends heavily on the evaluation criteria provided. In our example, we asked three specific questions about edge cases, security concerns, and robustness.
 
@@ -117,7 +117,7 @@ Generic prompts like "Is this good?" or "Can you improve this?" produce weaker c
 
 For different tasks, you would use different criteria. For a data analysis task, you might ask about statistical validity, assumptions, or visualization clarity. For a business document, you might ask about tone, completeness, or logical flow.
 
-## Multiple Reflection Cycles
+### Multiple Reflection Cycles
 
 The pattern can extend beyond a single reflection cycle. If the revised solution still has issues, you can prompt another round of reflection:
 
@@ -134,23 +134,23 @@ agent_run_5, nodes_5 = await run_agent(agent, prompt_5, ...)
 
 This creates a recursive refinement process that continues until the agent reports no significant issues or until you reach a stopping condition like maximum iterations or diminishing returns.
 
-## Production Considerations
+### Production Considerations
 
 When implementing self-reflection in production systems, consider token cost since each reflection cycle sends the growing conversation history, increasing cost. Balance thoroughness against budget. Latency increases because multiple sequential API calls increase response time. Consider whether the quality improvement justifies the delay. Define stopping criteria for when to stop reflecting, such as maximum iterations, agent confidence indicators, or external validation passing. Invest effort in crafting good reflection prompts since the quality of the critique directly affects the quality of the revision. Remember that the agent may believe it has improved the solution when it hasn't, so external validation remains important.
 
-## Key Differences from Other Patterns
+### Key Differences from Other Patterns
 
 Self-reflection differs from Chain-of-Thought in that CoT makes reasoning explicit but doesn't critique it, while self-reflection adds evaluation and revision. Compared to simple reprompting, asking "Can you do better?" without showing the agent its prior work lacks the grounding that makes reflection effective. Unlike Tree of Thought which explores multiple alternative paths forward, self-reflection improves a single path through iteration. External verification checks output against objective criteria or tests, while self-reflection is the agent checking itself.
 
 These patterns can be combined. An agent might use CoT to generate a solution, self-reflection to refine it, and external verification to confirm correctness.
 
-## Implementation Notes
+### Implementation Notes
 
 The example uses the same patterns established earlier in this chapter: message history through `nodes_to_message_history` to extract conversation state after each turn, sequential turns where each prompt builds on the previous response, and agent reuse where the same agent instance handles all turns for consistency.
 
 This demonstrates that self-reflection is built from primitives you already know: multi-turn conversations with carefully crafted prompts that direct the agent's attention to evaluating its own output.
 
-## Key Takeaways
+### Key Takeaways
 
 Self-reflection is a three-turn pattern: generate, critique, revise. It requires message history to maintain continuity across turns. The quality of reflection depends on explicit evaluation criteria in the critique prompt. Self-reflection works best when the agent can evaluate its own output without external validation.
 

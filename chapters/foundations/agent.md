@@ -6,7 +6,7 @@ An agentic system is software that repeatedly decides what to do next—often by
 Agent = LLM + tools
 ```
 
-### The concept of AI agentic systems
+#### The concept of AI agentic systems
 
 An AI agentic system can be understood as an instantiation of the classic agent loop, implemented with contemporary components. The system maintains some notion of state (explicit or implicit), observes new information, decides on an action, executes that action via tools or APIs, and incorporates the result before repeating the process.
 
@@ -14,7 +14,7 @@ From a reinforcement learning perspective, this is immediately familiar. The “
 
 The crucial difference from traditional chat-based systems is that decisions are not terminal. A single response is rarely sufficient. Instead, the model is embedded in a loop that allows it to refine its understanding of the task and adapt its actions based on intermediate results.
 
-### Key characteristics that distinguish agentic systems from traditional software
+#### Key characteristics that distinguish agentic systems from traditional software
 
 Traditional software encodes control flow explicitly. Decisions are implemented as conditional branches, loops are fixed, and the system’s behavior is fully specified ahead of time.
 
@@ -26,7 +26,7 @@ Agentic systems are also inherently iterative. Rarely does the first action succ
 
 Finally, uncertainty and stochasticity are unavoidable. Language models are probabilistic, and identical inputs may produce different outputs. As a result, reliability emerges not from determinism, but from system-level design: validation, structured outputs, constrained tool interfaces, retries, and well-defined stopping conditions.
 
-### A simplified definition: “Agent = LLM + tools”
+#### A simplified definition: “Agent = LLM + tools”
 
 For the purposes of this book, we adopt a deliberately pragmatic definition:
 
@@ -63,7 +63,7 @@ def run_agent(user_input: str, tools: dict) -> str:
 
 Conceptually, this loop is no different from an agent interacting with an environment step by step. The language model plays the role of the policy, the tools define the action space, and the message history serves as a lightweight state representation.
 
-### Our approach: simplicity over taxonomy
+#### Our approach: simplicity over taxonomy
 
 There is an understandable temptation to draw sharp boundaries between workflows, assistants, planners, autonomous agents, and multi-agent systems. While these distinctions can be useful analytically, they often obscure the engineering reality.
 

@@ -4,7 +4,7 @@ This hands-on walks through `example_vocabulary.ipynb`, where an agent resolves 
 
 The practical motivation is straightforward: a clinical database stores diseases, genes, or sequence features using controlled vocabulary codes, not free text. Before an agent can query that database, it needs to translate the user's natural language ("programmed cell death") into the corresponding code (`GO:0006915`). The VocabularyConnector handles this translation.
 
-## Two Resolution Strategies
+### Two Resolution Strategies
 
 The vocabulary system offers two strategies selected based on vocabulary size.
 
@@ -14,7 +14,7 @@ The RAG strategy indexes terms into a vector database (Chroma) using embeddings.
 
 Both strategies implement the same interface, so the VocabularyConnector and the agent tools work identically regardless of which strategy backs a given vocabulary.
 
-## Registering Vocabularies
+### Registering Vocabularies
 
 The notebook registers both vocabularies programmatically using in-memory toy data. In production, vocabularies would be loaded from files (OBO, OWL, tabular formats) declared in `vocabularies.yaml`:
 
@@ -32,7 +32,7 @@ register_vocabulary("gene_ontology", rag_backend)
 
 `reset()` clears any previously registered vocabularies, which matters in notebook environments where cells may be re-executed. The Tree backend receives all terms at construction. The RAG backend receives terms one at a time via `add_term()`, which computes the embedding and indexes each term into the vector database. The document text for embedding is built from the term's label, synonyms, and definition concatenated together -- this gives the embedding model enough surface to match semantically similar queries.
 
-## Using the Connector Directly
+### Using the Connector Directly
 
 The VocabularyConnector provides a uniform API over both strategies. Every method returns a formatted string, not raw objects, because the connector is designed to be called by agents that consume text:
 
@@ -55,7 +55,7 @@ connector.suggest("gene_ontology", "inflammation in tissues", max_results=3)
 
 The query "cell death" retrieves "apoptotic process" because the embedding of "cell death" is close to the embedding of "apoptotic process / programmed cell death / apoptosis". The `suggest` method is a RAG-only operation that works identically to `search` but signals intent: the caller is looking for the best matching term for a free-text description.
 
-## The Vocabulary Agent
+### The Vocabulary Agent
 
 The final section creates an agent with vocabulary tools and gives it a multi-part natural language query:
 
@@ -77,6 +77,6 @@ Given this prompt, the agent typically proceeds in three steps. It searches Gene
 
 This is the pattern that would precede a SQL query in a clinical database pipeline: the user says "find trials for programmed cell death", the vocabulary agent resolves that to `GO:0006915`, and the downstream NL2SQL agent uses that code in a WHERE clause.
 
-## Key Takeaways
+### Key Takeaways
 
 Controlled vocabularies bridge natural language and structured databases. The Tree strategy handles medium vocabularies with exact and fuzzy matching over an in-memory adjacency list. The RAG strategy handles large vocabularies with semantic search via vector embeddings. Both strategies share the same interface, so the VocabularyConnector and agent tools are strategy-agnostic. The vocabulary agent autonomously decides which vocabulary to search, resolves terms, and navigates hierarchies, producing standardized codes that downstream agents can use directly in SQL queries.

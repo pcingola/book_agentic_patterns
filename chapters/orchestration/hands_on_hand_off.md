@@ -4,7 +4,7 @@ Hand-off is a pattern where one agent transfers control entirely to another. Unl
 
 This hands-on explores hand-off through `example_hand_off.ipynb`. A customer support triage agent classifies incoming requests and routes them to specialists. The routing happens in application code, not through tool calls, making the control transfer explicit and visible.
 
-## Hand-Off vs. Delegation
+### Hand-Off vs. Delegation
 
 In delegation, the parent agent calls a specialist through a tool, waits for the result, and continues processing. The parent decides what to do with the result and may call additional tools or produce a final response that incorporates the specialist's output.
 
@@ -12,7 +12,7 @@ In hand-off, the first agent's only job is to decide who handles the request. On
 
 This distinction matters architecturally. Delegation creates a hierarchy where the parent owns the conversation. Hand-off creates a routing layer where specialists own their domains independently. Hand-off is appropriate when the routing decision is the only value the first agent provides, and when specialists are capable of handling requests end-to-end.
 
-## The Classification Output
+### The Classification Output
 
 The triage agent produces a structured classification that drives routing:
 
@@ -31,7 +31,7 @@ The enum constrains the category to known values. This is important for hand-off
 
 The summary field captures the agent's understanding of the issue. While not strictly necessary for routing, it provides observability into the triage decision and could be logged for quality monitoring.
 
-## The Triage Agent
+### The Triage Agent
 
 The triage agent has a narrow responsibility:
 
@@ -49,7 +49,7 @@ The system prompt defines the classification criteria explicitly. This specifici
 
 This separation of concerns is intentional. Triage agents should be fast and reliable. Keeping them focused on classification, without the complexity of actually handling requests, makes them easier to test and tune.
 
-## The Specialist Agents
+### The Specialist Agents
 
 Each specialist handles a specific category:
 
@@ -69,7 +69,7 @@ Provide clear explanations and actionable solutions."""
 
 Specialists have domain-specific prompts that guide their responses. They receive the original customer message directly, not a transformed version from the triage agent. This preserves the full context and avoids information loss during routing.
 
-## The Hand-Off Logic
+### The Hand-Off Logic
 
 The routing function makes the hand-off explicit:
 
@@ -101,7 +101,7 @@ The match statement maps categories to agents. Because the category is an enum, 
 
 The specialist receives `customer_message` directly, the same input the triage agent received. This is a design choice. Alternatively, you could pass the triage summary or a transformed prompt. Passing the original message ensures the specialist sees exactly what the customer wrote, which often matters for tone and context.
 
-## Control Flow Comparison
+### Control Flow Comparison
 
 Consider the difference between delegation and hand-off in terms of what each agent sees:
 
@@ -111,13 +111,13 @@ In hand-off, the flow is: triage receives message, produces classification, exit
 
 This separation is both a constraint and a feature. It constrains because you cannot have the triage agent refine or validate the specialist's response. It is a feature because each agent's responsibility is clearly bounded, making the system easier to reason about and modify.
 
-## When to Use Hand-Off
+### When to Use Hand-Off
 
 Hand-off is appropriate when the routing decision is valuable on its own and when specialists can handle requests independently. Common scenarios include customer support routing, document classification pipelines, and intent-based dispatchers.
 
 Hand-off is less appropriate when you need the routing agent to validate or refine the specialist's work, when the conversation requires back-and-forth between multiple agents, or when the routing decision depends on information that only emerges during specialist processing.
 
-## Key Takeaways
+### Key Takeaways
 
 Hand-off transfers control entirely from one agent to another. The routing agent classifies or decides, then exits. The specialist handles the request end-to-end.
 

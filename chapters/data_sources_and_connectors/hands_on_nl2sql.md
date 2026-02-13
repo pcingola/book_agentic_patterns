@@ -2,7 +2,7 @@
 
 This hands-on walks through `example_nl2sql.ipynb`, where two agents collaborate in sequence. The first agent translates a natural language question into SQL, executes it against the bookstore database, and saves the results as a CSV file. The second agent then picks up that CSV file and operates on it using the CsvConnector. This demonstrates how connectors chain together: one produces data, another refines it.
 
-## Database Configuration
+### Database Configuration
 
 Before any NL2SQL agent can run, the system needs to know which databases exist and how to connect to them. Configuration is loaded from `dbs.yaml`, which declares database identifiers, connection details, and paths. The two singleton registries -- `DbConnectionConfigs` and `DbInfos` -- are reset and reloaded to ensure a clean state:
 
@@ -14,7 +14,7 @@ DbConnectionConfigs.get().load_from_yaml(DBS_YAML_PATH)
 
 `DbConnectionConfigs` holds connection parameters (driver, path, credentials). `DbInfos` holds the extracted and annotated schema metadata that the agent uses as context. The `reset()` calls are relevant in notebook environments where cells may be re-executed.
 
-## Creating the NL2SQL Agent
+### Creating the NL2SQL Agent
 
 The `create_agent()` factory (in `agents/nl2sql`) does several things in a single call. It looks up the schema metadata for the given database identifier, loads the system prompt and instructions (which embed the full annotated schema), collects the NL2SQL tools, and returns a configured PydanticAI agent:
 
@@ -26,7 +26,7 @@ The agent receives two tools. `db_execute_sql_tool` generates SQL from the user'
 
 The schema embedded in the instructions is the annotated version produced by the offline annotation pipeline. It includes table descriptions, column explanations, enum values, and sample data. This rich context is what allows the model to generate accurate SQL without querying the database catalog at runtime.
 
-## Running a Natural Language Query
+### Running a Natural Language Query
 
 The prompt asks the agent to join books with authors and reviews, compute average ratings, sort by rating, and save the output:
 
@@ -39,7 +39,7 @@ Behind the scenes, the agent reasons about the schema, generates a SQL query wit
 
 This illustrates the core NL2SQL pipeline described in the chapter: natural language in, validated SQL generated, results bounded and persisted, only a preview returned to the agent context.
 
-## Handing Off to the CSV Agent
+### Handing Off to the CSV Agent
 
 The SQL agent produced `/workspace/books_ratings.csv`. Now a second agent takes over, equipped with CsvConnector tools instead of SQL tools:
 
@@ -72,13 +72,13 @@ csv_prompt = """Using the CSV file at /workspace/books_ratings.csv:
 
 The agent calls `headers`, `head`, and `read_row` in sequence. Each tool reads from the same CSV file on disk, returning structured text that the agent can summarize for the user.
 
-## Connector Chaining
+### Connector Chaining
 
 The key architectural point here is that neither agent knows about the other. The SQL agent writes a CSV file as a side effect of query execution. The CSV agent reads that file as input. The workspace filesystem is the integration layer -- it decouples the two agents completely. You could replace the SQL agent with any other data source that produces CSV, and the CSV agent would work unchanged.
 
 This pattern scales naturally. A third agent could read the same CSV and produce a chart. A fourth could filter rows and write a new file. Each agent operates through its own connector, and the workspace provides shared, persistent storage.
 
-## Verifying on Disk
+### Verifying on Disk
 
 The final cell confirms that the CSV file exists on the host filesystem, outside the agent conversation:
 
@@ -89,6 +89,6 @@ print(host_path.read_text().splitlines()[:6])
 
 This round-trip verification -- agent writes through the sandbox, human reads from the host -- confirms that the data produced by the NL2SQL pipeline is a real, persistent artifact available for any downstream use.
 
-## Key Takeaways
+### Key Takeaways
 
 The NL2SQL agent translates natural language into validated SQL using an annotated schema as its primary grounding context. Results are persisted as CSV files in the workspace rather than injected into the agent context, keeping prompts small and data reusable. The CsvConnector provides a second agent with structured access to that data without any knowledge of SQL. The workspace filesystem acts as the integration layer between agents, enabling connector chaining where each agent operates independently through its own tools.

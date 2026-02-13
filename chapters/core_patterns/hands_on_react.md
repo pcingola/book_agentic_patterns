@@ -4,13 +4,13 @@ ReAct is a prompting pattern where the model explicitly interleaves reasoning st
 
 This hands-on explores ReAct using `example_react.ipynb`, demonstrating how the pattern enables models to interact with external systems while maintaining explicit reasoning traces.
 
-## The Problem: Closed-Book Reasoning
+### The Problem: Closed-Book Reasoning
 
 Chain-of-Thought prompting improves reasoning by making intermediate steps explicit, but it operates in a "closed-book" mode. The model must generate all facts from memory, which leads to hallucination when the task requires information the model doesn't have or cannot reliably recall. Consider asking a model about the status of a specific order in your database. No amount of reasoning will help if the model cannot access the actual data.
 
 ReAct solves this by allowing the model to take actions that retrieve information from external systems. Instead of inventing facts, the model can look them up.
 
-## The ReAct Format
+### The ReAct Format
 
 The original ReAct paper (Yao et al., 2022) introduced a simple text-based format for interleaving reasoning with actions:
 
@@ -25,7 +25,7 @@ Action: [next action or Finish[answer]]
 
 This format has three key properties. First, the model explicitly states its reasoning before each action, making the decision process transparent. Second, actions use a structured format that the system can parse and execute. Third, observations from the environment are fed back into the context, allowing the model to incorporate real information into its reasoning.
 
-## The Environment
+### The Environment
 
 In ReAct, the "environment" is the set of actions available to the model. In the original paper, this was a Wikipedia search API. In our example, we simulate an order tracking system:
 
@@ -59,7 +59,7 @@ def execute_action(action_text: str) -> str:
 
 This is the bridge between the model's text output and the external system. The model writes `Action: LookupOrder[ORD-7843]`, and the system returns `Order ORD-7843: Status=processing, Items=['Mechanical Keyboard']`.
 
-## The ReAct Prompt
+### The ReAct Prompt
 
 The prompt teaches the model the expected format through instruction and a few-shot example:
 
@@ -89,7 +89,7 @@ Now answer the following question. Generate ONLY the next Thought and Action (st
 
 The prompt explicitly tells the model not to generate observations itself. This is important because observations must come from the actual system, not from the model's imagination.
 
-## The ReAct Loop
+### The ReAct Loop
 
 The core of ReAct is a loop that alternates between model generation and action execution:
 
@@ -121,7 +121,7 @@ async def react_loop(question: str, max_steps: int = 5) -> str:
 
 The trajectory accumulates the entire interaction history. Each iteration, we send the full trajectory to the model, which generates the next thought and action based on everything that came before. This allows the model to reason about all previous observations when deciding what to do next.
 
-## Example 1: Single Lookup
+### Example 1: Single Lookup
 
 A simple question requiring one action:
 
@@ -142,7 +142,7 @@ Action: Finish[Order ORD-7843 is currently processing. It contains a Mechanical 
 
 The model correctly identifies that it needs to look up the order, retrieves the information, and formulates an answer based on the actual data.
 
-## Example 2: Multi-Step Reasoning
+### Example 2: Multi-Step Reasoning
 
 A more complex question requiring multiple lookups:
 
@@ -173,19 +173,19 @@ Action: Finish[No, Alice has not received all her orders. ORD-7844 (Monitor Stan
 
 The model chains multiple lookups together, accumulating information across steps. It first retrieves Alice's order IDs, then checks each order's status, and finally synthesizes a complete answer. Without ReAct, the model would have to guess at order statuses, likely producing a hallucinated response.
 
-## ReAct as a Precursor to Tool Calling
+### ReAct as a Precursor to Tool Calling
 
 Modern LLM APIs provide built-in tool calling mechanisms where the model outputs structured JSON instead of text like `Action: LookupOrder[ORD-7843]`. These APIs handle parsing, validation, and execution automatically. However, understanding ReAct is valuable because it reveals the underlying pattern that tool calling implements.
 
 The key insight is the separation of concerns: the model proposes actions based on reasoning, the system executes those actions and returns results, and the model incorporates results into its next reasoning step. This loop structure appears in all agentic systems, whether implemented through text parsing or native tool calling APIs.
 
-## When ReAct Helps
+### When ReAct Helps
 
 ReAct is most valuable when tasks require external information that the model cannot reliably produce from memory. This includes database lookups, API calls, file system operations, and any interaction with systems that have state the model doesn't know. The explicit reasoning traces also provide transparency into the model's decision-making process, making it easier to debug failures and understand why the model took particular actions.
 
 ReAct is less valuable for tasks where all necessary information exists in the prompt or the model's training data. If the model already knows the answer, adding a lookup step just increases latency without improving accuracy.
 
-## Key Takeaways
+### Key Takeaways
 
 ReAct interleaves reasoning with actions in a structured text format. The model writes explicit thoughts and actions, the system parses and executes actions, and observations are appended to the context for the next iteration.
 

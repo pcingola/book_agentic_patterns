@@ -2,7 +2,7 @@
 
 This section describes the architectural structure of the Model Context Protocol (MCP): how clients and servers coordinate over a well-defined lifecycle, how responsibilities are split across components, and how transport, authorization, and security concerns are handled in a principled way. The abstract architecture defined in the specification is concretely realized in implementations such as **FastMCP** and in the MCP integration patterns described by **Pydantic-AI**, which together provide practical guidance on how these concepts are applied in real systems.
 
-### Conceptual overview
+#### Conceptual overview
 
 At its core, MCP defines a **contract** between a *client* (typically an AI runtime or agent host) and one or more *servers* that expose capabilities. These capabilities are not limited to executable tools; they also include prompts, static or dynamic resources, and interaction patterns that guide how models request information or actions.
 
@@ -30,17 +30,17 @@ From the client's perspective, this definition is not just documentation. It is 
 
 Crucially, MCP encourages **long-lived sessions**. Context accumulates over time, resources can be updated or invalidated, and tools can be dynamically enabled or disabled. This aligns naturally with agentic systems that plan, revise, and reflect rather than producing a single response.
 
-### FastMCP
+#### FastMCP
 
 As MCP moved from a conceptual specification into real-world use, **FastMCP** became the most well-known server implementation of the protocol. FastMCP provided an early, complete, and idiomatic implementation of MCP server semantics that closely tracked the evolving specification while remaining practical for production use. By offering clear abstractions for tools, prompts, and resources -- along with sensible defaults for lifecycle management, transport handling, and schema validation -- it dramatically lowered the barrier to building MCP-compliant servers. FastMCP was later integrated into the official MCP Python SDK, making it available as `mcp.server.fastmcp` alongside the standalone `fastmcp` package. The examples in this chapter use FastMCP for server-side code.
 
-### Why MCP matters
+#### Why MCP matters
 
 MCP addresses a structural problem that becomes unavoidable as systems scale: without a protocol, every agent framework reinvents its own notion of tools, memory, and context boundaries. This fragmentation makes systems harder to audit, secure, and evolve. By providing a shared vocabulary and lifecycle model, MCP enables interoperability across tools, agents, and runtimes.
 
 Equally important, MCP shifts responsibility to the right layer. Models focus on reasoning and decision-making; servers focus on exposing well-defined capabilities; clients enforce policy, security, and orchestration. This separation mirrors successful patterns in distributed systems and is a prerequisite for building robust, enterprise-grade agent platforms.
 
-### Lifecycle
+#### Lifecycle
 
 The MCP lifecycle defines the ordered phases through which a client–server session progresses. Rather than treating connections as ad-hoc request/response exchanges, MCP makes lifecycle transitions explicit, enabling both sides to reason about capabilities, permissions, and state.
 
@@ -50,7 +50,7 @@ Once initialized, the session enters the active phase. During this phase, the cl
 
 The lifecycle ends with shutdown. Either side may terminate the session, at which point in-flight operations are resolved, resources are released, and all session context is discarded. Both FastMCP and Pydantic-AI documentation stress that explicit teardown is essential for long-running or autonomous agents, where leaked state or lingering permissions would otherwise accumulate.
 
-### Server
+#### Server
 
 An MCP server is the authoritative boundary between models and external systems. Architecturally, it exposes structured capabilities while enforcing protocol rules, authorization, and isolation.
 
@@ -70,7 +70,7 @@ def handle_message(message, session):
 
 The value of this structure lies in the invariant it enforces: all access to external systems is mediated by protocol rules and session state.
 
-### Client
+#### Client
 
 The MCP client orchestrates interactions on behalf of a model or agent. While the server defines what is possible, the client decides what to request, when to request it, and how to integrate the results back into the agent’s reasoning loop.
 
@@ -91,7 +91,7 @@ if capabilities.supports_resources:
 
 The explicit capability check, emphasized in both FastMCP and Pydantic-AI documentation, is central to MCP’s robustness across heterogeneous servers.
 
-### Transport
+#### Transport
 
 MCP deliberately decouples protocol semantics from transport mechanisms. The specification defines message structure and behavior independently of how messages are transmitted.
 
@@ -99,7 +99,7 @@ FastMCP demonstrates this abstraction by supporting multiple transports, includi
 
 Architecturally, this means transport can evolve without affecting higher-level agent logic, as long as MCP message semantics are preserved.
 
-### Authorization
+#### Authorization
 
 Authorization in MCP is embedded directly into the protocol flow rather than being handled entirely out of band. Both the specification and FastMCP documentation emphasize fine-grained, capability-level authorization.
 
@@ -107,7 +107,7 @@ During initialization, clients authenticate and establish identity. During the a
 
 This approach enables dynamic authorization. Permissions may depend on session context, negotiated features, or prior actions, supporting patterns such as staged access, scoped credentials, or human-approved escalation.
 
-### Security
+#### Security
 
 Security in MCP is an architectural property that emerges from explicit lifecycle management, declarative capabilities, and strict validation.
 

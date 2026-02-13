@@ -2,13 +2,13 @@
 
 Before building agents, it's essential to understand how data flows between your code and language model providers. While frameworks like Pydantic-ai abstract these details, knowing what happens under the hood helps you debug issues, optimize costs, understand framework limitations, and make informed architectural decisions.
 
-## The OpenAI API as De-Facto Standard
+### The OpenAI API as De-Facto Standard
 
 OpenAI's Chat Completions API has become the de-facto standard for conversational AI interactions. Most major model providers implement compatible APIs: Anthropic, Google, Cohere, Azure, AWS Bedrock, and local model servers like Ollama and LM Studio. This standardization emerged because OpenAI's API design proved simple, flexible, and sufficient for most use cases.
 
 The core innovation was structuring conversations as a messages array where each message has a role and content. This simple format can represent complex multi-turn dialogues, tool interactions, and system instructions within a unified structure.
 
-## Basic Request Structure
+### Basic Request Structure
 
 A minimal API request contains a model identifier and messages array:
 
@@ -26,7 +26,7 @@ The `model` field specifies which model variant to use. Different models have di
 
 The `messages` array represents the conversation history. Order matters: messages are processed sequentially, building context as the model reads through them.
 
-### Message Roles
+#### Message Roles
 
 Each message has a `role` that determines how the model interprets it:
 
@@ -38,7 +38,7 @@ Each message has a `role` that determines how the model interprets it:
 
 **tool**: Results from function calls. When a model requests tool execution, your code runs the function and sends results back using tool messages. This role was previously called `function` in older API versions.
 
-### Optional Parameters
+#### Optional Parameters
 
 Beyond the required fields, numerous optional parameters control model behavior:
 
@@ -70,7 +70,7 @@ Beyond the required fields, numerous optional parameters control model behavior:
 
 **stream**: When true, responses are sent incrementally as they're generated. Essential for real-time UI feedback but adds complexity to handling tool calls and errors.
 
-## Response Structure
+### Response Structure
 
 The API returns a response containing the generated message plus extensive metadata:
 
@@ -117,11 +117,11 @@ The API returns a response containing the generated message plus extensive metad
 - `completion_tokens`: Tokens in the model's response
 - `total_tokens`: Sum of both. Billing is typically based on this.
 
-## Tool Calling: Extended Protocol
+### Tool Calling: Extended Protocol
 
 Tool calling (also called function calling) extends the basic API to let models execute code. This transforms models from text generators into agents that can interact with external systems.
 
-### Defining Tools
+#### Defining Tools
 
 When creating an agent, you declare available tools using JSON Schema:
 
@@ -158,7 +158,7 @@ The `description` fields are crucial. Models use these to decide which tool to c
 
 The `parameters` field uses JSON Schema to specify argument types, constraints, and requirements. Models generally respect these schemas, but validation in your code is essential.
 
-### Tool Call Response
+#### Tool Call Response
 
 When the model wants to call a tool, it returns a special message format:
 
@@ -189,7 +189,7 @@ The `arguments` field is a JSON string, not a parsed object. Your code must pars
 
 The `id` field uniquely identifies this tool call. When multiple tools are called in parallel, each has a distinct ID.
 
-### Sending Tool Results
+#### Sending Tool Results
 
 After executing the function, you send results back using a tool message:
 
@@ -222,7 +222,7 @@ After executing the function, you send results back using a tool message:
 
 The conversation now includes the original user question, the assistant's tool call, and the tool result. The model processes all of this and generates a natural language response incorporating the data: "The weather in Paris is currently sunny with a temperature of 18°C and 65% humidity."
 
-### Parallel Tool Calls
+#### Parallel Tool Calls
 
 Models can request multiple tool calls simultaneously:
 
@@ -265,7 +265,7 @@ Your code should execute these in parallel when possible, then send back multipl
 
 This parallel execution pattern is essential for performance when tool calls are independent.
 
-### The Tool Execution Loop
+#### The Tool Execution Loop
 
 A complete agent interaction often requires multiple API calls:
 
@@ -278,7 +278,7 @@ A complete agent interaction often requires multiple API calls:
 
 Managing this loop manually involves significant complexity: parsing tool calls, validating arguments, handling errors, tracking conversation state, accumulating token costs, and deciding when to stop.
 
-## Provider-Specific Variations
+### Provider-Specific Variations
 
 While the OpenAI format is standard, providers implement subtle differences:
 
@@ -294,7 +294,7 @@ While the OpenAI format is standard, providers implement subtle differences:
 
 Frameworks like Pydantic-ai normalize these differences. You configure the provider once; the framework handles format translation automatically.
 
-## Cost Implications
+### Cost Implications
 
 Understanding the API structure directly impacts costs:
 
@@ -308,7 +308,7 @@ Understanding the API structure directly impacts costs:
 
 **Max tokens is a cost control**: Setting appropriate `max_tokens` prevents runaway generations. A model accidentally generating thousands of tokens of JSON can cost significantly more than expected.
 
-## Security and Safety Considerations
+### Security and Safety Considerations
 
 The API structure has security implications:
 
@@ -320,11 +320,11 @@ The API structure has security implications:
 
 **Rate limiting and quotas**: APIs have rate limits. Production systems need retry logic with exponential backoff and circuit breakers to handle temporary failures gracefully.
 
-## How Frameworks Abstract These Details
+### How Frameworks Abstract These Details
 
 Frameworks like Pydantic-ai, LangChain, LlamaIndex, and Semantic Kernel provide high-level abstractions over the raw API. Here's what they handle:
 
-### Message Management
+#### Message Management
 
 Instead of manually building message arrays, you pass a simple prompt. The framework:
 - Constructs the messages array including system instructions
@@ -333,7 +333,7 @@ Instead of manually building message arrays, you pass a simple prompt. The frame
 - Prunes old messages when approaching context limits
 - Formats tool calls and tool results correctly
 
-### Model Provider Abstraction
+#### Model Provider Abstraction
 
 Each provider has different parameter names, authentication methods, and endpoint URLs. Frameworks provide a unified interface:
 
@@ -348,7 +348,7 @@ agent = Agent(model=model)
 
 The agent code is identical regardless of provider. The framework handles format translation.
 
-### Tool Execution Loop
+#### Tool Execution Loop
 
 The most complex abstraction is automatic tool execution:
 
@@ -372,7 +372,7 @@ The framework:
 
 This eliminates hundreds of lines of boilerplate.
 
-### Type Safety and Validation
+#### Type Safety and Validation
 
 Pydantic-ai leverages Python type hints for runtime validation:
 
@@ -384,7 +384,7 @@ def get_weather(location: str, units: Literal["celsius", "fahrenheit"] = "celsiu
 
 If the model calls `get_weather(location=123, units="kelvin")`, Pydantic catches the type errors before execution. This prevents runtime crashes from malformed model outputs.
 
-### Async and Streaming
+#### Async and Streaming
 
 Raw API calls require managing HTTP clients, connection pooling, and async/await complexity:
 
@@ -409,7 +409,7 @@ print(result.output)
 
 The framework handles all HTTP operations, retries, timeouts, and error handling.
 
-### Token Tracking
+#### Token Tracking
 
 Frameworks automatically accumulate usage across multiple API calls:
 
@@ -421,7 +421,7 @@ print(f"Total cost: ${result.usage.total_tokens * 0.00003}")
 
 Without a framework, you'd manually sum usage from each API response throughout the tool execution loop.
 
-## Why This Understanding Matters
+### Why This Understanding Matters
 
 While frameworks handle these details, understanding the underlying API helps you:
 
@@ -437,11 +437,11 @@ While frameworks handle these details, understanding the underlying API helps yo
 
 **Build custom integrations**: Sometimes you need functionality frameworks don't provide. Understanding the API lets you extend or bypass framework abstractions when necessary.
 
-## Practical Example: Manual vs Framework
+### Practical Example: Manual vs Framework
 
 Here's a simple weather agent implemented both ways.
 
-### Manual Implementation (100+ lines):
+#### Manual Implementation (100+ lines):
 
 ```python
 import httpx
@@ -507,7 +507,7 @@ def get_weather_impl(location: str) -> dict:
     return {"temperature": 18, "condition": "sunny"}
 ```
 
-### Framework Implementation (10 lines):
+#### Framework Implementation (10 lines):
 
 ```python
 from pydantic_ai import Agent
@@ -525,7 +525,7 @@ print(result.output)
 
 Both implementations produce identical API interactions. The framework version eliminates boilerplate while providing better error handling, type safety, and maintainability.
 
-## Key Takeaways
+### Key Takeaways
 
 The OpenAI Chat Completions API provides a simple, powerful standard for interacting with language models. The messages array with roles, tool calling extensions, and parameter controls form the foundation of modern agentic systems.
 

@@ -4,7 +4,7 @@ This hands-on builds a chat application where a PydanticAI agent runs on the bac
 
 The code is in `agentic_patterns/examples/ui/`. Backend examples are `example_agui_app_v1.py`, `example_agui_app_v2.py`, and `example_agui_app_v3.py`. The frontend is in `frontend/`.
 
-### Architecture
+#### Architecture
 
 The backend is an ASGI application that exposes a PydanticAI agent via the AG-UI protocol over HTTP with Server-Sent Events (SSE). The frontend is a React application that uses the `@ag-ui/client` SDK (`HttpAgent`) to consume that event stream and render the chat UI. `HttpAgent` sends a standard `RunAgentInput` as the POST body and receives SSE events back -- no proprietary middleware or runtime required.
 
@@ -12,7 +12,7 @@ The two sides communicate through a single HTTP endpoint. The frontend sends a P
 
 Because they communicate through the AG-UI protocol, backend and frontend are fully decoupled. You can evolve the agent independently of the UI, or swap frontends without touching agent code.
 
-### Running the Backend
+#### Running the Backend
 
 AG-UI applications are ASGI apps run with uvicorn. Start any of the three versions:
 
@@ -24,7 +24,7 @@ uvicorn agentic_patterns.examples.ui.example_agui_app_v3:app --reload  # with st
 
 This starts an HTTP server on port 8000.
 
-### Testing with curl
+#### Testing with curl
 
 Before connecting a frontend, you can test the endpoint directly:
 
@@ -45,7 +45,7 @@ curl -X POST http://localhost:8000 \
 
 The response is a stream of Server-Sent Events: run started, text message deltas as the model generates tokens, and run finished. This is the raw protocol that frontends consume.
 
-### Running the Frontend
+#### Running the Frontend
 
 Install dependencies and start the development server:
 
@@ -57,7 +57,7 @@ npm run dev
 
 Vite serves the frontend on `http://localhost:5173`. Both frontend and backend must be running simultaneously.
 
-### Swapping Backends
+#### Swapping Backends
 
 A single frontend connects to all backend versions. The frontend includes all features from v1 through v5 (chat, tools, state, file uploads, feedback), but features whose endpoints do not exist on a given backend simply remain inactive. With v1, you get a plain chat. With v2, tool calls appear in the conversation. With v3, the state panel comes alive. With v4 and v5, file uploads and feedback buttons become functional. The frontend has a text input in the header that lets you change the backend URL at runtime, making it easy to switch between versions without restarting.
 

@@ -2,7 +2,7 @@
 
 Context engineering is the practice of deliberately shaping what information an agent sees at inference time—what is included, what is omitted, how it is structured, and when it is refreshed—so that the model can reason effectively under real-world constraints such as finite context windows, latency limits, and cost.
 
-### Prompt engineering
+#### Prompt engineering
 
 Prompt engineering concerns the instruction layer of context engineering: how goals, constraints, and expected behaviors are communicated to the model. In agentic systems, prompts should be treated as *interfaces*, not as storage mechanisms.
 
@@ -21,7 +21,7 @@ response = llm(prompt)
 
 The important property here is not syntax, but separation of concerns: prompts express intent and constraints, while state and knowledge live elsewhere.
 
-### A practical aside: “the dumb zone”
+#### A practical aside: “the dumb zone”
 
 In practice, many teams have adopted informal language to describe a familiar failure mode: when too much information is packed into the context window, model behavior becomes less reliable rather than more capable. Internally, this is sometimes jokingly referred to as *“the dumb zone.”*
 
@@ -31,7 +31,7 @@ The commonly cited “~40% of the context window” threshold should be understo
 
 The engineering takeaway is modest and pragmatic: context should be treated as a scarce resource, and indiscriminately adding more text is rarely a reliable strategy.
 
-### Context compression
+#### Context compression
 
 Context compression refers to any technique that reduces token usage while preserving task-relevant information. Compression is not limited to summarization; it also includes transforming free-form text into structured representations and discarding information that no longer serves the current objective.
 
@@ -54,7 +54,7 @@ prompt = render(instructions, state, evidence)
 
 This shift—from text to state—is one of the most effective ways to keep agents stable as interactions grow longer.
 
-### Token budgeting
+#### Token budgeting
 
 Token budgeting makes context engineering explicit and enforceable. Instead of letting the context grow organically, the system allocates space for different categories of information and applies deterministic rules when limits are reached.
 
@@ -76,7 +76,7 @@ prompt = assemble_with_budget(budget)
 
 Token budgeting transforms context management from an emergent behavior into a predictable system component.
 
-### Write-back patterns
+#### Write-back patterns
 
 Write-back patterns close the loop between context and memory. Instead of carrying all history forward, the agent periodically externalizes what it has learned or decided.
 

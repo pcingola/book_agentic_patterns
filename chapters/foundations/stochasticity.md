@@ -2,7 +2,7 @@
 
 Agentic systems sit at the boundary between deterministic software and stochastic model behavior, so you design for *reproducibility* rather than pretending you can get perfect determinism.
 
-### LLMs are stochastic (even when you try to “turn it off”)
+#### LLMs are stochastic (even when you try to “turn it off”)
 
 An LLM call is not “a function” in the strict software sense. Even if the model were held fixed, generation typically involves sampling from a distribution; lowering temperature just sharpens that distribution. Many production model APIs also involve infrastructure-level nondeterminism (e.g., backend changes, load balancing, numerical differences), which means that setting “temperature = 0” is best understood as “reduce randomness,” not “prove determinism.” This is explicitly called out in agent-oriented tooling docs: even with temperature set to 0.0, outputs are not guaranteed to be fully deterministic. ([Pydantic AI][5])
 
@@ -33,11 +33,11 @@ run_log = {
 }
 ```
 
-### Testing and validation strategies for stochastic agents
+#### Testing and validation strategies for stochastic agents
 
 The key move is to stop thinking “unit test the LLM” and start thinking “test the agent’s contract.” In practice, that means composing multiple layers of checks, from fully deterministic to probabilistic, and designing your architecture so those layers are easy to apply.
 
-#### 1) Make the boundaries deterministic: validate *structure* before you judge *content*
+##### 1) Make the boundaries deterministic: validate *structure* before you judge *content*
 
 Most agent failures in production are not “the answer is slightly different,” but “the agent emitted something unparseable,” “it called the wrong tool,” “it violated permissions,” or “it produced an object that breaks downstream code.” Your first testing layer should therefore be deterministic validation of interfaces: schema checks, tool-call argument validation, invariants, and policy constraints.
 
@@ -53,7 +53,7 @@ validate_policy(output)           # permissions / tool allowlist constraints
 
 This is also where “structured outputs” and typed contracts pay off: they convert a fuzzy generative step into something you can deterministically accept/reject.
 
-#### 2) Record/replay to isolate nondeterminism (and make regressions cheap)
+##### 2) Record/replay to isolate nondeterminism (and make regressions cheap)
 
 Stochasticity becomes unmanageable when failures are not reproducible. A standard pattern is to record *external effects* (tool calls, retrieved documents, database rows, HTTP responses) and replay them in tests. That pins the environment so you can focus on the agent logic and prompts.
 
@@ -68,7 +68,7 @@ def tool_call(tool_name, args):
 
 With this, you can run “golden” scenarios where tools behave identically run-to-run, and any change comes from prompts/model behavior (or your scaffolding).
 
-#### 3) Use deterministic test doubles for fast iteration
+##### 3) Use deterministic test doubles for fast iteration
 
 A second accelerator is a deterministic “fake model” used in unit tests that returns scripted outputs (or outputs derived from simple rules). The point is not to approximate the LLM; it is to make agent control flow testable: branching, retries, fallback behavior, tool orchestration, and state handling.
 
@@ -82,7 +82,7 @@ class FakeModel:
 
 This lets you test the *agent as software* with the speed and determinism you expect from normal unit tests.
 
-#### 4) Treat evaluation as a first-class harness, not ad-hoc assertions
+##### 4) Treat evaluation as a first-class harness, not ad-hoc assertions
 
 For end-to-end behavior, you typically need evaluation infrastructure: curated datasets, repeatable runs, and scoring. Evaluation frameworks aimed at agentic systems emphasize running many scenarios and attaching evaluators that produce scores/labels/assertions, including “LLM-as-judge” when deterministic checks are insufficient. ([Pydantic AI][6])
 
@@ -107,11 +107,11 @@ assert score >= 0.8
 
 The important engineering point is that “evaluation” is not only for model selection. It is your regression suite for prompt edits, tool changes, and dependency upgrades.
 
-#### 5) Prefer behavioral assertions over exact-match snapshots
+##### 5) Prefer behavioral assertions over exact-match snapshots
 
 Exact text snapshots are brittle. When you *must* snapshot, snapshot the right thing: tool sequences, structured outputs, and key decisions. If you need to compare free text, use normalization and tolerance: compare extracted facts, compare JSON fields, or compare embeddings / semantic similarity with thresholds (carefully, and ideally with a deterministic baseline).
 
-#### 6) Design for controlled nondeterminism in production
+##### 6) Design for controlled nondeterminism in production
 
 Even if your tests are solid, production will still face drift. The production counterpart of your testing strategy is: log the parameters and environment identifiers; keep prompts versioned; isolate tools behind stable contracts; and monitor outcome metrics so you detect behavior changes quickly. If your provider supports seeds and fingerprints, treat them as debugging aids, not as a determinism guarantee. ([OpenAI Cookbook][8])
 

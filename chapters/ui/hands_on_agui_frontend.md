@@ -2,11 +2,11 @@
 
 This walkthrough covers the React frontend that connects to the AG-UI backend. The code is in `frontend/`.
 
-### Dependencies
+#### Dependencies
 
 The frontend uses two AG-UI packages: `@ag-ui/client` provides `HttpAgent`, which speaks the AG-UI protocol (POST with `RunAgentInput`, SSE response stream). `@ag-ui/core` provides the TypeScript types (`Message`, `State`, etc.). No proprietary middleware or cloud service is involved -- `HttpAgent` talks directly to the backend.
 
-### HttpAgent Setup
+#### HttpAgent Setup
 
 The `App` component creates an `HttpAgent` pointing at the backend URL. The agent is recreated via `useMemo` whenever the URL changes:
 
@@ -62,7 +62,7 @@ export default function App() {
 
 `HttpAgent` manages the conversation internally -- it tracks messages and state, builds the `RunAgentInput` payload, and parses the SSE event stream. The header includes a text input that lets you change the backend URL at runtime (so you can switch between v1, v2, and v3 without restarting) and a dark-mode toggle that persists the preference to `localStorage`.
 
-### ChatPanel Component
+#### ChatPanel Component
 
 `ChatPanel` owns the chat interaction. On submit, it adds a user message to the agent, then calls `runAgent` with a subscriber that updates React state on each event:
 
@@ -116,12 +116,12 @@ The flow works as follows. `agent.addMessage()` appends the user message to the 
 
 Messages are rendered by role: user messages are right-aligned blue bubbles, assistant messages are left-aligned gray bubbles, and tool messages appear as small monospace blocks. Assistant messages with tool calls display the function name and arguments.
 
-### State Rendering
+#### State Rendering
 
 The `StatePanel` component receives agent state from the `onStateChanged` subscriber callback. When connected to v1 or v2 (no `StateDeps`), the panel shows "No state" because those backends never emit `StateSnapshotEvent`. When connected to v3, the panel updates as tools modify the `CalculatorState`.
 
 This is the same concept as before but without any special hook -- the subscriber pattern gives direct control over how events update the UI.
 
-### Key Takeaways
+#### Key Takeaways
 
 The frontend uses the standard AG-UI protocol directly via `HttpAgent`. The subscriber pattern (`onMessagesChanged`, `onStateChanged`) provides fine-grained control over how SSE events update the UI, with streaming text deltas and state snapshots handled through simple callbacks.

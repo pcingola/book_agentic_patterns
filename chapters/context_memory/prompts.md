@@ -2,7 +2,7 @@
 
 Prompts are the agent's control surface: they define intent, constraints, and operating procedure for each model call, and they are the primary way an agent carries "what matters" forward from one step to the next.
 
-### System prompts, developer instructions, and user prompts
+#### System prompts, developer instructions, and user prompts
 
 Most agent stacks benefit from splitting “what to do” from “what the user said,” and from being explicit about what persists across calls. One useful distinction is between (a) system prompts that may be preserved as part of the message history, and (b) developer-provided instructions that are applied for the current run but are not replayed from prior turns when you pass message history back into the model. Some frameworks make this distinction explicitly: they recommend using an “instructions” channel by default, and using “system prompt” only when you deliberately want earlier system messages preserved across subsequent calls that include message history. ([Pydantic AI][32])
 
@@ -17,7 +17,7 @@ A practical mental model is that the “effective prompt” is the concatenation
 
 A useful rule is to treat system prompts as a narrow compatibility layer (policies and invariants), and treat developer instructions as the primary control mechanism for agent behavior. This maps to the explicit recommendation some frameworks make: use “instructions” by default, and only use “system prompt persistence” when you have a concrete reason to keep earlier system messages in the replayed history. ([Pydantic AI][32])
 
-### Conversation history as working context
+#### Conversation history as working context
 
 Conversation history is the simplest form of short-term memory: you resend prior turns so the model can resolve references (“his,” “that issue,” “the second option”) and maintain continuity. Most agent frameworks represent this as an explicit `message_history` (or equivalent) argument, where you pass the subset of prior messages you want the model to see. ([Pydantic AI][32])
 
@@ -29,7 +29,7 @@ In agentic systems, the key decision is not whether to keep history, but how to 
 
 Even without a dedicated “context engineering” section, it is worth stating one operational implication here: replaying raw history scales linearly in tokens and cost, and it eventually degrades quality when irrelevant detail dominates. The prompt stack should therefore be designed so that history can be safely truncated without losing correctness: core constraints remain in system/developer layers, and durable state lives outside the transcript.
 
-### Short-term vs. long-term memory
+#### Short-term vs. long-term memory
 
 Short-term memory is whatever you include in the current context window: system messages, developer instructions, the user’s latest request, selected conversation history, and any tool outputs. It is fast, simple, and fragile: it disappears after the call unless you explicitly store it.
 
@@ -43,7 +43,7 @@ Intermediate reasoning traces or verbose transcripts are rarely good long-term m
 
 The most reliable pattern is to convert episodic interactions into durable, typed records: preferences, decisions, tasks, entities, and constraints. Raw transcript can remain available for audit, but retrieval should preferentially use structured summaries.
 
-### Memory and state management with a database
+#### Memory and state management with a database
 
 A database-backed memory system is best treated as two separable concerns:
 

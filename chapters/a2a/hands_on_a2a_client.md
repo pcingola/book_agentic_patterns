@@ -2,7 +2,7 @@
 
 This hands-on demonstrates the A2A protocol in action through `example_a2a_server.py` and `example_a2a_client.ipynb`. The server exposes an agent with tools over HTTP, and the client discovers the agent's capabilities, sends a task, and retrieves results using the standard A2A operations.
 
-## The A2A Server
+### The A2A Server
 
 The server in `example_a2a_server.py` creates an agent with two arithmetic tools and exposes it via the A2A protocol:
 
@@ -32,7 +32,7 @@ Start the server with uvicorn:
 uvicorn agentic_patterns.examples.a2a.example_a2a_server:app --host 0.0.0.0 --port 8000
 ```
 
-## Discovering the Agent
+### Discovering the Agent
 
 Before sending work to an agent, a client can retrieve its Agent Card to understand what it offers. The card is published at a well-known URL:
 
@@ -46,7 +46,7 @@ async with httpx.AsyncClient() as http:
 
 The Agent Card contains metadata about the agent: its name, description, supported capabilities, and available skills. This "metadata-first" approach lets clients make routing decisions before sending any task content.
 
-## Creating an A2A Client
+### Creating an A2A Client
 
 The `fasta2a` library provides an `A2AClient` that handles the JSON-RPC protocol details:
 
@@ -58,7 +58,7 @@ client = A2AClient(base_url="http://127.0.0.1:8000")
 
 The client connects to the server's base URL and provides methods for the core A2A operations: sending messages, retrieving tasks, and managing task lifecycle.
 
-## Sending a Task
+### Sending a Task
 
 A2A messages are structured with parts that can contain text, files, or structured data. For a simple text request:
 
@@ -83,7 +83,7 @@ The `message_id` is client-generated and enables idempotent retries. If the same
 
 The response includes a task ID that serves as the handle for all subsequent operations on this unit of work.
 
-## Polling for Completion
+### Polling for Completion
 
 A2A tasks are asynchronous by default. After sending a message, the client polls for status updates:
 
@@ -104,7 +104,7 @@ while True:
 
 The task progresses through states like "working" before reaching a terminal state ("completed", "failed", "cancelled", or "rejected"). Polling is intentionally simple and robust, making it suitable for environments where streaming connections are not feasible.
 
-## Extracting Results
+### Extracting Results
 
 Completed tasks include artifacts containing the outputs:
 
@@ -118,7 +118,7 @@ for artifact in artifacts:
 
 Artifacts are first-class objects in A2A, not just response text. They can contain structured data, files, or multiple parts, making them suitable for diverse output types.
 
-## Key Takeaways
+### Key Takeaways
 
 The A2A protocol standardizes agent-to-agent communication over HTTP using JSON-RPC. `to_a2a()` converts any PydanticAI agent into an A2A server with no changes to the agent's internal design.
 

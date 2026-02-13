@@ -2,11 +2,11 @@
 
 Modularity is the discipline of decomposing an agentic system into composable parts—each with a clear interface—so you can evolve prompts, tools, agents, and orchestration independently.
 
-### A modularity "stack" for agentic systems
+#### A modularity "stack" for agentic systems
 
 A useful way to think about modularity in agentic systems is as a stack of boundaries—from the smallest (prompt fragments) to the largest (inter-agent protocols). Each layer solves a different engineering problem, and mature systems usually use several layers at once.
 
-#### Prompt modularity: functions for cognition
+##### Prompt modularity: functions for cognition
 
 Prompts are often treated as monolithic strings, but they behave more like *code*: they have “APIs” (inputs/outputs), invariants, and callers. Prompt modularity means splitting a large prompt into stable, testable pieces:
 
@@ -37,7 +37,7 @@ def build_prompt(task_name: str) -> str:
 
 This mirrors software decomposition: `prompt_contract()` is your stable interface guarantee; `prompt_task()` is the “business logic spec;” examples are regression tests in disguise.
 
-#### Tool modularity: typed interfaces and stable contracts
+##### Tool modularity: typed interfaces and stable contracts
 
 Tools are “callable modules” for agents. The modularity win is not merely *having* tools, but having **stable tool contracts** so that:
 
@@ -78,7 +78,7 @@ This is the same mental model as functions/classes:
 
 Modern “tool calling” APIs formalize this multi-step control flow (model proposes a call → app executes → model continues with results), which makes tool contracts a first-class modular boundary. ([OpenAI Platform][15])
 
-#### MCP: modularity at the “port” boundary
+##### MCP: modularity at the “port” boundary
 
 Model Context Protocol (MCP) pushes modularity one level outward: tools, prompts, and resources are exposed by *servers* behind a standard client/server protocol. Instead of each application inventing bespoke integrations, MCP aims to standardize the boundary so components become swappable. The MCP specification explicitly frames this as a modular protocol design where implementations can support only the layers they need. ([Model Context Protocol][16])
 
@@ -112,7 +112,7 @@ result = agent.run(
 
 Note what changed versus “plain tool calling”: the agent no longer links directly to each tool implementation. It depends on a protocol boundary, like depending on an interface rather than a class.
 
-#### A2A: modularity at the “agent as a service” boundary
+##### A2A: modularity at the “agent as a service” boundary
 
 If MCP makes *tools* reusable modules, A2A makes *agents themselves* reusable modules: independently hosted, potentially opaque systems that interoperate through a common language and interaction model. ([a2a-protocol.org][18])
 
@@ -143,7 +143,7 @@ final = remote.get_result(task_id)
 
 This is modularity at the same boundary as “service calls,” except the remote endpoint is an *agent* with its own reasoning loop, tools, and policies.
 
-#### Skills: packaging and discoverability as modularity
+##### Skills: packaging and discoverability as modularity
 
 “Skills” address a different (often underestimated) modularity problem: **packaging, documentation, and discoverability**. A skill format standardizes *how* a capability is described and shipped—typically as a small directory with a canonical manifest (e.g., a `SKILL.md`) plus optional scripts/assets/references. ([Agent Skills][19])
 
@@ -154,7 +154,7 @@ In software terms, skills are closest to:
 
 This becomes especially valuable when capabilities are not only code (tools), but also prompt templates, evaluation harnesses, and operational notes.
 
-#### Sub-agents: classes and dependency injection for behavior
+##### Sub-agents: classes and dependency injection for behavior
 
 Inside a single application, you often want multiple specialized agents (e.g., “planner,” “researcher,” “executor,” “critic”). That is modularity at the *component* level: each sub-agent has a purpose, its own prompt constraints, and a limited toolset. Frameworks that emphasize typed dependencies and structured outputs make this decomposition less fragile by turning hidden coupling (prompt conventions) into explicit interfaces. ([Pydantic AI][20])
 
@@ -185,7 +185,7 @@ results = [executor_agent(step) for step in plan]
 
 This mirrors classes/modules: each component has its own invariants and dependencies, and coupling is managed by explicit inputs/outputs.
 
-#### Workflows and graphs: modularity in control flow
+##### Workflows and graphs: modularity in control flow
 
 When the number of components grows, the primary complexity shifts from “what does each part do?” to “who calls whom, and when?” That’s a control-flow modularity problem.
 
@@ -213,7 +213,7 @@ GRAPH = {
 
 The modularity benefit is not “graphs are cool,” but that *control flow becomes data*: you can visualize it, test it, version it, and enforce policies at edges (e.g., human approval before `ticket_update`).
 
-### Mapping to classic software modularity
+#### Mapping to classic software modularity
 
 A compact mental mapping helps align agent architecture choices with well-understood software concepts:
 

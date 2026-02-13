@@ -4,13 +4,13 @@ CodeAct is a pattern where an agent reasons primarily by writing and executing c
 
 This hands-on explores CodeAct using `example_codeact.ipynb`, demonstrating how executable code becomes the agent's primary mode of thought.
 
-## Why Code as the Action Modality?
+### Why Code as the Action Modality?
 
 ReAct and similar patterns use structured text commands that a parser converts into function calls. This works well for predefined actions, but becomes limiting when tasks require flexibility. Consider asking an agent to analyze a dataset: you would need to predefine every possible analysis operation as a discrete action.
 
 CodeAct sidesteps this limitation by letting the agent write arbitrary code. The agent can express any computation directly, observe the results, and adapt. This is particularly powerful for tasks involving data manipulation, numerical computation, or any domain where the solution space is too large to enumerate as discrete actions.
 
-## The Execution Sandbox
+### The Execution Sandbox
 
 The sandbox provides a controlled environment where the agent's code runs. Two properties are essential: isolation (the code cannot affect the host system) and persistence (variables survive across executions so the agent can build state incrementally).
 
@@ -34,7 +34,7 @@ The `namespace` dictionary persists across calls to `execute()`. When the agent 
 
 Errors are captured and returned as strings rather than raised. This is intentional: errors are informative feedback, not failures. A `NameError` tells the agent it referenced an undefined variable. A `TypeError` reveals a misunderstanding about data types. The agent incorporates this information and tries again.
 
-## The CodeAct Prompt
+### The CodeAct Prompt
 
 The prompt establishes the code-centric interaction pattern:
 
@@ -53,7 +53,7 @@ Rules:
 
 The prompt explicitly tells the model that `print()` is how it observes results. Without this, the model might write code that computes correct values but never displays them, leaving it blind to its own progress. The persistence rule enables multi-step problem solving: the agent can define helper functions, store intermediate results, and reference them later.
 
-## The CodeAct Loop
+### The CodeAct Loop
 
 The loop orchestrates the interaction between the model and the sandbox:
 
@@ -88,7 +88,7 @@ def extract_code_blocks(text: str) -> list[str]:
     return re.findall(pattern, text, re.DOTALL)
 ```
 
-## Example: Data Analysis
+### Example: Data Analysis
 
 The first example asks the agent to analyze sales data. The task requires computing totals, finding maximums, and calculating averages, all operations that benefit from direct code execution.
 
@@ -134,7 +134,7 @@ print(f"Best selling: {best[0]} with {best[1]} units")
 
 Notice how the agent builds on the `orders` variable defined in the first execution. The persistent namespace enables this incremental approach.
 
-## Error Recovery
+### Error Recovery
 
 The second example demonstrates error handling. When the agent makes a mistake, the error message becomes feedback:
 
@@ -170,13 +170,13 @@ print(f"Mean: {mean:.2f}, Std Dev: {std_dev:.2f}")
 
 The error did not crash the session. Instead, it provided specific information (undefined `sqrt`) that guided the fix (use `** 0.5`). This is the core insight of CodeAct: execution failures are learning signals, not terminal conditions.
 
-## CodeAct vs ReAct
+### CodeAct vs ReAct
 
 ReAct uses text-based actions with predefined semantics: `LookupOrder[id]` always means the same thing. This makes ReAct suitable for systems with well-defined APIs and limited action spaces. CodeAct is more flexible but less constrained. The agent can write any valid Python, which is powerful for open-ended tasks but requires more careful sandboxing.
 
 In practice, many systems combine both approaches. Predefined tools handle common operations with guaranteed semantics, while a code execution capability handles edge cases and complex computations. The choice depends on the task domain and the acceptable tradeoff between flexibility and predictability.
 
-## Key Takeaways
+### Key Takeaways
 
 CodeAct treats executable code as the agent's primary action modality. The agent writes code, observes execution results, and iterates. This tight feedback loop grounds reasoning in actual program behavior rather than hypothetical outcomes.
 

@@ -2,17 +2,17 @@
 
 This hands-on explores techniques that improve upon the basic RAG pipeline: semantic chunking during ingestion and multi-stage retrieval with query expansion, filtering, and re-ranking. The examples use `example_RAG_02_load.ipynb` for LLM-based chunking and `example_RAG_02_query.ipynb` for advanced retrieval.
 
-## Why Go Beyond Simple RAG
+### Why Go Beyond Simple RAG
 
 The simple paragraph-based chunking from the previous example works well when document structure aligns with semantic boundaries. But real documents often violate this assumption. A conversation might span multiple paragraphs. A technical explanation might flow continuously without clear breaks. Naive chunking splits these coherent units, forcing the retriever to find multiple partial chunks that together contain the answer.
 
 Similarly, simple retrieval assumes the user's query directly matches how information is expressed in the documents. In practice, users ask questions in many ways, and a single embedding might miss relevant passages that use different terminology. The advanced retrieval techniques address these limitations by expanding queries, filtering results, and re-ranking for precision.
 
-## Part 1: LLM-Based Semantic Chunking
+### Part 1: LLM-Based Semantic Chunking
 
 The ingestion notebook (`example_RAG_02_load.ipynb`) replaces naive paragraph splitting with an LLM that identifies semantic boundaries.
 
-### The Chunking Prompt
+#### The Chunking Prompt
 
 The LLM receives explicit instructions about what makes a good chunk:
 
@@ -38,7 +38,7 @@ The prompt emphasizes self-containment and topic coherence. Unlike heuristic app
 
 The `output_type=list[str]` ensures structured output. The LLM returns a list of strings rather than free-form text, making the result directly usable without parsing.
 
-### Batching for Large Documents
+#### Batching for Large Documents
 
 Documents often exceed LLM context limits. The notebook addresses this with a batching strategy that splits at natural boundaries:
 
@@ -70,7 +70,7 @@ def split_into_batches(text: str, batch_size: int) -> list[str]:
 
 The function splits on paragraph boundaries rather than at arbitrary character positions. This prevents breaking mid-sentence and gives the LLM complete paragraphs to work with. Each batch stays under 15000 characters, roughly 3000-4000 tokens, leaving headroom for the prompt template and LLM response.
 
-### Handling Incomplete Chunks Across Batches
+#### Handling Incomplete Chunks Across Batches
 
 When batch boundaries fall in the middle of a semantic unit, the last chunk from one batch might be incomplete. The notebook handles this with a "leftover" strategy:
 
@@ -101,11 +101,11 @@ async def chunk_with_llm(file: Path) -> list[tuple[str, str, dict]]:
 
 The key insight is that the LLM is instructed to place potentially incomplete content in the last chunk. By removing that last chunk and prepending it to the next batch, the LLM sees the incomplete content with additional context and can properly determine where the semantic boundary falls. This approach maintains coherence across arbitrary batch boundaries without requiring the LLM to see the entire document at once.
 
-## Part 2: Advanced Retrieval
+### Part 2: Advanced Retrieval
 
 The retrieval notebook (`example_RAG_02_query.ipynb`) demonstrates a multi-stage pipeline that improves upon direct similarity search.
 
-### Query Expansion
+#### Query Expansion
 
 A single query embedding might miss relevant documents that express the same concept differently. Query expansion generates multiple reformulations:
 
@@ -123,7 +123,7 @@ reformulated_queries = agent_run.result.output
 
 For a query like "Who is a man with two heads?", the LLM might generate variations like "character with multiple heads", "person with two heads description", and "dual-headed individual". Each reformulation captures a different lexical angle on the same semantic intent. Querying with all variations increases recall because documents matching any phrasing will be retrieved.
 
-### Multi-Query Retrieval with Metadata Filtering
+#### Multi-Query Retrieval with Metadata Filtering
 
 Each reformulated query runs against the vector database with a metadata filter applied at query time:
 
@@ -140,7 +140,7 @@ The `filter` parameter restricts results at the database level, which is more ef
 
 The same document might appear multiple times if it matches several reformulations. This duplication is handled in the next stage.
 
-### Deduplication
+#### Deduplication
 
 The combined results need deduplication to remove repeated documents:
 
@@ -157,7 +157,7 @@ for doc, meta, score in documents_with_scores:
 
 The document ID constructed from source and chunk number provides a unique key. Documents that appear in multiple query results are kept only once.
 
-### Sorting and Limiting
+#### Sorting and Limiting
 
 The results are sorted by similarity score and limited to a manageable number:
 
@@ -173,7 +173,7 @@ This example uses a simple score-based sort. Production systems often use cross-
 
 The `max_results` limit caps how many documents enter the final prompt. More documents provide more context but increase token usage and may dilute the most relevant passages.
 
-### Building the Final Prompt
+#### Building the Final Prompt
 
 The filtered, deduplicated, sorted documents become context for the LLM:
 
@@ -198,12 +198,12 @@ Show used references (using document ids).
 
 Including document IDs enables citation. The LLM can reference specific documents in its answer, allowing users to trace claims back to sources. This transparency is valuable in applications where users need to verify the LLM's reasoning.
 
-## The Cost-Quality Tradeoff
+### The Cost-Quality Tradeoff
 
 The advanced techniques in this hands-on improve retrieval quality but increase cost and latency. LLM-based chunking requires one or more LLM calls per document during ingestion. Query expansion adds an LLM call per query. These costs should be weighed against the improvement in retrieval quality for your specific use case.
 
 For small corpora with well-structured documents, simple paragraph chunking and direct retrieval may suffice. For large, heterogeneous corpora where retrieval precision matters, the investment in semantic chunking and multi-stage retrieval pays off in better answers.
 
-## Connection to the Chapter
+### Connection to the Chapter
 
 The techniques demonstrated here correspond to concepts from the chapter sections on document ingestion and retrieval. LLM-based chunking implements the topic-aware segmentation described in the ingestion section. Query expansion, filtering, and re-ranking implement stages of the retrieval pipeline described in the retrieval section. The code makes these abstract concepts concrete and runnable.

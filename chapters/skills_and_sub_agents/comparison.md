@@ -2,7 +2,7 @@
 
 Four patterns help manage complexity in agentic systems. Each solves a different problem; understanding when to use which prevents over-engineering and misapplication.
 
-### The four patterns at a glance
+#### The four patterns at a glance
 
 **Sub-agents** are agent instances created by a parent agent to handle scoped tasks. They exist within the same process, share the same runtime, and communicate through function calls. Use sub-agents when you need context isolation without network overhead.
 
@@ -12,7 +12,7 @@ Four patterns help manage complexity in agentic systems. Each solves a different
 
 **A2A (Agent-to-Agent Protocol)** defines how agents communicate over a network, including discovery, task lifecycles, and streaming results. A2A agents are autonomous systems that reason, plan, and maintain state. Use A2A when you need stateful collaboration across organizational or trust boundaries.
 
-### Decision criteria
+#### Decision criteria
 
 | Question | Pattern |
 |----------|---------|
@@ -21,7 +21,7 @@ Four patterns help manage complexity in agentic systems. Each solves a different
 | Need to expose tools to other processes? | MCP |
 | Need collaboration with external agents? | A2A |
 
-### How they combine
+#### How they combine
 
 These patterns are not mutually exclusive. A typical production system uses several together.
 
@@ -33,7 +33,7 @@ These patterns are not mutually exclusive. A typical production system uses seve
 
 **Skill becomes an A2A agent.** A well-defined skill can be "lifted" into an A2A server. The skill's `SKILL.md` becomes the agent's internal playbook; A2A provides discovery, task lifecycle, and network transport. This is useful when a capability needs to cross organizational boundaries.
 
-### The continuum
+#### The continuum
 
 These patterns form a continuum from local to remote:
 
@@ -49,7 +49,7 @@ A2A (agents across organizations)
 
 Moving right adds network overhead, security considerations, and operational complexity. Moving left reduces flexibility and reusability. Choose the simplest pattern that meets your requirements.
 
-### Common mistakes
+#### Common mistakes
 
 **Using A2A for local decomposition.** If your agents run in the same process and you control both, sub-agents are simpler. A2A adds protocol overhead you do not need.
 

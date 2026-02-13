@@ -52,8 +52,9 @@ start_mcp data_viz 8104
 start_mcp sql 8011
 start_mcp repl 8105
 start_mcp vocabulary 8106
+start_mcp openapi 8107
 
-MCP_PORTS=(8100 8101 8102 8103 8010 8104 8011 8105 8106)
+MCP_PORTS=(8100 8101 8102 8103 8010 8104 8011 8105 8106 8107)
 MAX_WAIT=30
 for port in "${MCP_PORTS[@]}"; do
     elapsed=0
@@ -73,6 +74,7 @@ check_pids || { echo "An MCP server failed to start" >&2; exit 1; }
 start_a2a nl2sql 8200
 start_a2a data_analysis 8201
 start_a2a vocabulary 8202
+start_a2a openapi 8203
 
 # Wait for any process to exit -- if one dies, kill the rest.
 while true; do

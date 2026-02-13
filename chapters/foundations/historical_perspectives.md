@@ -2,7 +2,7 @@
 
 This section consolidates the historical context underlying the foundational concepts of agentic systems: agents as sequential decision-makers, the probabilistic nature of language models, modular system design, and the evolution of AI methodologies.
 
-### From classical agents to LLM-based systems
+#### From classical agents to LLM-based systems
 
 The notion of an *agent* predates modern language models by several decades. In classical AI, an agent is defined as an entity that perceives its environment and acts upon it, with the objective of maximizing some notion of performance. This framing was formalized most clearly in reinforcement learning, where the agent-environment interaction loop became the dominant abstraction.
 
@@ -30,13 +30,13 @@ Later work in the 1990s on intelligent and multi-agent systems emphasized proper
 
 What changed with large language models is not the agent abstraction itself, but the mechanism used to approximate the policy. Instead of learning a value function or policy explicitly via reward signals, modern agentic systems use language models as powerful, general-purpose policy approximators that can reason over unstructured inputs and decide which actions (tools) to take next.
 
-### From probabilistic language models to modern decoding
+#### From probabilistic language models to modern decoding
 
 Language modeling has been probabilistic from the start: the core object is a probability distribution over sequences, not a single "correct" next token. Early information theory formalized the idea of modeling sources statistically, which later became the conceptual backbone of language modeling. ([ESSRL][1])
 
 Neural language models made this explicit by learning a parameterized distribution over next tokens, and modern LLMs are essentially extremely large versions of that idea. ([Journal of Machine Learning Research][2]) What changed in practice is that, as models became strong generators, *decoding* became a first-class engineering decision. Deterministic decoding (greedy/beam) tends to be repeatable but can degrade quality (repetition, blandness), while stochastic decoding (temperature, top-k/top-p) trades determinism for diversity and sometimes robustness. Nucleus sampling is a canonical example of decoding research motivated by these practical failures. ([arXiv][3])
 
-### From software modules to tool-using agents
+#### From software modules to tool-using agents
 
 Modularity predates "agents" by decades. In classic software engineering, information hiding and stable interfaces were formalized as the core mechanism for building systems that can change without collapsing under their own complexity. The canonical argument is that you do *not* modularize by "steps in the processing," but by design decisions likely to change-so changes are localized behind module boundaries. ([ACM Digital Library][11])
 
@@ -44,7 +44,7 @@ As systems grew, the same pressure pushed modularity "out of process" into servi
 
 In LLM systems, modularity reappeared in a new form around 2022-2023: language models began to *route* to external tools and specialized components rather than "do everything in weights." Neuro-symbolic and tool-augmented architectures (e.g., MRKL) made modular routing explicit ([arXiv][9]), while ReAct showed the practical value of interleaving reasoning with actions (tool calls) during execution. ([arXiv][10]) Toolformer then pushed toward models that can learn to decide *when* to call tools. ([arXiv][4])
 
-### From hand-built intelligence to scalable methods
+#### From hand-built intelligence to scalable methods
 
 A repeating pattern in AI history is that approaches which "bake in" human knowledge and reasoning tricks often deliver quick wins, but are eventually outpaced by more general methods that can absorb more compute and data. Sutton's *The Bitter Lesson* distilled this from decades of results across search and learning: progress tends to come from methods that scale (and from the discipline to keep systems simple enough to scale), even when the "hand-designed" approach feels more insightful in the moment. ([UT Austin Computer Science][26])
 

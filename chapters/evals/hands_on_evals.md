@@ -2,13 +2,13 @@
 
 Evals transform informal confidence ("this agent seems to work") into repeatable, versioned evidence about correctness. This hands-on explores three fundamental evaluation approaches through `example_evals.ipynb`, progressing from simple string matching to LLM-as-a-Judge.
 
-## Why Evals Matter
+### Why Evals Matter
 
 Testing agentic systems differs fundamentally from testing deterministic software. An agent's output varies across runs, depends on model behavior, and often lacks a single "correct" answer. Evals address this by defining what "good" means for a given task and measuring whether outputs meet that definition.
 
 The simplest evals check for specific content in responses. More sophisticated approaches use structured outputs to make assertions trivial, or employ another LLM to judge quality against a rubric. Each approach trades off simplicity against flexibility.
 
-## String Matching Eval
+### String Matching Eval
 
 The most basic eval checks whether a response contains expected content:
 
@@ -28,7 +28,7 @@ The `.lower()` call handles case variation, a common source of false failures. W
 
 String matching has clear limitations. It cannot handle paraphrasing, synonyms, or equivalent but differently-worded answers. For the capital of Nepal, this works because there's exactly one correct answer with one spelling. For more complex questions, string matching becomes brittle.
 
-## Structured Output Eval
+### Structured Output Eval
 
 Structured outputs eliminate parsing ambiguity by constraining the model to return typed values:
 
@@ -50,7 +50,7 @@ Structured outputs work well when you can frame the evaluation as a typed questi
 
 The tradeoff is that not all tasks fit neatly into structured formats. Open-ended generation, creative writing, and explanatory tasks resist simple typing. For these, we need evaluation approaches that can handle free-form text.
 
-## LLM-as-a-Judge
+### LLM-as-a-Judge
 
 When outputs are open-ended and lack exact correct answers, another LLM can evaluate quality:
 
@@ -95,7 +95,7 @@ This two-step process separates generation from evaluation. The first agent answ
 
 LLM-as-a-Judge scales to tasks where defining correctness programmatically is impractical. A judge can evaluate whether an explanation is clear, whether a summary captures key points, or whether code follows best practices. The rubric (the judge prompt) encodes what "good" means for the specific task.
 
-## Choosing an Approach
+### Choosing an Approach
 
 The three approaches form a hierarchy of complexity and flexibility:
 
@@ -107,7 +107,7 @@ LLM-as-a-Judge handles open-ended tasks where correctness is semantic rather tha
 
 In practice, production eval suites combine all three. Deterministic checks run first as fast filters. Structured output checks handle typed validations. Judge-based evaluation handles nuanced quality assessment. This layering optimizes for both speed and coverage.
 
-## Limitations and Considerations
+### Limitations and Considerations
 
 Each approach has limitations worth understanding.
 
@@ -119,7 +119,7 @@ LLM judges are non-deterministic, inherit model biases, and add latency and cost
 
 These limitations don't invalidate the approaches - they inform when to use each one and how to interpret results. Evals are evidence, not proof. Multiple eval approaches on the same task provide stronger evidence than any single approach alone.
 
-## Key Takeaways
+### Key Takeaways
 
 Evals convert informal confidence into measurable evidence. String matching works for factual queries with known answers. Structured outputs make assertions trivial by constraining response format. LLM-as-a-Judge handles open-ended tasks through semantic evaluation.
 

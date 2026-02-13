@@ -2,7 +2,7 @@
 
 The workspace pattern introduces a shared, persistent file system that agents and tools use to externalize intermediate artifacts, manage context, and coordinate work beyond the limits of the model's prompt.
 
-### The workspace as a concrete abstraction
+#### The workspace as a concrete abstraction
 
 At its core, the workspace is intentionally simple: it is a directory on disk. Tools can read files from it and write files into it, and those files persist across tool calls and agent steps. There is no requirement for a database, schema, or specialized API. The power of the pattern comes precisely from its minimalism.
 
@@ -10,13 +10,13 @@ By relying on files as the shared medium, the workspace becomes universally acce
 
 Conceptually, the workspace sits between the agent’s internal reasoning loop and the external world. It is not part of the model’s hidden state, and it is not necessarily user-facing output. Instead, it functions as shared working material: drafts, logs, datasets, generated assets, and partial results.
 
-### Sharing and coordination
+#### Sharing and coordination
 
 A defining property of the workspace is that it is shared. Tools do not pass large payloads to each other directly; they leave artifacts behind. Another tool, or another agent, can later pick them up by reading the same files. Humans can also inspect or modify these artifacts, turning the workspace into a collaboration surface rather than a hidden implementation detail.
 
 This indirect coordination significantly reduces coupling. A tool only needs to know how to write its output and how to describe where it was written. It does not need to know which agent, tool, or human will consume it next. As systems scale to dozens of tools and agents, this loose coupling becomes essential.
 
-### Context management, memory, and RAG
+#### Context management, memory, and RAG
 
 The workspace plays a central role in managing limited context windows. Large intermediate artifacts—such as long transcripts, structured datasets, or verbose logs—do not belong in the prompt. Instead, they are written to the workspace and referenced indirectly.
 
@@ -24,7 +24,7 @@ Over time, the workspace naturally takes on the role of long-term memory. Artifa
 
 The result is a clear separation of concerns. The model reasons over concise summaries and pointers, while the workspace holds the unbounded, durable material.
 
-### Writing files instead of returning large outputs
+#### Writing files instead of returning large outputs
 
 A practical best practice follows directly from this pattern. When a tool produces an output that is too large to safely return in full, it should write the complete result to the workspace and return only a concise summary together with a file path.
 
@@ -44,7 +44,7 @@ def analyze_large_dataset(data, workspace):
 
 This allows the agent to continue reasoning without polluting its context, while preserving full fidelity in the external artifact.
 
-### Multi-modal tools and the workspace
+#### Multi-modal tools and the workspace
 
 The workspace pattern is especially important for multi-modal tools. Images, audio, and video are naturally file-based artifacts and do not fit cleanly into textual prompts. Rather than attempting to encode or inline such outputs, tools should write them to the workspace and return lightweight metadata.
 
@@ -64,7 +64,7 @@ def generate_image(prompt, workspace):
 
 This keeps the agent’s reasoning loop purely textual while enabling rich, multi-modal outputs to flow through the system.
 
-### Tool composition and system robustness
+#### Tool composition and system robustness
 
 Because tools communicate indirectly through files, the workspace enables flexible composition. Tool chains can be rearranged without changing interfaces, partial failures can be inspected by examining intermediate artifacts, and retries become simpler because previous outputs already exist on disk.
 

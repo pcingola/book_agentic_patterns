@@ -4,7 +4,7 @@ AG-UI is a text-message protocol. Messages flow between frontend and backend as 
 
 This section extends the v3 calculator (state management) with two side-channels: file uploads (v4) and user feedback (v5). Both v4 and v5 drop the `clear_history` tool from v3 to keep the examples focused on the new functionality.
 
-### File uploads -- the /upload endpoint
+#### File uploads -- the /upload endpoint
 
 Since `AGUIApp` inherits from Starlette, it accepts a `routes` parameter for additional endpoints. The v4 backend adds an `/upload` route:
 
@@ -75,7 +75,7 @@ async function uploadFiles(files: File[]): Promise<string> {
 
 The agent receives a single message containing both the file context and whatever text the user typed. From the agent's perspective, it looks like the user pasted file information into their message -- no special protocol support is needed.
 
-### User feedback -- the /feedback endpoint
+#### User feedback -- the /feedback endpoint
 
 The v5 backend adds a `/feedback` route alongside the existing `/upload` route:
 
@@ -159,7 +159,7 @@ The state update happens before the network call so the UI responds immediately.
 
 Once a button is clicked, both buttons are disabled and the selected one is highlighted.
 
-### Why side-channels
+#### Why side-channels
 
 AG-UI streams events over SSE. Injecting binary data into a text protocol would require base64 encoding (33% overhead), break the event format, and force the backend to decode inline. A separate HTTP POST keeps binary transfer clean, leverages standard multipart handling, and works with any file size. The AG-UI message stream stays focused on what it was designed for: text, tool calls, and state.
 

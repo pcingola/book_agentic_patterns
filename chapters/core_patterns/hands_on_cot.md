@@ -4,7 +4,7 @@ Chain-of-Thought prompting improves model accuracy on reasoning tasks by instruc
 
 This hands-on explores Chain-of-Thought using `example_chain_of_thought.ipynb`, demonstrating how explicit reasoning improves both accuracy and transparency.
 
-## The Problem: Opaque Reasoning
+### The Problem: Opaque Reasoning
 
 Language models can solve many tasks by pattern matching against their training data. However, tasks requiring multi-step reasoning often fail when the model tries to compress all reasoning into a single prediction. Consider this word problem:
 
@@ -15,7 +15,7 @@ If each box costs $12 and they sell all cupcakes, how much revenue do they gener
 
 This requires three steps: divide 240 by 6 to get the number of boxes, multiply by $12 to get revenue, verify the logic. If the model attempts to jump directly to the answer, it may skip a step or miscalculate.
 
-## The Solution: Explicit Reasoning
+### The Solution: Explicit Reasoning
 
 Chain-of-Thought prompting instructs the model to generate intermediate reasoning steps before producing the final answer. This externalizes the reasoning process, making it visible and debuggable.
 
@@ -31,11 +31,11 @@ Final Answer: [answer]"""
 
 By requiring explicit steps, we force the model to allocate generation capacity to reasoning rather than compressing everything into an opaque prediction.
 
-## Example 1: Direct Answer vs Chain-of-Thought
+### Example 1: Direct Answer vs Chain-of-Thought
 
 Let's examine the difference between direct answering and Chain-of-Thought.
 
-### Direct Answer
+#### Direct Answer
 
 ```python
 from agentic_patterns.core.agents import get_agent, run_agent
@@ -55,7 +55,7 @@ print(agent_run.result.output)
 
 The model produces an answer, but we cannot see how it arrived at that answer. If the answer is wrong, we cannot identify where the reasoning failed. Even if correct, we don't know if the model truly understood the problem or got lucky.
 
-### Chain-of-Thought Answer
+#### Chain-of-Thought Answer
 
 ```python
 system_prompt = """Solve the problem step by step. Show your reasoning for each step before providing the final answer.
@@ -79,7 +79,7 @@ print(agent_run.result.output)
 
 Now we can see the reasoning. The model explicitly calculated the number of boxes before calculating revenue. If the answer were wrong, we could identify which step failed. This transparency is valuable for debugging and verification.
 
-## Example 2: Zero-Shot Chain-of-Thought
+### Example 2: Zero-Shot Chain-of-Thought
 
 The simplest form of Chain-of-Thought is "zero-shot CoT," introduced by Kojima et al. in 2022. You don't need to specify a format or provide examples. Just add the phrase "Think step by step" to your prompt:
 
@@ -97,7 +97,7 @@ This remarkably simple technique often produces comparable results to structured
 
 Zero-shot CoT works because large language models have been trained on vast amounts of text containing step-by-step explanations. The phrase "Think step by step" activates this pattern in the model's learned representations, causing it to generate similar step-by-step structures.
 
-## Example 3: Logical Reasoning
+### Example 3: Logical Reasoning
 
 Chain-of-Thought is not limited to arithmetic. It improves performance on any task requiring sequential reasoning or constraint satisfaction. Consider this logic puzzle:
 
@@ -124,7 +124,7 @@ print(agent_run.result.output)
 
 The model tracks constraints across multiple steps. Without CoT, it might violate a constraint or produce an inconsistent answer. With CoT, each constraint is explicitly checked, reducing errors.
 
-## Key Takeaways
+### Key Takeaways
 
 Chain-of-Thought improves reasoning by externalizing intermediate steps. Instead of opaque predictions, the model generates transparent reasoning traces that can be inspected, debugged, and verified.
 

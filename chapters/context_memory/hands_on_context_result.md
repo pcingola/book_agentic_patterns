@@ -4,7 +4,7 @@ Tools in agentic systems often return large amounts of data: database query resu
 
 The `@context_result` decorator addresses this by truncating large tool outputs before they reach the model. The full result is saved to the workspace for later access, while the model receives a compact preview sufficient for reasoning about the data's structure and content. This hands-on explores the pattern through `example_context_result.ipynb`.
 
-## The Problem: Tools That Produce Large Output
+### The Problem: Tools That Produce Large Output
 
 Consider tools that query databases or search logs. A sales data query might return 500 rows of transaction records. A log search might yield hundreds of matching entries. The notebook simulates these scenarios with generator functions:
 
@@ -34,7 +34,7 @@ print(f"Raw data: {len(raw_data)} characters, {len(raw_data.split(chr(10)))} row
 
 The output shows the scale of the problem: 500 rows of CSV data can easily exceed 30,000 characters. Every tool call that returns this much data consumes a significant portion of the context window. Chain a few such calls together, and you've exhausted your budget for reasoning.
 
-## The Solution: Automatic Truncation
+### The Solution: Automatic Truncation
 
 The `@context_result` decorator wraps tool functions to intercept large results. When the return value exceeds a configured threshold, it saves the full content to the workspace, truncates the result for the model, and returns a preview with the file path.
 
@@ -81,7 +81,7 @@ date,product,region,quantity,price,total
 
 This preview contains the CSV header, a few head rows, and a few tail rows. The model can understand the data structure, see the date range, and note the column types. If more detail is needed, another tool can read specific portions from the saved file.
 
-## Content-Type Aware Truncation
+### Content-Type Aware Truncation
 
 The decorator auto-detects content type and applies appropriate truncation strategies. CSV data preserves the header row and shows head/tail data rows. JSON content truncates at structural boundaries, keeping the first N and last M array elements while preserving valid JSON syntax. Plain text and logs show head/tail lines. This type awareness ensures previews remain coherent and useful.
 
@@ -94,7 +94,7 @@ The detection logic examines the content's structure:
 
 Each type has its own truncation configuration. CSV shows head/tail rows with the header preserved. JSON arrays keep head/tail items with an indicator showing how many were omitted. Large objects truncate to a maximum number of keys. These defaults can be overridden by passing a config name to the decorator.
 
-## Agent Integration
+### Agent Integration
 
 The notebook demonstrates using these context-managed tools with an agent:
 
@@ -125,17 +125,17 @@ result, _ = await run_agent(agent, prompt, verbose=True)
 
 The agent calls `search_logs("ERROR")`, receives a preview of matching log lines, and summarizes the error patterns it observes. The preview shows enough context (timestamps, components, messages) for meaningful analysis without consuming excessive context.
 
-## Workspace Isolation
+### Workspace Isolation
 
 When the decorator saves full results to the workspace, it relies on the core library's user session context (`user_session.py`) to determine the correct workspace path. In notebooks, default values for user and session ID are used automatically. In production, middleware sets the user session at the request boundary, and the workspace functions route files to the correct tenant directory without any tool-level configuration.
 
-## Connection to Token Budgeting
+### Connection to Token Budgeting
 
 The context result pattern is one component of a broader token budgeting strategy. By limiting how much each tool contributes to the context, you create predictable space allocation. A conversation with multiple tool calls stays within budget because each tool's contribution is bounded.
 
 Combined with history compaction (summarizing old turns) and selective evidence retrieval, the context result decorator helps maintain the "intentional loss" principle described in context engineering: when something must be dropped, drop it deliberately based on priority rather than arbitrarily through truncation.
 
-## Key Takeaways
+### Key Takeaways
 
 Large tool outputs degrade agent performance by consuming context and overwhelming the model's attention. The `@context_result` decorator provides automatic truncation while preserving full data for later access.
 

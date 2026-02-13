@@ -2,9 +2,9 @@
 
 This section covers essential Python concepts you need to understand how async agent execution works.
 
-## Python Concepts Recap
+### Python Concepts Recap
 
-### Iterators
+#### Iterators
 
 An **iterator** is an object that produces values one at a time when you loop over it. Any object that implements the iterator protocol (`__iter__()` and `__next__()` methods) is an iterator. Lists, tuples, and strings are all iterable.
 
@@ -22,7 +22,7 @@ for num in numbers:
 
 The key concept: an iterator provides a uniform way to access elements sequentially without exposing the underlying structure.
 
-### Generators
+#### Generators
 
 A **generator** is a special type of iterator created in two ways: using a function with the `yield` keyword, or using a generator expression (similar to list comprehensions but with parentheses).
 
@@ -56,7 +56,7 @@ Generator expressions use parentheses `()` instead of square brackets `[]`. Unli
 
 The key advantage: generators produce values lazily, one at a time, without loading everything into memory. This is perfect for processing streams of data or events.
 
-### Context Managers
+#### Context Managers
 
 A **context manager** handles resource setup and cleanup automatically using the `with` statement. It guarantees cleanup happens even if errors occur.
 
@@ -105,7 +105,7 @@ This approach uses a generator function. The `@contextmanager` decorator convert
 
 The cleanup in `__exit__()` or the `finally` block always runs, making resource management safe and predictable.
 
-### Coroutines and Async/Await
+#### Coroutines and Async/Await
 
 A **coroutine** is a function defined with `async def` that can pause execution using `await` and let other coroutines run. This is **cooperative multitasking**: the coroutine voluntarily yields control when waiting for I/O operations like network requests, disk reads, database queries, or API calls.
 
@@ -134,7 +134,7 @@ The difference from threads and processes:
 
 For agent work involving API calls, async/await is ideal: you spend most time waiting for model responses, not doing heavy computation.
 
-### Async Iterators and Generators
+#### Async Iterators and Generators
 
 An **async iterator** produces values asynchronously using `async for`. An **async generator** is a coroutine that uses `yield` to produce values one at a time, with each iteration possibly involving async operations.
 
@@ -151,7 +151,7 @@ async def main():
 
 This combines the benefits of generators (lazy, streaming evaluation) with async operations (efficient I/O handling).
 
-### Async Context Managers
+#### Async Context Managers
 
 An **async context manager** is like a regular context manager but for async operations. It uses `async with` and can perform async setup/cleanup.
 
@@ -172,6 +172,6 @@ async def main():
 
 This is essential when resources require async operations to initialize or clean up, like network connections or database sessions.
 
-## Summary
+### Summary
 
 These Python concepts combine to enable efficient, streaming agent execution. 

@@ -9,7 +9,7 @@ The problem appears at network boundaries. When the agent makes an HTTP call to 
 The solution is JWT tokens. A JSON Web Token encodes the user identity as signed claims (`sub` for the user ID, `session_id` for the session) and can be attached to any HTTP request as a standard `Authorization: Bearer` header. Both MCP and A2A are HTTP-based protocols, so they already have the plumbing for authorization headers. The task is not to invent a new identity mechanism but to wire the existing one through each boundary: encode the identity into a token before crossing the boundary, attach it to the HTTP request, validate it on the other side, and call `set_user_session()` so the downstream code works unchanged.
 
 
-### The token
+#### The token
 
 The project's `auth.py` provides two functions. `create_token(user_id, session_id)` encodes the claims with an HMAC-SHA256 signature and a configurable expiry (one hour by default). `decode_token(token)` validates the signature and expiry, returning the claims dict or raising `jwt.InvalidTokenError` if the token is tampered with or expired.
 
@@ -26,7 +26,7 @@ def decode_token(token: str) -> dict:
 The secret (`JWT_SECRET`) and algorithm (`JWT_ALGORITHM`) are read from environment variables with development defaults. For the proof-of-concept, all services in the stack share the same HMAC secret, which means the same token is valid everywhere. A production deployment would replace this with asymmetric keys (RS256 or ES256) and a JWKS endpoint, so servers can verify tokens without knowing the signing key. The point is that none of the propagation code needs to change when that happens -- only the key configuration.
 
 
-### Crossing the MCP boundary
+#### Crossing the MCP boundary
 
 When PydanticAI calls an MCP tool, it goes through the `MCPServerStreamableHTTP` client, which makes an HTTP request to the MCP server. PydanticAI provides a `process_tool_call` callback that runs before each MCP tool invocation, receiving the run context, tool name, and arguments. ([PydanticAI][sp-1]) The project uses this hook to inject the Bearer token.
 
@@ -59,7 +59,7 @@ class AuthSessionMiddleware(Middleware):
 The effect is that an MCP tool function that calls `workspace_to_host_path()` or any other identity-dependent code gets the same user identity that was established in the UI, even though the tool runs in a different process. The tool author does not need to know about tokens, middleware, or propagation -- they just call `get_user_id()` and get the right answer.
 
 
-### Crossing the A2A boundary
+#### Crossing the A2A boundary
 
 A2A delegation follows the same pattern with different plumbing. ([A2A][sp-3]) The `A2AClientConfig` accepts an optional `bearer_token` field, and when present, `A2AClientExtended.__init__` sets the `Authorization` header on the underlying `httpx` client:
 
@@ -74,7 +74,7 @@ class A2AClientExtended:
 Every subsequent request through that client -- `send_message`, `get_task`, `cancel_task` -- carries the token. On the receiving A2A server, the token arrives as a standard HTTP header. The server validates it and calls `set_user_session()`, just as the MCP middleware does. If the sub-agent then calls its own MCP tools, the same token (or a fresh one with the same claims) propagates further. The chain can be arbitrarily deep: UI to agent to sub-agent to sub-sub-agent, each boundary bridged by the same mechanism.
 
 
-### The full path
+#### The full path
 
 Putting it together, the identity flows through the stack like this. The UI layer authenticates the user (login form, OAuth callback, API key -- whatever mechanism the frontend uses) and calls `set_user_session()` to establish the identity in the agent process. If the agent calls MCP tools, `create_process_tool_call` injects the JWT. The MCP server's `AuthSessionMiddleware` extracts the claims and restores the identity. If the agent delegates via A2A, the client sends the token in the HTTP header. The A2A server extracts and restores the identity. If the sub-agent calls its own MCP tools, the same injection happens again. At every layer, downstream code calls `get_user_id()` and gets the original user's identity.
 

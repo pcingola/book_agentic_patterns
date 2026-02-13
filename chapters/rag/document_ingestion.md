@@ -4,7 +4,7 @@ Document ingestion is the process that transforms raw, heterogeneous source mate
 
 ![Document ingestion and retrieval workflow](img/rag_workflow.png)
 
-### The document ingestion pipeline
+#### The document ingestion pipeline
 
 At a conceptual level, document ingestion is a deterministic transformation pipeline. Its purpose is not to answer queries, but to prepare a stable corpus over which retrieval can operate efficiently and reproducibly.
 
@@ -18,7 +18,7 @@ Only after these steps does **chunking** occur. Chunking transforms a single nor
 
 Finally, each chunk is **embedded and stored**, together with its metadata and a reference back to the source document. Although embedding and storage are sometimes discussed as part of retrieval infrastructure, from a systems perspective they conclude the ingestion phase: the corpus is now ready to be queried.
 
-### Document chunking: motivations and constraints
+#### Document chunking: motivations and constraints
 
 Chunking addresses three fundamental constraints.
 
@@ -30,7 +30,7 @@ Third, generation benefits from focused context. Passing a handful of precise ch
 
 These constraints imply that chunking is an information-theoretic trade-off between context completeness and semantic specificity.
 
-### Chunking strategies
+#### Chunking strategies
 
 The simplest strategy is **fixed-size chunking**, where text is split every *N* tokens or characters. This approach is easy to implement and model-agnostic, but it ignores document structure. Chunks may begin or end mid-sentence, which can reduce embedding quality.
 
@@ -42,7 +42,7 @@ In domains where meaning depends on logical flow, **recursive or hierarchical ch
 
 Finally, **semantic chunking** attempts to split text based on topic shifts rather than explicit structure. This can be implemented using lightweight similarity checks between adjacent spans. While more computationally expensive, it can produce chunks that align closely with conceptual units.
 
-### Illustrative chunking logic
+#### Illustrative chunking logic
 
 The following pseudocode illustrates structure-aware chunking with a size constraint, without committing to a specific framework or library:
 
@@ -72,13 +72,13 @@ def chunk_document(sections, max_tokens, overlap):
 
 This pattern highlights two core ideas: chunking respects document structure, and size constraints are enforced incrementally rather than by naïve slicing.
 
-### Chunking as a design decision
+#### Chunking as a design decision
 
 Chunk size, overlap, and boundary selection are not universal constants. They depend on embedding dimensionality, model context limits, expected query granularity, and downstream re-ranking strategies. In practice, ingestion pipelines often expose these parameters explicitly, treating chunking as a tunable component rather than a fixed preprocessing step.
 
 A well-designed ingestion pipeline therefore makes chunking reproducible, auditable, and revisable. Re-chunking a corpus with different parameters should be possible without re-ingesting raw sources, enabling systematic evaluation and iteration.
 
-### Statistical chunking (unsupervised segmentation)
+#### Statistical chunking (unsupervised segmentation)
 
 Statistical chunking refers to a family of methods that segment documents into coherent units using distributional signals derived directly from the text, without relying on predefined structure or large language models.
 
@@ -118,7 +118,7 @@ In contemporary RAG systems, statistical chunking is often used as a **baseline 
 From an architectural perspective, statistical chunking reinforces the idea that document ingestion is a spectrum of techniques rather than a single algorithm, with different strategies occupying different points in the trade-off space between cost, interpretability, and semantic fidelity.
 
 
-### LLM-based chunking (topic-aware chunking)
+#### LLM-based chunking (topic-aware chunking)
 
 An increasingly common alternative to heuristic chunking is **LLM-based chunking**, where a language model is explicitly asked to segment a document into coherent topical units.
 

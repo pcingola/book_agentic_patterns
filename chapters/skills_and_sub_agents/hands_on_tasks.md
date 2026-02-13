@@ -2,7 +2,7 @@
 
 This hands-on explores `example_tasks.ipynb` and the `core/tasks/` module, which implements the task lifecycle concepts from the previous section. The module has five files: `state.py` (the state enum), `models.py` (data models), `store.py` (persistence), `worker.py` (sub-agent execution), and `broker.py` (coordination).
 
-### State and Models
+#### State and Models
 
 The state machine is an enum with a set of terminal states:
 
@@ -41,7 +41,7 @@ class TaskEvent(BaseModel):
     timestamp: datetime
 ```
 
-### Storage
+#### Storage
 
 `TaskStore` is the abstract interface. The contract is small -- six methods:
 
@@ -57,7 +57,7 @@ class TaskStore(ABC):
 
 `TaskStoreJson` implements this with one JSON file per task, using `pathlib.Path` for file operations and `asyncio.Lock` for concurrency safety. The implementation is intentionally simple -- production use would swap in a database-backed store without changing any other code.
 
-### Worker
+#### Worker
 
 The worker is where sub-agents meet the task lifecycle. `Worker.execute()` maps directly to the dynamic sub-agent pattern:
 
@@ -77,7 +77,7 @@ async def execute(self, task_id: str) -> None:
 
 Read the metadata, create an agent, run it, write the result. If the agent raises an exception, the worker catches it and transitions the task to `FAILED` with the error message. The worker itself is stateless -- it holds a reference to the store but maintains no task-specific data. The actual implementation also supports `AgentSpec`-based execution for composition with `OrchestratorAgent`, and emits progress and log events via a node hook so that observers can track what the sub-agent is doing in real time.
 
-### Broker
+#### Broker
 
 `TaskBroker` ties everything together as an async context manager. On entry it starts a background dispatch loop; on exit it cancels it:
 
@@ -90,7 +90,7 @@ async with TaskBroker() as broker:
 
 The dispatch loop is a simple polling loop: check for pending tasks, hand them to the worker, fire callbacks when done. The broker exposes five observation methods: `poll()` returns current state, `wait()` blocks until terminal, `stream()` yields events, `cancel()` stops execution, and `notify()` registers callbacks for specific state changes.
 
-### Sub-Agent to Task Mapping
+#### Sub-Agent to Task Mapping
 
 The following table shows how sub-agent concepts map to the task lifecycle:
 

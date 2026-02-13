@@ -3,14 +3,14 @@
 In A2A systems, a task is a durable, observable unit of work whose lifecycle is decoupled from synchronous execution through explicit state management, multiple observation channels, and a layered execution architecture.
 
 
-### Asynchronous Execution as a First-Class Concept
+#### Asynchronous Execution as a First-Class Concept
 
 A2A tasks are explicitly designed to be asynchronous. Once a task is created, the initiating agent does not assume immediate completion. Instead, progress and results are exposed incrementally through well-defined observation mechanisms. This makes tasks suitable for long-running reasoning, external tool calls, delegation chains, and human approval steps.
 
 Asynchrony in A2A is not an implementation detail but a protocol-level guarantee: every task can be observed, resumed, or completed independently of the original request-response channel.
 
 
-### Task States
+#### Task States
 
 Tasks progress through well-defined states: `working` (in progress), `completed` (terminal), `failed` (terminal), `canceled` (terminal), `rejected` (terminal), and `input-required` (the agent needs additional information to proceed). A special `auth-required` state signals authentication issues. The full state machine and transition semantics are covered in [A2A in Detail](./details.md).
 
@@ -28,14 +28,14 @@ class TaskStatus(str, Enum):
 `TIMEOUT` is a client-side addition. The protocol itself does not define a timeout state, but real-world clients need a bounded wait.
 
 
-### Observation Mechanisms
+#### Observation Mechanisms
 
 Three complementary mechanisms make task state observable. **Streaming** provides real-time push-based updates as typed events (status transitions, artifact chunks, messages). **Polling** is a simple, robust baseline: any client can query a task's current state at any time using its task ID, guaranteeing eventual visibility even across network interruptions. **Push notifications** extend observability to external systems via webhooks, enabling event-driven architectures without persistent connections.
 
 These are protocol-level guarantees, not optional features. The [details section](./details.md) covers their wire-level format, `StreamResponse` envelope structure, chunked artifact semantics, and idempotency requirements.
 
 
-### Execution Architecture
+#### Execution Architecture
 
 A2A servers typically decompose into three layers that separate protocol handling from task execution.
 
@@ -48,7 +48,7 @@ A2A servers typically decompose into three layers that separate protocol handlin
 This architecture mirrors established distributed systems patterns. The PydanticAI ecosystem reflects this directly: `agent.to_a2a()` creates the HTTP ingress layer, while the broker and worker handle scheduling and execution internally.
 
 
-### Client-Side Resilience
+#### Client-Side Resilience
 
 Reliable A2A communication requires handling network failures, timeouts, and cancellation on the client side. The core library's `A2AClientExtended` (`core/a2a/client.py`) wraps the base `fasta2a.A2AClient` with production-ready behavior:
 
@@ -70,6 +70,6 @@ status, task = await client.send_and_observe("Reconcile invoice #4812")
 Client configuration is loaded from YAML (`config.yaml` under `a2a.clients`) with `${VAR}` environment variable expansion, following the same pattern used by MCP and model configurations elsewhere in the platform.
 
 
-### Putting It All Together
+#### Putting It All Together
 
 Tasks, observation mechanisms, storage, workers, and brokers form a coherent execution model. Tasks are created once, stored durably, executed by interchangeable workers, coordinated by a broker, and observed through streaming, polling, or push notifications. On the client side, `A2AClientExtended` encapsulates the retry, timeout, and cancellation logic needed for reliable communication. This layered design supports long-running workflows and enterprise-grade reliability while keeping each component independently testable and replaceable.

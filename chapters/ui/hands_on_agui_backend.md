@@ -2,7 +2,7 @@
 
 This walkthrough covers the three backend examples that expose a PydanticAI agent via the AG-UI protocol, progressing from a minimal application to tools to state management.
 
-### v1 -- Minimal Application
+#### v1 -- Minimal Application
 
 The first example shows the minimal AG-UI structure:
 
@@ -31,7 +31,7 @@ app.add_middleware(
 
 The CORS middleware is required because the React frontend runs on a different origin (`localhost:5173` via Vite) than the backend (`localhost:8000`). Without it, the browser blocks cross-origin requests.
 
-### v2 -- Adding Tools
+#### v2 -- Adding Tools
 
 The second example adds calculator tools:
 
@@ -74,7 +74,7 @@ app.add_middleware(
 
 Tools are standalone async functions passed to `get_agent()` via the `tools` parameter. There is no decorator -- PydanticAI inspects the function signature and docstring to generate the tool schema for the LLM. When the agent calls a tool, AG-UI emits tool call events in the SSE stream so the frontend can show what the agent is doing.
 
-### v3 -- State Management
+#### v3 -- State Management
 
 The third example introduces shared state between the UI and the agent. The full file has five tools; here we show the key pieces.
 
@@ -149,7 +149,7 @@ agent = get_agent(
 app = AGUIApp(agent, deps=StateDeps(CalculatorState()))
 ```
 
-### Core Library Helpers
+#### Core Library Helpers
 
 The core library in `agentic_patterns/core/ui/agui/` provides shortcuts for common patterns. The examples above stay explicit for clarity, but your own code can use these to reduce boilerplate. `create_agui_app()` combines agent creation and AG-UI wrapping into one call, using the same `config.yaml` model configurations. `tool_return_with_state()` reduces the boilerplate of constructing `ToolReturn` with state snapshots and custom events:
 
@@ -163,7 +163,7 @@ return tool_return_with_state(
 )
 ```
 
-### Key Takeaways
+#### Key Takeaways
 
 AG-UI is a protocol, not a framework. The backend exposes an agent via HTTP with SSE streaming; any compatible frontend connects without the backend knowing or caring which one.
 

@@ -2,7 +2,7 @@
 
 The previous hands-on sections built evals interactively in notebooks. In practice, eval suites need to run from the command line, integrate with CI pipelines, and scale across many files. This hands-on explores the eval runner infrastructure through `example_evals_runner.ipynb`, which demonstrates auto-discovery of eval files, the custom evaluators provided by the core library, and CLI integration.
 
-## Convention-Based Discovery
+### Convention-Based Discovery
 
 The eval runner uses naming conventions to discover and wire up evaluation components automatically. It scans a directory for `eval_*.py` files, then inside each file it finds:
 
@@ -61,7 +61,7 @@ datasets = discover_datasets(eval_files, verbose=True)
 
 Each discovered dataset can then be executed individually or in batch. The runner handles reporting, scoring, and pass/fail determination.
 
-## Custom Evaluators
+### Custom Evaluators
 
 The core library provides four evaluators for common agent scenarios that go beyond basic string or type checks.
 
@@ -93,7 +93,7 @@ The first case passes both evaluators. The second case fails both: the output is
 
 `ToolWasCalled` and `NoToolErrors` inspect the execution span tree to verify tool invocation patterns. `ToolWasCalled` asserts that a specific tool was invoked during the agent run, while `NoToolErrors` asserts that no tool calls resulted in errors. These evaluators address the process-level guarantees discussed in the evals section: verifying not just what the agent returned, but how it executed.
 
-## CLI Integration
+### CLI Integration
 
 The same discovery and execution logic is available as a command-line tool:
 

@@ -2,7 +2,7 @@
 
 This hands-on builds on the basic A2A client-server example to demonstrate a coordinator agent that routes tasks to specialized A2A agents. The coordinator discovers available agents through their Agent Cards, understands their capabilities, and delegates work to the appropriate specialist. This pattern is central to building multi-agent systems where agents with different skills collaborate to solve complex problems.
 
-## Architecture Overview
+### Architecture Overview
 
 The system consists of three agents:
 
@@ -12,7 +12,7 @@ The system consists of three agents:
 
 The coordinator is a regular PydanticAI agent with a tool that can communicate with the A2A agents. It uses the Agent Cards to understand what each specialist can do and includes this information in its system prompt so the LLM can make routing decisions.
 
-## The A2A Servers
+### The A2A Servers
 
 Each specialist server follows the same pattern from the basic example, with one addition: they declare their skills explicitly so the Agent Card contains useful capability information.
 
@@ -49,7 +49,7 @@ uvicorn agentic_patterns.examples.a2a.example_a2a_server_1:app --host 0.0.0.0 --
 uvicorn agentic_patterns.examples.a2a.example_a2a_server_2:app --host 0.0.0.0 --port 8001
 ```
 
-## Discovering Agent Capabilities
+### Discovering Agent Capabilities
 
 The coordinator starts by fetching the Agent Card from each known server:
 
@@ -78,7 +78,7 @@ The Agent Card contains the agent's name, description, and list of skills. A car
 
 This metadata-first approach lets the coordinator understand what each agent can do without sending any actual task content.
 
-## Building the Coordinator's System Prompt
+### Building the Coordinator's System Prompt
 
 The coordinator converts Agent Cards into a description string that becomes part of its system prompt:
 
@@ -105,7 +105,7 @@ Only invoke one agent at a time.
 
 The resulting system prompt tells the LLM exactly which agents are available and what each can do. The explicit instruction to never perform calculations ensures the coordinator always delegates rather than attempting work it should not do.
 
-## The Route Tool
+### The Route Tool
 
 The coordinator's power comes from its `route` tool, which handles the full A2A workflow:
 
@@ -148,7 +148,7 @@ async def send_task(client: A2AClient, prompt: str) -> dict:
         await asyncio.sleep(0.2)
 ```
 
-## Multi-Turn Conversation
+### Multi-Turn Conversation
 
 The coordinator maintains conversation history, allowing follow-up questions that reference previous results:
 
@@ -169,7 +169,7 @@ agent_run, _ = await run_agent(agent=coordinator, prompt=prompt, message_history
 
 The conversation flows naturally across specialists. The coordinator remembers the previous result (42246913578), understands that subtracting gives 42000000000, and correctly routes the area calculation to the AreaCalculator agent with radius 21000000000.
 
-## From Manual to Core Library
+### From Manual to Core Library
 
 The coordinator above builds everything manually: agent card fetching, prompt construction, and a route tool with an inline polling loop. This is useful for understanding the protocol mechanics, but the core library provides production-ready utilities that automate these patterns.
 
@@ -202,7 +202,7 @@ app = mock.to_app()  # FastAPI instance for test clients
 
 After a test run, `mock.received_prompts` lists all prompts received and `mock.cancelled_task_ids` tracks cancellation requests.
 
-## Key Takeaways
+### Key Takeaways
 
 Agent Cards enable dynamic capability discovery. The coordinator does not hardcode knowledge of what specialists can do. Instead, it fetches this information at runtime and incorporates it into its prompt. This makes the system extensible: adding a new specialist requires only starting another A2A server.
 

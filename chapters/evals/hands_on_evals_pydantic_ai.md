@@ -2,13 +2,13 @@
 
 The pydantic-evals library provides structured abstractions for building evaluation suites. This hands-on explores the framework through `example_evals_pydantic_ai.ipynb`, demonstrating how Cases, Evaluators, and Datasets work together to create maintainable, scalable evals.
 
-## From Ad-Hoc Tests to Structured Evals
+### From Ad-Hoc Tests to Structured Evals
 
 The basic eval approaches from the previous hands-on work for individual tests, but they don't scale. As eval suites grow, you need consistent structure: test cases with metadata, reusable evaluators, aggregated reports, and the ability to run the same dataset against different system variants.
 
 The pydantic-evals framework addresses this through three core abstractions. A Case defines a single test scenario with typed inputs and expected outputs. An Evaluator encodes what "good" means, returning scores, assertions, or labels. A Dataset combines cases with evaluators and runs them against a task function, producing a structured report.
 
-## Core Concepts: Case, Evaluator, Dataset
+### Core Concepts: Case, Evaluator, Dataset
 
 A Case captures everything about a single evaluation scenario:
 
@@ -65,7 +65,7 @@ report.print(include_input=True, include_output=True, include_durations=False)
 
 The `evaluate` method runs each case through the task function, applies all evaluators, and aggregates results. The report shows per-case results, evaluator scores, and summary statistics.
 
-## LLM Judge with Real Agent
+### LLM Judge with Real Agent
 
 The framework's power becomes clear when evaluating actual agents. The notebook demonstrates this with a recipe generation task:
 
@@ -150,7 +150,7 @@ print(report)
 
 The report shows results for each case across all evaluators. You can see which cases passed type checking, whether dietary restrictions were respected, and whether recipes met general quality criteria.
 
-## Why This Structure Matters
+### Why This Structure Matters
 
 The framework's abstractions provide several benefits over ad-hoc testing.
 
@@ -164,13 +164,13 @@ Reusable evaluators reduce duplication. The same `LLMJudge` with a quality rubri
 
 Structured reports enable comparison. Running the same dataset against different agent versions produces comparable reports, enabling regression detection and performance tracking.
 
-## Evaluator Output Types
+### Evaluator Output Types
 
 Evaluators can return different types depending on what they measure. Numeric scores (float) work for quality metrics on a scale. Boolean assertions work for pass/fail checks. Labels (strings) work for categorical classifications. The framework handles all three consistently in reports.
 
 The custom evaluator in the notebook returns floats (0.0, 0.8, or 1.0) representing match quality. The `IsInstance` evaluator returns a boolean. The `LLMJudge` can return scores, pass/fail, or detailed assessments depending on configuration.
 
-## Production Considerations
+### Production Considerations
 
 When building production eval suites with this framework, consider dataset versioning. Store datasets as YAML or JSON files in version control so changes are reviewable and diffable.
 
@@ -180,7 +180,7 @@ Cost and latency accumulate. Each LLMJudge call invokes the model, adding time a
 
 Flakiness requires management. LLM judges are non-deterministic. Run critical evals multiple times and aggregate results, or use low temperature settings to reduce variance.
 
-## Key Takeaways
+### Key Takeaways
 
 The pydantic-evals framework provides structured abstractions for scalable evaluation. Cases define test scenarios with typed inputs, expected outputs, and metadata. Evaluators encode what "good" means, from simple type checks to LLM-based semantic assessment. Datasets combine cases with evaluators and produce structured reports.
 

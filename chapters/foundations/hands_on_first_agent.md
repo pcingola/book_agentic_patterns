@@ -4,7 +4,7 @@ This section walks through creating and running a simple agent. We use Pydantic-
 
 We'll follow the example code in `agentic_patterns/examples/foundations/example_translate_basic.ipynb`.
 
-## High-Level Overview
+### High-Level Overview
 
 Building an agent involves three fundamental steps:
 
@@ -16,7 +16,7 @@ Building an agent involves three fundamental steps:
 
 While these concepts are universal, each framework provides different APIs and abstractions. We use Pydantic-ai because it provides a clean, Pythonic interface with strong typing and validation through Pydantic models.
 
-## Framework vs. Helper Library
+### Framework vs. Helper Library
 
 **Pydantic-ai** is the core framework that provides the `Agent` class and handles all agent execution, model interaction, tool calling, and message flow. It's the actual agentic framework doing the work.
 
@@ -24,7 +24,7 @@ While these concepts are universal, each framework provides different APIs and a
 
 The key distinction: Pydantic-ai provides the agent functionality. Our library just makes it easier to configure which model to use.
 
-## Configuration: YAML Best Practice
+### Configuration: YAML Best Practice
 
 Before running agents, we need to configure which model to use. Rather than hardcoding this in Python, we define it in `config.yaml`:
 
@@ -42,11 +42,11 @@ This configuration approach offers several advantages. You can define multiple m
 
 Our library supports multiple model families: Azure OpenAI, AWS Bedrock, Ollama for local models, OpenRouter for multi-provider access, and direct OpenAI API.
 
-## Simple Translation Agent
+### Simple Translation Agent
 
 Let's walk through our first example in `agentic_patterns/examples/foundations/example_translate_basic.ipynb`.
 
-### Step 1: Create the Agent
+#### Step 1: Create the Agent
 
 ```python
 from agentic_patterns.core.agents import get_agent, run_agent
@@ -70,7 +70,7 @@ agent = Agent(model=model)
 
 Our `get_agent()` simply automates this boilerplate by reading from configuration.
 
-### Step 2: Run the Agent
+#### Step 2: Run the Agent
 
 ```python
 prompt = "Translate to French: I like coffee."
@@ -85,7 +85,7 @@ The function returns two objects:
 
 **nodes**: A list of Pydantic-AI graph nodes (`UserPromptNode`, `ModelRequestNode`, `CallToolsNode`) representing each step that occurred during the agent's execution. This provides visibility into what the agent did.
 
-### Step 3: Access Results
+#### Step 3: Access Results
 
 ```python
 print(agent_run.result.output)
@@ -93,7 +93,7 @@ print(agent_run.result.output)
 
 The result object comes directly from Pydantic-ai. For our translation example, it contains: "J'aime le café."
 
-## Understanding Agent Execution
+### Understanding Agent Execution
 
 When you run an agent, Pydantic-ai orchestrates the following flow:
 
@@ -105,7 +105,7 @@ When you run an agent, Pydantic-ai orchestrates the following flow:
 
 This execution model is consistent across agentic frameworks. The specifics of APIs and abstractions differ, but the fundamental loop remains the same.
 
-## Key Concepts Recap
+### Key Concepts Recap
 
 **Agents** coordinate between language models, tools, and application logic. They manage conversation flow and execution until reaching a final result.
 

@@ -4,13 +4,13 @@ When an agent has access to many tools, presenting all of them in every request 
 
 This hands-on explores tool selection through `example_tool_selection.ipynb`, demonstrating both a manual approach and the use of `ToolSelector` to automate the process.
 
-## The Scaling Problem
+### The Scaling Problem
 
 Consider an agent with two tools: `add` and `sub`. The model easily selects the right one for any arithmetic task. Now imagine an agent with fifty tools covering file operations, database queries, API calls, text processing, and more. For a simple addition task, forty-nine of those tools are noise. The model must scan all descriptions, reason about relevance, and avoid being distracted by superficially similar but incorrect options.
 
 Tool selection solves this by adding a preliminary step: before the task-execution agent runs, a tool-selection agent examines the task and filters the tool set down to only relevant capabilities.
 
-## Manual Approach
+### Manual Approach
 
 The notebook begins with a manual implementation to show the mechanics. First, we define tools as Python functions:
 
@@ -78,7 +78,7 @@ result, _ = await run_agent(agent, user_query)
 
 This two-stage process means the execution agent never sees irrelevant tools. Its context is focused, and tool selection is more reliable.
 
-## Using ToolSelector
+### Using ToolSelector
 
 The manual approach works but requires boilerplate. The `ToolSelector` class encapsulates this pattern:
 
@@ -105,7 +105,7 @@ agent = get_agent(tools=selected_tools)
 result, _ = await run_agent(agent, user_query)
 ```
 
-## When Tool Selection Matters
+### When Tool Selection Matters
 
 With two or three tools, tool selection adds overhead without much benefit. The model can easily reason over a small set. The pattern becomes valuable when:
 
@@ -117,13 +117,13 @@ Safety constraints apply. Some tools should only be available for certain types 
 
 Context length is constrained. Each tool description consumes tokens. With many tools, descriptions alone might exceed context limits. Selection keeps the execution agent's context focused on what matters.
 
-## The Two-Agent Architecture
+### The Two-Agent Architecture
 
 This pattern exemplifies a broader architectural principle: separating planning from execution. The selection agent plans which capabilities are needed. The execution agent carries out the task using only those capabilities.
 
 This separation has several benefits. The selection agent can use different prompting strategies optimized for capability matching. The execution agent operates with a cleaner context. Policies and constraints can be applied at the selection boundary. And the selection result can potentially be cached or reused across similar tasks.
 
-## Key Takeaways
+### Key Takeaways
 
 Tool selection is a two-stage process: first identify relevant tools, then execute with only those tools. This keeps the execution agent focused and reduces errors from irrelevant options.
 

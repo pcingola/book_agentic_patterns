@@ -2,7 +2,7 @@
 
 Advanced tool use is where an agent stops being a "function caller" and becomes a supervised, adaptive system: it can ask for approval, reshape its toolset at runtime, defer execution across boundaries, and diagnose or repair its own tool interface.
 
-### Human in the loop for tools
+#### Human in the loop for tools
 
 Human-in-the-loop (HITL) for tool use is not just “ask the user sometimes.” It is a deliberate control surface that converts high-impact tool invocations into *reviewable* requests. The key is to treat certain tool calls as *proposed actions* that require explicit approval (or additional input) before execution.
 
@@ -32,7 +32,7 @@ When approval is required, the agent should emit a structured “tool request”
 
 HITL is increasingly described as a first-class mechanism in agent frameworks, where certain tool calls can be flagged for approval based on context or arguments. [29]
 
-### Dynamic tools
+#### Dynamic tools
 
 “Dynamic tools” means the agent’s available tool interface is not static. Instead, the system can **filter, modify, or augment** tool definitions *at each step* based on context, policy, user role, runtime state, or the current phase of a plan. Conceptually, this is a *tool shaping* step inserted between “decide next action” and “call a tool.”
 
@@ -61,7 +61,7 @@ def prepare_tools(all_tools: list, state: dict) -> list:
 
 This pattern is explicitly supported in modern tool systems as an agent-wide hook to filter/modify tool definitions step-by-step. [26]
 
-### Deferred tools
+#### Deferred tools
 
 Deferred tools separate *selection* of a tool call from *execution* of that tool call. The agent can propose one or more tool invocations, then **pause** and return a bundle of “deferred requests.” Execution happens later—possibly by a human reviewer, an external worker, or a different trust zone—after which the run resumes with the corresponding results.
 
@@ -95,7 +95,7 @@ final = agent.resume_with_results(history=deferred.history, results=approved_res
 
 This "pause with requests → resume with results" mechanism is described directly in deferred-tool documentation. [27]
 
-### Tool doctor (development-time focus)
+#### Tool doctor (development-time focus)
 
 A *tool doctor* is a development-cycle mechanism used to analyze tool definitions and produce concrete recommendations for improvement **before** those tools are exposed to a running agent. Its goal is preventive rather than reactive: to eliminate ambiguous, underspecified, or misleading tool contracts that would otherwise manifest as failures, retries, or incorrect behavior at runtime.
 
@@ -133,7 +133,7 @@ Although it is possible to apply similar diagnostics to runtime logs, this shoul
 
 In short, the tool doctor belongs squarely in the development loop. It formalizes a practice that experienced teams already follow informally—reviewing and refining tool interfaces—but adapts it to the unique demands of language-model-driven agents, where the “caller” is probabilistic and highly sensitive to interface quality.
 
-### Putting the pieces together
+#### Putting the pieces together
 
 Advanced tool use is best understood as a *control architecture* around the basic tool loop:
 

@@ -2,7 +2,7 @@
 
 This hands-on explores skills through `example_skills.ipynb`, demonstrating how an agent discovers available skills, activates one based on the task, and uses its tools.
 
-## Skill Structure
+### Skill Structure
 
 A skill is a directory containing a `SKILL.md` file with YAML frontmatter and markdown body:
 
@@ -25,7 +25,7 @@ compatibility: Works with Python, JavaScript, and TypeScript files.
 
 The body contains instructions the agent follows when the skill is activated. This separation is the foundation of progressive disclosure: frontmatter is cheap to load for all skills, while the body is loaded only on demand.
 
-## Discovery: The Cheap Operation
+### Discovery: The Cheap Operation
 
 The `SkillRegistry` scans skill directories and extracts only frontmatter:
 
@@ -45,7 +45,7 @@ skill_catalog = list_available_skills(registry)
 
 This produces a compact one-liner per skill, suitable for the agent's initial context.
 
-## Activation: The Expensive Operation
+### Activation: The Expensive Operation
 
 When the agent needs a skill, it calls `activate_skill`:
 
@@ -61,7 +61,7 @@ def activate_skill(skill_name: str) -> str:
 
 This loads the full `SKILL.md` body and returns it to the agent. The `[SKILL ACTIVATED]` marker makes this transition visible in the output. Activation is the second tier: the agent now has detailed instructions for this specific capability.
 
-## Gated Tools
+### Gated Tools
 
 Skills can provide tools that only work after activation. In the example, `analyze_code` checks whether the code-review skill is active:
 
@@ -75,7 +75,7 @@ def analyze_code(code: str) -> str:
 
 This gating enforces the progressive disclosure pattern at runtime. The agent cannot skip activation and jump directly to using tools. The `[SKILL TOOL CALLED]` marker shows when the skill's capability is actually exercised.
 
-## The Agent Flow
+### The Agent Flow
 
 The system prompt tells the agent about skills and how to use them:
 
@@ -95,6 +95,6 @@ You must activate a skill before using its tools."""
 
 When the agent receives a code review task, it recognizes the match with the code-review skill, activates it to get instructions, then uses `analyze_code` to perform the actual analysis. The output shows this sequence clearly through the activation and tool call markers.
 
-## Key Takeaways
+### Key Takeaways
 
 Gating tools behind activation enforces the progressive disclosure pattern at runtime and makes skill usage visible in the execution trace. The `[SKILL ACTIVATED]` and `[SKILL TOOL CALLED]` markers demonstrate the clear boundary between discovery, activation, and execution.

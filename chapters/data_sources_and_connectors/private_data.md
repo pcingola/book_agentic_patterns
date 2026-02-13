@@ -6,7 +6,7 @@ The fundamental problem is not that agents are malicious. It is that agents are 
 
 Reliable data protection therefore requires a mechanism that operates below the prompt level, at the infrastructure layer where tools are registered, filtered, and executed. The approach described here is deliberately simple: tag the session as "private" whenever sensitive data enters it -- whether that data lands in the workspace or only passes through the context window -- and use that tag to enforce guardrails that block unsafe operations regardless of what the agent or the user requests.
 
-### Sensitivity levels
+#### Sensitivity levels
 
 Not all private data carries the same risk. A document marked "internal" may be shared freely within the company but not externally. A patient record marked "confidential" may only be accessed by authorized personnel. An API key marked "secret" should never appear in logs, tool outputs, or any persistent artifact.
 
@@ -20,7 +20,7 @@ class DataSensitivity(str, Enum):
     SECRET = "secret"
 ```
 
-### Tagging the workspace
+#### Tagging the workspace
 
 The implementation stores the private-data state as a JSON file (`.private_data`) in a dedicated directory (`PRIVATE_DATA_DIR`) that mirrors the workspace directory structure per user and session but is located outside the agent's workspace. If the file does not exist, the session contains no private data and all tools operate normally.
 
@@ -47,7 +47,7 @@ All mutations persist immediately. The `PrivateData` class writes to disk on eve
 
 The tagging is typically performed by connectors themselves. When a SQL connector executes a query against a database that is known to contain sensitive data, or when a file connector reads from a protected directory, the connector calls `add_private_dataset()` as a side effect. This means the tagging happens automatically, without relying on the agent or the user to remember to set it.
 
-### Enforcing guardrails
+#### Enforcing guardrails
 
 The tag alone does not prevent anything. It is a signal that downstream enforcement layers consume. The two primary enforcement points are tool filtering and connectivity control.
 
@@ -66,7 +66,7 @@ This is a hard enforcement. The agent cannot circumvent it by rephrasing its req
 
 Connectivity control operates at a lower level, typically in the execution sandbox or container that hosts the agent's code execution environment. When the session is private, the sandbox can be switched to a network configuration that blocks all outbound connections, or routes them through a proxy that only allows whitelisted destinations (internal company servers, trusted services with zero-data-retention agreements). The sandbox implementation uses Docker's `network_mode="none"` to remove all network interfaces when `PrivateData` is present, and automatically recreates containers mid-conversation when private data appears. The full mechanism is described in the "Network Isolation with PrivateData" section of the execution infrastructure chapter.
 
-### The ratchet principle
+#### The ratchet principle
 
 A critical design decision is that the private flag, once set, cannot be cleared by the agent. Only an explicit external action (an administrator, a session reset, or a policy engine) can downgrade a session's sensitivity. This prevents a class of attacks where the agent is manipulated into calling a hypothetical `clear_private_data()` tool before proceeding to exfiltrate data.
 
@@ -81,7 +81,7 @@ def add_private_dataset(self, dataset_name, sensitivity=DataSensitivity.CONFIDEN
         self.save()
 ```
 
-### Where tagging happens in practice
+#### Where tagging happens in practice
 
 In a typical deployment, tagging is wired into the connector layer rather than the agent logic. Consider a SQL connector that executes queries on behalf of an agent. The connector knows which databases contain sensitive data (this is part of the database catalog configuration), and it tags the session automatically when results are returned:
 
@@ -98,7 +98,7 @@ async def execute_sql(db_id: str, query: str, ctx: RunContext) -> str:
 
 The same pattern applies to file connectors reading from protected directories, API connectors calling internal services with sensitive response data, and any other connector that knows the sensitivity of its source. The key insight is that the connector is the right place to make this determination, because it is the component that actually touches the data source and knows its classification.
 
-### What this does not solve
+#### What this does not solve
 
 Session-level tagging is a coarse-grained mechanism. It does not track which specific fields or rows within a dataset are sensitive. It does not redact sensitive values from the agent's context window. It does not prevent the agent from reasoning about sensitive data internally or including sensitive details in its natural language responses to the user (who presumably has access, since they initiated the query).
 

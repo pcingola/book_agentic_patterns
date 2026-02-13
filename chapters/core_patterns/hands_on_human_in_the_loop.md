@@ -2,15 +2,15 @@
 
 Human-in-the-loop (HITL) is a control pattern where an agent deliberately pauses autonomous execution to request human approval before proceeding with high-impact actions. This hands-on explores the pattern using `example_human_in_the_loop.ipynb`, demonstrating how to build structured checkpoints that give humans authority over irreversible operations.
 
-## The Core Idea
+### The Core Idea
 
 Unlike conversational clarification where the agent asks for more information, HITL treats the human as an authority who can approve, reject, or modify proposed actions. The agent externalizes its intent in a structured format, waits for a decision, and then proceeds accordingly. This creates an auditable control point between planning and execution.
 
-## Scenario: Database Operations
+### Scenario: Database Operations
 
 The example implements a database management assistant that can perform three types of operations: read, update, and delete. Read operations execute immediately since they have no side effects. Update and delete operations require explicit human approval because they modify data.
 
-## Modeling Actions with Structured Types
+### Modeling Actions with Structured Types
 
 The first step is defining what an "action" looks like. Rather than passing free-form text between components, we use structured types that make the system predictable and inspectable.
 
@@ -36,7 +36,7 @@ The `ActionType` enum inherits from both `str` and `Enum`, which allows it to se
 
 This separation of policy from mechanism is important. The approval logic lives in one place and can be changed without touching the rest of the system. You could extend this to more granular policies, such as requiring approval only for deletes affecting more than N rows, or allowing certain users to bypass approval for specific tables.
 
-## The Planning Agent
+### The Planning Agent
 
 The agent receives natural language requests and converts them into structured actions. The system prompt constrains its output format:
 
@@ -60,7 +60,7 @@ The structured output format serves two purposes. First, it makes parsing reliab
 
 The instruction to "be conservative" is significant. In HITL systems, false positives (asking for approval when not strictly needed) are usually preferable to false negatives (executing a destructive action without approval). The agent should err on the side of caution.
 
-## Parsing the Response
+### Parsing the Response
 
 The `parse_action` function converts the agent's text response into a typed `ProposedAction`:
 
@@ -91,7 +91,7 @@ def parse_action(response: str) -> ProposedAction | None:
 
 The function returns `None` if parsing fails, which the orchestrator handles as an error condition. This defensive approach prevents malformed agent output from causing unexpected behavior downstream.
 
-## The Approval Checkpoint
+### The Approval Checkpoint
 
 The `request_human_approval` function is where execution actually pauses for human input:
 
@@ -127,7 +127,7 @@ Several design choices are worth noting. The function presents all relevant info
 
 In a production system, this function would likely be replaced by an asynchronous mechanism: a web interface, a Slack message, an email with approval links, or integration with an existing workflow system. The synchronous `input()` call in the notebook demonstrates the concept without introducing infrastructure complexity.
 
-## The Orchestrator
+### The Orchestrator
 
 The `process_request` function ties everything together:
 
@@ -166,7 +166,7 @@ The flow is linear: plan, then conditionally approve, then execute. Each step ha
 
 This structure makes the system predictable. A human reviewer can trace exactly what happened at each step, which is essential for debugging and audit trails.
 
-## Running the Examples
+### Running the Examples
 
 The notebook includes three examples that demonstrate different paths through the system.
 
@@ -194,7 +194,7 @@ result = await process_request("Update Charlie's email to charlie@new-domain.com
 
 Similar to the delete case, this triggers the approval flow. The human sees exactly what UPDATE statement will run before deciding whether to allow it.
 
-## Design Considerations
+### Design Considerations
 
 **Granularity of approval**: The example uses a coarse policy (all writes require approval). In practice, you might want finer distinctions: deletes require approval but updates to non-critical fields don't, or approval is required only when affecting more than a threshold number of rows.
 
@@ -206,18 +206,18 @@ Similar to the delete case, this triggers the approval flow. The human sees exac
 
 **Feedback loops**: When a human rejects or modifies a request, that feedback can be valuable training signal. The system could track rejection patterns to improve the agent's proposals over time.
 
-## Comparison with Other Patterns
+### Comparison with Other Patterns
 
 Human-in-the-loop complements other patterns rather than replacing them. An agent might use Chain-of-Thought to reason about what action to take, then present that action for HITL approval. Self-reflection could improve the quality of the proposed action before human review. Tool use provides the mechanism for actually executing approved actions.
 
 The key distinction is that HITL is about control and authorization, not reasoning. It doesn't make the agent smarter; it makes the system safer by ensuring humans retain authority over consequential decisions.
 
-## When to Use Human-in-the-Loop
+### When to Use Human-in-the-Loop
 
 HITL is most valuable when actions have irreversible or high-cost consequences: deploying code, modifying production data, sending external communications, executing financial transactions. It's also essential in regulated environments where accountability must remain with humans.
 
 HITL adds latency and requires human attention, so it should be applied selectively. Requiring approval for every minor action defeats the purpose of automation. The goal is to identify the critical control points where human judgment adds genuine value.
 
-## Key Takeaways
+### Key Takeaways
 
 Human-in-the-loop creates structured checkpoints where agents pause for human authorization. The pattern consists of three steps: detect the need for approval, present the proposed action in a clear format, and resume based on the human's decision. Typed data structures make actions inspectable and policies explicit. The approval mechanism is separate from the planning and execution logic, allowing it to be swapped for different interfaces (CLI, web, workflow systems) without changing the core flow. HITL is about control and safety, not intelligence, and should be applied to high-impact actions where human judgment genuinely matters.

@@ -2,7 +2,7 @@
 
 A2A security defines how agents authenticate, authorize, isolate, and audit cross-agent interactions while preserving composability and asynchronous execution.
 
-### Authentication and Agent Identity
+#### Authentication and Agent Identity
 
 At the protocol level, A2A assumes strong, explicit agent identity rather than implicit trust between peers. Each agent is identified by a stable agent ID and presents verifiable credentials with every request. The protocol deliberately avoids mandating a single authentication mechanism, but its security model presumes cryptographically verifiable identity, typically implemented using OAuth2-style bearer tokens or mutual TLS.
 
@@ -28,7 +28,7 @@ In the core library, this pattern is implemented by `AuthSessionMiddleware` (`co
 
 An important design constraint is that task payloads are treated as untrusted data until authentication has completed. Identity verification is therefore orthogonal to task semantics.
 
-### Authorization and Capability Scoping
+#### Authorization and Capability Scoping
 
 Authorization in A2A is capability-oriented rather than role-oriented. Instead of assigning broad roles to agents, the protocol evaluates whether a specific agent is permitted to perform a specific protocol operation on a specific resource. This allows fine-grained control over actions such as task creation, inspection, streaming, or cancellation.
 
@@ -48,7 +48,7 @@ def authorize(auth_ctx, operation, task=None):
 
 A key property of the protocol is that authorization is never assumed to be static. Even for long-running tasks, permissions are re-evaluated on every request, including status polling and streaming updates.
 
-### Task Isolation and Trust Boundaries
+#### Task Isolation and Trust Boundaries
 
 In A2A, a task is not merely a unit of work; it is a security boundary. Task state, intermediate artifacts, and final outputs are all scoped to a task ID and an explicit access policy. This prevents unrelated agents from inferring information about concurrent or historical tasks.
 
@@ -66,7 +66,7 @@ def load_task(task_id, auth_ctx):
 
 This model discourages shared mutable global state across agents. Any shared context must be materialized as task-scoped artifacts with clearly defined read and write permissions.
 
-### Streaming, Polling, and Push Security
+#### Streaming, Polling, and Push Security
 
 Asynchronous interaction modes introduce additional attack surfaces, particularly around replay, hijacking, and information leakage. A2A addresses these risks by binding every asynchronous interaction to authenticated agent identity.
 
@@ -82,7 +82,7 @@ def stream_updates(task_id, cursor, auth_ctx):
 
 Push notifications require even stricter controls. Endpoints must be explicitly registered and verified, delivery credentials are scoped to a single task or subscription, and revocation immediately invalidates any pending deliveries. This ensures that long-lived subscriptions do not become permanent exfiltration channels.
 
-### Secure Delegation and Agent-to-Agent Calls
+#### Secure Delegation and Agent-to-Agent Calls
 
 Delegation is a core feature of A2A and one of its most sensitive security mechanisms. The protocol does not permit implicit privilege propagation. Instead, delegation is implemented using explicit, narrowly scoped credentials issued by the delegating agent.
 
@@ -101,7 +101,7 @@ This design prevents privilege amplification across agent networks and ensures t
 
 In the core library, bearer tokens are propagated through `A2AClientConfig.bearer_token`. When configured, `A2AClientExtended` injects the token as an `Authorization: Bearer` header on every request to the remote agent, keeping credential management in configuration rather than scattered across delegation logic.
 
-### Auditability and Non-Repudiation
+#### Auditability and Non-Repudiation
 
 A2A is designed for environments where accountability matters. Every security-relevant action is expected to generate an audit record, including authentication failures, authorization denials, task lifecycle events, and delegation operations.
 
@@ -118,6 +118,6 @@ audit_log.write({
 
 This auditability enables forensic analysis, compliance verification, and operational debugging in multi-agent deployments.
 
-### Interaction with MCP Security
+#### Interaction with MCP Security
 
 When A2A is composed with Model Context Protocol, the security boundary remains explicit. A2A governs agent identity, task lifecycle, and delegation, while MCP governs tool invocation and context access. Credentials are not implicitly shared across protocols, preventing cross-protocol privilege leakage while preserving composability.

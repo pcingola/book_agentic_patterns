@@ -2,7 +2,7 @@
 
 Embeddings are the mechanism that transforms raw data (text, images, audio, etc.) into numerical vectors such that semantic similarity becomes geometric proximity.
 
-### From word counts to vector spaces (intuition)
+#### From word counts to vector spaces (intuition)
 
 A simple way to build intuition is to start with word-count vectors. Consider the sentence:
 
@@ -24,7 +24,7 @@ Modern embeddings keep the core idea—mapping language to vectors—but replace
 
 ![Image](img/semantic_relevance.png)
 
-### Dense semantic embeddings
+#### Dense semantic embeddings
 
 Dense embeddings map words, sentences, or documents into a continuous vector space (often hundreds or thousands of dimensions). In this space, semantic relationships emerge naturally: synonyms cluster together, analogies correspond to vector offsets, and related concepts occupy nearby regions.
 
@@ -32,7 +32,7 @@ Early influential methods include **Word2Vec**, which learns word vectors by pre
 
 Conceptually, these embeddings still rely on co-occurrence statistics, but they compress them into a dense space where distance metrics such as cosine similarity become meaningful signals for retrieval.
 
-### Transformer-based embeddings
+#### Transformer-based embeddings
 
 The next major step came with transformer architectures. Models such as **BERT** introduced *contextual embeddings*: a word’s vector depends on its surrounding words, so “bank” in “river bank” differs from “bank” in “investment bank”. This resolved a long-standing limitation of earlier static embeddings.
 
@@ -48,12 +48,12 @@ vector = embed(text)   # returns a dense float array
 
 The key point is not the API, but the abstraction: text is projected into a semantic space where similarity search is efficient and meaningful.
 
-### Multimodal generalization
+#### Multimodal generalization
 
 The embedding concept generalizes naturally beyond text. Multimodal models learn a *shared* vector space for different data types, allowing cross-modal retrieval. A canonical example is **CLIP**, which aligns images and text descriptions so that an image of a “red chair” is close to the text “a red chair” in the same embedding space.
 
 This generalization is increasingly important in modern RAG systems, where documents may include text, diagrams, tables, or images. A single embedding space enables unified retrieval across modalities, simplifying system design while expanding capability.
 
-### Embeddings in the RAG pipeline
+#### Embeddings in the RAG pipeline
 
 Within a RAG architecture, embeddings serve as the semantic interface between raw data and retrieval. During ingestion, documents are converted into vectors and indexed. At query time, the user question is embedded into the same space, and nearest-neighbor search retrieves the most relevant chunks. The quality of the embeddings directly determines recall, precision, and ultimately the factual grounding of the generated answers.

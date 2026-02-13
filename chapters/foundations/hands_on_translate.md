@@ -2,7 +2,7 @@
 
 This section explores two different approaches to prompting language models using a translation task as our example. We'll compare `example_translate_basic.ipynb` and `example_translate_system_prompt.ipynb` to understand when and why to separate instructions from content.
 
-## Two Ways to Prompt
+### Two Ways to Prompt
 
 There are fundamentally two ways to give instructions to a language model:
 
@@ -12,7 +12,7 @@ There are fundamentally two ways to give instructions to a language model:
 
 Both approaches produce the same output, but they differ in reusability, maintainability, and how the model processes the instructions.
 
-## Example 1: Everything in the User Prompt
+### Example 1: Everything in the User Prompt
 
 Let's examine `example_translate_basic.ipynb`:
 
@@ -46,7 +46,7 @@ prompt3 = "Translate to French: Good morning."
 
 The instruction "Translate to French:" is repeated in every prompt, and the structure is harder to maintain if you want to change the target language or instruction style.
 
-## Example 2: Separating System and User Prompts
+### Example 2: Separating System and User Prompts
 
 Now let's examine `example_translate_system_prompt.ipynb`:
 
@@ -79,7 +79,7 @@ When you send this prompt, the model receives a message structure like:
 ]
 ```
 
-## Understanding System Prompts
+### Understanding System Prompts
 
 System prompts serve a specific purpose in how language models process conversations. When you provide a system prompt, it establishes the context, role, or behavior for the entire conversation. The model treats system messages differently from user messages:
 
@@ -91,7 +91,7 @@ System prompts serve a specific purpose in how language models process conversat
 
 In our translation example, "Translate into French" is a meta-instruction. It tells the model what to do with whatever content appears in the user prompt. The actual content "I like coffee" is the input to process according to those instructions.
 
-## Practical Benefits of Separation
+### Practical Benefits of Separation
 
 The separated approach offers several advantages for production systems:
 
@@ -115,7 +115,7 @@ for sentence in sentences:
 
 **Consistency**: The model receives instructions in the same format across all requests, reducing variability in how instructions are interpreted.
 
-## When to Use Each Approach
+### When to Use Each Approach
 
 Use the single prompt approach when you have one-off tasks, simple scripts where reusability isn't a concern, or when you're experimenting and want minimal setup.
 
@@ -123,7 +123,7 @@ Use the separated approach when building reusable agents that process multiple i
 
 For our running enterprise example throughout this book, we'll consistently use separated prompts because production agentic systems benefit from clear separation between agent behavior and input data.
 
-## Implementation in Pydantic-AI
+### Implementation in Pydantic-AI
 
 When you call `get_agent(system_prompt=system_prompt)`, our helper library passes the system prompt to Pydantic-AI's `Agent` constructor. Pydantic-AI then includes this system message in every conversation with the model.
 
@@ -139,7 +139,7 @@ messages = [
 
 This message structure is then sent to whichever model provider you've configured (OpenAI, Anthropic, AWS Bedrock, etc.). All major LLM APIs support this system/user message distinction, making it a portable pattern across providers.
 
-## Key Takeaways
+### Key Takeaways
 
 System prompts define agent behavior and persist across multiple interactions. User prompts provide the specific content to process. Separating them creates more maintainable, reusable, and scalable agent systems.
 

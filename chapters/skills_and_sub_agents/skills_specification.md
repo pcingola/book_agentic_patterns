@@ -2,7 +2,7 @@
 
 The Agent Skills specification defines a minimal, filesystem-based format for packaging agent capabilities. A skill is a directory with a required `SKILL.md` file and optional supporting directories. The format is deliberately simple: YAML frontmatter for machine-readable metadata, Markdown body for agent instructions, and conventional directories for scripts and references.
 
-### Directory structure
+#### Directory structure
 
 A skill is a directory containing at minimum a `SKILL.md` file:
 
@@ -29,11 +29,11 @@ skill-name/
 
 The `scripts/` directory contains executable code. The `references/` directory contains additional documentation loaded on demand. The `assets/` directory holds static resources like templates and schemas. This separation supports progressive disclosure: the agent loads each tier only when needed.
 
-### SKILL.md format
+#### SKILL.md format
 
 The `SKILL.md` file combines structured metadata with natural-language instructions. It must begin with YAML frontmatter delimited by `---` markers, followed by Markdown content.
 
-#### Required frontmatter fields
+##### Required frontmatter fields
 
 Two fields are mandatory:
 
@@ -54,7 +54,7 @@ description: Extracts text and tables from PDF files, fills PDF forms, and merge
 
 A poor description like "Helps with PDFs" provides insufficient signal for skill selection.
 
-#### Optional frontmatter fields
+##### Optional frontmatter fields
 
 Several optional fields support additional use cases:
 
@@ -79,7 +79,7 @@ The `metadata` field is an arbitrary key-value map for properties not defined by
 
 The `allowed-tools` field is a space-delimited list of pre-approved tools the skill may use. This field is experimental and support varies between agent implementations.
 
-#### Body content
+##### Body content
 
 The Markdown body after the frontmatter contains the skill instructions. There are no format restrictions. The content should help agents perform the task effectively.
 
@@ -109,7 +109,7 @@ Return extracted text with page numbers and any detected tables in a structured 
 If you encounter scanned PDFs or complex layouts, consult the reference file.
 ```
 
-### Progressive disclosure tiers
+#### Progressive disclosure tiers
 
 The specification formalizes the three disclosure tiers introduced earlier:
 
@@ -119,7 +119,7 @@ The specification formalizes the three disclosure tiers introduced earlier:
 
 3. **Resources** (as needed): Files in `scripts/`, `references/`, and `assets/`, loaded only when explicitly required by the agent.
 
-### File references
+#### File references
 
 When referencing other files in a skill, use relative paths from the skill root:
 
@@ -132,13 +132,13 @@ scripts/extract.py
 
 Keep file references one level deep from `SKILL.md`. Deeply nested reference chains make skills harder to understand and maintain.
 
-### Scripts directory
+#### Scripts directory
 
 The `scripts/` directory contains executable code that agents can run. Scripts should be self-contained or clearly document dependencies, include helpful error messages, and handle edge cases gracefully.
 
 Supported languages depend on the agent implementation. Common options include Python, Bash, and JavaScript. The specification does not prescribe execution details; these are left to the runtime.
 
-### References directory
+#### References directory
 
 The `references/` directory contains additional documentation that agents can read when needed. Common patterns include:
 
@@ -148,11 +148,11 @@ The `references/` directory contains additional documentation that agents can re
 
 Keep individual reference files focused. Agents load these on demand, so smaller files mean more efficient use of context.
 
-### Assets directory
+#### Assets directory
 
 The `assets/` directory contains static resources: document templates, configuration templates, images, diagrams, lookup tables, and schemas. These files are read-only resources that support skill execution without being instructions themselves.
 
-### Validation
+#### Validation
 
 The specification includes naming and format constraints that can be validated programmatically. The `name` field must follow strict conventions: lowercase alphanumeric with hyphens, no leading or trailing hyphens, no consecutive hyphens, and matching the directory name. The `description` field must be non-empty and within length limits.
 

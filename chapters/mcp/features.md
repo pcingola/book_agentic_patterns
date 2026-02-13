@@ -5,15 +5,15 @@ MCP features beyond tools define how instructions, data, generation control, and
 This section omits tools and focuses on the remaining server- and client-side features that structure *context* and *control flow* around model execution.
 
 
-### Prompts (server feature)
+#### Prompts (server feature)
 
 Prompts are server-defined, named instruction templates that clients can invoke with parameters.
 
-#### What prompts are in practice
+##### What prompts are in practice
 
 A prompt is a reusable instruction artifact owned by the server. It encapsulates task framing, tone, constraints, and best practices, while exposing only a small set of parameters to the client. The client selects *which* prompt to use and supplies arguments; the server controls the actual instruction text.
 
-#### Server-side definition
+##### Server-side definition
 
 ```python
 @mcp.prompt()
@@ -28,7 +28,7 @@ def analyze_log_file(severity: str, audience: str) -> str:
 
 Multiple prompts can coexist on the same server, each representing a distinct behavioral contract.
 
-#### Client-side usage
+##### Client-side usage
 
 ```python
 response = client.run(
@@ -43,15 +43,15 @@ response = client.run(
 The client never embeds the instruction text itself. This makes prompt changes transparent to clients and easier to review and test centrally.
 
 
-### Resources (server feature)
+#### Resources (server feature)
 
 Resources expose data artifacts as addressable protocol objects rather than inline text.
 
-#### What resources are in practice
+##### What resources are in practice
 
 A resource is any piece of data an agent may need to consult: documents, configuration files, intermediate results, reports, or generated artifacts. Resources are identified by stable paths or URIs and fetched explicitly.
 
-#### Server-side definition
+##### Server-side definition
 
 ```python
 @mcp.resource("reports/{report_id}")
@@ -69,7 +69,7 @@ def run_summary(run_id: str) -> str:
     return summarize_run_state(run_id)
 ```
 
-#### Client-side usage
+##### Client-side usage
 
 ```python
 report_text = client.read_resource("reports/incident-2025-01")
@@ -89,17 +89,17 @@ analysis = client.run(
 This pattern avoids copying large documents into every prompt and supports workspace-style workflows where artifacts are produced, stored, and revisited across turns.
 
 
-### Sampling (client feature)
+#### Sampling (client feature)
 
 Sampling allows servers to request LLM completions from the client. Rather than requiring servers to hold their own API keys or manage direct access to language models, MCP provides a standardized way for a server to ask the client to generate text, images, or audio on the server's behalf. The client maintains full control over model access, selection, and permissions.
 
-#### How sampling works
+##### How sampling works
 
 When a server needs LLM assistance during its own processing -- for example, to summarize intermediate results, classify an input, or generate a response within a tool execution -- it sends a `sampling/createMessage` request to the client. The client then performs the generation using whatever model it has access to and returns the result.
 
 This flow is deliberately asymmetric. The server specifies what it needs (messages, model preferences, constraints), but the client decides which model to use and whether to honor the request at all. For trust and safety, the specification recommends that there should always be a human in the loop with the ability to review and deny sampling requests.
 
-#### Server-side request
+##### Server-side request
 
 A server requesting a completion provides messages and optional model preferences:
 
@@ -128,7 +128,7 @@ A server requesting a completion provides messages and optional model preference
 
 Model preferences use a hint-based system rather than exact model names, since the client may use a different provider entirely. The client maps hints to the best available model based on the requested priorities.
 
-#### Client-side response
+##### Client-side response
 
 The client performs the generation and returns the result:
 
@@ -149,15 +149,15 @@ The client performs the generation and returns the result:
 This mechanism enables MCP servers to implement agentic behaviors -- tool executions that themselves require reasoning -- without being coupled to any specific model provider. The server delegates generation to the client, which acts as a controlled gateway to LLM capabilities.
 
 
-### Elicitation (client feature)
+#### Elicitation (client feature)
 
 Elicitation allows servers to request additional information from users through the client. When a server needs input that it cannot determine on its own -- a confirmation, a preference, missing credentials -- it sends an `elicitation/create` request to the client, which presents the question to the user and returns the response.
 
-#### How elicitation works
+##### How elicitation works
 
 Elicitation supports two modes. **Form mode** collects structured data directly through the client's UI, using a JSON Schema to define the expected fields. **URL mode** directs users to an external URL for sensitive interactions (such as OAuth flows or credential entry) that should not pass through the MCP client.
 
-#### Server-side request
+##### Server-side request
 
 A server requesting user input sends a structured elicitation request:
 
@@ -183,7 +183,7 @@ A server requesting user input sends a structured elicitation request:
 
 The client presents this to the user as a form and returns the response.
 
-#### Client-side response
+##### Client-side response
 
 The user's answer comes back as a structured response with an action indicating what the user did:
 
@@ -203,7 +203,7 @@ The three possible actions are `accept` (user submitted data), `decline` (user e
 This makes human-in-the-loop interaction explicit, auditable, and composable with automated steps. The server never guesses when it can ask, and the client always mediates the interaction with the user.
 
 
-### How these features work together
+#### How these features work together
 
 A typical flow combining these features might look as follows:
 

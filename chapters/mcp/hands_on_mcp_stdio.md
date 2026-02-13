@@ -4,13 +4,13 @@ The STDIO transport is MCP's simplest communication mechanism. The client spawns
 
 This hands-on explores the raw MCP protocol through `example_mcp_stdio.ipynb`, demonstrating the message format and lifecycle that underlies all MCP communication.
 
-## Why STDIO Matters
+### Why STDIO Matters
 
 Before examining high-level MCP client libraries, understanding the underlying protocol clarifies what those libraries abstract. STDIO transport strips away network complexity, authentication layers, and connection management. What remains is the essential exchange: newline-delimited JSON-RPC messages flowing between client and server.
 
 This simplicity makes STDIO the default choice for local development and testing. When you run `fastmcp run -t stdio server.py`, you get an MCP server that speaks the full protocol without requiring HTTP infrastructure, TLS certificates, or port management.
 
-## Starting the Server
+### Starting the Server
 
 In `example_mcp_stdio.ipynb`, the server starts as a subprocess:
 
@@ -27,7 +27,7 @@ proc = subprocess.Popen(
 
 The `-t stdio` flag tells FastMCP to use STDIO transport rather than HTTP. The subprocess pipes capture stdin and stdout for bidirectional communication. Line buffering (`bufsize=1`) ensures messages are sent immediately rather than waiting for buffer fills.
 
-## Message Format
+### Message Format
 
 MCP uses JSON-RPC 2.0 as its message format. Every message is a single line of JSON terminated by a newline. This constraint is critical: multi-line pretty-printed JSON will break the protocol.
 
@@ -46,11 +46,11 @@ def send_message(message: dict) -> dict | None:
 
 `json.dumps()` produces compact single-line JSON by default. The function distinguishes between requests (which have an `id` and expect a response) and notifications (which have no `id` and expect nothing back).
 
-## The MCP Lifecycle
+### The MCP Lifecycle
 
 MCP sessions follow a defined lifecycle: initialization, active operation, and shutdown. The protocol enforces this order; attempting to call tools before initialization completes will fail.
 
-### Initialization
+#### Initialization
 
 The client initiates the session with an `initialize` request:
 
@@ -75,7 +75,7 @@ init_request = {
 
 The request includes the protocol version for compatibility checking, the client's capabilities (what features it supports), and client identification. The server responds with its own capabilities, establishing what operations are available for this session.
 
-### Initialized Notification
+#### Initialized Notification
 
 After receiving the initialization response, the client sends a notification to confirm readiness:
 
@@ -88,7 +88,7 @@ initialized_notification = {
 
 This is a notification, not a request. It has no `id` field and receives no response. The server uses this signal to transition the session into the active phase.
 
-### Active Phase
+#### Active Phase
 
 Once initialized, the client can discover and invoke server capabilities. The `tools/list` method returns available tools:
 
@@ -121,7 +121,7 @@ call_tool_request = {
 
 The server validates arguments against the tool's schema, executes the tool, and returns the result. If arguments are invalid or the tool fails, the response contains an error object instead of a result.
 
-## Error Handling
+### Error Handling
 
 The protocol distinguishes between transport errors and application errors. When the notebook sends invalid arguments:
 
@@ -142,13 +142,13 @@ call_tool_error = {
 
 The server returns a structured error response rather than crashing. This allows clients to handle failures gracefully and potentially retry with corrected arguments.
 
-## Connection to Higher-Level Abstractions
+### Connection to Higher-Level Abstractions
 
 When you use `MCPServerStdio` from PydanticAI, it performs exactly this sequence internally. The agent framework handles initialization, capability discovery, and message formatting transparently. Understanding the raw protocol helps debug issues when they arise and clarifies what information flows between agents and tools.
 
 The same protocol semantics apply regardless of transport. Whether communicating over STDIO, HTTP, or WebSockets, the message structure and lifecycle remain identical. Only the delivery mechanism changes.
 
-## Key Takeaways
+### Key Takeaways
 
 STDIO transport provides the simplest MCP communication path: subprocess pipes carrying newline-delimited JSON-RPC messages.
 

@@ -4,7 +4,7 @@ This hands-on walks through `example_mcp_isolation.ipynb`, where an agent connec
 
 The notebook also exercises several production MCP server requirements in a single flow: workspace path translation, `@context_result()` for large results, `@tool_permission` decorators, error classification with `ToolRetryError`, and server-to-client log forwarding via `ctx.info()`.
 
-### Starting the Servers
+#### Starting the Servers
 
 The template server lives in `agentic_patterns/mcp/template/`. Before running the notebook, start two instances of the same server on different ports:
 
@@ -15,7 +15,7 @@ fastmcp run agentic_patterns/mcp/template/server.py:mcp --transport http --port 
 
 In production, these would be two Docker containers from the same image -- one on the bridge network, one with `network_mode: "none"` (as shown in the MCP Server Isolation section). For the notebook, two local processes on different ports simulate the same topology without Docker.
 
-### The Template Server
+#### The Template Server
 
 The server itself is minimal. `server.py` calls `create_mcp_server()` from the core library, which returns a `FastMCP` instance with `AuthSessionMiddleware` pre-wired for JWT-based identity propagation. Tools are registered from a separate `tools.py` module:
 
@@ -26,7 +26,7 @@ register_tools(mcp)
 
 The four tools in `tools.py` each demonstrate a different requirement. `read_file` combines `@tool_permission(READ)`, `@context_result()`, and `read_from_workspace()` in a single tool. `write_file` shows workspace writes. `search_records` raises `ToolRetryError` when given an empty query, giving the LLM a chance to correct its arguments. `load_sensitive_dataset` flags the session as containing private data via `PrivateData.add_private_dataset()`, which triggers the client-side isolation switch.
 
-### Connecting via get_mcp_client
+#### Connecting via get_mcp_client
 
 The notebook creates the MCP client with a single call:
 
@@ -47,7 +47,7 @@ mcp_servers:
 
 The caller does not need to know which variant it got. `MCPServerPrivateData` is a drop-in replacement for `MCPServerStrict` -- it implements the same interface and can be passed directly as a toolset to `get_agent()`.
 
-### Normal Tool Call
+#### Normal Tool Call
 
 The first agent interaction writes a file to the workspace and reads it back. At this point, `session_has_private_data()` returns `False`, so `MCPServerPrivateData._target()` routes the tool call to the normal instance on port 8000.
 
@@ -61,7 +61,7 @@ The `async with agent` context manager opens both MCP connections (normal and is
 
 The log output shows `ctx.info("Reading file: ...")` messages from the server, delivered through the MCP protocol's `notifications/message` mechanism and forwarded to Python logging by the client's `log_handler`.
 
-### Retryable Error
+#### Retryable Error
 
 The second interaction deliberately triggers a `ToolRetryError`. The agent is asked to call `search_records` with an empty string:
 
@@ -80,7 +80,7 @@ This is the distinction between `ToolRetryError` and `ToolFatalError`. A retryab
 
 The notebook does not exercise the fatal error path. In the template server, `load_sensitive_dataset` raises `ToolFatalError` only when the compliance system itself is unavailable -- an infrastructure failure that cannot be triggered under normal conditions. To see the fatal path in action, you would need to simulate a broken `PrivateData` backend (for instance, by making `PRIVATE_DATA_DIR` unwritable).
 
-### Private Data and Isolation Switch
+#### Private Data and Isolation Switch
 
 The third interaction loads a sensitive dataset:
 

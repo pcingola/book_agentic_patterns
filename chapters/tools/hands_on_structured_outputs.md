@@ -4,7 +4,7 @@ Structured output is the pattern of constraining a model's response to conform t
 
 This hands-on explores structured output through `example_structured_outputs.ipynb`, demonstrating how to define schemas and receive typed Python objects from the model.
 
-## The Problem with Free-Form Text
+### The Problem with Free-Form Text
 
 When a model returns plain text, your code must parse that text to extract useful information. Consider asking a model about programming languages. A free-form response might look like:
 
@@ -18,7 +18,7 @@ Extracting structured data from this response requires parsing natural language,
 
 Structured output eliminates this problem by making the model return data in a predefined format that your code can consume directly.
 
-## Defining a Schema
+### Defining a Schema
 
 In `example_structured_outputs.ipynb`, we define a schema using Pydantic:
 
@@ -33,7 +33,7 @@ This schema specifies exactly what data we want. Each field has a type (`str`, `
 
 The `Field` descriptions serve as documentation for the model. When the schema is sent to the API, these descriptions become part of the JSON schema that guides the model's output. Clear descriptions improve the quality and consistency of the returned data.
 
-## Configuring the Agent
+### Configuring the Agent
 
 The agent is configured with an `output_type` parameter:
 
@@ -45,7 +45,7 @@ This tells the framework that the model must return a list of `ProgrammingLangua
 
 Using `list[ProgrammingLanguage]` rather than a single object demonstrates that structured output works with complex types. You can use lists, nested objects, optional fields, and other type constructs that Pydantic supports.
 
-## Running the Agent
+### Running the Agent
 
 When we run the agent with a prompt:
 
@@ -56,7 +56,7 @@ agent_run, nodes = await run_agent(agent, prompt, verbose=True)
 
 The model receives both the prompt and the schema. It must produce output that validates against the schema. If it tries to return malformed data, the framework will catch the error.
 
-## Working with the Result
+### Working with the Result
 
 The result is not a string but a typed Python object:
 
@@ -72,13 +72,13 @@ Each element in the list is a `ProgrammingLanguage` instance with properly typed
 
 This is the key benefit: the boundary between the model's probabilistic output and your deterministic code becomes a well-defined contract. The model produces data, the schema validates it, and your code receives typed objects.
 
-## When to Use Structured Output
+### When to Use Structured Output
 
 Structured output is appropriate when you need to process the model's response programmatically. This includes extracting entities from text, generating configuration data, producing API responses, or any situation where the output feeds into downstream code rather than being displayed directly to users.
 
 Structured output is less appropriate when you want the model to explain, discuss, or generate content for human consumption. In those cases, free-form text is the natural choice.
 
-## Key Takeaways
+### Key Takeaways
 
 Structured output constrains the model to return data matching a predefined schema. This eliminates the need to parse free-form text and ensures type safety at the boundary between model and code.
 

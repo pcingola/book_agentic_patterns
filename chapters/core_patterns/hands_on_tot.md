@@ -4,7 +4,7 @@ Tree of Thought extends Chain-of-Thought reasoning by exploring multiple reasoni
 
 This hands-on explores Tree of Thought using `example_tree_of_thought.ipynb`, demonstrating how structured exploration of alternatives leads to better design decisions.
 
-## The Problem: Linear Reasoning Commits Too Early
+### The Problem: Linear Reasoning Commits Too Early
 
 When solving complex problems with Chain-of-Thought, the model follows a single reasoning path from start to finish. If the initial direction is suboptimal, the model may reach a solution that works but misses better alternatives. Consider this systems design problem:
 
@@ -16,17 +16,17 @@ process uploads quickly, minimize false positives, handle files from 1KB to 5GB.
 
 With linear reasoning, the model might immediately commit to the first approach that comes to mind (e.g., "use SHA-256 hashing") without considering alternatives. If this approach has a deal-breaker limitation (e.g., poor performance on large files), we discover it too late.
 
-## The Solution: Structured Exploration
+### The Solution: Structured Exploration
 
 Tree of Thought structures reasoning as a search problem. The model generates multiple candidate solutions, evaluates each on relevant criteria, prunes weak candidates, and expands strong ones with additional detail. This exploration happens before committing to a final design.
 
 The pattern follows four phases: generation, evaluation, expansion, and selection. Each phase builds on the previous one, progressively refining the solution space.
 
-## Example: File Deduplication System Design
+### Example: File Deduplication System Design
 
 The notebook demonstrates Tree of Thought applied to a realistic systems design problem. Let's walk through each phase.
 
-### Phase 1: Generate Multiple Approaches
+#### Phase 1: Generate Multiple Approaches
 
 Instead of asking for "the best" deduplication approach, we explicitly request multiple alternatives:
 
@@ -56,7 +56,7 @@ This prompt produces three distinct approaches, likely covering different algori
 
 Each approach represents a different point in the design space. By generating multiple options upfront, we avoid anchoring to the first idea.
 
-### Phase 2: Evaluate Each Approach
+#### Phase 2: Evaluate Each Approach
 
 With three candidates, we evaluate them against system requirements:
 
@@ -87,7 +87,7 @@ The evaluation criteria are specific and measurable. This forces the model to re
 
 Note how `message_history` carries forward the conversation context. Each agent turn builds on previous turns, maintaining the tree structure.
 
-### Phase 3: Expand the Top Approaches
+#### Phase 3: Expand the Top Approaches
 
 Based on evaluation scores, we prune the lowest-ranked approach and expand the top two:
 
@@ -112,7 +112,7 @@ The expansion prompts for concrete implementation details. This reveals hidden c
 
 These details matter for final selection but would be expensive to generate for all three initial approaches. By evaluating first and expanding later, we explore efficiently.
 
-### Phase 4: Final Selection
+#### Phase 4: Final Selection
 
 With detailed implementations for the top two approaches, we can make an informed decision:
 
@@ -134,7 +134,7 @@ The final evaluation goes deeper than the initial scoring. It considers edge cas
 
 The model might conclude that whole-file hashing (Approach A) wins because it's simpler to implement and operate, has perfect accuracy, and acceptable performance with streaming hashing for large files. Content-defined chunking (Approach B) offers better deduplication for similar files but adds significant complexity that doesn't justify the storage savings for this use case.
 
-## The Tree Structure
+### The Tree Structure
 
 The execution forms a tree:
 
@@ -156,7 +156,7 @@ Approach C was pruned after evaluation. Approaches A and B were expanded. Final 
 
 This tree structure is managed explicitly through prompt engineering. Unlike Chain-of-Thought, where reasoning is implicit, Tree of Thought requires explicit instructions to generate branches, evaluate them, and decide which to expand.
 
-## When Tree of Thought Helps
+### When Tree of Thought Helps
 
 Tree of Thought is most valuable for problems where:
 
@@ -172,7 +172,7 @@ Tree of Thought is most valuable for problems where:
 
 Tree of Thought is less valuable for problems with obvious solutions, tasks requiring retrieval rather than reasoning, or situations where any working solution is acceptable.
 
-## Implementation Patterns
+### Implementation Patterns
 
 When implementing Tree of Thought in production systems, consider these patterns:
 
@@ -193,7 +193,7 @@ next_run, next_nodes = await run_agent(agent, next_prompt, message_history=messa
 
 **Structured prompts**: Each phase (generate, evaluate, expand, select) uses a carefully structured prompt that tells the model exactly what to produce. Loose prompts lead to inconsistent outputs that break downstream phases.
 
-## Comparison to Chain-of-Thought
+### Comparison to Chain-of-Thought
 
 Chain-of-Thought and Tree of Thought serve different purposes:
 
@@ -208,7 +208,7 @@ Chain-of-Thought is cheaper (one agent turn) and simpler to implement. Tree of T
 
 For problems where the solution path is known, use Chain-of-Thought. For problems where choosing the right approach is critical, use Tree of Thought.
 
-## Trade-offs and Limitations
+### Trade-offs and Limitations
 
 Tree of Thought introduces several trade-offs:
 
@@ -226,7 +226,7 @@ Tree of Thought introduces several trade-offs:
 
 Despite these limitations, Tree of Thought is valuable for high-stakes design decisions, architectural choices, and problems where early commitment to a suboptimal approach is costly.
 
-## How It Connects to Other Patterns
+### How It Connects to Other Patterns
 
 Tree of Thought builds on and combines with other patterns:
 
@@ -242,7 +242,7 @@ Tree of Thought builds on and combines with other patterns:
 
 Advanced patterns build on Tree of Thought by adding search algorithms (breadth-first, depth-first, Monte Carlo Tree Search), value functions (learned evaluation instead of prompted evaluation), or external verifiers (unit tests, formal verification).
 
-## Key Takeaways
+### Key Takeaways
 
 Tree of Thought structures reasoning as deliberate exploration of multiple solution paths. Instead of committing to the first approach, it generates alternatives, evaluates them, and selectively expands the most promising ones.
 

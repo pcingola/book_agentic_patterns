@@ -2,7 +2,7 @@
 
 This section explains how the `run_agent()` function combines Python's async features to enable agent execution streaming. If you haven't read the Python concepts recap in the previous section, review that first.
 
-## The run_agent() Function
+### The run_agent() Function
 
 Let's examine the `run_agent()` function in `agentic_patterns/core/agents/agents.py`:
 
@@ -36,7 +36,7 @@ async def run_agent(
 
 Let's break this down by examining each key part.
 
-## The Async Context Manager
+### The Async Context Manager
 
 ```python
 async with agent.iter(prompt, ...) as agent_run:
@@ -48,7 +48,7 @@ On entry (`__aenter__`), it initializes the agent run by sending the prompt to t
 
 On exit (`__aexit__`), it finalizes the run, ensuring all resources are cleaned up and the final result is computed. Even if an error occurs during iteration, cleanup happens.
 
-## The Async Iterator
+### The Async Iterator
 
 ```python
 async for node in agent_run:
@@ -61,7 +61,7 @@ Why async? Because each iteration might involve waiting for the model to generat
 
 We collect all execution events into a list. This provides complete visibility into what the agent did, useful for debugging, logging, and understanding the execution flow.
 
-## Optional Debug Logging
+### Optional Debug Logging
 
 ```python
 if ctx:
@@ -70,7 +70,7 @@ if ctx:
 
 If running within an MCP server context, we send debug messages to the MCP client. Note the `await` because sending messages is an async operation.
 
-## Exception Handling
+### Exception Handling
 
 ```python
 except Exception as e:
@@ -82,7 +82,7 @@ except Exception as e:
 
 Standard error handling. If `catch_exceptions=False` (the default), errors propagate to the caller. If `True`, we suppress them and return `None` for the agent run.
 
-## Return Results
+### Return Results
 
 ```python
 return agent_run, nodes
@@ -90,7 +90,7 @@ return agent_run, nodes
 
 We return both the complete `AgentRun` object (containing the final result and metadata) and the list of execution events.
 
-## Why This Design?
+### Why This Design?
 
 This architecture provides several benefits:
 
@@ -104,7 +104,7 @@ This architecture provides several benefits:
 
 **Flexibility**: The same pattern scales from simple one-shot prompts to complex multi-turn conversations with tools, memory, and sophisticated orchestration.
 
-## Key Takeaways
+### Key Takeaways
 
 The `run_agent()` function demonstrates how modern Python's async features enable elegant agent implementations. By combining async context managers (for safe resource handling), async iterators (for streaming events), and coroutines (for efficient I/O), we get a clean API that's both powerful and easy to use.
 

@@ -2,7 +2,7 @@
 
 We discuss making skills discoverable, cheap to advertise to a model, and safe to activate and execute inside a broader agent system.
 
-### What "engineering skills" actually means
+#### What "engineering skills" actually means
 
 The Agent Skills integration guide is explicit about what a skills-compatible runtime must do: it discovers skill directories, loads only metadata at startup, matches tasks to skills, activates a selected skill by loading full instructions, and then executes scripts and accesses bundled resources as needed. The important architectural point is that integration is designed around progressive disclosure: startup and routing should rely on frontmatter only, while "activation" is the moment you pay to load instructions and any additional files.
 
@@ -25,7 +25,7 @@ def discover_skills(skill_roots: list[str]) -> list[dict]:
 
 This is not an implementation detail; it is the core performance/safety contract. The integration guide recommends parsing only the frontmatter at startup "to keep initial context usage low." The specification quantifies the intended disclosure tiers: metadata (name/description) is loaded for all skills, full instructions are loaded on activation, and resources are loaded only when required.
 
-### Filesystem-based integration vs tool-based integration
+#### Filesystem-based integration vs tool-based integration
 
 The Agent Skills guide describes two integration approaches.
 
@@ -33,7 +33,7 @@ In a filesystem-based agent, the model operates in a computer-like environment (
 
 In a tool-based agent, there is no dedicated computer environment, so the developer implements explicit tools that let the model list skills, fetch `SKILL.md`, and retrieve bundled assets. The guide deliberately does not prescribe the exact tool design ("the specific tool implementation is up to the developer"), which is a reminder not to conflate the skill format with a particular invocation API.
 
-### Injecting skill metadata into the model context
+#### Injecting skill metadata into the model context
 
 The guide says to include skill metadata in the system prompt so the model knows what skills exist, and to "follow your platform's guidance" for how system prompts are updated. It then provides a single example: for Claude models, it shows an XML wrapper format. That example is platform-specific and should not be treated as a general recommendation for other runtimes.
 
@@ -53,7 +53,7 @@ The general requirement is simpler: at runtime start (or on refresh), you provid
 
 The skill system works because selection can be done from the metadata alone; the body is only loaded when the orchestrator commits to activation.
 
-### Security boundaries during activation
+#### Security boundaries during activation
 
 Skill integration changes the risk profile the moment `scripts/` are involved. The specification defines `scripts/` as executable code that agents can run, and explicitly notes that supported languages and execution details depend on the agent implementation. The frontmatter's experimental `allowed-tools` field exists to help some runtimes enforce "pre-approved tools" a skill may use, but support may vary.
 

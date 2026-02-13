@@ -4,7 +4,7 @@ Tool permissions define explicit authority boundaries that govern what an agent 
 
 This hands-on explores tool permissions through `example_tool_permissions.ipynb`, demonstrating how to annotate tools with required permissions and enforce those permissions either at agent construction time or at runtime.
 
-## The Permission Model
+### The Permission Model
 
 The example defines three permission levels as an enumeration:
 
@@ -17,7 +17,7 @@ class ToolPermission(str, Enum):
 
 READ covers operations that observe state without modifying it. WRITE covers operations that mutate state. CONNECT covers operations that reach external systems like the internet or third-party APIs. A tool can require multiple permissions; sending an email might require both WRITE (recording that a message was sent) and CONNECT (reaching the mail server).
 
-## Annotating Tools with Permissions
+### Annotating Tools with Permissions
 
 Tools are annotated using the `@tool_permission` decorator:
 
@@ -42,7 +42,7 @@ The decorator attaches permission metadata to the function. `get_balance` requir
 
 Tools without the decorator default to READ permission, reflecting the principle that observation is the baseline capability and mutation requires explicit authorization.
 
-## Construction-Time Filtering
+### Construction-Time Filtering
 
 The first enforcement approach filters tools before creating the agent. The agent only sees tools it has permission to use:
 
@@ -57,7 +57,7 @@ This approach has a clear security benefit: the agent cannot even attempt unauth
 
 The downside is that the agent cannot explain why a capability is unavailable. From its perspective, the transfer tool simply does not exist. It might say "I don't have a tool for that" rather than "I'm not authorized to transfer funds."
 
-## Granting Additional Permissions
+### Granting Additional Permissions
 
 Expanding the granted permissions expands the available tools:
 
@@ -81,7 +81,7 @@ full_tools = filter_tools_by_permission(
 
 This graduated permission model lets you configure agents for different trust levels. A customer-facing agent might have only READ. An internal operations agent might have READ and WRITE. A fully autonomous agent might have all three.
 
-## Runtime Enforcement
+### Runtime Enforcement
 
 The second approach lets the agent see all tools but enforces permissions when tools are actually called:
 
@@ -96,7 +96,7 @@ The agent receives this error as a tool result and must handle it. Typically, th
 
 Runtime enforcement is useful when you want agents to be aware of their limitations. It also enables patterns where an agent might request elevated permissions from a human supervisor before proceeding with a restricted operation.
 
-## Choosing an Approach
+### Choosing an Approach
 
 Construction-time filtering is simpler and more secure. The agent cannot attempt unauthorized actions because it does not know about them. This is appropriate when you want a clear, hard boundary and when explaining permission limitations is not important.
 
@@ -104,7 +104,7 @@ Runtime enforcement is more flexible. The agent can reason about restricted tool
 
 Both approaches use the same underlying permission model. The difference is where the check happens: before the agent is created, or when the tool is invoked.
 
-## Key Takeaways
+### Key Takeaways
 
 Tool permissions create explicit authority boundaries between different types of operations. The READ/WRITE/CONNECT model captures the fundamental distinctions between observation, mutation, and external access.
 

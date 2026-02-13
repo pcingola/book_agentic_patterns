@@ -4,7 +4,7 @@ Agentic systems present a testing challenge: the LLM at their core is non-determ
 
 The key insight is that while we cannot make the LLM deterministic, we can replace it entirely during testing. By substituting the model with a mock that returns predefined responses, and optionally mocking tools as well, we gain complete control over agent behavior. This enables fast, reliable tests that verify the agent's logic without network calls or API costs.
 
-## ModelMock: Replacing the LLM
+### ModelMock: Replacing the LLM
 
 `ModelMock` is a drop-in replacement for real models. Instead of calling an LLM API, it returns responses from a predefined list in sequence. The agent code runs unchanged; only the underlying model differs.
 
@@ -22,7 +22,7 @@ assert output == "The capital of France is Paris."
 
 The `responses` list contains what the model will return on each invocation. For a simple request-response interaction, a single response suffices. The agent processes this response exactly as it would process a real LLM response, but the output is now deterministic and testable with exact assertions.
 
-## Simulating Tool Calls
+### Simulating Tool Calls
 
 Agents often use tools, and the model must decide when to call them. `ModelMock` can return `ToolCallPart` objects to simulate the model requesting a tool call. The framework then executes the actual tool, and the result flows back to the model (which returns the next response from the list).
 
@@ -42,7 +42,7 @@ agent = get_agent(model=model, tools=[get_weather])
 
 The sequence here is: first response triggers the tool call, the tool executes and returns its result, then the second response becomes the final output. This tests that the agent correctly handles the tool-use loop, even though the decision to call the tool was predetermined.
 
-## tool_mock: Controlling Tool Outputs
+### tool_mock: Controlling Tool Outputs
 
 Sometimes the tool itself needs to be mocked. Real tools might call external APIs, access databases, or have side effects we want to avoid in tests. `tool_mock` wraps a function and replaces its implementation with predefined return values.
 
@@ -70,7 +70,7 @@ assert mocked_fetch.call_args_list[0] == ((), {"symbol": "AAPL"})
 
 This enables assertions not just on outputs but on how tools were invoked: which arguments were passed, in what order, and how many times.
 
-## Complete Workflow Testing
+### Complete Workflow Testing
 
 Combining `ModelMock` and `tool_mock` enables testing of complex multi-step workflows with full determinism. Consider an agent that searches a database for users and then sends each user an email:
 
@@ -98,7 +98,7 @@ assert "2 users" in agent_run.result.output
 
 This pattern tests the agent's orchestration logic, the integration between model and tools, and the final output, all without any non-determinism.
 
-## When to Use Deterministic Testing
+### When to Use Deterministic Testing
 
 Deterministic testing with mocks is most valuable for verifying agent logic and tool integration. It answers questions like: does the agent call the right tools in the right order? Does it handle tool outputs correctly? Does the final response incorporate tool results appropriately?
 

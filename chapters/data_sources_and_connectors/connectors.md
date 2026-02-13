@@ -1,10 +1,10 @@
 # Connector patterns
 
-Agents are only as useful as the data they can reliably read and safely change, so “connectors” should expose a small set of predictable operations that cover most everyday data access needs.
+Agents are only as useful as the data they can reliably read and safely change, so "connectors" should expose a small set of predictable operations that cover most everyday data access needs.
 
 A connector, in the agent sense, is a tool surface that turns an external system into a few stable verbs the agent can call directly. The key design constraint is that the verbs must be generic enough to work across many backends, but opinionated enough to provide real leverage (validation, previews, schema discovery, safe writes, and bounded reads). A raw "HTTP request tool" is too generic to be dependable, while a "SQL connector" is generic in a useful way because SQL is itself a strong abstraction and most databases provide the same introspection and query semantics.
 
-### Connectors are not tools
+#### Connectors are not tools
 
 It is worth making a distinction that is easy to miss: connectors and tools are different things, even though they often end up wired together.
 
@@ -18,9 +18,9 @@ Throughout this chapter, the code examples show connector methods (the abstracti
 
 In practice, five connector archetypes cover the majority of day-to-day enterprise use cases for agents: file/object storage connectors, SQL connectors, OpenAPI/REST connectors, graph/relationship connectors, and controlled vocabulary/ontology connectors.
 
-### File and object-storage connectors
+#### File and object-storage connectors
 
-The simplest and most widely applicable connector is “file-like access.” This includes local files, network shares, and object stores such as S3, GCS, and Azure Blob. Although their underlying semantics differ (paths vs keys, atomic rename vs versioned objects), the agent rarely needs those details. What the agent needs is the ability to locate content, preview it, read bounded slices, and apply small edits safely.
+The simplest and most widely applicable connector is "file-like access." This includes local files, network shares, and object stores such as S3, GCS, and Azure Blob. Although their underlying semantics differ (paths vs keys, atomic rename vs versioned objects), the agent rarely needs those details. What the agent needs is the ability to locate content, preview it, read bounded slices, and apply small edits safely.
 
 A practical, agent-facing file connector typically exposes a small set of operations that map well to both filesystems and object stores:
 
@@ -47,11 +47,11 @@ file.edit("docs/runbook.md", start_line=40, end_line=55, new_content=patch)
 file.delete("notes/obsolete.md")
 ```
 
-The bounded read methods (`head`/`tail`, present in all three format connectors) are not a convenience; they are what makes file connectors workable for agents at scale. Object stores and blob APIs explicitly support metadata reads and range reads (or equivalent headers), which lets a tool implement preview and partial retrieval efficiently. ([AWS Documentation][3])
+The bounded read methods (`head`/`tail`, present in all three format connectors) are not a convenience; they are what makes file connectors workable for agents at scale. Object stores and blob APIs explicitly support metadata reads and range reads (or equivalent headers), which lets a tool implement preview and partial retrieval efficiently. ([AWS Documentation][conn-3])
 
-A common trap is over-generalizing editing. Agents frequently need to make small changes, but arbitrary in-place mutation is not uniformly supported across object stores. The connector should therefore define edits in terms of safe, portable behavior: read the smallest necessary slice, apply a patch deterministically, and write back with concurrency control (ETag / version preconditions) so the agent does not overwrite someone else’s update.
+A common trap is over-generalizing editing. Agents frequently need to make small changes, but arbitrary in-place mutation is not uniformly supported across object stores. The connector should therefore define edits in terms of safe, portable behavior: read the smallest necessary slice, apply a patch deterministically, and write back with concurrency control (ETag / version preconditions) so the agent does not overwrite someone else's update.
 
-#### Format-aware “specializations” that remain generic
+##### Format-aware "specializations" that remain generic
 
 File-like connectors become substantially more useful when they add a few format-aware helpers for the formats that dominate private enterprise data: plain text/markdown/code, CSV/TSV, and JSON.
 
@@ -99,11 +99,11 @@ json.append("config/app.json", json_path="$.features.rollout.regions",
             value='"eu-west-1"')
 ```
 
-The important pattern is that format-aware methods do not replace the generic file connector; they sit alongside it as “sharp tools” for the top few formats. This keeps the connector surface small while still being meaningfully usable.
+The important pattern is that format-aware methods do not replace the generic file connector; they sit alongside it as "sharp tools" for the top few formats. This keeps the connector surface small while still being meaningfully usable.
 
-### SQL database connectors
+#### SQL database connectors
 
-SQL databases are a canonical “80% connector” because SQL provides a stable query abstraction across vendors, and databases expose standardized metadata and query planning interfaces. This makes it possible to offer a single agent-facing connector that works broadly, independent of schema or engine.
+SQL databases are a canonical "80% connector" because SQL provides a stable query abstraction across vendors, and databases expose standardized metadata and query planning interfaces. This makes it possible to offer a single agent-facing connector that works broadly, independent of schema or engine.
 
 A useful SQL connector for agents typically starts with schema discovery, then read-only querying, then (optionally) controlled mutation:
 
@@ -130,13 +130,13 @@ First, "schema first" is not optional. Agents do not have compile-time types or 
 
 Second, query validation must be built into execution, not left as an afterthought. The connector should reject unsafe queries (for example, non-SELECT statements, multiple statements, or queries that violate access policy) before they reach the database. Results should be bounded by default: `execute_sql` returns a truncated preview and optionally saves full results to a CSV file, so the agent gets enough context to reason without flooding the conversation with thousands of rows.
 
-This is one of the rare places where “generic” remains very effective: the connector can be broadly applicable because SQL itself is the abstraction, and schema discovery works regardless of application domain.
+This is one of the rare places where "generic" remains very effective: the connector can be broadly applicable because SQL itself is the abstraction, and schema discovery works regardless of application domain.
 
-### OpenAPI / REST API connectors
+#### OpenAPI / REST API connectors
 
 HTTP APIs can be too generic to be reliable for agents unless the connector gives the agent meaningful structure: what endpoints exist, what parameters are required, what schemas are expected, and how authentication is handled.
 
-OpenAPI is the standard mechanism for supplying that structure. When an API is described with OpenAPI, a connector can list endpoints, describe the request/response shapes, and normalize error handling without embedding service-specific code in the agent. ([OpenAPI Initiative Publications][1])
+OpenAPI is the standard mechanism for supplying that structure. When an API is described with OpenAPI, a connector can list endpoints, describe the request/response shapes, and normalize error handling without embedding service-specific code in the agent. ([OpenAPI Initiative Publications][conn-1])
 
 A practical agent-facing surface looks like this:
 
@@ -154,13 +154,13 @@ api.call_endpoint(api_id="ticketing", method="POST", path="/tickets",
                   output_file="/workspace/results/ticket.json")
 ```
 
-The design goal is to avoid a "generic API connector" that is just `http_get(url)` and `http_post(url, body)`. Those primitives push complexity onto the agent, which then must infer required fields, encode authentication correctly, and interpret error responses. By contrast, an OpenAPI-driven connector can make the agent reliably productive by turning undocumented details into discoverable tool affordances. The agent discovers what is available, inspects the details, and then makes a validated call -- the same exploration-then-action workflow a developer would follow, but driven entirely by the model's reasoning. ([OpenAPI Initiative Publications][1], [OpenAPI Initiative Blog][2])
+The design goal is to avoid a "generic API connector" that is just `http_get(url)` and `http_post(url, body)`. Those primitives push complexity onto the agent, which then must infer required fields, encode authentication correctly, and interpret error responses. By contrast, an OpenAPI-driven connector can make the agent reliably productive by turning undocumented details into discoverable tool affordances. The agent discovers what is available, inspects the details, and then makes a validated call -- the same exploration-then-action workflow a developer would follow, but driven entirely by the model's reasoning. ([OpenAPI Initiative Publications][conn-1], [OpenAPI Initiative Blog][conn-2])
 
-### Graph and relationship connectors
+#### Graph and relationship connectors
 
-Graph and relationship stores appear whenever the primary question is not “what records match this filter,” but “how things are connected.” Ownership hierarchies, dependency graphs, identity and access models, data lineage, and knowledge graphs all fall into this category. In these systems, the value is not in individual rows or documents, but in traversals, neighborhoods, and paths.
+Graph and relationship stores appear whenever the primary question is not "what records match this filter," but "how things are connected." Ownership hierarchies, dependency graphs, identity and access models, data lineage, and knowledge graphs all fall into this category. In these systems, the value is not in individual rows or documents, but in traversals, neighborhoods, and paths.
 
-From an agent’s perspective, graph databases do not fit cleanly into file or SQL connectors. While many graph systems expose SQL-like interfaces or can be flattened into tables, doing so discards the semantics that make graphs useful in the first place. At the same time, exposing a full graph query language (Cypher, Gremlin, SPARQL) directly to an agent is unnecessarily complex and brittle.
+From an agent's perspective, graph databases do not fit cleanly into file or SQL connectors. While many graph systems expose SQL-like interfaces or can be flattened into tables, doing so discards the semantics that make graphs useful in the first place. At the same time, exposing a full graph query language (Cypher, Gremlin, SPARQL) directly to an agent is unnecessarily complex and brittle.
 
 The connector pattern that works for agents is therefore deliberately constrained. Instead of arbitrary queries, the graph connector exposes a small set of verbs that capture the most common reasoning tasks while keeping execution bounded and predictable.
 
@@ -188,7 +188,7 @@ deps = graph.neighbors(
 )
 ```
 
-Neighborhood queries like this account for a large fraction of practical graph usage. They allow the agent to answer questions such as “what does this service depend on,” “who owns this resource,” or “what systems are affected if this component fails,” without traversing the entire graph.
+Neighborhood queries like this account for a large fraction of practical graph usage. They allow the agent to answer questions such as "what does this service depend on," "who owns this resource," or "what systems are affected if this component fails," without traversing the entire graph.
 
 More advanced reasoning often requires limited path exploration. Here again, the connector should favor bounded, intention-revealing operations rather than open-ended graph queries:
 
@@ -210,7 +210,7 @@ This book does not include a graph connector implementation. The pattern is desc
 
 In practice, this makes the graph connector a specialized but high-leverage addition. It does not replace SQL or file access, but complements them in domains where relationships, not records, are the primary unit of meaning.
 
-### Controlled vocabularies and ontology connectors
+#### Controlled vocabularies and ontology connectors
 
 Controlled vocabularies and ontologies define the *allowed language* of a system: canonical terms, enumerations, synonyms, hierarchies, and semantic relationships. They are common in regulated, data-intensive, or long-lived domains such as healthcare, finance, life sciences, enterprise architecture, and data governance.
 
@@ -262,6 +262,6 @@ Conceptually, this connector sits between schema and semantics. SQL schemas defi
 
 This archetype makes explicit how agents stay aligned with organizational language, policies, and domain standards -- something that cannot be reliably achieved through generic file or database access alone.
 
-[1]: https://spec.openapis.org/oas/v3.1.0.html
-[2]: https://www.openapis.org/blog/2021/02/18/openapi-specification-3-1-released
-[3]: https://docs.aws.amazon.com/AmazonS3/latest/API/API_HeadObject.html
+[conn-1]: https://spec.openapis.org/oas/v3.1.0.html
+[conn-2]: https://www.openapis.org/blog/2021/02/18/openapi-specification-3-1-released
+[conn-3]: https://docs.aws.amazon.com/AmazonS3/latest/API/API_HeadObject.html

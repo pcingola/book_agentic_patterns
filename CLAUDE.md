@@ -35,6 +35,8 @@ book_agentic_patterns/
 
 **Chapter directories**: All chapters under `chapters/` directory. Name them with descriptive names (e.g., `foundations`, `core_patterns`, `tools`). Each chapter directory contains a `chapter.md` index file that links to individual section markdown files. Images stored in `img/` subdirectory within each chapter.
 
+**Heading levels**: `#` for chapter titles (in `chapter.md`), `##` for section titles (first heading in each section file), `###` and below for sub-sections within a section file. This keeps the TOC clean with `--toc-depth=2`.
+
 **Code organization**: All code in `agentic_patterns/`. Code examples are organized under `agentic_patterns/examples/` in directories that correspond to chapters (e.g., `foundations`, `core_patterns`, `tools`). Code examples may be Python files (.py) or Jupyter notebooks (.ipynb). Core utilities shared across chapters go in `agentic_patterns/core/`. Follow global Python conventions (type hints, pathlib, etc.).
 
 ## Core Library (`agentic_patterns/core/`)

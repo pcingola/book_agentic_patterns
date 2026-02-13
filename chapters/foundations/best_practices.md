@@ -2,7 +2,7 @@
 
 Build agentic systems that scale with computation, remain simple under iteration, and treat prompts and tools as testable engineering artifacts rather than clever one-off solutions.
 
-### The Bitter Lesson applied to agent engineering
+#### The Bitter Lesson applied to agent engineering
 
 Sutton’s argument can be operationalized as a design filter for agentic systems:
 
@@ -12,7 +12,7 @@ Second, invest in **feedback loops that can run at scale**. For agents, the anal
 
 Third, keep the system **composable**. The more your architecture resembles small, replaceable parts (tools, sub-agents, evaluators, retrievers) rather than a monolithic prompt, the easier it becomes to scale improvements without rewriting everything.
 
-### Building effective agents: when to use workflows vs agents
+#### Building effective agents: when to use workflows vs agents
 
 Anthropic draws a practical architectural distinction: **workflows** are LLM+tools orchestrated through predefined code paths, while **agents** are systems where the model dynamically decides what to do and which tools to call. Both are “agentic systems,” but they behave very differently in production. ([Anthropic][27])
 
@@ -46,13 +46,13 @@ Two concrete practices matter disproportionately in agent deployments:
 
 **Treat tool-use transcripts as the primary debugging surface.** Most real failures show up as wrong tool selection, missing arguments, or misinterpreted tool results—not as a purely “reasoning” issue.
 
-### Writing tools for agents: contracts, context, and token economics
+#### Writing tools for agents: contracts, context, and token economics
 
 Tools are where agent reliability is won or lost. Anthropic’s tool guidance is fundamentally about turning tool calling into a high-signal, low-ambiguity interface: pick the right tools, name and namespace them clearly, return meaningful context, keep responses token-efficient, and iterate using evaluations (including having agents help improve the tools themselves). ([Anthropic][28])
 
 A few practices are especially transferable:
 
-#### Make tool interfaces self-describing and hard to misuse
+##### Make tool interfaces self-describing and hard to misuse
 
 Agent tools should be closer to *APIs with guardrails* than to thin wrappers around internal functions. Use typed inputs, constrained enums, and explicit error shapes. If a tool can fail, make failures structured so the agent can recover.
 
@@ -69,7 +69,7 @@ CreateTicket(
 
 This style aligns with the broader “structured outputs” approach: use schemas to validate what the model returns, keep interfaces object-shaped, and make it easy to reject/repair malformed outputs. ([Pydantic AI][29])
 
-#### Return enough context for the model to make the next decision
+##### Return enough context for the model to make the next decision
 
 A common failure mode is tools that return “OK” or a single scalar. Agents need *actionable* results: identifiers, next-step hints, partial state, and especially “what happened” when something fails.
 
@@ -81,15 +81,15 @@ SearchContacts(query: str, limit: int) -> {
 }
 ```
 
-#### Optimize tool responses for tokens, not for humans
+##### Optimize tool responses for tokens, not for humans
 
 Tool responses compete directly with working memory. Prefer short fields, avoid redundant prose, and return only what will plausibly affect the next step. If large payloads are needed (documents, logs, tables), return handles/URLs/IDs and provide a separate “fetch” tool with pagination.
 
-### Reliability engineering for agents: retries, validation, and evals
+#### Reliability engineering for agents: retries, validation, and evals
 
 Agent systems sit on top of probabilistic components and unreliable external services. Best practice is to assume transient failure and build a disciplined recovery strategy.
 
-#### Retries belong at the system boundary
+##### Retries belong at the system boundary
 
 Retries should be configured for the kinds of failures you expect: rate limits, timeouts, temporary outages, context-length issues. Treat retries as policy, not ad-hoc try/except scattered across tools. The Pydantic ecosystem’s guidance for retry strategies in evals mirrors what works in production systems: consistent retry configuration, bounded attempts, and exponential backoff where appropriate. ([Pydantic AI][30])
 
@@ -106,11 +106,11 @@ def call_with_retry(fn, *, max_attempts=3, backoff_s=1.0):
 
 The important part is not the mechanism—it’s the decision to classify errors (transient vs permanent), to cap retries, and to make the failure mode explicit.
 
-#### Validate model outputs like untrusted user input
+##### Validate model outputs like untrusted user input
 
 Whether it’s a tool call, a structured output, or a plan, treat the model as an untrusted producer. Schema validation and type checking catch entire categories of silent failures early (wrong types, missing fields, invalid enum values) and give you a clean “ask the model to try again” loop. ([Pydantic AI][29])
 
-#### Use evals as the main lever for improvement
+##### Use evals as the main lever for improvement
 
 The most reliable path to better agents is expanding your evaluation set with real failures and near-misses. Tool design, prompt changes, and orchestration tweaks should be judged against regression suites, not vibes. Anthropic’s tool-writing guidance explicitly centers comprehensive evaluations and iterative improvement loops (including using agents to help optimize tools). ([Anthropic][28])
 
@@ -130,7 +130,7 @@ result = run_agent(case["task"])
 assert check_expectations(result, case["expected"])
 ```
 
-### Practical synthesis: what “best practices” means in day-to-day work
+#### Practical synthesis: what “best practices” means in day-to-day work
 
 In agentic engineering, “best practices” is less about any single framework or pattern and more about consistently choosing:
 

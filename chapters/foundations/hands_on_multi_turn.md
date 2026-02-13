@@ -4,7 +4,7 @@ Language models are stateless. Each time you send a prompt, the model processes 
 
 This hands-on explores message history using `example_multi_turn.ipynb`, building on the translation examples from the previous section.
 
-## The Problem: Context Loss
+### The Problem: Context Loss
 
 Consider this two-turn interaction:
 
@@ -17,7 +17,7 @@ Turn 2 - User: "How do you like it?"
 
 If you send the second prompt without any context, the agent has no idea what "it" refers to. The conversation breaks down because the model doesn't remember discussing coffee or translation.
 
-## The Solution: Message History
+### The Solution: Message History
 
 The `run_agent` function accepts a `message_history` parameter containing previous messages from the conversation. When you include this history, the model can interpret new prompts in the proper context.
 
@@ -31,11 +31,11 @@ agent_run, nodes = await run_agent(
 
 The helper function `nodes_to_message_history` extracts the conversation history from the nodes returned by a previous agent run.
 
-## Example: Translation Follow-Up
+### Example: Translation Follow-Up
 
 Let's examine `example_multi_turn.ipynb`, which demonstrates a simple two-turn conversation.
 
-### Setup
+#### Setup
 
 ```python
 from agentic_patterns.core.agents import get_agent, run_agent
@@ -46,7 +46,7 @@ agent = get_agent()
 
 We create a basic agent without a system prompt, similar to `example_translate_basic.ipynb`.
 
-### Turn 1: Translation Request
+#### Turn 1: Translation Request
 
 ```python
 prompt_1 = "Translate to French: I like coffee."
@@ -59,7 +59,7 @@ print(agent_run_1.result.output)
 
 The agent translates the sentence to French. The conversation now contains two messages: the user's request and the agent's response.
 
-### Turn 2: Follow-Up Question With History
+#### Turn 2: Follow-Up Question With History
 
 ```python
 # Extract message history from Turn 1
@@ -83,7 +83,7 @@ Message 3 (user): "How do you like it?"
 
 With this context, the agent can respond appropriately about coffee preferences.
 
-### Turn 2: Without History
+#### Turn 2: Without History
 
 To demonstrate the importance of message history, the notebook shows what happens when you omit it:
 
@@ -97,7 +97,7 @@ print("Without context:", agent_run_no_history.result.output)
 
 Without history, the agent cannot resolve the pronoun "it" and cannot provide a meaningful response.
 
-## Extracting Message History
+### Extracting Message History
 
 The `nodes_to_message_history` utility converts agent run nodes into the message format required by `run_agent`:
 
@@ -116,7 +116,7 @@ This shows the complete conversation structure. Each message contains:
 - `content`: The message text
 - `parts`: Message components (text, tool calls, tool returns)
 
-## How It Works Internally
+### How It Works Internally
 
 When you call `run_agent` with `message_history`, the framework sends the complete conversation to the LLM:
 
@@ -131,7 +131,7 @@ messages = [
 
 The model processes all messages together to generate a contextually appropriate response. Each subsequent turn includes the growing conversation history.
 
-## Message History vs System Prompts
+### Message History vs System Prompts
 
 Message history and system prompts serve different purposes:
 
@@ -158,7 +158,7 @@ messages = [
 ]
 ```
 
-## Production Considerations
+### Production Considerations
 
 When building production systems with multi-turn conversations, consider these factors:
 
@@ -172,7 +172,7 @@ When building production systems with multi-turn conversations, consider these f
 
 **Error handling**: If an agent run fails, decide whether to include the failed turn in the history or retry without it.
 
-## The nodes_to_message_history Utility
+### The nodes_to_message_history Utility
 
 Agent runs return "nodes" representing each execution step. These nodes include requests, responses, tool calls, and tool results. The `nodes_to_message_history` function extracts only the messages needed for conversation history:
 
@@ -197,7 +197,7 @@ def nodes_to_message_history(nodes: list, remove_last_call_tool: bool = True) ->
 
 This abstraction shields you from Pydantic-AI's internal node structure, letting you work with conversations at a higher level.
 
-## Key Patterns
+### Key Patterns
 
 When implementing multi-turn conversations:
 
@@ -218,7 +218,7 @@ history_2 = nodes_to_message_history(nodes_2)
 agent_run_3, nodes_3 = await run_agent(agent, prompt_3, message_history=history_2)
 ```
 
-## Why This Matters
+### Why This Matters
 
 Multi-turn conversations are foundational for advanced agentic patterns:
 
@@ -232,7 +232,7 @@ Multi-turn conversations are foundational for advanced agentic patterns:
 
 These capabilities depend on maintaining conversation history across multiple interactions.
 
-## Key Takeaways
+### Key Takeaways
 
 Language models don't inherently remember previous turns. Multi-turn conversations require explicitly passing message history with each new prompt. Use `nodes_to_message_history` to extract conversation history from agent run results. Pass this history to the `message_history` parameter in subsequent `run_agent` calls.
 

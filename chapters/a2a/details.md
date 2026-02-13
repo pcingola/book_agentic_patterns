@@ -2,7 +2,7 @@
 
 A2A is a protocol-level contract for agent interoperability: a small set of operations plus a strict data model that lets independently-built agents exchange messages, manage long-running tasks, and deliver incremental updates over multiple delivery mechanisms. ([A2A Protocol][13])
 
-### Key abstractions
+#### Key abstractions
 
 A2A's main abstractions are designed to match how multi-agent work actually unfolds over time.
 
@@ -14,7 +14,7 @@ A **Task** is a stateful unit of work with its own identity and lifecycle. Tasks
 
 A useful mental model is: **Agent Card** answers "who are you and what can you do?", **Task** answers "what unit of work are we coordinating?", **Messages** carry the interaction, and **Artifacts** are the outputs worth persisting.
 
-### Agent discovery
+#### Agent discovery
 
 A2A discovery is built around retrieving the Agent Card. A common mechanism is a well-known URL under the agent's domain (aligned with established "well-known URI" conventions), allowing clients to probe domains deterministically. Discovery is intentionally explicit: clients can validate capabilities, authentication requirements, and declared skills before initiating a task, and systems can log discovery metadata for audit and governance.
 
@@ -35,7 +35,7 @@ card = discover_agent_card("billing.example.com")
 
 This "metadata-first" approach matters operationally: it enables capability matching, policy gating (e.g., only delegate to agents with certain auth), and safer orchestration decisions *before* sending sensitive task content.
 
-### A2A and MCP in composition
+#### A2A and MCP in composition
 
 A2A and MCP are complementary layers. MCP standardizes how agents interact with tools and resources (structured inputs/outputs, tool schemas, permission boundaries). A2A standardizes how agents interact with *other agents* as autonomous peers (discovery, task lifecycle, messaging, artifact delivery).
 
@@ -61,13 +61,13 @@ A minimal task invocation at the wire level (illustrative, independent of any sp
 
 The important point is not the method name per se, but the design: JSON-RPC provides the envelope; A2A defines the task/message/artifact semantics; and implementations can remain diverse behind the boundary.
 
-### Ecosystem tooling
+#### Ecosystem tooling
 
 The Pydantic ecosystem documents A2A as a practical interoperability layer and provides Python tooling to expose agents as A2A servers and to build clients that can discover agents, initiate tasks, and consume artifacts -- without requiring the agent's internal design to be rewritten around protocol internals. The emphasis is on preserving your existing agent architecture while making the boundary interoperable.
 
 FastMCP, meanwhile, is often used as a pragmatic deployment unit for MCP tool servers. In practice, this leads to a common layered architecture: A2A connects agents across boundaries; MCP connects agents to tools/resources; and FastMCP-style servers host the tool endpoints that agents call. Bridging components can translate between A2A and MCP where needed (for example, to let an A2A-facing agent expose or consume MCP-backed capabilities behind the scenes).
 
-### What "the spec" really is: operations + data model + bindings
+#### What "the spec" really is: operations + data model + bindings
 
 At the lowest level, A2A is defined by (1) a core set of operations (send, stream, get/list/cancel tasks, subscribe, push-config management, extended agent card) and (2) a constrained object model (Task, Message, Part, Artifact, plus streaming event envelopes). ([A2A Protocol][13])
 
@@ -76,11 +76,11 @@ The specification then defines how those operations and objects map onto concret
 A key design point is that the same *logical* operations are intended to be functionally equivalent across bindings; the binding decides *how* parameters and service-wide headers/metadata are carried, but not what they mean. ([A2A Protocol][13])
 
 
-### Operation surface and execution semantics
+#### Operation surface and execution semantics
 
 The “A2AService” operation set is designed around a task-centric model. Even if you initiate interaction by sending a message, the server may respond by creating/continuing a task, and all subsequent status and artifacts hang off that task identity. The specification’s “SendMessageRequest” carries the client message plus an optional configuration block and optional metadata. ([A2A Protocol][13])
 
-#### `SendMessage` and the `SendMessageConfiguration` contract
+##### `SendMessage` and the `SendMessageConfiguration` contract
 
 `SendMessageConfiguration` is where most of the “knobs” live:
 
@@ -91,7 +91,7 @@ The “A2AService” operation set is designed around a task-centric model. Even
 
 This configuration block is what makes A2A “async-first” without making simple request/response impossible: a client can force synchronous completion with `blocking: true`, but the spec treats streaming and async delivery as first-class rather than bolt-ons. ([A2A Protocol][13])
 
-#### Blocking vs non-blocking as a protocol-level contract (not an implementation detail)
+##### Blocking vs non-blocking as a protocol-level contract (not an implementation detail)
 
 The `blocking` flag is normative and affects correctness expectations:
 
@@ -101,11 +101,11 @@ The `blocking` flag is normative and affects correctness expectations:
 This matters because it pushes queueing/execution details out of band: even if the server’s internal worker system is distributed, the *observable* behavior must match these semantics.
 
 
-### The protocol data model: the “shape” constraints that make interoperability work
+#### The protocol data model: the “shape” constraints that make interoperability work
 
 A2A’s objects include both “business” fields (task IDs, status) and structural invariants (“exactly one of these fields must be present”) that keep message parsing unambiguous across languages.
 
-#### Message identity and correlation
+##### Message identity and correlation
 
 A `Message` is a unit of communication between client and server. The spec requires `messageId` and makes it creator-generated. This is not cosmetic: the spec explicitly allows Send Message operations to be idempotent and calls out using `messageId` to detect duplicates. ([A2A Protocol][13])
 
@@ -116,7 +116,7 @@ A message may include `contextId` and/or `taskId`:
 
 This rule is critical for multi-turn clients: it allows clients to “anchor” continuation on a known task without re-sending full conversational context.
 
-#### Parts: a strict “oneof” content container
+##### Parts: a strict “oneof” content container
 
 A `Part` is the atom of content in both messages and artifacts, and it must contain exactly one of `text`, `file`, or `data`. ([A2A Protocol][13])
 
@@ -128,32 +128,32 @@ That constraint enables predictable parsing and transformation pipelines:
 
 File parts have their own “oneof”: exactly one of `fileWithUri` or `fileWithBytes`. The spec also frames the intended usage: prefer bytes for small payloads; prefer URI for large payloads. ([A2A Protocol][13])
 
-#### Artifacts: outputs as first-class objects
+##### Artifacts: outputs as first-class objects
 
 Artifacts represent task outputs and include an `artifactId` that must be unique at least within a task, plus a list of parts (must contain at least one). ([A2A Protocol][13])
 
 Treating outputs as artifacts rather than “just text” is what allows A2A to cover large files, structured results, and incremental generation in a uniform way.
 
-#### Task states and task status updates
+##### Task states and task status updates
 
 Tasks have states; the spec enumerates states including working, input-required, canceled (terminal), rejected (terminal), and auth-required (special: not terminal and not “interrupted” in the same way as input-required). ([A2A Protocol][13])
 
 A task’s status container includes the current state, optional associated message, and timestamp. ([A2A Protocol][13])
 
 
-### Streaming updates: the `StreamResponse` envelope and event types
+#### Streaming updates: the `StreamResponse` envelope and event types
 
 A2A streaming is not “stream arbitrary tokens” by default; it streams *typed updates* wrapped in a `StreamResponse` envelope. The spec is explicit: a `StreamResponse` must contain exactly one of `task`, `message`, `statusUpdate`, or `artifactUpdate`. ([A2A Protocol][13])
 
 That invariant matters because it defines how clients must implement event loops: you do not parse “some JSON”; you dispatch on which field is present, and you get strongly-typed behavior.
 
-#### `TaskStatusUpdateEvent`
+##### `TaskStatusUpdateEvent`
 
 A status update event includes `taskId`, `contextId`, `status`, and a required boolean `final` that indicates whether this is the final event in the stream for the interaction. ([A2A Protocol][13])
 
 A practical implication is that clients should treat `final=true` as a state machine edge, not merely “stream ended”. The spec describes this as the signal for end-of-updates in the cycle and often subsequent stream close. ([A2A Protocol][14])
 
-#### `TaskArtifactUpdateEvent` and chunked artifact reconstruction
+##### `TaskArtifactUpdateEvent` and chunked artifact reconstruction
 
 Artifact updates are deltas. Each update carries the artifact plus two key booleans:
 
@@ -163,7 +163,7 @@ Artifact updates are deltas. Each update carries the artifact plus two key boole
 This is the protocol’s answer to “how do I stream a large file/structured output?”: the artifact is the stable identity, and the parts are chunked. A client must reconstruct by `(taskId, artifactId)` and apply append semantics to parts.
 
 
-### Push notifications: webhook delivery that reuses the same envelope
+#### Push notifications: webhook delivery that reuses the same envelope
 
 Push notifications are not a separate event schema: the spec states that webhook payloads use the same `StreamResponse` format as streaming operations, delivering exactly one of the same event types. ([A2A Protocol][13])
 
@@ -175,7 +175,7 @@ The push payload section is unusually explicit about responsibilities:
 This means production-grade push is *not* “fire and forget”: both sides are expected to implement retry/idempotency logic.
 
 
-### Service parameters, versioning, and extensions: the “horizontal” control plane
+#### Service parameters, versioning, and extensions: the “horizontal” control plane
 
 A2A separates per-request metadata (arbitrary JSON) from “service parameters” (case-insensitive string keys + string values) whose transmission depends on binding (HTTP headers for HTTP-based bindings, gRPC metadata for gRPC). ([A2A Protocol][13])
 
@@ -187,7 +187,7 @@ Two standard service parameters are called out:
 This is the practical mechanism for incremental evolution: extensions let you strongly-type metadata for specific use cases, while the core stays stable. ([A2A Protocol][13])
 
 
-### Protocol bindings and interface negotiation
+#### Protocol bindings and interface negotiation
 
 Agents advertise one or more supported interfaces. Each `AgentInterface` couples a URL with a `protocolBinding` string; the spec calls out core bindings `JSONRPC`, `GRPC`, and `HTTP+JSON`, while keeping the field open for future bindings. ([A2A Protocol][13])
 
@@ -196,7 +196,7 @@ The ordering of interfaces is meaningful: clients should prefer earlier entries 
 This makes interoperability practical in heterogeneous environments: a client can pick JSON-RPC for browser-like integrations, gRPC for intra-datacenter low-latency, or HTTP+JSON for simple REST stacks—while preserving the same logical semantics.
 
 
-### Implementation patterns extracted from real server stacks: broker, worker, storage
+#### Implementation patterns extracted from real server stacks: broker, worker, storage
 
 A typical A2A server splits responsibilities into:
 
@@ -217,11 +217,11 @@ The key protocol-driven reason to build it this way is that A2A requires coheren
 You only get correct semantics if task state and artifact state are stored durably enough to be re-served and re-streamed.
 
 
-## Concrete pseudocode: “correct-by-construction” client and server logic
+### Concrete pseudocode: “correct-by-construction” client and server logic
 
 The goal here is not a full implementation, but pseudocode that directly encodes the spec’s invariants (`oneof` objects, `blocking` semantics, chunked artifacts, idempotency, and service parameters).
 
-### Client: send non-blocking, then stream, reconstruct artifacts
+#### Client: send non-blocking, then stream, reconstruct artifacts
 
 ```python
 function send_and_stream(agent_url, user_text):
@@ -299,7 +299,7 @@ Why this matches the spec:
 * It dispatches on the `StreamResponse` “exactly one of” invariant and handles status and artifact events accordingly. ([A2A Protocol][13])
 * It reconstructs artifacts using `append` and `lastChunk`. ([A2A Protocol][13])
 
-### Client: idempotent retries using `messageId`
+#### Client: idempotent retries using `messageId`
 
 Network retries are inevitable; the spec explicitly allows using `messageId` to detect duplicates for idempotency. ([A2A Protocol][13])
 
@@ -322,7 +322,7 @@ function send_with_retry(agent_url, msg, cfg):
 // Server side must treat same messageId as duplicate and avoid double-executing.
 ```
 
-### Server: request validation that enforces the “oneof” invariants
+#### Server: request validation that enforces the “oneof” invariants
 
 A2A’s “Part must contain exactly one of text/file/data” is a protocol requirement, so servers should validate it up-front (before dispatching to workers) and return a validation error if violated. ([A2A Protocol][13])
 
@@ -342,7 +342,7 @@ function validate_message(message):
                 raise InvalidParams("FilePart must have exactly one of uri|bytes")
 ```
 
-### Server: `blocking` semantics implemented on top of a broker/worker pipeline
+#### Server: `blocking` semantics implemented on top of a broker/worker pipeline
 
 In practice, servers implement A2A semantics by scheduling work and then either returning immediately (non-blocking) or awaiting terminal state (blocking). The scheduling abstraction (“broker”) exists precisely to decouple protocol ingress from task execution and allow multi-worker setups. ([Pydantic AI][40])
 
@@ -374,7 +374,7 @@ function handle_send_message(request, service_params):
 
 This aligns with the normative behavior: non-blocking returns after task creation; blocking waits for terminal state. ([A2A Protocol][13])
 
-### Server: emitting streaming updates with `StreamResponse`
+#### Server: emitting streaming updates with `StreamResponse`
 
 Streaming endpoints emit a stream of `StreamResponse` objects where exactly one field is set. ([A2A Protocol][13])
 
@@ -403,7 +403,7 @@ function stream_task_updates(task_id):
             yield { task: update.task }
 ```
 
-### Push notification receiver: reusing the same dispatch loop as streaming
+#### Push notification receiver: reusing the same dispatch loop as streaming
 
 Because push payloads reuse `StreamResponse`, your webhook handler can share logic with your SSE consumer. ([A2A Protocol][13])
 

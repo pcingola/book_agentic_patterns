@@ -2,7 +2,7 @@
 
 MCP servers deserve the same network isolation treatment as code-execution sandboxes. When your agent connects to an MCP server -- particularly one you did not write -- every tool call is an opportunity for arbitrary code to run on the server side. A tool that fetches data from an external API, sends an email, or posts to a webhook can exfiltrate private data just as easily as a line of Python in a REPL sandbox. Running MCP servers inside Docker containers and applying the network isolation pattern from the Sandbox section closes this gap.
 
-### Two containers, one server
+#### Two containers, one server
 
 The approach is straightforward: run two instances of the same MCP server image, each with a different network mode. The first instance runs on the bridge network with full connectivity. The second runs on an isolated network with no external access (or proxied access through Envoy, depending on the sensitivity level). Both containers mount the same workspace volume so they share state. The agent's MCP client switches which instance it connects to based on the session's `PrivateData` status.
 
@@ -19,7 +19,7 @@ The approach is straightforward: run two instances of the same MCP server image,
 
 The MCP server code does not change between instances. The only difference is the Docker network configuration. Tools that require external connectivity will fail with connection errors in the isolated instance, which is the desired behavior -- the agent should not be able to reach external services through MCP tools once private data enters the session.
 
-### Configuration
+#### Configuration
 
 The `config.yaml` already holds MCP client entries with a `url` field pointing at the server. To support the dual-container pattern, each MCP server entry gets a `url_isolated` field for the restricted instance:
 
@@ -44,7 +44,7 @@ class MCPClientConfig(BaseModel):
 
 When `url_isolated` is not set, the client always uses `url` regardless of private data status -- the server either does not need isolation or handles it internally.
 
-### Client-side switching
+#### Client-side switching
 
 Private data can appear at any point during a session -- a tool call might load sensitive records, or a compliance check might flag content that arrived in the conversation. The MCP client must be able to switch to the isolated instance mid-session, between any two tool calls, without tearing down and reopening connections.
 
@@ -93,7 +93,7 @@ def get_mcp_client(name, config_path=None, bearer_token=None):
     return MCPServerStrict(url=config.url, timeout=config.read_timeout, headers=headers)
 ```
 
-### Deploying the containers
+#### Deploying the containers
 
 A typical `docker-compose.yaml` runs both instances from the same image:
 
@@ -112,6 +112,6 @@ services:
 
 For CONFIDENTIAL data where proxied access is acceptable, the isolated instance can use the same Envoy sidecar pattern described in the Sandbox section, attaching it to an internal Docker network with the proxy as the only gateway.
 
-### When to use this pattern
+#### When to use this pattern
 
 This pattern is essential for third-party or untrusted MCP servers where you cannot audit or control the tool implementations. But it is also highly recommended for your own servers: even well-tested code can have bugs, missed edge cases, or regressions that accidentally leak private data over the network. The container-level network block acts as a safety net that enforces the invariant regardless of application-level correctness. Think of it as defense-in-depth -- `@tool_permission(CONNECT)` and compliance checks are the first line, but the network kill switch ensures that a code mistake cannot silently bypass them.

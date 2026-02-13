@@ -24,7 +24,7 @@ while not goal_satisfied:
 
 The distinguishing feature is that *execution results are first-class signals*. Errors, stack traces, runtime values, and filesystem changes all become part of the agent’s working context.
 
-### Execution environments and isolation
+#### Execution environments and isolation
 
 Effective CodeAct systems rely on a well-defined execution substrate. Code must run in an environment that is both expressive enough to be useful and constrained enough to be safe. Production CodeAct systems illustrate several architectural consequences of this requirement.
 
@@ -40,7 +40,7 @@ with open("results.txt", "w") as f:
 
 The persistence of this workspace across executions is crucial. It allows CodeAct agents to build state incrementally, revisit previous artifacts, and recover transparently from execution failures by recreating the environment while preserving data.
 
-### Failure, feedback, and recovery
+#### Failure, feedback, and recovery
 
 Because CodeAct agents execute arbitrary code, failures are expected rather than exceptional. Syntax errors, runtime exceptions, timeouts, and resource exhaustion all serve as informative feedback. Robust systems therefore separate *failure detection* from *failure recovery*.
 
@@ -58,7 +58,7 @@ If execution fails, the agent does not crash the session. Instead, the failure i
 
 This design aligns naturally with the CodeAct philosophy: errors are signals to reason over, not terminal conditions.
 
-### Concurrency and long-running behavior
+#### Concurrency and long-running behavior
 
 Unlike simple tool calls, CodeAct executions may involve long-running processes such as servers, simulations, or background jobs. Treating these as first-class entities requires explicit lifecycle management distinct from one-off commands.
 
@@ -66,13 +66,13 @@ A common pattern is to separate *commands* from *services*. Commands are synchro
 
 This distinction enables CodeAct agents to orchestrate complex computational setups while retaining control over resource usage and cleanup.
 
-### Security and control boundaries
+#### Security and control boundaries
 
 Placing code execution at the center of agent behavior raises obvious safety concerns. CodeAct systems therefore rely on layered defenses: execution time limits, resource quotas, non-privileged runtimes, and strict filesystem scoping. From a pattern perspective, the important point is that these controls are *environmental*, not prompt-based. The agent is allowed to generate powerful code precisely because the execution substrate enforces hard constraints.
 
 This separation of concerns simplifies agent design. The model focuses on problem solving, while the execution layer guarantees containment.
 
-### Why CodeAct matters
+#### Why CodeAct matters
 
 CodeAct represents a shift from “agents that occasionally run code” to “agents whose primary mode of thought is executable”. This shift has practical consequences: more reliable iteration, clearer grounding in observable behavior, and a tighter feedback loop between intention and outcome. In practice, CodeAct often reduces prompt complexity, because correctness is enforced by execution rather than by exhaustive natural language reasoning.
 

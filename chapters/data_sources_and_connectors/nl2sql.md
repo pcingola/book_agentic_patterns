@@ -2,7 +2,7 @@
 
 NL2SQL is the execution pattern in which an agent translates a natural language question into a validated, read-only SQL query, executes it safely, and returns results in a form suitable for both human inspection and downstream processing.
 
-### The NL2SQL execution pattern
+#### The NL2SQL execution pattern
 
 NL2SQL should be understood as a controlled execution pipeline rather than a simple text-to-SQL transformation. The database is a high-impact tool, and the schema is the primary grounding mechanism that constrains the model’s reasoning.
 
@@ -10,7 +10,7 @@ A typical workflow begins with a natural language question. Before any SQL is ge
 
 This separation between reasoning, validation, and execution is what makes NL2SQL robust enough for real-world use.
 
-### Schema as first-class context
+#### Schema as first-class context
 
 One of the most important lessons from production NL2SQL systems is that schema preparation belongs offline. Instead of querying database catalogs dynamically at runtime, schemas are extracted once, enriched, and cached as structured metadata. This cached schema becomes the authoritative reference for all NL2SQL reasoning.
 
@@ -56,7 +56,7 @@ CREATE TABLE orders (
 
 This level of annotation significantly reduces ambiguity for the agent. It also discourages the model from inventing values that do not exist in the database, a common failure mode when schemas are underspecified.
 
-### Controlled vocabularies and query reliability
+#### Controlled vocabularies and query reliability
 
 Well-designed NL2SQL schemas emphasize controlled vocabularies. Fields such as status codes, categories, types, or channels should be treated as explicit enums, even if the underlying database does not enforce them strictly.
 
@@ -64,7 +64,7 @@ From an agent’s perspective, controlled vocabularies serve two purposes. First
 
 Embedding enum values directly in schema comments, along with short explanations, makes this mapping explicit. In practice, this often matters more than formal database constraints, because the agent reasons over the schema text rather than the physical DDL alone.
 
-### Query generation and validation
+#### Query generation and validation
 
 Even with a high-quality schema, generated SQL must be treated as untrusted input. NL2SQL systems therefore apply multiple validation layers before execution.
 
@@ -85,7 +85,7 @@ Much more effective is to have "READ-ONLY" database users that are restricted by
 
 Beyond syntactic checks, execution safeguards are typically applied. Query timeouts prevent expensive scans from monopolizing database resources, and explicit limits on result size protect both the database and the agent’s context window.
 
-### Result handling and the workspace
+#### Result handling and the workspace
 
 Large result sets should not be injected directly into the agent context. Instead, results are written to files in a shared workspace, and only a small preview is returned.
 
@@ -97,13 +97,13 @@ preview = df.head(10)
 
 The agent can then summarize the findings, show a few representative rows, and provide the file path for full inspection. This pattern keeps prompts small while preserving complete, reusable data for humans or downstream tools.
 
-### Security and access control
+#### Security and access control
 
 Production NL2SQL systems operate under strict security constraints. Database access is typically read-only, and credentials are managed externally through a secrets manager. Queries are executed on behalf of users without exposing raw credentials to the agent.
 
 This design supports auditing, user-specific permissions, and credential rotation without modifying agent logic. The agent interacts with the database only through a constrained execution interface.
 
-### Architectural considerations
+#### Architectural considerations
 
 Successful NL2SQL systems usually adopt a layered architecture. Database-specific logic is isolated behind abstract interfaces, while business logic operates on standardized result types. This separation allows the same NL2SQL agent to work across multiple databases with minimal changes.
 

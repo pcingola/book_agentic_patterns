@@ -2,13 +2,13 @@
 
 Document retrieval is the stage in a RAG system that transforms a user query into a ranked, filtered set of candidate documents or passages that are most likely to support a correct answer.
 
-### Conceptual overview of document retrieval
+#### Conceptual overview of document retrieval
 
 In a RAG system, document retrieval is not a single operation but a pipeline. A raw user query is progressively transformed, evaluated, and constrained until a small, high-quality context set is produced. Each stage trades recall for precision, with early stages favoring breadth and later stages favoring accuracy and relevance.
 
 At a high level, the retrieval process consists of query interpretation and rewriting, candidate generation, scoring, re-ranking, filtering, and combination with structured constraints. While these stages can be collapsed in small systems, large-scale RAG deployments almost always implement them explicitly to control cost, latency, and quality.
 
-### Query interpretation and rewriting
+#### Query interpretation and rewriting
 
 User queries are often underspecified, ambiguous, or conversational. Before retrieval, the system may rewrite the query into one or more canonical forms that are better aligned with the indexed representation of documents. This includes expanding abbreviations, resolving coreferences, normalizing terminology, or decomposing a complex question into multiple sub-queries.
 
@@ -24,7 +24,7 @@ rewritten_query = rewrite_model.generate(
 
 Multiple rewritten queries may be generated to increase recall, with their results merged downstream.
 
-### Candidate generation
+#### Candidate generation
 
 Candidate generation is the first retrieval pass over the corpus. Its purpose is to retrieve a relatively large set of potentially relevant documents with high recall and low computational cost. This stage commonly uses either sparse retrieval (e.g., inverted indexes with BM25), dense vector search over embeddings, or both.
 
@@ -41,7 +41,7 @@ candidates = vector_index.search(
 
 The output of this stage is intentionally noisy. Precision is improved later.
 
-### Scoring and initial ranking
+#### Scoring and initial ranking
 
 Each candidate document is assigned a relevance score with respect to the query. In simple systems, this score may be the similarity returned by the vector database or the BM25 score. In more advanced systems, multiple signals are combined, such as dense similarity, sparse similarity, document freshness, or domain-specific heuristics.
 
@@ -49,7 +49,7 @@ Formally, scoring can be expressed as a function
 $s(d, q) \rightarrow \mathbb{R}$,
 where $d$ is a document and $q$ is the rewritten query. At this stage, the goal is to produce a reasonably ordered list, not a final ranking.
 
-### Re-ranking with cross-encoders or task-aware models
+#### Re-ranking with cross-encoders or task-aware models
 
 Re-ranking refines the initial ranking using more expensive but more accurate models. Instead of independently embedding queries and documents, re-rankers jointly encode the query–document pair, allowing fine-grained interaction between their tokens. This substantially improves precision, especially at the top of the ranking.
 
@@ -66,7 +66,7 @@ reranked = reranker.score_pairs(
 
 The result is a high-precision ordering optimized for downstream generation rather than generic relevance.
 
-### Filtering and constraints
+#### Filtering and constraints
 
 Filtering removes candidates that are irrelevant or invalid given explicit constraints. These constraints often come from metadata, such as document type, access permissions, time ranges, language, or domain tags. Filtering can be applied before retrieval to reduce the search space, after retrieval to prune results, or at both stages.
 
@@ -80,7 +80,7 @@ filtered = [
 ]
 ```
 
-### Combined strategies: metadata, SQL, and embeddings
+#### Combined strategies: metadata, SQL, and embeddings
 
 Modern retrieval pipelines frequently combine symbolic and vector-based approaches. A common pattern is to use structured queries (e.g., SQL or metadata filters) to narrow the candidate set, followed by dense similarity search within that subset. This hybrid approach exploits the strengths of both paradigms: exactness and interpretability from structured filters, and semantic generalization from embeddings.
 
@@ -90,11 +90,11 @@ where $m$ represents structured metadata constraints.
 
 This combination is especially powerful in domains with rich schemas, such as scientific literature, enterprise knowledge bases, or regulatory documents.
 
-### Retrieval as a system, not a single model
+#### Retrieval as a system, not a single model
 
 A key insight in modern RAG is that retrieval quality emerges from the interaction of stages rather than from any single algorithm. Query rewriting increases recall, candidate generation ensures coverage, scoring and re-ranking enforce relevance, and filtering guarantees validity. Treating retrieval as a modular pipeline allows systematic evaluation, targeted optimization, and controlled trade-offs between cost and quality.
 
-### Putting it together: a simple RAG pipeline
+#### Putting it together: a simple RAG pipeline
 
 In its simplest form, a RAG system can be described as a linear pipeline: ingest documents, retrieve relevant chunks, and generate an answer conditioned on them. The following pseudocode illustrates the core idea, omitting implementation details:
 

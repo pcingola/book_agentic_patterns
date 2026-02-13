@@ -7,7 +7,7 @@ In practical MCP systems, tools are not an auxiliary feature; they are the core 
 This section focuses on how tools work *in practice*, with concrete examples drawn from common MCP server implementations such as FastMCP, and how errors and failures propagate back into an agent loop typically implemented with frameworks like Pydantic-AI.
 
 
-### From functions to tools: contracts, not code
+#### From functions to tools: contracts, not code
 
 Although tools are often implemented as ordinary functions, MCP deliberately erases that fact at the protocol boundary. What the model sees is never the function itself, only a declarative description derived from it.
 
@@ -31,7 +31,7 @@ When exposed via an MCP server, this function is translated into a tool definiti
 At this point, the function body becomes irrelevant to the protocol. The model reasons entirely over the contract. This separation allows the server to validate inputs, enforce permissions, and reject invalid requests before execution.
 
 
-### Tool invocation as structured output
+#### Tool invocation as structured output
 
 From the model’s perspective, invoking a tool is an act of structured generation. The model emits a message that must conform exactly to the tool’s schema. Conceptually, the output looks like this:
 
@@ -51,7 +51,7 @@ The MCP server validates this payload against the schema derived from the functi
 This is the first and most important safety boundary in MCP. Tool calls are not “best effort”. They are either valid or they do not run.
 
 
-### Protocol errors and tool execution errors
+#### Protocol errors and tool execution errors
 
 MCP distinguishes two categories of failure: **protocol errors** and **tool execution errors**.
 
@@ -89,14 +89,14 @@ Tool execution errors, by contrast, are reported inside the tool result with `is
 This distinction matters for agent behavior. Tool execution errors contain actionable feedback that the model can use to self-correct and retry with different arguments. Protocol errors indicate structural issues that the model is less likely to fix on its own. The MCP specification recommends that clients should provide tool execution errors to the model to enable self-correction.
 
 
-### How tool errors propagate into the agent loop
+#### How tool errors propagate into the agent loop
 
 In agentic systems, tool execution is embedded in a reasoning-action loop. A tool result with `isError: true` is injected back into the model's context as an observation, not as an exception that crashes the system. The model reads the error message, reasons about what went wrong, and decides its next action -- perhaps retrying with corrected arguments, choosing a different approach, or asking the user for help.
 
 This is where MCP's design aligns naturally with typed agent frameworks. Errors are values that flow through the same channel as successful results. The model can inspect them, reason over them, and act accordingly.
 
 
-### Retryable vs fatal errors in practice
+#### Retryable vs fatal errors in practice
 
 MCP does not define retry semantics, and this is by design. Retries depend on context that only the agent or orchestrator can see: task intent, execution history, side effects already performed, and external constraints.
 

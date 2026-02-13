@@ -2,7 +2,7 @@
 
 Vector databases are specialized data systems designed to store high-dimensional vectors and efficiently retrieve the most similar vectors to a given query.
 
-### How vector databases work
+#### How vector databases work
 
 At a conceptual level, a vector database manages three tightly coupled concerns: storage, indexing, and similarity search. Each document, chunk, or entity is represented as a numerical vector produced by an embedding model. These vectors are stored alongside identifiers and optional metadata, but the primary operation is not key-value lookup—it is similarity search.
 
@@ -10,7 +10,7 @@ When a query arrives, it is first embedded into the same vector space. The datab
 
 In practice, a vector database behaves less like a traditional relational database and more like a search engine optimized for continuous spaces. Insertions update both raw storage and index structures; queries traverse those indexes to produce a ranked list of candidate vectors, often combined with metadata filtering before final results are returned.
 
-### Similarity metrics
+#### Similarity metrics
 
 Similarity metrics define what it means for two vectors to be “close.” The choice of metric is not incidental; it encodes assumptions about how embeddings were trained and how magnitude and direction should be interpreted.
 
@@ -18,7 +18,7 @@ Cosine similarity measures the angle between vectors and is invariant to vector 
 
 Most vector databases treat the metric as a first-class configuration, because index structures and optimizations may depend on it. A mismatch between embedding model and similarity metric can significantly degrade retrieval quality, even if the infrastructure itself is functioning correctly.
 
-### Indexing strategies
+#### Indexing strategies
 
 Indexing is the defining feature that distinguishes a vector database from a simple vector store. An index organizes vectors so that nearest-neighbor queries can be answered efficiently without exhaustive comparison.
 
@@ -28,13 +28,13 @@ Graph-based indexes represent vectors as nodes in a graph, with edges connecting
 
 Quantization-based approaches compress vectors into more compact representations, reducing memory footprint and improving cache efficiency. While quantization introduces approximation error, it often yields favorable trade-offs for large-scale deployments.
 
-### Core vector database algorithms
+#### Core vector database algorithms
 
 Most production vector databases rely on a small family of ANN algorithms, often combined or layered for better performance. Hierarchical Navigable Small World (HNSW) graphs build multi-layer proximity graphs that enable logarithmic-like search behavior in practice. Inverted file (IVF) indexes first cluster vectors and then search only within the most relevant clusters. Product quantization (PQ) decomposes vectors into subspaces and encodes them compactly, enabling fast distance estimation.
 
 These algorithms are rarely used in isolation. A common pattern is coarse partitioning (such as IVF) followed by graph-based or quantized search within partitions. The database exposes high-level configuration knobs—index type, efSearch, nprobe, recall targets—but internally orchestrates multiple algorithmic stages to balance latency, recall, and memory usage.
 
-### Vector databases in RAG systems
+#### Vector databases in RAG systems
 
 In a RAG architecture, the vector database acts as the semantic memory layer. Document chunks are embedded and indexed once during ingestion, while user queries are embedded and searched at runtime. The quality of retrieval depends jointly on embedding quality, similarity metric, index choice, and search parameters. As a result, vector databases are not passive storage components but active participants in the behavior of the overall system.
 
@@ -44,11 +44,11 @@ Tuning a RAG system often involves iterative adjustments to vector database conf
 
 The following sections provide a more formal treatment of the algorithms underlying vector databases. Readers primarily interested in practical usage may skip ahead; those seeking deeper understanding of the trade-offs between index types, approximation guarantees, and computational complexity will find the mathematical foundations useful for informed system design.
 
-### Core Vector Database Algorithms
+#### Core Vector Database Algorithms
 
 Vector databases are fundamentally concerned with solving the *nearest neighbor search* problem in high-dimensional continuous spaces. The practical design of these systems is best understood by starting from the formal problem definition and then examining how successive algorithmic relaxations make large-scale retrieval tractable.
 
-### Formal problem definition
+#### Formal problem definition
 
 Let
 $$
@@ -70,7 +70,7 @@ $$
 
 A brute-force solution requires $O(nd)$ operations per query, which is computationally infeasible for large $n$. The central challenge addressed by vector database algorithms is to reduce this complexity while preserving ranking quality.
 
-### High-dimensional effects and approximation
+#### High-dimensional effects and approximation
 
 As dimensionality increases, distances between points concentrate. For many distributions, the ratio
 $$
@@ -85,7 +85,7 @@ where $x^*$ is the true nearest neighbor.
 
 All modern vector database algorithms can be understood as structured approximations to this relaxed objective.
 
-### Partition-based search: Inverted File Index (IVF)
+#### Partition-based search: Inverted File Index (IVF)
 
 The inverted file index reduces search complexity by introducing a *coarse quantization* of the vector space. Let
 $$
@@ -107,7 +107,7 @@ d_j = |q - c_j|
 $$
 Then, only the vectors stored in the $n_{\text{probe}}$ closest buckets are searched exhaustively.
 
-#### IVF query algorithm (pseudo-code)
+##### IVF query algorithm (pseudo-code)
 
 ```
 function IVF_SEARCH(query q, centroids C, buckets B, n_probe):
@@ -123,7 +123,7 @@ O(kd + \frac{n}{k} \cdot n_{\text{probe}} \cdot d)
 $$
 which is sublinear in $n$ for reasonable values of $k$ and $n_{\text{probe}}$.
 
-### Vector compression: Product Quantization (PQ)
+#### Vector compression: Product Quantization (PQ)
 
 Product Quantization further reduces computational and memory costs by compressing vectors. The original space $\mathbb{R}^d$ is decomposed into $m$ disjoint subspaces:
 $$
@@ -145,7 +145,7 @@ $$
 \delta(q, x) \approx \sum_{j=1}^{m} | q^{(j)} - c_{Q_j(x)}^{(j)} |^2
 $$
 
-#### PQ distance computation (pseudo-code)
+##### PQ distance computation (pseudo-code)
 
 ```
 function PQ_DISTANCE(query q, codes c, lookup_tables T):
@@ -157,7 +157,7 @@ function PQ_DISTANCE(query q, codes c, lookup_tables T):
 
 Theoretical justification comes from rate–distortion theory: PQ minimizes expected reconstruction error under constrained bit budgets. Empirically, it preserves relative ordering sufficiently well for ranking-based retrieval.
 
-### Hash-based search: Locality-Sensitive Hashing (LSH)
+#### Hash-based search: Locality-Sensitive Hashing (LSH)
 
 Locality-Sensitive Hashing constructs hash functions $h \in \mathcal{H}$ such that
 $$
@@ -178,7 +178,7 @@ $$
 
 Despite strong theoretical guarantees, LSH often underperforms graph-based methods in dense embedding spaces typical of neural models.
 
-### Graph-based search: Navigable small-world graphs and HNSW
+#### Graph-based search: Navigable small-world graphs and HNSW
 
 Graph-based methods model the dataset as a proximity graph $G = (V, E)$, where each node corresponds to a vector. Search proceeds via greedy graph traversal:
 $$
@@ -192,7 +192,7 @@ $$
 
 Upper layers are sparse and provide long-range connections, while lower layers are dense and preserve local neighborhoods.
 
-#### HNSW search algorithm (simplified)
+##### HNSW search algorithm (simplified)
 
 ```
 function HNSW_SEARCH(query q, entry e, graph G):
@@ -204,13 +204,13 @@ function HNSW_SEARCH(query q, entry e, graph G):
 
 Theoretical intuition comes from small-world graph theory: the presence of long-range links reduces graph diameter, while local edges enable precise refinement. Expected search complexity is close to $O(\log n)$, with high recall even in large, high-dimensional datasets.
 
-### Algorithmic composition in vector databases
+#### Algorithmic composition in vector databases
 
 In practice, vector databases compose these algorithms hierarchically. A typical pipeline applies IVF to reduce the candidate set, PQ to compress vectors and accelerate distance computation, and graph-based search to refine nearest neighbors. Each stage introduces controlled approximation while drastically reducing computational cost.
 
 This layered structure mirrors the mathematical decomposition of the nearest neighbor problem: spatial restriction, metric approximation, and navigational optimization.
 
-### Implications for RAG systems
+#### Implications for RAG systems
 
 In Retrieval-Augmented Generation, these algorithms define the semantic recall boundary of the system. Errors in retrieval are often consequences of approximation layers rather than embedding quality. Understanding the mathematical and algorithmic foundations of vector databases is therefore essential for diagnosing failure modes, tuning recall–latency trade-offs, and designing reliable RAG pipelines.
 

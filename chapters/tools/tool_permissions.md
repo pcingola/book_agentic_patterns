@@ -2,7 +2,7 @@
 
 Tool permissions define the explicit authority boundaries that govern what an agent is allowed to observe, query, or mutate when interacting with external systems.
 
-### Tool permissions in agentic systems
+#### Tool permissions in agentic systems
 
 In an agentic system, tools are not neutral utilities. Each tool represents a channel through which the agent can affect or learn about the world. Tool permissions therefore serve three closely related goals:
 
@@ -14,7 +14,7 @@ Unlike traditional applications, agents dynamically decide *when* and *how* to i
 
 A useful mental model is to treat every tool invocation as a privileged operation that must be explicitly justified by the agent’s role and current task.
 
-### Read vs write permissions
+#### Read vs write permissions
 
 The most fundamental distinction is between **read** and **write** capabilities.
 
@@ -43,7 +43,7 @@ def update_record(record_id: str, payload: dict) -> None:
 
 The critical point is not the function signature itself, but the **permission metadata** attached to it and enforced by the agent runtime.
 
-### Permission to connect and external access
+#### Permission to connect and external access
 
 A particularly sensitive permission is the ability to **connect to external systems**, such as the public internet or third-party APIs.
 
@@ -66,7 +66,7 @@ def web_search(query: str) -> list[str]:
 
 Here, the gateway—not the agent—enforces logging, filtering, and redaction, ensuring that private context never leaves the trust boundary.
 
-### Prompt leaking and contextual integrity
+#### Prompt leaking and contextual integrity
 
 Prompt leaking is a uniquely agentic failure mode. Because agents reason over rich internal context, they may inadvertently embed that context into tool inputs. For example, a search query might include proprietary information simply because it was salient in the agent’s reasoning trace.
 
@@ -78,7 +78,7 @@ Permissions mitigate this by enforcing **contextual integrity**: tools receive o
 
 The key insight is that permission checks are not only about *whether* a tool can be called, but also about *what information* is allowed to flow through that call.
 
-### Permissions as an architectural boundary
+#### Permissions as an architectural boundary
 
 In mature agentic systems, tool permissions become an architectural primitive rather than an afterthought. They define clear responsibility boundaries between:
 

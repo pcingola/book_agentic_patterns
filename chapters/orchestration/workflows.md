@@ -2,7 +2,7 @@
 
 A workflow is an explicit sequence of stages that coordinates multiple agent steps into a linear execution pipeline. Rather than a single agent reasoning end-to-end, the system is decomposed into stages with well-defined responsibilities, and an orchestrator controls the order of execution.
 
-### The workflow pattern
+#### The workflow pattern
 
 At its core, a workflow defines:
 
@@ -19,7 +19,7 @@ draft = await draft_agent.run(outline)
 final = await editor_agent.run(draft)
 ```
 
-### Why workflows matter
+#### Why workflows matter
 
 Workflows separate *what* an agent reasons about from *how* execution progresses. This makes the system predictable and auditable: when something goes wrong, you know which stage failed and what inputs it received. Each stage can be tested, logged, and retried independently.
 

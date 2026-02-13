@@ -2,7 +2,7 @@
 
 The REPL pattern enables an agent to iteratively execute code in a shared, stateful environment, providing immediate feedback while preserving the illusion of a continuous execution context.
 
-### The REPL pattern in agentic systems
+#### The REPL pattern in agentic systems
 
 In an agent setting, a REPL is not merely a convenience for developers; it is a reasoning primitive. The agent alternates between generating code, executing it, observing outputs or errors, and deciding what to do next. This loop allows the agent to ground abstract reasoning in concrete runtime behavior.
 
@@ -21,7 +21,7 @@ First, **state continuity**. Each execution step must see the effects of previou
 
 Second, **isolation and safety**. Arbitrary code execution is dangerous in long-running systems. Modern REPL designs therefore decouple *logical continuity* from *physical isolation*: each execution runs in a constrained environment, yet the system reconstructs enough context to make the experience appear continuous.
 
-### The notebook and cell model
+#### The notebook and cell model
 
 A natural way to organize a REPL for agents is to borrow the notebook metaphor from Jupyter. A **notebook** represents a session: it owns a shared namespace, tracks execution history, and persists its state to disk. Each unit of code submitted for execution is a **cell**.
 
@@ -29,7 +29,7 @@ A cell progresses through a lifecycle: IDLE when created, RUNNING during executi
 
 This model gives the REPL a clear structure. The notebook manages the shared namespace, the accumulated import and function declarations, and the persistence lifecycle. Cells are self-contained execution units that can be inspected, re-run, or deleted independently.
 
-### Process isolation with a persistent-state illusion
+#### Process isolation with a persistent-state illusion
 
 A robust REPL for agents executes each cell in a fresh subprocess. This avoids crashes, memory leaks, and infinite loops from destabilizing the host system. To preserve continuity, the namespace is serialized before execution and restored afterward.
 
@@ -61,7 +61,7 @@ The important constraint is that only picklable objects can persist. Modules, op
 
 Some objects require special handling. For example, openpyxl workbooks are not directly picklable, but they can be saved to temporary files and restored via a lightweight reference object. The reference carries the path to the temp file; when the next cell executes, the workbook is reloaded from disk. This pattern generalizes to any complex object that supports save/load semantics but not pickle.
 
-### Sandboxing
+#### Sandboxing
 
 Process isolation alone does not provide meaningful security. The subprocess inherits the host's filesystem access, network, and process namespace. A production REPL needs a sandbox layer that restricts what the subprocess can do.
 
@@ -71,7 +71,7 @@ On macOS and in development environments where bubblewrap is not available, the 
 
 One useful refinement is **data-driven network isolation**. If a session has been flagged as containing private data (for example, after loading sensitive files), the sandbox enables network isolation automatically. This prevents exfiltration of sensitive data through code execution, even if the agent or user does not explicitly request it.
 
-### Import and function tracking
+#### Import and function tracking
 
 One subtle challenge in isolated REPL execution is that imports and function definitions do not survive process boundaries. A common solution is to treat them as *replayable declarations*.
 
@@ -94,7 +94,7 @@ exec(current_code, namespace)
 
 This approach preserves developer- and agent-defined APIs across executions without requiring unsafe object sharing.
 
-### Output capture as first-class data
+#### Output capture as first-class data
 
 For agents, execution output is not only for human inspection; it is input to the next reasoning step. A REPL therefore treats outputs as structured data rather than raw text.
 
@@ -104,7 +104,7 @@ A particularly important output is the **last-expression value**. Following the 
 
 Separating *output storage* from *output references* is also important. Binary data such as images can be stored internally as raw bytes and exposed to the agent or client via lightweight references (a URI like `notebook://cell/0/image/0`). This prevents large binary payloads from bloating every response.
 
-### Asynchronous execution and concurrency
+#### Asynchronous execution and concurrency
 
 In agent platforms, REPL execution often happens inside servers that must remain responsive. Even though the sandbox itself uses `asyncio.create_subprocess_exec` (which is async), the agent's code running inside the subprocess can be CPU-intensive -- data transformations, model training, heavy computation -- and the subprocess communication can block for the duration. Running this directly on the event loop would stall all other concurrent requests.
 
@@ -145,13 +145,13 @@ class Cell(BaseModel):
 
 The `asyncio.to_thread` call is the key boundary: it moves the blocking work off the main event loop's thread, so the server remains responsive to other requests. Inside the worker thread, `asyncio.new_event_loop()` creates a private loop that drives the async subprocess communication. This pattern allows multiple agents or sessions to execute cells concurrently without blocking each other.
 
-### Sessions, persistence, and multi-user concerns
+#### Sessions, persistence, and multi-user concerns
 
 Unlike a local shell, an agent REPL usually operates in a multi-user environment. Each notebook is scoped to a `(user_id, session_id)` pair and persisted to a well-known path on disk (`WORKSPACE_DIR / user_id / session_id / mcp_repl / cells.json`). The notebook saves its state -- all cells with their code, outputs, and metadata -- after every operation (add, execute, delete, clear). This ensures that work is not lost and that sessions can be resumed after failures.
 
 Persistence also enables secondary capabilities. The notebook can be exported to Jupyter's `.ipynb` format, making it possible to continue work in a standard notebook interface or share results with collaborators who do not use the agent platform.
 
-### Best practices distilled
+#### Best practices distilled
 
 Several best practices consistently emerge when implementing REPLs for agents.
 

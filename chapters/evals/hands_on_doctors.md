@@ -4,7 +4,7 @@ Doctors are AI-powered quality analyzers that evaluate artifacts used in agentic
 
 The doctor pattern addresses a common challenge: as agentic systems grow, the quality of their components becomes harder to verify manually. A prompt that seems clear to its author may confuse the model. A tool definition missing type hints forces the model to guess about expected inputs. Doctors automate this quality assessment, catching issues before they cause problems in production.
 
-## The Doctor Architecture
+### The Doctor Architecture
 
 All doctors share a common base class that handles batching and provides a consistent interface:
 
@@ -21,7 +21,7 @@ The `analyze` method handles a single artifact. The `analyze_batch` method proce
 
 Recommendations follow a structured format with severity levels (error, warning, info) and categories (naming, documentation, types, clarity, etc.). The `needs_improvement` flag provides a quick pass/fail signal for CI integration.
 
-## PromptDoctor: Analyzing Prompts
+### PromptDoctor: Analyzing Prompts
 
 PromptDoctor evaluates prompt templates for clarity, completeness, and potential ambiguity. It extracts placeholders (like `{variable_name}`) and assesses whether the prompt provides sufficient context for the model to produce useful outputs.
 
@@ -49,7 +49,7 @@ This prompt establishes role (technical writer), defines the task (summarize), p
 
 PromptDoctor can also analyze prompt files directly by passing a `Path` object. This integrates naturally into CI pipelines where prompts are stored as markdown files in a `prompts/` directory.
 
-## ToolDoctor: Analyzing Tool Functions
+### ToolDoctor: Analyzing Tool Functions
 
 ToolDoctor examines Python function definitions that serve as agent tools. It checks for proper naming, type hints, docstrings, and argument documentation.
 
@@ -77,7 +77,7 @@ def search_database(query: str, limit: int = 10) -> list[dict]:
 
 The function name describes its purpose. Parameters have types and sensible defaults. The docstring explains both behavior and return value structure. The return type annotation completes the interface definition. The model can use this tool confidently because all necessary information is explicit.
 
-## MCPDoctor: Analyzing MCP Server Tools
+### MCPDoctor: Analyzing MCP Server Tools
 
 MCPDoctor connects to an MCP (Model Context Protocol) server and analyzes all exposed tools. This extends tool analysis to external services that provide tools via the MCP protocol.
 
@@ -110,7 +110,7 @@ def add_numbers(a: int, b: int) -> int:
 
 MCPDoctor applies the same quality criteria as ToolDoctor, but operates on remote tools rather than local functions. This enables quality gates for third-party MCP servers before integrating them into an agent.
 
-## A2ADoctor: Analyzing Agent Cards
+### A2ADoctor: Analyzing Agent Cards
 
 A2ADoctor evaluates agent cards, the metadata that A2A (Agent-to-Agent) servers expose at `/.well-known/agent-card.json`. Agent cards describe an agent's capabilities, skills, and interface, enabling other agents to discover and interact with it.
 
@@ -139,7 +139,7 @@ app = agent.to_a2a(
 
 The description explains what the agent does. Skills are explicitly listed with their own names, descriptions, and tags. Other agents can make informed decisions about when and how to delegate tasks.
 
-## SkillDoctor: Analyzing Agent Skills
+### SkillDoctor: Analyzing Agent Skills
 
 SkillDoctor analyzes Agent Skills (agentskills.io format) for compliance and quality. Agent Skills are self-contained packages that provide agents with capabilities, similar to how MCP servers expose tools but focused on agent-executable instructions and scripts.
 
@@ -189,7 +189,7 @@ Counts lines, words, and characters in a text file. Accepts a file path as argum
 
 The name follows the specification format and matches the directory. The description explains both what the skill does and when to use it. Scripts are documented with usage examples and expected output. The accompanying script includes a docstring, type hints, and proper error handling.
 
-## CLI Integration
+### CLI Integration
 
 Doctors are available as command-line tools for CI/CD integration:
 
@@ -212,7 +212,7 @@ python -m agentic_patterns.core.doctors skill ./my-skill/
 
 Each command returns a non-zero exit code if any artifact needs improvement, enabling use as a quality gate in CI pipelines. The `--verbose` flag provides detailed output for debugging.
 
-## When to Use Doctors
+### When to Use Doctors
 
 Doctors fit naturally into development workflows at several points.
 
@@ -224,7 +224,7 @@ In CI pipelines, doctors serve as quality gates. A failing doctor check blocks d
 
 For third-party integrations, MCPDoctor and A2ADoctor evaluate external services before connecting them to your agents. This guards against integrating poorly documented tools that might confuse your agent or produce unreliable results.
 
-## Limitations
+### Limitations
 
 Doctors use an LLM to assess quality, which introduces non-determinism. The same artifact might receive slightly different assessments across runs. For critical decisions, run doctors multiple times or use the structured `needs_improvement` flag rather than individual issue details.
 

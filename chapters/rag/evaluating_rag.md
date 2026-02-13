@@ -2,11 +2,11 @@
 
 Evaluating a Retrieval-Augmented Generation (RAG) system means measuring, in a principled way, how well retrieval and generation jointly support factual, relevant, and grounded answers.
 
-### Evaluation layers in RAG systems
+#### Evaluation layers in RAG systems
 
 A modern RAG system is best evaluated as a pipeline with interacting components rather than a single black box. Each layer answers a different question: *are we retrieving the right things, are we selecting the right evidence, and does the final answer correctly use that evidence?*
 
-### Metrics for vector search
+#### Metrics for vector search
 
 Vector search evaluation focuses on the quality of nearest-neighbor retrieval in embedding space, independent of any downstream generation. The goal is to assess whether semantically relevant items are geometrically close to the query embedding.
 
@@ -27,7 +27,7 @@ def hit_at_k(retrieved_ids, relevant_ids, k):
 This level of evaluation answers the question: *given a query embedding, does the vector index surface semantically relevant candidates?* It does not tell us whether these candidates are actually useful for answering the question.
 
 
-### Metrics for document retrieval
+#### Metrics for document retrieval
 
 Document retrieval metrics evaluate the effectiveness of the full retrieval stack, which may include query rewriting, filtering, hybrid search, and re-ranking. Unlike pure vector search, this level is concerned with the *final set of documents passed to the generator*.
 
@@ -38,7 +38,7 @@ Evaluation at this level often relies on human annotation or weak supervision, s
 Conceptually, this layer answers: *does the system retrieve the right evidence, in the right form, for generation?*
 
 
-### End-to-end RAG metrics
+#### End-to-end RAG metrics
 
 End-to-end evaluation treats the RAG system as a whole and measures the quality of the final answer. This is the most user-visible layer and the hardest to evaluate reliably.
 
@@ -61,7 +61,7 @@ def judge_groundedness(answer, context):
 This level answers the question users actually care about: *does the system produce a correct, well-supported answer?*
 
 
-### Measuring improvements in RAG systems
+#### Measuring improvements in RAG systems
 
 Evaluating a single snapshot of a RAG system is rarely sufficient. What matters in practice is measuring *improvement* as the system evolves.
 

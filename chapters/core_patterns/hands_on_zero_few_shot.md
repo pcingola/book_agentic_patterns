@@ -2,7 +2,7 @@
 
 This section demonstrates when few-shot prompting becomes necessary by comparing one task where zero-shot works and one where it fails.
 
-## Example 1: Zero-shot Works Well
+### Example 1: Zero-shot Works Well
 
 Sentiment analysis is a standard task well-represented in training data. The model already understands positive, negative, and neutral sentiments from its pre-training.
 
@@ -18,7 +18,7 @@ print(agent_run.result.output)  # "positive"
 
 This works because sentiment classification has clear, universal definitions. The model doesn't need examples to understand what makes text positive versus negative.
 
-## Example 2: Few-shot Is Essential
+### Example 2: Few-shot Is Essential
 
 Classifying GitHub issues as bugs versus feature requests has ambiguous boundaries. Consider this issue:
 
@@ -28,7 +28,7 @@ Classifying GitHub issues as bugs versus feature requests has ambiguous boundari
 
 Is this a bug or a feature request? It depends on your definition. If wildcard search was promised but doesn't work, it's a bug. If it was never implemented, it's a feature request.
 
-### Zero-shot Attempt
+#### Zero-shot Attempt
 
 ```python
 system_prompt = """Classify GitHub issues as either 'bug' or 'feature_request'.
@@ -41,7 +41,7 @@ agent_run, _ = await run_agent(agent, issue)
 
 The model must guess your classification criteria. Different runs may produce inconsistent results for ambiguous cases.
 
-### Few-shot Solution
+#### Few-shot Solution
 
 Examples establish the boundary rule: broken functionality is a bug, missing functionality is a feature request.
 
@@ -71,7 +71,7 @@ agent_run, _ = await run_agent(agent, issue)
 
 The examples clarify that "doesn't support" means missing functionality, making it a feature request. Without examples, this boundary remains ambiguous.
 
-## Key Takeaways
+### Key Takeaways
 
 Zero-shot prompting works for tasks with clear, universal definitions that are well-represented in training data.
 

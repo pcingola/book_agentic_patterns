@@ -2,7 +2,7 @@
 
 The Coder is the simplest useful agent: it writes files and executes them. Its tools come from two modules -- file operations (`agentic_patterns/tools/file.py`) for workspace I/O and a sandbox (`agentic_patterns/tools/sandbox.py`) for Docker execution. Both follow the same pattern used by all tool modules in the library: a `get_all_tools()` function returns a list of plain functions passed directly to PydanticAI's `Agent(tools=[...])`.
 
-### System Prompt
+#### System Prompt
 
 The prompt (`prompts/the_complete_agent/agent_coder.md`) establishes three things: where files live, how execution works, and what workflow to follow.
 
@@ -10,7 +10,7 @@ The workspace section tells the agent that `/workspace/` is its persistent stora
 
 This prompt is intentionally short. The agent does not need detailed instructions about each tool because PydanticAI injects tool descriptions automatically from the function docstrings. The prompt's job is to explain the environment and the workflow -- the tools explain themselves.
 
-### Tool Composition
+#### Tool Composition
 
 Building the agent requires loading the prompt, collecting tools from both modules, and passing them to `get_agent()`:
 
@@ -23,7 +23,7 @@ agent = get_agent(system_prompt=system_prompt, tools=tools)
 
 `get_file_tools()` returns file operations (read, write, edit, find, list, etc.) and `get_sandbox_tools()` returns `sandbox_execute`. Plain list concatenation produces the full tool list. No registration, no configuration -- just functions.
 
-### Execution
+#### Execution
 
 Running the agent is a single call:
 
@@ -35,7 +35,7 @@ The `verbose=True` flag logs each step of the agent's execution: tool calls, too
 
 When given a task like "write a Fibonacci script, save it, and run it", the agent typically follows a predictable pattern. It calls `file_write` to create the script in `/workspace/`, then calls `sandbox_execute` to run it inside Docker, and finally reports the output. If the script fails (syntax error, runtime error), the agent sees the error in the sandbox output and can iterate -- reading the file, fixing the issue, and re-executing.
 
-### What This Demonstrates
+#### What This Demonstrates
 
 The Coder implements the CodeAct pattern from the core patterns chapter, but with real infrastructure instead of an in-memory sandbox. The workspace persists across tool calls, the sandbox provides Docker isolation, and the file tools give the agent fine-grained control over its files. The agent can write, read, edit, search, and delete files -- not just create them.
 

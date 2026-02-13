@@ -4,13 +4,13 @@ Graphs model agent execution as explicit state machines where nodes represent wo
 
 This hands-on explores graph-based orchestration through `example_graph.ipynb`, building a document quality review loop that demonstrates typed state, conditional edges, and refinement cycles.
 
-## The Problem with Implicit Control Flow
+### The Problem with Implicit Control Flow
 
 When control logic is embedded in prompts or scattered across code, reasoning about system behavior becomes difficult. Questions like "what happens if the quality check fails?" or "how many times can the system retry?" require tracing through prompts and conditionals. Bugs hide in implicit assumptions.
 
 Graphs externalize this control flow. Each possible path through the system is visible in the graph structure. Transitions are explicit, exit conditions are auditable, and the entire execution flow can be visualized before running.
 
-## Typed State as Contract
+### Typed State as Contract
 
 The example defines state as a dataclass:
 
@@ -29,7 +29,7 @@ This state flows through the graph, accumulating results from each node. The typ
 
 The state also captures operational metadata like `revision_count` and `max_revisions`. This makes termination conditions explicit in the data structure itself, not hidden in scattered conditionals.
 
-## Nodes as Units of Work
+### Nodes as Units of Work
 
 Each node is a dataclass with a `run` method. The return type annotation determines which nodes can follow:
 
@@ -45,7 +45,7 @@ class GenerateDraft(BaseNode[DocumentState]):
 
 Nodes access and modify state through `ctx.state`. The context provides a consistent interface regardless of where the node sits in the graph.
 
-## Conditional Edges
+### Conditional Edges
 
 The `EvaluateQuality` node demonstrates conditional transitions through union return types:
 
@@ -66,7 +66,7 @@ The return type `Revise | End[str]` declares that this node can transition to ei
 
 This pattern separates the decision logic (what to do) from the graph structure (what's possible). The graph defines the space of valid behaviors; the node logic navigates within that space.
 
-## Refinement Loops
+### Refinement Loops
 
 The cycle between `EvaluateQuality` and `Revise` implements a refinement loop:
 
@@ -77,7 +77,7 @@ The cycle between `EvaluateQuality` and `Revise` implements a refinement loop:
 
 Because this cycle is explicit in the graph, termination conditions are also explicit. The `max_revisions` check prevents unbounded loops. Both exit paths (quality met, max revisions reached) are visible in the code and in the graph visualization.
 
-## Graph Visualization
+### Graph Visualization
 
 pydantic-graph generates mermaid diagrams from the graph structure:
 
@@ -87,7 +87,7 @@ display(Image(graph.mermaid_image(start_node=GenerateDraft)))
 
 The visualization shows all nodes and their possible transitions, making the control flow immediately apparent. This is valuable for understanding complex graphs, debugging unexpected behavior, and communicating system design to others.
 
-## Execution
+### Execution
 
 Running the graph requires an initial node and state:
 
@@ -99,7 +99,7 @@ result = await graph.run(GenerateDraft(), state=state)
 
 Execution proceeds by calling each node's `run` method, following transitions until reaching an `End` node. The final result contains the output value passed to `End`.
 
-## Why Graphs Matter
+### Why Graphs Matter
 
 Graphs shift orchestration from implicit to explicit. The structure is inspectable before execution, paths can be enumerated, and termination is verifiable. When something goes wrong, the execution trace maps directly to the graph, simplifying debugging.
 

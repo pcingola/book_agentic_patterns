@@ -4,7 +4,7 @@ As conversations grow longer, the accumulated history consumes an increasing sha
 
 The `HistoryCompactor` class in `agentic_patterns.core.context.history` implements this pattern. It monitors token usage across conversation turns and, when a configurable threshold is exceeded, uses an LLM to summarize older messages into a compact narrative. This hands-on explores the pattern through `example_history_compaction.ipynb`.
 
-## The Problem: Unbounded History Growth
+### The Problem: Unbounded History Growth
 
 In a multi-turn conversation, each exchange adds to the history. A simple question-and-answer might consume a few hundred tokens. But after dozens of turns, especially with detailed responses or tool outputs, the history can easily reach tens of thousands of tokens.
 
@@ -23,7 +23,7 @@ prompts = [
 
 Each prompt builds on the previous discussion. Without compaction, the full history must be carried forward. With compaction, older exchanges are summarized while maintaining conversation continuity.
 
-## Configuring the Compactor
+### Configuring the Compactor
 
 The `CompactionConfig` class defines when compaction triggers and what reduction target to aim for:
 
@@ -38,7 +38,7 @@ The `max_tokens` threshold determines when compaction activates. When the incomi
 
 The compactor uses tiktoken for accurate token counting rather than character-based estimates. This ensures compaction triggers at the right time regardless of message content.
 
-## History Processors in PydanticAI
+### History Processors in PydanticAI
 
 PydanticAI agents support history processors: functions that intercept and transform the message history before each agent call. The compactor integrates through this mechanism.
 
@@ -81,7 +81,7 @@ Note that PydanticAI accepts both `history_processor` (singular, for a single fu
 
 This custom processor wraps `compactor.compact()` and captures before/after statistics for display. Without this instrumentation, you wouldn't see the token reduction happening. The key insight is that the processor receives the accumulated message history before each agent call. It can inspect, transform, or replace that history.
 
-## Observing Compaction in Action
+### Observing Compaction in Action
 
 The notebook runs four conversation turns, displaying what happens at each step. The output distinguishes between three views of the history.
 
@@ -118,7 +118,7 @@ TURN 2: What are the main benefits?
 
 The compacted history replaces the original exchange with a summary message. This summary provides context for the model to continue the conversation without replaying the full dialogue.
 
-## The Compaction Summary
+### The Compaction Summary
 
 When compaction occurs, older messages are summarized by an LLM into a concise narrative. This summary is wrapped in a continuation prompt:
 
@@ -150,7 +150,7 @@ Summary:"""
 
 This prompt instructs the summarizer to preserve what matters for conversation continuity: key information, decisions, and context. The back-and-forth dialogue structure is collapsed into facts and outcomes.
 
-## Bounded vs Unbounded History
+### Bounded vs Unbounded History
 
 The critical observation from the notebook output is the divergence between what the agent sees and what accumulates.
 
@@ -173,7 +173,7 @@ TURN 4: How does it compare to monolithic architecture?
 
 The conversation can continue indefinitely. Each turn summarizes all prior context, keeping the sent history bounded while the logical conversation grows.
 
-## Tool Call Pairing
+### Tool Call Pairing
 
 The implementation handles a subtle constraint with tool calls. When a message contains a tool return, the preceding tool call must be preserved with it. The OpenAI API returns an error if tool returns appear without their corresponding calls.
 
@@ -192,7 +192,7 @@ def _find_safe_compaction_boundary(self, messages: list[ModelMessage]) -> int:
 
 If no safe boundary exists, compaction is deferred to the next turn when the tool call/return pair can be included together.
 
-## Fallback Behavior
+### Fallback Behavior
 
 When LLM summarization fails or isn't available, the compactor falls back to truncation. It preserves the head and tail of the conversation with a marker indicating removed content:
 
@@ -205,7 +205,7 @@ def _truncate_for_fallback(self, text: str, max_tokens: int) -> str:
 
 This ensures the system degrades gracefully. Truncation is less effective than summarization but maintains conversation continuity.
 
-## Key Takeaways
+### Key Takeaways
 
 History compaction separates what the conversation has accumulated from what the model sees. The full logical history grows unbounded while the effective context stays bounded through summarization.
 

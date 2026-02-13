@@ -2,7 +2,7 @@
 
 The previous hands-on sections covered the raw MCP protocol and how agents use MCP tools. This hands-on explores the broader set of MCP server features through `example_mcp_features.ipynb`: tools, resources, and prompts. These features structure how context and capabilities are exposed to clients.
 
-## The MCP Server
+### The MCP Server
 
 The server in `example_mcp_server_v2.py` demonstrates all three feature types:
 
@@ -33,7 +33,7 @@ def hello_prompt(name: str) -> str:
 
 Each decorator registers a different type of capability. The `@mcp.tool()` decorator exposes a callable function. The `@mcp.resource()` decorator exposes data at a URI pattern. The `@mcp.prompt()` decorator exposes an instruction template.
 
-## The FastMCP Client
+### The FastMCP Client
 
 The notebook uses the FastMCP `Client` class, which provides a programmatic interface for interacting with MCP servers. Unlike the agent integrations shown earlier, this client requires explicit calls and gives direct control over all MCP operations.
 
@@ -50,7 +50,7 @@ async with client:
     # MCP operations here
 ```
 
-## Tools
+### Tools
 
 Tools are the most familiar MCP feature. They expose callable functions that clients can discover and invoke.
 
@@ -76,7 +76,7 @@ async with client:
 
 The server validates arguments against the schema before execution.
 
-## Resources
+### Resources
 
 Resources expose data through URI-addressable endpoints. Unlike tools, which perform actions, resources provide read access to information.
 
@@ -108,7 +108,7 @@ The URI `postgres://mydb/users/schema` matches the template with `database=mydb`
 
 Resources enable workspace-style workflows where artifacts are produced, stored, and retrieved across multiple interactions. They avoid copying large documents into every prompt by making data addressable and fetchable on demand.
 
-## Prompts
+### Prompts
 
 Prompts are server-defined instruction templates. They centralize behavioral contracts on the server side, allowing prompt engineering to evolve independently of client code.
 
@@ -142,7 +142,7 @@ async with client:
 
 The result contains messages ready to be used in a conversation. The client never embeds the instruction text directly; it requests the prompt by name and receives the rendered version. This separation means prompt changes can be deployed server-side without modifying clients.
 
-## How These Features Complement Each Other
+### How These Features Complement Each Other
 
 Tools, resources, and prompts serve different purposes in an MCP architecture:
 
@@ -154,7 +154,7 @@ Tools, resources, and prompts serve different purposes in an MCP architecture:
 
 A typical workflow might retrieve a resource containing relevant data, use a prompt to frame the analysis task, and invoke tools to perform specific operations. Each feature type has a clear role, and the MCP protocol makes them all discoverable and addressable through a uniform interface.
 
-## Key Takeaways
+### Key Takeaways
 
 MCP servers can expose three types of capabilities: tools for actions, resources for data, and prompts for instructions.
 

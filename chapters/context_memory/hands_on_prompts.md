@@ -2,7 +2,7 @@
 
 The effective context an LLM sees is the concatenation of multiple layers: system prompts, developer instructions, and user prompts. Each layer serves a different purpose and has different persistence behavior. This hands-on explores these prompt layers using `example_prompts.ipynb`.
 
-## The Prompt Layers
+### The Prompt Layers
 
 When you send a request to an LLM through an agent framework, the model receives a combined context built from several sources. Understanding these layers helps you design agents with predictable, controllable behavior.
 
@@ -12,7 +12,7 @@ When you send a request to an LLM through an agent framework, the model receives
 
 **User prompts** contain the actual request from the end user, including their goals, preferences, and situational details.
 
-## System Prompts: Persistent Identity
+### System Prompts: Persistent Identity
 
 The notebook begins by creating an agent with only a system prompt:
 
@@ -28,7 +28,7 @@ This system prompt defines three invariants: the agent's role (technical writer)
 
 The `get_agent` function accepts a `system_prompt` parameter that becomes part of the agent's configuration. Every request to this agent will include this system prompt in the context sent to the LLM.
 
-## Instructions: Per-Run Control
+### Instructions: Per-Run Control
 
 Next, the notebook creates an agent with instructions instead:
 
@@ -43,7 +43,7 @@ Instructions serve a similar purpose to system prompts in shaping the agent's be
 
 Running the same prompt ("Explain what a REST API is") with this agent produces a different response style: casual, friendly, and using analogies rather than the concise technical writing style of the first agent.
 
-## Combining Both Layers
+### Combining Both Layers
 
 In practice, you often want both persistent identity and task-specific control. The notebook demonstrates this combination:
 
@@ -58,7 +58,7 @@ The system prompt establishes the agent's expertise domain (Python development),
 
 When asked "What is a list comprehension?", the agent responds as a Python expert (system prompt) and includes a code example (instructions). Both layers contribute to the final response.
 
-## Message History Interaction
+### Message History Interaction
 
 The final section demonstrates how these layers interact with conversation history. In multi-turn conversations, you pass message history to maintain context across turns:
 
@@ -77,7 +77,7 @@ In Turn 2, the agent understands that "it" refers to generators because the mess
 
 The system prompt ("expert Python developer") is part of the stored context and persists across turns. The instructions ("include brief example") are applied fresh on each call by the agent framework. This distinction matters when designing agents that need consistent identity across a conversation while allowing task-specific behavior to evolve.
 
-## Practical Guidelines
+### Practical Guidelines
 
 When designing prompt layers for your agents, consider these principles.
 
@@ -89,6 +89,6 @@ Keep user prompts focused on the actual request. Avoid embedding procedural guid
 
 The effective prompt is the concatenation of all layers. Because LLMs do not truly "remember" across calls, everything you want the model to condition on must be present in the tokens you send. Designing clear boundaries between prompt layers makes it easier to maintain, debug, and evolve your agents.
 
-## Key Takeaways
+### Key Takeaways
 
 Prompts in agentic systems have multiple layers serving different purposes. System prompts define persistent identity and invariants. Instructions provide per-run task control. User prompts carry the actual request. Understanding which content belongs in each layer, and how each layer interacts with message history, is essential for building predictable and maintainable agents.
