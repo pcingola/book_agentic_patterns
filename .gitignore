@@ -1,6 +1,8 @@
 # Project specific
 PROMPT.md
 output/
+!output/book.md
+!output/book.pdf
 data/
 aixtools/
 

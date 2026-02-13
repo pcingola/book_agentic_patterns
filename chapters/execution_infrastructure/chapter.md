@@ -14,6 +14,4 @@
 
 [Hands-On: MCP Server Isolation](./hands_on_mcp_isolation.md)
 
-## References
-
 [References](./references.md)

@@ -15980,8 +15980,6 @@ The `is_isolated` property flipped from `False` to `True`. From this point on, e
 
 ## References
 
-## References
-
 [Bubblewrap](https://github.com/containers/bubblewrap) -- Unprivileged sandboxing tool using Linux user namespaces. Used for lightweight process, filesystem, and network isolation without requiring root or a container runtime.
 
 [Docker](https://docs.docker.com/) -- Container platform providing heavyweight process isolation with cgroup resource limits, full network namespace control, and image-based reproducibility. Used for production multi-tenant sandboxes and MCP server isolation.
