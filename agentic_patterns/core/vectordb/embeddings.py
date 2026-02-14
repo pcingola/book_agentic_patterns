@@ -58,8 +58,12 @@ def _create_embedder(config: EmbeddingConfig) -> Embedder:
             )
             return Embedder(model_str, settings=settings)
         case OllamaEmbeddingConfig():
-            model_str = f"ollama:{config.model_name}"
-            return Embedder(model_str)
+            from pydantic_ai.embeddings.openai import OpenAIEmbeddingModel
+            from pydantic_ai.providers.ollama import OllamaProvider
+
+            provider = OllamaProvider(base_url=config.url)
+            model = OpenAIEmbeddingModel(config.model_name, provider=provider)
+            return Embedder(model)
         case SentenceTransformersEmbeddingConfig():
             from pydantic_ai.embeddings.sentence_transformers import (
                 SentenceTransformersEmbeddingSettings,
