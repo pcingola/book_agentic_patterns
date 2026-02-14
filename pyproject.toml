@@ -45,11 +45,16 @@ doctors = "agentic_patterns.core.doctors.__main__:main_sync"
 evals = "agentic_patterns.core.evals.__main__:main_sync"
 ingest-openapi = "agentic_patterns.core.connectors.openapi.cli.ingest:main_sync"
 
+[build-system]
+requires = ["setuptools>=75.0"]
+build-backend = "setuptools.build_meta"
+
 [tool.ruff.lint.per-file-ignores]
 "*.ipynb" = ["E402"]
 
 [tool.uv]
 package = true
 
-[tool.setuptools]
-packages = ["agentic_patterns"]
+[tool.setuptools.packages.find]
+include = ["agentic_patterns*"]
+exclude = ["agentic_patterns.examples*"]
