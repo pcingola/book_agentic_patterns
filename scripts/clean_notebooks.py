@@ -21,6 +21,10 @@ def clean_notebook(path: Path) -> bool:
     if not has_outputs(data):
         return False
     for cell in data.get("cells", []):
+        if cell.get("cell_type") != "code":
+            cell.pop("outputs", None)
+            cell.pop("execution_count", None)
+            continue
         cell["outputs"] = []
         cell["execution_count"] = None
     path.write_text(json.dumps(data, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
