@@ -14,11 +14,14 @@ from agentic_patterns.core.repl.cell_utils import (
     cleanup_temp_workbooks,
     extract_function_definitions,
 )
-from agentic_patterns.core.repl.sandbox import delete_cell_pkl_files, delete_repl_dir
+from agentic_patterns.core.repl.sandbox import (
+    delete_cell_pkl_files,
+    delete_repl_dir,
+    get_repl_data_dir,
+)
 from agentic_patterns.core.repl.config import (
     DEFAULT_CELL_TIMEOUT,
     MAX_CELLS,
-    SERVICE_NAME,
 )
 from agentic_patterns.core.repl.enums import CellState
 
@@ -38,18 +41,10 @@ class Notebook(BaseModel):
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
 
-    def _get_workspace_path(self) -> Path:
-        """Get the workspace path for this notebook's user/session."""
-        from agentic_patterns.core.config.config import WORKSPACE_DIR
-
-        return WORKSPACE_DIR / self.user_id / self.session_id
-
     @staticmethod
     def _get_session_notebook_dir(user_id: str, session_id: str) -> Path:
-        """Get the path to the notebooks directory for a user/session."""
-        from agentic_patterns.core.config.config import WORKSPACE_DIR
-
-        return WORKSPACE_DIR / user_id / session_id / SERVICE_NAME
+        """Get the path to the REPL data directory for a user/session."""
+        return get_repl_data_dir(user_id, session_id)
 
     @classmethod
     def _get_notebook_path(cls, user_id: str, session_id: str) -> Path:
@@ -89,7 +84,7 @@ class Notebook(BaseModel):
         self.namespace = {}
         self.execution_count = 0
         cleanup_temp_workbooks(self.user_id, self.session_id)
-        delete_repl_dir(self._get_workspace_path())
+        delete_repl_dir(self.user_id, self.session_id)
         self.save()
 
     def delete_cell(self, cell_id_or_number: str | int) -> None:
@@ -111,7 +106,7 @@ class Notebook(BaseModel):
             else:
                 raise ValueError(f"Cell with ID {cell_id_or_number} not found")
         if cell_id:
-            delete_cell_pkl_files(self._get_workspace_path(), cell_id)
+            delete_cell_pkl_files(self.user_id, self.session_id, cell_id)
         self._renumber_cells()
         self.save()
 

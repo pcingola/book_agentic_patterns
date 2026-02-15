@@ -33,6 +33,7 @@ SANDBOX_PREFIX = "/workspace"
 DEFAULT_USER_ID = "default_user"
 DEFAULT_SESSION_ID = "default_session"
 
+
 # Auth (from config.yaml, with env fallback for backward compatibility)
 def _load_auth_config() -> dict:
     config_path = MAIN_PROJECT_DIR / "config.yaml"
@@ -42,6 +43,7 @@ def _load_auth_config() -> dict:
             if cfg and "auth" in cfg:
                 return cfg["auth"]
     return {}
+
 
 _auth = _load_auth_config()
 JWT_SECRET = _auth.get("jwt_secret", "dev-secret-change-in-production")

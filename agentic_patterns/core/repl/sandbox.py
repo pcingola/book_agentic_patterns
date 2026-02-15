@@ -1,13 +1,17 @@
 """REPL sandbox: pickle-based IPC on top of the generic sandbox.
 
-Writes pickled input (code, namespace, imports, funcdefs) to the workspace
-.repl directory, runs the executor inside the generic sandbox, reads pickled
+Writes pickled input (code, namespace, imports, funcdefs) to the REPL data
+directory, runs the executor inside the generic sandbox, reads pickled
 SubprocessResult back. Pkl files persist per cell for debugging.
+
+REPL internal data (pkl files, cells.json, temp workbooks) lives under
+DATA_DIR/repl/<user_id>/<session_id>/, separate from the user-visible
+workspace, so user code never sees internal files.
 
 Sandbox selection order:
 1. bwrap (Linux production)
 2. Docker (via SandboxManager, when Docker is available)
-3. Plain subprocess (fallback, no isolation)
+3. Raises RuntimeError (no silent fallback to unsandboxed execution)
 """
 
 import logging
@@ -19,12 +23,11 @@ from typing import Any
 
 from agentic_patterns.core.repl.cell_output import CellOutput
 from agentic_patterns.core.repl.cell_utils import SubprocessResult
+from agentic_patterns.core.repl.config import REPL_SANDBOX_MOUNT
 from agentic_patterns.core.repl.enums import CellState, OutputType
 from agentic_patterns.core.process_sandbox import BindMount, get_sandbox
 
 logger = logging.getLogger(__name__)
-
-REPL_DIR_NAME = ".repl"
 
 
 def _is_docker_available() -> bool:
@@ -39,22 +42,24 @@ def _is_docker_available() -> bool:
         return False
 
 
-def get_repl_dir(workspace_path: Path) -> Path:
-    """Get the .repl directory inside the workspace."""
-    return workspace_path / REPL_DIR_NAME
+def get_repl_data_dir(user_id: str, session_id: str) -> Path:
+    """Get the REPL data directory for a user/session (host-side)."""
+    from agentic_patterns.core.config.config import DATA_DIR
+
+    return DATA_DIR / "repl" / user_id / session_id
 
 
-def delete_cell_pkl_files(workspace_path: Path, cell_id: str) -> None:
+def delete_cell_pkl_files(user_id: str, session_id: str, cell_id: str) -> None:
     """Remove the input/output pkl files for a given cell."""
-    repl_dir = get_repl_dir(workspace_path)
+    repl_dir = get_repl_data_dir(user_id, session_id)
     for suffix in ("input", "output"):
         pkl_file = repl_dir / f"{cell_id}_{suffix}.pkl"
         pkl_file.unlink(missing_ok=True)
 
 
-def delete_repl_dir(workspace_path: Path) -> None:
-    """Remove the entire .repl directory."""
-    repl_dir = get_repl_dir(workspace_path)
+def delete_repl_dir(user_id: str, session_id: str) -> None:
+    """Remove the entire REPL data directory for a user/session."""
+    repl_dir = get_repl_data_dir(user_id, session_id)
     if repl_dir.exists():
         shutil.rmtree(repl_dir, ignore_errors=True)
 
@@ -71,16 +76,8 @@ async def execute_in_sandbox(
     cell_id: str,
 ) -> SubprocessResult:
     """Execute REPL code via the generic sandbox with pickle IPC."""
-    from agentic_patterns.core.process_sandbox import SandboxBubblewrap
-
-    sandbox = get_sandbox()
-    is_bwrap = isinstance(sandbox, SandboxBubblewrap)
-
-    repl_dir = get_repl_dir(workspace_path)
+    repl_dir = get_repl_data_dir(user_id, session_id)
     repl_dir.mkdir(parents=True, exist_ok=True)
-
-    executor_workspace = "/workspace" if is_bwrap else str(workspace_path)
-    executor_repl_dir = f"/workspace/{REPL_DIR_NAME}" if is_bwrap else str(repl_dir)
 
     input_data = {
         "code": code,
@@ -89,53 +86,50 @@ async def execute_in_sandbox(
         "function_definitions": function_definitions,
         "user_id": user_id,
         "session_id": session_id,
-        "workspace_path": executor_workspace,
+        "workspace_path": "/workspace",
     }
     (repl_dir / f"{cell_id}_input.pkl").write_bytes(pickle.dumps(input_data))
 
-    if is_bwrap:
+    # Try bwrap first, then Docker, then fail loudly.
+    try:
+        sandbox = get_sandbox()  # raises RuntimeError if bwrap not found
+    except RuntimeError:
+        sandbox = None
+
+    if sandbox is not None:
         return await _execute_bwrap(
             sandbox,
             workspace_path,
-            executor_workspace,
-            executor_repl_dir,
+            repl_dir,
+            "/workspace",
+            REPL_SANDBOX_MOUNT,
             cell_id,
             timeout,
             user_id,
             session_id,
-            repl_dir,
         )
 
     if _is_docker_available():
         return await _execute_docker(
-            workspace_path, cell_id, timeout, user_id, session_id, repl_dir
+            workspace_path, repl_dir, cell_id, timeout, user_id, session_id
         )
 
-    logger.warning(
-        "No bwrap or Docker available -- running REPL executor without isolation"
-    )
-    return await _execute_subprocess(
-        sandbox,
-        executor_workspace,
-        executor_repl_dir,
-        cell_id,
-        timeout,
-        user_id,
-        session_id,
-        repl_dir,
+    raise RuntimeError(
+        "No sandbox available. Install bubblewrap (bwrap) or Docker to run REPL cells. "
+        "Unsandboxed execution is not allowed."
     )
 
 
 async def _execute_bwrap(
     sandbox: Any,
     workspace_path: Path,
+    repl_dir: Path,
     executor_workspace: str,
     executor_repl_dir: str,
     cell_id: str,
     timeout: int,
     user_id: str,
     session_id: str,
-    repl_dir: Path,
 ) -> SubprocessResult:
     """Execute via bubblewrap sandbox."""
     from agentic_patterns.core.compliance.private_data import session_has_private_data
@@ -148,7 +142,10 @@ async def _execute_bwrap(
         cell_id,
     ]
 
-    bind_mounts = [BindMount(workspace_path, "/workspace")]
+    bind_mounts = [
+        BindMount(workspace_path, "/workspace"),
+        BindMount(repl_dir, REPL_SANDBOX_MOUNT),
+    ]
     isolate_network = session_has_private_data(user_id, session_id)
 
     result = await sandbox.run(
@@ -164,11 +161,11 @@ async def _execute_bwrap(
 
 async def _execute_docker(
     workspace_path: Path,
+    repl_dir: Path,
     cell_id: str,
     timeout: int,
     user_id: str,
     session_id: str,
-    repl_dir: Path,
 ) -> SubprocessResult:
     """Execute via Docker container using SandboxManager."""
     import asyncio
@@ -181,6 +178,7 @@ async def _execute_docker(
 
     manager = SandboxManager(
         read_only_mounts=read_only_mounts,
+        rw_mounts={str(repl_dir): REPL_SANDBOX_MOUNT},
         profile=get_sandbox_profile("repl"),
         environment={"PYTHONPATH": "/app"},
     )
@@ -189,7 +187,7 @@ async def _execute_docker(
         "python",
         "-m",
         "agentic_patterns.core.repl.executor",
-        f"/workspace/{REPL_DIR_NAME}",
+        REPL_SANDBOX_MOUNT,
         cell_id,
     ]
 
@@ -227,29 +225,6 @@ async def _execute_docker(
             )
         ],
     )
-
-
-async def _execute_subprocess(
-    sandbox: Any,
-    executor_workspace: str,
-    executor_repl_dir: str,
-    cell_id: str,
-    timeout: int,
-    user_id: str,
-    session_id: str,
-    repl_dir: Path,
-) -> SubprocessResult:
-    """Execute via plain subprocess (no isolation fallback)."""
-    command = [
-        sys.executable,
-        "-m",
-        "agentic_patterns.core.repl.executor",
-        executor_repl_dir,
-        cell_id,
-    ]
-
-    result = await sandbox.run(command, timeout=timeout, cwd=executor_workspace)
-    return _process_sandbox_result(result, repl_dir, cell_id, timeout)
 
 
 def _process_sandbox_result(

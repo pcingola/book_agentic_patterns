@@ -65,9 +65,9 @@ Some objects require special handling. For example, openpyxl workbooks are not d
 
 Process isolation alone does not provide meaningful security. The subprocess inherits the host's filesystem access, network, and process namespace. A production REPL needs a sandbox layer that restricts what the subprocess can do.
 
-Our implementation uses a generic sandbox abstraction with two backends. On Linux, it uses bubblewrap (`bwrap`), a lightweight container tool that provides filesystem, network, and PID namespace isolation. The sandbox mounts system directories (`/usr`, `/lib`, `/bin`) as read-only, exposes the Python installation for package access, and bind-mounts only the specific directories the cell needs: the workspace (for user data) and the temporary directory (for pickle IPC). Network access and PID isolation can be toggled independently.
+Our implementation uses a generic sandbox abstraction with two backends. On Linux, it uses bubblewrap (`bwrap`), a lightweight container tool that provides filesystem, network, and PID namespace isolation. The sandbox mounts system directories (`/usr`, `/lib`, `/bin`) as read-only, exposes the Python installation for package access, and bind-mounts only the specific directories the cell needs: the user workspace at `/workspace` and the REPL internal data directory at `/repl` (for pickle IPC and temp files). The REPL data is kept separate from the user workspace so that user code never sees internal pickle files or notebook state. Network access and PID isolation can be toggled independently.
 
-On macOS and in development environments where bubblewrap is not available, the sandbox falls back to a plain subprocess with no isolation. A factory function selects the appropriate backend at runtime.
+When bubblewrap is not available (e.g. macOS), the system uses Docker containers via the SandboxManager. If neither bubblewrap nor Docker is available, the system raises a clear error rather than silently falling back to unsandboxed execution.
 
 One useful refinement is **data-driven network isolation**. If a session has been flagged as containing private data (for example, after loading sensitive files), the sandbox enables network isolation automatically. This prevents exfiltration of sensitive data through code execution, even if the agent or user does not explicitly request it.
 
@@ -147,7 +147,7 @@ The `asyncio.to_thread` call is the key boundary: it moves the blocking work off
 
 #### Sessions, persistence, and multi-user concerns
 
-Unlike a local shell, an agent REPL usually operates in a multi-user environment. Each notebook is scoped to a `(user_id, session_id)` pair and persisted to a well-known path on disk (`WORKSPACE_DIR / user_id / session_id / mcp_repl / cells.json`). The notebook saves its state -- all cells with their code, outputs, and metadata -- after every operation (add, execute, delete, clear). This ensures that work is not lost and that sessions can be resumed after failures.
+Unlike a local shell, an agent REPL usually operates in a multi-user environment. Each notebook is scoped to a `(user_id, session_id)` pair and persisted to a well-known path on disk (`DATA_DIR / repl / user_id / session_id / cells.json`), separate from the user-visible workspace. The notebook saves its state -- all cells with their code, outputs, and metadata -- after every operation (add, execute, delete, clear). This ensures that work is not lost and that sessions can be resumed after failures.
 
 Persistence also enables secondary capabilities. The notebook can be exported to Jupyter's `.ipynb` format, making it possible to continue work in a standard notebook interface or share results with collaborators who do not use the agent platform.
 

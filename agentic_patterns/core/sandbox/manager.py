@@ -36,11 +36,13 @@ class SandboxManager:
     def __init__(
         self,
         read_only_mounts: dict[str, str] | None = None,
+        rw_mounts: dict[str, str] | None = None,
         profile: SandboxProfile | None = None,
         environment: dict[str, str] | None = None,
     ) -> None:
         self._client: docker.DockerClient | None = None
         self._read_only_mounts: dict[str, str] = read_only_mounts or {}
+        self._rw_mounts: dict[str, str] = rw_mounts or {}
         self._profile: SandboxProfile | None = profile
         self._environment: dict[str, str] = environment or {}
         self._sessions: dict[tuple[str, str], SandboxSession] = {}
@@ -48,7 +50,11 @@ class SandboxManager:
     @property
     def client(self) -> docker.DockerClient:
         if self._client is None:
-            self._client = docker.DockerClient(base_url=DOCKER_HOST) if DOCKER_HOST else docker.from_env()
+            self._client = (
+                docker.DockerClient(base_url=DOCKER_HOST)
+                if DOCKER_HOST
+                else docker.from_env()
+            )
         return self._client
 
     def close_session(self, user_id: str, session_id: str) -> None:
@@ -115,6 +121,8 @@ class SandboxManager:
         volumes = {str(session.data_dir): {"bind": config.working_dir, "mode": "rw"}}
         for host_path, container_path in config.read_only_mounts.items():
             volumes[host_path] = {"bind": container_path, "mode": "ro"}
+        for host_path, container_path in self._rw_mounts.items():
+            volumes[host_path] = {"bind": container_path, "mode": "rw"}
 
         container = self.client.containers.run(
             image=config.image,

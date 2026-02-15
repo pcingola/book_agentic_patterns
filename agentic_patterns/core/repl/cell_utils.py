@@ -11,7 +11,6 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from agentic_patterns.core.repl.cell_output import CellOutput
-from agentic_patterns.core.repl.config import SERVICE_NAME
 from agentic_patterns.core.repl.enums import CellState
 from agentic_patterns.core.repl.openpyxl_handler import filter_openpyxl_from_namespace
 
@@ -28,17 +27,11 @@ class SubprocessResult(BaseModel):
     namespace: dict[str, Any] = Field(default_factory=dict)
 
 
-def cleanup_temp_workbooks(
-    user_id: str, session_id: str, workspace_dir: Path | None = None
-) -> None:
+def cleanup_temp_workbooks(user_id: str, session_id: str) -> None:
     """Clean up temporary workbook files."""
-    if workspace_dir is None:
-        from agentic_patterns.core.config.config import WORKSPACE_DIR
+    from agentic_patterns.core.repl.sandbox import get_repl_data_dir
 
-        workspace_dir = WORKSPACE_DIR
-
-    session_dir = workspace_dir / user_id / session_id / SERVICE_NAME
-    temp_dir = session_dir / ".mcp_repl_temp"
+    temp_dir = get_repl_data_dir(user_id, session_id) / ".temp"
     if temp_dir.exists():
         try:
             shutil.rmtree(temp_dir)
@@ -90,7 +83,7 @@ def filter_picklable_namespace(
     namespace: dict[str, Any],
     user_id: str | None = None,
     session_id: str | None = None,
-    workspace_base: Path | None = None,
+    base_dir: Path | None = None,
 ) -> tuple[dict[str, Any], list[str]]:
     """Filter a namespace to only include picklable objects.
 
@@ -99,7 +92,7 @@ def filter_picklable_namespace(
     """
     builtin_functions = _get_builtin_function_names()
 
-    temp_dir = get_temp_workbooks_dir(user_id, session_id, workspace_base)
+    temp_dir = get_temp_workbooks_dir(user_id, session_id, base_dir)
     openpyxl_items, openpyxl_keys, messages = filter_openpyxl_from_namespace(
         namespace, temp_dir
     )
@@ -128,24 +121,29 @@ def filter_picklable_namespace(
 def get_temp_workbooks_dir(
     user_id: str | None = None,
     session_id: str | None = None,
-    workspace_base: Path | None = None,
+    base_dir: Path | None = None,
 ) -> Path:
-    """Get directory for temporary workbook storage."""
-    if workspace_base is not None:
-        session_dir = workspace_base / SERVICE_NAME
+    """Get directory for temporary workbook storage.
+
+    When called from the executor (inside sandbox), base_dir is the repl_dir
+    passed via CLI argument. Otherwise, computes from DATA_DIR on the host.
+    """
+    if base_dir is not None:
+        temp_dir = base_dir / ".temp" / "workbooks"
     else:
-        from agentic_patterns.core.config.config import WORKSPACE_DIR
+        from agentic_patterns.core.repl.sandbox import get_repl_data_dir
 
         if user_id is not None and session_id is not None:
-            session_dir = WORKSPACE_DIR / user_id / session_id / SERVICE_NAME
+            temp_dir = get_repl_data_dir(user_id, session_id) / ".temp" / "workbooks"
         else:
             from agentic_patterns.core.user_session import get_session_id, get_user_id
 
-            session_dir = (
-                WORKSPACE_DIR / get_user_id() / get_session_id() / SERVICE_NAME
+            temp_dir = (
+                get_repl_data_dir(get_user_id(), get_session_id())
+                / ".temp"
+                / "workbooks"
             )
 
-    temp_dir = session_dir / ".mcp_repl_temp" / "workbooks"
     temp_dir.mkdir(parents=True, exist_ok=True)
     return temp_dir
 

@@ -4,6 +4,7 @@ from pathlib import PurePosixPath
 
 from fastmcp import Context, FastMCP
 
+from agentic_patterns.core.config.config import SANDBOX_PREFIX
 from agentic_patterns.core.context.decorators import context_result
 from agentic_patterns.core.mcp import ToolFatalError, ToolRetryError
 from agentic_patterns.core.repl.config import DEFAULT_CELL_TIMEOUT
@@ -69,6 +70,32 @@ def register_tools(mcp: FastMCP) -> None:
             raise ToolRetryError(str(e)) from e
         await ctx.info(f"execute_cell: cell_number={cell.cell_number}")
         return str(cell)
+
+    @mcp.tool()
+    @tool_permission(ToolPermission.WRITE)
+    @context_result()
+    async def create_notebook(name: str, ctx: Context = None) -> str:
+        """Create a Jupyter notebook (.ipynb) from the current REPL session.
+
+        The notebook is saved to /workspace/<name>.ipynb and can be downloaded
+        and opened in VS Code or JupyterLab.
+
+        Args:
+            name: Notebook filename (e.g. 'analysis'). Extension .ipynb added automatically.
+        """
+        nb = _load_notebook()
+        if not nb.cells:
+            raise ToolRetryError("No cells in the notebook. Execute some cells first.")
+        if not name.endswith(".ipynb"):
+            name = f"{name}.ipynb"
+        sandbox_path = PurePosixPath(SANDBOX_PREFIX) / name
+        try:
+            host_path = workspace_to_host_path(sandbox_path)
+            nb.save_as_ipynb(host_path)
+        except OSError as e:
+            raise ToolFatalError(str(e)) from e
+        await ctx.info(f"create_notebook: {sandbox_path}")
+        return f"Notebook created at {sandbox_path}"
 
     @mcp.tool()
     @tool_permission(ToolPermission.WRITE)

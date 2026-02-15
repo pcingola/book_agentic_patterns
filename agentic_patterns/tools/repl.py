@@ -4,6 +4,7 @@ from pathlib import PurePosixPath
 
 from pydantic_ai import ModelRetry
 
+from agentic_patterns.core.config.config import SANDBOX_PREFIX
 from agentic_patterns.core.context.decorators import context_result
 from agentic_patterns.core.repl.config import DEFAULT_CELL_TIMEOUT
 from agentic_patterns.core.repl.notebook import Notebook
@@ -51,6 +52,24 @@ def get_all_tools() -> list:
 
     @tool_permission(ToolPermission.WRITE)
     @context_result()
+    async def repl_create_notebook(name: str) -> str:
+        """Create a Jupyter notebook (.ipynb) from the current REPL session.
+
+        The notebook is saved to /workspace/<name>.ipynb and can be downloaded
+        and opened in VS Code or JupyterLab.
+        """
+        nb = _load_notebook()
+        if not nb.cells:
+            raise ModelRetry("No cells in the notebook. Execute some cells first.")
+        if not name.endswith(".ipynb"):
+            name = f"{name}.ipynb"
+        sandbox_path = PurePosixPath(SANDBOX_PREFIX) / name
+        host_path = workspace_to_host_path(sandbox_path)
+        nb.save_as_ipynb(host_path)
+        return f"Notebook created at {sandbox_path}"
+
+    @tool_permission(ToolPermission.WRITE)
+    @context_result()
     async def repl_export_ipynb(path: str) -> str:
         """Export the notebook to a .ipynb file at the given workspace path."""
         try:
@@ -92,6 +111,7 @@ def get_all_tools() -> list:
 
     return [
         repl_clear_notebook,
+        repl_create_notebook,
         repl_delete_cell,
         repl_execute_cell,
         repl_export_ipynb,

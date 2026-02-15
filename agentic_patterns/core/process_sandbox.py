@@ -1,8 +1,8 @@
 """Generic sandbox for running commands in isolated environments.
 
-Two implementations:
-- SandboxBubblewrap: Linux production sandbox using bwrap (user namespaces, filesystem/network/PID isolation)
-- SandboxSubprocess: Fallback that runs the command as a plain subprocess (no isolation)
+Uses bubblewrap (bwrap) for filesystem, network, and PID namespace isolation.
+Raises RuntimeError if bwrap is not available -- no silent fallback to
+unsandboxed execution.
 
 Usage:
     sandbox = get_sandbox()
@@ -167,43 +167,15 @@ class SandboxBubblewrap(Sandbox):
         return cmd
 
 
-class SandboxSubprocess(Sandbox):
-    """Fallback sandbox: runs the command as a plain subprocess (no isolation)."""
+def get_sandbox() -> SandboxBubblewrap:
+    """Factory: returns SandboxBubblewrap if bwrap is on PATH.
 
-    async def run(
-        self,
-        command: list[str],
-        *,
-        timeout: int,
-        bind_mounts: list[BindMount] | None = None,
-        isolate_network: bool = False,
-        isolate_pid: bool = True,
-        cwd: str | None = None,
-        env: dict[str, str] | None = None,
-    ) -> SandboxResult:
-        process = await asyncio.create_subprocess_exec(
-            *command,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-            cwd=cwd,
-            env=env,
-        )
-
-        try:
-            stdout, stderr = await asyncio.wait_for(
-                process.communicate(), timeout=timeout
-            )
-            return SandboxResult(
-                exit_code=process.returncode or 0, stdout=stdout, stderr=stderr
-            )
-        except asyncio.TimeoutError:
-            process.kill()
-            await process.wait()
-            return SandboxResult(exit_code=-1, timed_out=True)
-
-
-def get_sandbox() -> Sandbox:
-    """Factory: returns SandboxBubblewrap if bwrap is on PATH, else SandboxSubprocess."""
+    Raises RuntimeError when bwrap is not available, rather than silently
+    falling back to unsandboxed execution.
+    """
     if shutil.which("bwrap"):
         return SandboxBubblewrap()
-    return SandboxSubprocess()
+    raise RuntimeError(
+        "No sandbox available: bubblewrap (bwrap) not found on PATH. "
+        "Install bwrap or use Docker for sandboxed execution."
+    )

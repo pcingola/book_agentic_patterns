@@ -28,6 +28,24 @@ from agentic_patterns.core.repl.matplotlib_backend import (
 )
 from agentic_patterns.core.repl.openpyxl_handler import restore_workbook_references
 
+_INTERNAL_PATH_MARKER = "agentic_patterns/core/repl/"
+
+
+def _format_cell_error(exc: BaseException) -> str:
+    """Format a cell error, stripping internal REPL frames from the traceback."""
+    tb = traceback.extract_tb(exc.__traceback__)
+    user_frames = [f for f in tb if _INTERNAL_PATH_MARKER not in f.filename]
+    lines = [f"{type(exc).__name__}: {exc}"]
+    if user_frames:
+        lines.append("Traceback (user code):")
+        for frame in user_frames:
+            lines.append(
+                f'  File "{frame.filename}", line {frame.lineno}, in {frame.name}'
+            )
+            if frame.line:
+                lines.append(f"    {frame.line}")
+    return "\n".join(lines)
+
 
 def main() -> None:
     repl_dir = Path(sys.argv[1])
@@ -91,13 +109,12 @@ def main() -> None:
 
     except Exception as e:
         result.state = CellState.ERROR
-        error_msg = f"{type(e).__name__}: {str(e)}\n{traceback.format_exc()}"
         result.outputs.append(
-            CellOutput(output_type=OutputType.ERROR, content=error_msg)
+            CellOutput(output_type=OutputType.ERROR, content=_format_cell_error(e))
         )
 
     result.namespace, namespace_messages = filter_picklable_namespace(
-        namespace, user_id, session_id, workspace_path
+        namespace, user_id, session_id, repl_dir
     )
     if namespace_messages:
         result.outputs.append(
