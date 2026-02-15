@@ -66,6 +66,17 @@ vectors = await embed_texts(["Hello", "World"], embedder)
 # Returns list[list[float]]
 ```
 
+**Signature:**
+
+```python
+def get_embedder(
+    config: EmbeddingConfig | str | None = None,
+    config_path: Path | str | None = None,
+) -> Embedder
+```
+
+The `config` parameter accepts a named config string (looked up in config.yaml), an `EmbeddingConfig` object directly, or `None` for the default. The optional `config_path` parameter specifies which YAML file to load settings from; when omitted it defaults to the project's `config.yaml`.
+
 When no embedder is passed to `embed_text()` or `embed_texts()`, they create one from the default config automatically.
 
 
@@ -227,21 +238,23 @@ These techniques compose naturally with the core `vdb_query()` function -- they 
 
 | Name | Kind | Description |
 |---|---|---|
+| `EmbeddingConfig` | Type alias | Union of all embedding config types (OpenAI, Ollama, SentenceTransformers, OpenRouter) |
+| `VectorDBConfig` | Type alias | Union of all vector DB config types (Chroma, PgVector) |
 | `get_vector_db(collection_name, ...)` | Function | Get or create a Chroma collection with singleton caching |
 | `vdb_add(vdb, text, doc_id, meta, force)` | Function | Add a document (idempotent by default) |
 | `vdb_query(vdb, query, filter, ...)` | Function | Similarity search returning `(doc, meta, score)` tuples |
 | `vdb_get_by_id(vdb, doc_id)` | Function | Retrieve a document by ID |
 | `vdb_has_id(vdb, doc_id)` | Function | Check if a document ID exists |
-| `get_embedder(config)` | Function | Get or create an embedder with singleton caching |
+| `get_embedder(config, config_path)` | Function | Get or create an embedder with singleton caching |
 | `embed_text(text, embedder)` | Async function | Embed a single text string |
 | `embed_texts(texts, embedder)` | Async function | Embed multiple text strings |
-| `load_vectordb_settings(config_path)` | Function | Load settings from YAML |
+| `load_vectordb_settings(config_path)` | Function | Load settings from YAML (`config_path` is required, no default) |
 
 ### Configuration models (`agentic_patterns.core.vectordb.config`)
 
 | Name | Kind | Description |
 |---|---|---|
-| `VectorDBSettings` | Pydantic model | Container for embedding and vector DB configs |
+| `VectorDBSettings` | Pydantic model | Container for embedding and vector DB configs. Not exported in `__all__`; import directly from `agentic_patterns.core.vectordb.config`. Provides `get_embedding(name)` and `get_vectordb(name)` lookup methods. |
 | `OpenAIEmbeddingConfig` | Pydantic model | OpenAI embedding settings |
 | `OllamaEmbeddingConfig` | Pydantic model | Ollama embedding settings |
 | `SentenceTransformersEmbeddingConfig` | Pydantic model | Sentence Transformers settings |

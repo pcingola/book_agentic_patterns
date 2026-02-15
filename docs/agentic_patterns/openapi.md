@@ -7,11 +7,25 @@
 APIs are declared in `apis.yaml`:
 
 ```yaml
-- id: cbioportal
-  name: cBioPortal
-  spec_url: https://www.cbioportal.org/api/v3/api-docs
-  base_url: https://www.cbioportal.org
+apis:
+  petstore:
+    spec_source: https://petstore3.swagger.io/api/v3/openapi.json
+    base_url: https://petstore3.swagger.io/api/v3
+
+  cbioportal:
+    spec_source: https://www.cbioportal.org/api/v3/api-docs
+    base_url: https://www.cbioportal.org
+
+  # Environment variables are expanded via ${VAR} syntax
+  production_api:
+    spec_source: ${API_SPEC_URL}
+    base_url: ${API_BASE_URL}
+    sensitivity: confidential
 ```
+
+Each entry requires `spec_source` (URL or file path to an OpenAPI 3.x spec) and `base_url` (overrides the spec's `servers` section for environment-specific deployment). Optional `sensitivity` tags the session when data is accessed. Relative file paths resolve relative to `apis.yaml`'s directory.
+
+`ApiConnectionConfigs` is a singleton registry that auto-loads `apis.yaml` on first access.
 
 The ingestion CLI fetches the spec, parses endpoints, runs AI-powered annotation (descriptions, categories, example requests), and caches the result:
 
@@ -19,7 +33,7 @@ The ingestion CLI fetches the spec, parses endpoints, runs AI-powered annotation
 ingest-openapi cbioportal
 ```
 
-At runtime, `ApiInfos.get()` loads cached metadata without re-fetching.
+The annotation pipeline (`ApiSpecAnnotator`) generates an API description, categorizes endpoints in batches, fills missing endpoint descriptions, and creates curl examples. Results are cached as `.api_info.json` files. At runtime, `ApiInfos.get()` loads cached metadata without re-fetching.
 
 ## Data Models
 

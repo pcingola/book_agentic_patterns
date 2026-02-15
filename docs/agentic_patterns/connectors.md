@@ -80,19 +80,19 @@ connector = CsvConnector()
 
 `headers(path)` -- column names with count, truncated for wide tables.
 
-`head(path, n=10)` -- first N rows with automatic column/cell truncation via the CSV processor.
+`head(path, n=10)` -- first N rows with automatic column/cell truncation via the CSV processor. Decorated with `@context_result()` (unlike `FileConnector.head`, which returns raw lines).
 
-`tail(path, n=10)` -- last N rows.
+`tail(path, n=10)` -- last N rows. Also decorated with `@context_result()`.
 
 `read_row(path, row_number)` -- single row by 1-indexed number.
 
-`find_rows(path, column, value, limit=10)` -- rows where a column matches a value. Column can be a name (str) or index (int).
+`find_rows(path, column, value, limit=10)` -- rows where a column matches a value. The `column` parameter accepts a name (`str`) or a 0-indexed position (`int`).
 
 **Write operations:**
 
 `append(path, values)` -- append a row. Values can be a `dict[str, str]` keyed by column name or a `list[str]` matching column order.
 
-`delete_rows(path, column, value)` -- delete all rows where column matches value.
+`delete_rows(path, column, value)` -- delete all rows where column matches value. The `column` parameter accepts a name (`str`) or a 0-indexed position (`int`).
 
 `update_cell(path, row_number, column, value)` -- update a single cell.
 
@@ -127,13 +127,13 @@ connector = JsonConnector()
 
 **Write operations:**
 
-`set(path, json_path, value)` -- set a value at a specific path. Rejects root-level replacements and wildcard paths. Value must be a JSON string under 10 KB.
+`set(path, json_path, value)` -- set a value at a specific path. Rejects root-level replacements and wildcard paths. The `value` parameter is a JSON-encoded string (e.g., `'"hello"'`, `'42'`, `'{"key": "val"}'`), not a Python object. Must be under 10 KB.
 
 `delete_key(path, json_path)` -- delete a key at a path. Rejects root and wildcard paths.
 
-`merge(path, json_path, updates)` -- merge a JSON object into an existing object at a path without replacing it entirely.
+`merge(path, json_path, updates)` -- merge a JSON object into an existing object at a path without replacing it entirely. The `updates` parameter is a JSON-encoded string representing an object (e.g., `'{"name": "new"}'`).
 
-`append(path, json_path, value)` -- append a value to an array at a path.
+`append(path, json_path, value)` -- append a value to an array at a path. The `value` parameter is a JSON-encoded string.
 
 
 ## Connector Chaining

@@ -208,6 +208,10 @@ All paths are `Path` objects. Most can be overridden via environment variables; 
 | `FEEDBACK_DIR` | `FEEDBACK_DIR` | `DATA_DIR / "feedback"` |
 | `SKILLS_DIR` | `SKILLS_DIR` | `DATA_DIR / "skills"` |
 | `LOGS_DIR` | -- | `MAIN_PROJECT_DIR / "logs"` |
+| `USER_DATABASE_FILE` | `USER_DATABASE_FILE` | `MAIN_PROJECT_DIR / "users.json"` |
+| `CHAINLIT_DATA_LAYER_DB` | `CHAINLIT_DATA_LAYER_DB` | `DATA_DIR / "chainlit.db"` |
+| `CHAINLIT_FILE_STORAGE_DIR` | `CHAINLIT_FILE_STORAGE_DIR` | `DATA_DIR / "chainlit_files"` |
+| `CHAINLIT_SCHEMA_FILE` | `CHAINLIT_SCHEMA_FILE` | `DATA_DIR / "sql" / "chainlit_data_layer.sql"` |
 
 ### Session defaults
 

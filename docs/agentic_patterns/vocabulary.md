@@ -14,19 +14,54 @@ Three resolution strategies are selected based on vocabulary size:
 
 All strategies implement the same `Strategy` protocol, so the connector works identically regardless of backend.
 
-## Registration
+## Configuration
+
+Vocabularies are declared in `vocabularies.yaml`:
+
+```yaml
+vocabularies:
+  ensembl_biotypes:
+    strategy: enum
+    source: ensembl_biotypes.json
+    source_format: json_flat
+
+  sequence_ontology:
+    strategy: tree
+    source: so.obo
+    source_format: obo
+
+  gene_ontology:
+    strategy: rag
+    source: go.obo
+    source_format: obo
+    collection: gene_ontology
+
+  hgnc:
+    strategy: rag
+    source: hgnc_complete_set.txt
+    source_format: tsv
+    collection: hgnc
+    parser_options:
+      id_field: hgnc_id
+      label_field: symbol
+      definition_field: name
+```
+
+Each entry declares `strategy` (`enum`, `tree`, or `rag`), `source` (file path relative to the vocabulary data directory), and `source_format`. RAG vocabularies require a `collection` name for the vector database. For tabular formats (CSV, TSV, JSON), `parser_options` can override which fields map to id, label, and definition.
+
+Supported source formats: `obo`, `owl`, `rf2`, `json_flat`, `json_hierarchical`, `csv`, `tsv`, `mesh_xml`, `gmt`.
+
+`load_all()` loads all declared vocabularies, dispatching each source file to its format-specific parser and populating the appropriate strategy backend. Parsed terms are cached as JSON to skip re-parsing on subsequent loads.
+
+## Programmatic Registration
 
 ```python
-from agentic_patterns.core.connectors.vocabulary import (
-    StrategyTree, StrategyRag, register_vocabulary, reset
-)
+from agentic_patterns.core.connectors.vocabulary.registry import register_vocabulary, reset
+from agentic_patterns.core.connectors.vocabulary.strategy_tree import StrategyTree
 
 reset()
 register_vocabulary("sequence_ontology", StrategyTree(name="sequence_ontology", terms=terms))
-register_vocabulary("gene_ontology", StrategyRag(name="gene_ontology", collection="go_demo"))
 ```
-
-In production, vocabularies are loaded from `vocabularies.yaml` which declares the name, strategy, source file, and format (OBO, OWL, RF2, CSV, TSV, and others).
 
 ## Operations
 

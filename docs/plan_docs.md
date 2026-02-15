@@ -1,66 +1,45 @@
 # Documentation
 
-We'll write documentation of our "agentic_patterns" library (including tools, MCPs, A2As, etc.).
+We've created the documentation in docs/agnetic_patterns.md (and subdir docs/agnetic_patterns/)
 
-Audience: The documentation is for engineers who want to use our library to build agents.
-Style: Technical, detailed but succinct. No fluff, no bullshit. Never use emojis. Use simple markdown formatting.
-Paths: The documentation entry point is `docs/agentic_patterns.md`, and each topic is covered in `docs/agentic_patterns/*.md`
-Reference: You can use the respective chapters (see `chapters.md`) to cover the specific topics.
+We are going to check the code and make sure all code (except examples) is properly documented.
+Goal: An engineer using our library should be able to quickly find the documentation
 
-Methodology: IMPLEMENT ONLY ONE TOPIC AT A TIME, AFTER FINISHING THE DOCUMENTATION FOR ONE TOPIC, YOU ARE DONE!
-1. Check that the documentation doesn't already exist for the topic (in `docs/agentic_patterns/*.md`).
-2. Read the chapter
-3. Read the hands-on sections and the related code / notebooks. Pay attention to which part of the "agents patterns" library is being used in each section.
-4. Write the documentation for that part of the library
-5. Update `docs/agentic_patterns.md` to include the new documentation
+We'll do this one module at a time, chunking this work into reasonable chunks of works we can handle:
 
-IMPORTANT: If the chapter does NOT introduce any new code or library concepts, then we do NOT need to write documentation for it. For example, if the chapter is just about how to use the patterns together, then we can skip writing documentation for it.
+- [x] core/config/ -- 3 files (config.py, env.py, utils.py)
+- [x] core/agents/ -- 5 files (agents.py, config.py, models.py, orchestrator.py, utils.py)
+- [x] core/connectors/sql/ -- 18 files (connection, connector, operations, inspection, annotation, models, factories, etc.)
+- [x] core/connectors/openapi/ -- 13 files (connector, extraction, annotation, client, models, factories, etc.)
+- [x] core/connectors/vocabulary/ -- 12 files (connector, strategies, parsers, models, registry, loader, etc.)
+- [ ] core/connectors/ (top-level) -- 4 files (base.py, csv.py, file.py, json.py)
+- [ ] core/context/ -- 6 files + 9 processor files (decorators, history, reader, models, processors/*)
+- [ ] core/mcp/ -- 5 files (config.py, errors.py, factories.py, middleware.py, servers.py)
+- [ ] core/a2a/ -- 7 files (client.py, config.py, coordinator.py, middleware.py, mock.py, tool.py, utils.py)
+- [ ] core/tasks/ -- 5 files (broker.py, models.py, state.py, store.py, worker.py)
+- [ ] core/skills/ -- 3 files (models.py, registry.py, tools.py)
+- [ ] core/tools/ -- 3 files (permissions.py, selection.py, utils.py)
+- [ ] core/repl/ -- 11 files (executor, sandbox, notebook, cell, image, config, enums, etc.)
+- [ ] core/sandbox/ -- 5 files (config.py, container_config.py, manager.py, network_mode.py, session.py)
+- [ ] core/evals/ -- 3 files (discovery.py, evaluators.py, runner.py)
+- [ ] core/doctors/ -- 6 files (base.py, models.py, prompt/tool/mcp/a2a/skill doctors)
+- [ ] core/vectordb/ -- 3 files (config.py, embeddings.py, vectordb.py)
+- [ ] core/ui/ -- 5 files (auth.py, cli.py, agui/app.py, agui/events.py, chainlit/*)
+- [ ] core/ (standalone) -- 6 files (auth.py, prompt.py, user_session.py, workspace.py, process_sandbox.py, utils.py)
+- [ ] core/compliance/ -- 1 file (private_data.py)
+- [ ] core/feedback/ -- 1 file (feedback.py)
+- [ ] toolkits/data_analysis/ -- 12 files
+- [ ] toolkits/data_viz/ -- 9 files
+- [ ] toolkits/format_conversion/ -- 4 files
+- [ ] toolkits/todo/ -- 2 files
+- [ ] tools/ -- 13 files (PydanticAI tool wrappers)
+- [ ] agents/ -- 7 files (coordinator, data_analysis, db_catalog, nl2sql, openapi, sql, vocabulary)
+- [ ] mcp/ -- 11 servers (template, todo, sql, data_analysis, data_viz, format_conversion, file_ops, repl, sandbox, vocabulary, openapi)
+- [ ] a2a/ -- 5 servers (template, nl2sql, data_analysis, vocabulary, openapi)
+- [ ] testing/ -- 3 files (agent_mock.py, model_mock.py, tool_mock.py)
 
-## Getting Started
-
-- [x] Foundations: `foundations.md` (from chapters/foundations and chapters/core_patterns)
-
-## Core
-
-- [x] Tools: `tools.md` (from chapters/tools)
-- [x] Context & Memory: `context_memory.md` (from chapters/context_memory)
-- [x] RAG: `rag.md` (from chapters/rag)
-
-## Data Access
-
-- [x] Connectors: `connectors.md` (file, CSV, JSON)
-- [x] SQL: `sql.md` (SQL connector, NL2SQL, schema annotation)
-- [x] OpenAPI: `openapi.md` (OpenAPI connector)
-- [x] Vocabulary: `vocabulary.md` (vocabulary connector)
-- [x] Toolkits: `toolkits.md` (todo, data analysis, data viz, format conversion)
-
-## Agent Capabilities
-
-- [x] MCP: `mcp.md` (from chapters/mcp)
-- [x] A2A: `a2a.md` (from chapters/a2a)
-
-## Composition
-
-- [x] Skills, Sub-Agents & Tasks: `skills_sub_agents_tasks.md` (from chapters/skills_and_sub_agents, chapters/orchestration)
-- [x] Domain Agents: `domain_agents.md`
-
-## Quality & Testing
-
-- [x] Evals: `evals.md` (from chapters/evals)
-
-## Production
-
-- [x] Execution Infrastructure: `execution_infrastructure.md` (from chapters/execution_infrastructure)
-- [x] Compliance: `compliance.md` (private data, data sensitivity)
-- [x] User Interface: `ui.md` (from chapters/ui)
-
-Skipped (no new library concepts):
-- Core Patterns: chapters/core_patterns -- reasoning patterns only, no new library code
-- Orchestration: chapters/orchestration -- uses patterns documented in skills_sub_agents_tasks.md and a2a.md
-- The Complete Agent: chapters/the_complete_agent -- uses existing patterns together
-
-We'll mark as done each item once the documentation for that topic is complete.
-
-Note: Some details might be in docs/CLAUDE.md
-
-READ FILES MANUALLY, DO NOT IMPLEMENT ANY CODE OR RUN ANY COMMANDS.
+Methodology: 
+1. Pick the next (unchecked) module in the list
+2. Document the code, ensuring that the important functions, classes, and modules are well-explained and easy to understand for engineers using the library.
+3. Once done, mark it as done in the checklist.
+4. Move to the next module. When your context windows is (estimated) at 60% or more, stop and wait for me to review before proceeding with the next items.

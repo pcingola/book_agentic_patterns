@@ -7,15 +7,18 @@ The UI module provides two integration paths for exposing agents to users: Chain
 `agentic_patterns.core.ui.auth` provides a JSON-backed user database with SHA-256 password hashing.
 
 ```python
-from agentic_patterns.core.ui.auth import UserDatabase
+from agentic_patterns.core.ui.auth import UserDatabase, generate_password
+from agentic_patterns.core.config.config import USER_DATABASE_FILE
 
-db = UserDatabase()                         # loads from USER_DATABASE_FILE (users.json)
-db.add_user("alice", "password123")         # creates user with hashed password
-db.add_user("bob", "secret", role="admin")  # optional role
-user = db.authenticate("alice", "password123")  # returns User or None
-db.change_password("alice", "new_password")
+db = UserDatabase(USER_DATABASE_FILE)            # db_path: Path is required
+db.add_user("alice", "password123")              # creates user with hashed password
+db.add_user("bob", "secret", role="admin")       # optional role
+user = db.authenticate("alice", "password123")   # returns User or None
+db.change_password("alice", "password123", "new_password")  # requires old_password
+db.get_user("bob")                               # returns User or None
 db.delete_user("alice")
-users = db.list_users()                     # returns list[User]
+users = db.list_users()                          # returns list[str] (usernames)
+password = generate_password()                   # random 16-char password
 ```
 
 The `User` model has fields `username`, `password_hash`, and `role` (defaults to `"user"`).
@@ -100,7 +103,7 @@ app = create_agui_app(
 )
 ```
 
-It accepts the same parameters as `get_agent()` (config name, instructions, tools, deps_type) and wraps the resulting agent in PydanticAI's `AGUIApp`. For wrapping an existing agent, use `create_agui_app_from_agent(agent)`.
+It accepts the same parameters as `get_agent()` (config name, instructions, tools, `state_type`) and wraps the resulting agent in PydanticAI's `AGUIApp`. For wrapping an existing agent, use `create_agui_app_from_agent(agent, state=None)`.
 
 The returned `app` is an ASGI application. Run it with uvicorn:
 
@@ -125,7 +128,7 @@ async def add_item(ctx: RunContext[StateDeps[AppState]], item: str) -> str:
     return f"Added {item}"
 
 app = create_agui_app(
-    deps_type=StateDeps[AppState],
+    state_type=AppState,
     tools=[add_item],
 )
 ```

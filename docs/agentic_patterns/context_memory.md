@@ -92,9 +92,13 @@ Detection uses file extension first (e.g., `.py` maps to CODE, `.csv` to CSV), f
 
 **File processing** -- `max_tokens_per_file` (5000), `max_total_output` (50000), `max_lines` (200), `max_line_length` (1000).
 
-**Structured data** -- `max_nesting_depth` (5), `max_array_items` (50), `max_object_keys` (50), `max_string_value_length` (500).
+**Structured data** -- `max_nesting_depth` (5), `max_array_items` (50), `max_object_keys` (50), `max_string_value_length` (500), `max_object_string_length` (2000).
 
 **Tabular data** -- `max_columns` (50), `max_cell_length` (500), `rows_head` (20), `rows_tail` (10).
+
+**Image** -- `max_image_size_bytes` (2 MB). Images exceeding this size are resized before attachment.
+
+**History compaction** -- `history_max_tokens` (120,000), `history_target_tokens` (40,000), `summarizer_max_tokens` (180,000). These provide defaults for `CompactionConfig` when no explicit config is passed to `HistoryCompactor`.
 
 **Named truncation configs** -- `TruncationConfig` presets (default, sql_query, log_search) with their own thresholds for `rows_head`, `rows_tail`, `json_array_head`, `max_preview_tokens`, etc. The `@context_result()` decorator selects a named config via its first argument.
 
@@ -143,9 +147,13 @@ Each file type has a dedicated processor in `agentic_patterns.core.context.proce
 |---|---|---|
 | `content` | `str \| BinaryContent \| None` | Processed content |
 | `success` | `bool` | Whether processing succeeded |
+| `error_message` | `str \| None` | Error description when `success` is False |
+| `was_extracted` | `bool` | Whether content was extracted from a non-text format (e.g., PDF, DOCX) |
 | `file_type` | `FileType \| None` | Detected file type |
 | `truncation_info` | `TruncationInfo \| None` | What was truncated and by how much |
 | `metadata` | `FileMetadata \| None` | File size, modified time, MIME type |
+
+`BinaryContent` is a dataclass holding `data: bytes` and `mime_type: str`, returned by the image processor for multimodal model attachment.
 
 `TruncationInfo` tracks what was cut: lines shown, rows shown, columns shown, cells truncated, tokens shown vs total tokens, and whether the total output limit was reached.
 
@@ -165,6 +173,17 @@ agent = get_agent(system_prompt="You are a helpful assistant.", history_compacto
 ```
 
 The `history_compactor` parameter wires the compactor into PydanticAI's history processor pipeline. Compaction happens automatically before each agent call when the history exceeds `max_tokens`.
+
+### Constructor
+
+`HistoryCompactor.__init__` accepts:
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `config` | `CompactionConfig \| None` | `None` | Compaction thresholds. If None, loads defaults from `ContextConfig` in config.yaml. |
+| `model` | `Model \| None` | `None` | Model for summarization. If None, loads from config.yaml using `config_name`. |
+| `config_name` | `str` | `"default"` | Named model configuration to use when `model` is None. |
+| `on_compaction` | callback | `None` | Optional async callback receiving `CompactionResult` when compaction occurs. |
 
 ### Configuration
 
@@ -212,6 +231,8 @@ if compactor.needs_compaction(messages):
 tokens = compactor.count_tokens(messages)
 ```
 
+`needs_compaction()` accepts an optional `current_tokens: int | None = None` parameter. When provided, it skips the internal token count and uses the given value directly, which avoids redundant counting if you already know the token total.
+
 ### Compaction callback
 
 Pass `on_compaction` to receive notifications when compaction occurs:
@@ -226,6 +247,14 @@ compactor = HistoryCompactor(
     on_compaction=log_compaction,
 )
 ```
+
+### History processors
+
+`HistoryCompactor` provides two factory methods for creating PydanticAI-compatible history processors:
+
+`create_history_processor()` returns an `async (list[ModelMessage]) -> list[ModelMessage]` callable suitable for PydanticAI's `history_processors` parameter.
+
+`create_context_aware_processor()` returns an `async (RunContext, list[ModelMessage]) -> list[ModelMessage]` callable that also receives the `RunContext`. Use this variant when the processor needs access to run context (the compaction logic itself does not use it, but the signature matches PydanticAI's context-aware processor protocol).
 
 
 ## API Reference
@@ -247,6 +276,7 @@ compactor = HistoryCompactor(
 | `ContextConfig` | Pydantic model | Truncation thresholds for all content types |
 | `TruncationConfig` | Pydantic model | Named truncation preset (threshold, row/array limits) |
 | `FileExtractionResult` | Dataclass | Content + metadata + truncation info from file processing |
+| `BinaryContent` | Dataclass | Binary data (`bytes`) with MIME type, used for image attachments |
 | `TruncationInfo` | Dataclass | What was truncated and by how much |
 | `FileMetadata` | Dataclass | File size, modified time, MIME type, encoding |
 | `read_file(path, config, ...)` | Function | Read and process a file with type detection and truncation |
@@ -260,7 +290,7 @@ compactor = HistoryCompactor(
 |---|---|---|
 | `CompactionConfig` | Pydantic model | `max_tokens` and `target_tokens` thresholds |
 | `CompactionResult` | Pydantic model | Compaction statistics (message/token counts, summary text) |
-| `HistoryCompactor` | Class | Main compactor; `compact()`, `needs_compaction()`, `count_tokens()`, `create_history_processor()` |
+| `HistoryCompactor` | Class | Main compactor; `compact()`, `needs_compaction()`, `count_tokens()`, `create_history_processor()`, `create_context_aware_processor()` |
 
 
 ## Examples
