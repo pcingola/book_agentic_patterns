@@ -1,6 +1,7 @@
 import asyncio
 import tempfile
 import unittest
+import warnings
 from pathlib import Path
 
 from agentic_patterns.core.doctors import (
@@ -8,6 +9,15 @@ from agentic_patterns.core.doctors import (
     PromptRecommendation,
     prompt_doctor,
 )
+
+# PydanticAI agents create an internal async HTTP client (via OpenAI/OpenRouter
+# provider) whose lifecycle is tied to the provider, not the agent. When the
+# agent goes out of scope after run_agent() the underlying transport is not
+# explicitly closed, causing Python to emit ResourceWarning about unclosed
+# sockets. This is a known PydanticAI behavior -- the transport is cleaned up
+# by GC, but the warning fires before that in tests. Filtering it here because
+# there is no public API to close the provider's HTTP client from our code.
+warnings.filterwarnings("ignore", category=ResourceWarning, module=r"asyncio\.selector_events")
 
 
 WELL_DEFINED_PROMPT = """## System Prompt

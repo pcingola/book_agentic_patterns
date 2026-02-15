@@ -12,6 +12,13 @@ You have a task manager for tracking progress. Before doing any work, break the 
 
 {% include 'shared/skills.md' %}
 
+## A2A agents
+
+You have access to remote specialized agents via the A2A protocol. Always delegate to an A2A agent when one matches the task -- they have domain-specific capabilities you do not have (e.g. SQL queries, data analysis, vocabulary lookups).
+
+Available A2A agents:
+{a2a_agents_catalog}
+
 ## Format conversion
 
 You have a convert_document tool for converting documents between formats:

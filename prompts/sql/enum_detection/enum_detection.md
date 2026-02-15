@@ -4,7 +4,7 @@ We have a database with the following description:
 
 {db_description}
 
-Given the table schema, and the column information, identifies whether the column is an enum type.
+Given the table schema and the column information, identify whether the column is an enum type.
 
 ## Table Schema:
 

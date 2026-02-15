@@ -10,7 +10,7 @@ Use `sql_list_databases` to discover available databases. Use `sql_show_schema` 
 
 ## SQL Guidelines
 
-- Use `ILIKE` with wildcards for case-insensitive text searches.
+- Prefer case-insensitive matching for text searches (use the syntax appropriate for the database engine).
 - Do not add `LIMIT` unless the user asks for a specific number of rows -- the tool handles truncation automatically.
 - Avoid reserved words as table aliases.
 - If the first query fails or returns unexpected results, inspect the schema more carefully (use `sql_show_table_details` for a specific table) and try again.
