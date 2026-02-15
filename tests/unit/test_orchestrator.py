@@ -49,6 +49,10 @@ class TestOrchestratorAgent(unittest.IsolatedAsyncioTestCase):
     @classmethod
     def setUpClass(cls):
         cls.port = find_free_port()
+        cls.loop = asyncio.new_event_loop()
+
+    def setUp(self):
+        asyncio.get_event_loop().slow_callback_duration = 0.5
         cls.mock_server = MockA2AServer(
             name="Researcher", description="Researches topics"
         )

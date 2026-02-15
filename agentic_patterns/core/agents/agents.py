@@ -53,16 +53,16 @@ def get_agent(
     Returns:
         Configured Agent instance.
     """
-    config = _get_config(config_name, config_path)
-
     if model is None:
+        config = _get_config(config_name, config_path)
         model = _get_model_from_config(config, http_client=http_client)
-
-    if model_settings is None:
-        settings_kwargs = {"timeout": config.timeout}
-        if config.parallel_tool_calls is not None:
-            settings_kwargs["parallel_tool_calls"] = config.parallel_tool_calls
-        model_settings = ModelSettings(**settings_kwargs)
+        if model_settings is None:
+            settings_kwargs = {"timeout": config.timeout}
+            if config.parallel_tool_calls is not None:
+                settings_kwargs["parallel_tool_calls"] = config.parallel_tool_calls
+            model_settings = ModelSettings(**settings_kwargs)
+    elif model_settings is None:
+        model_settings = ModelSettings()
 
     # If history_compactor provided and no history_processor in kwargs, create one
     if history_compactor is not None and "history_processor" not in kwargs:
