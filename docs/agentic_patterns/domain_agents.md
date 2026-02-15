@@ -14,7 +14,7 @@ Domain agents (`agentic_patterns.agents`) are pre-configured agents for specific
 
 ## nl2sql
 
-`create_agent(db_id: str)` returns an agent bound to a specific database. It loads a system prompt and database-specific instructions (schema, example queries, dialect-specific rules) via `get_system_prompt()` and `get_instructions()`. Tools are created with `get_all_tools(db_id)`, which binds a `SqlConnector` to the given database via closure, exposing `db_execute_sql_tool` and `db_get_row_by_id_tool`. Both tools raise `ModelRetry` on validation errors so the agent can self-correct.
+`create_agent(db_id: str)` returns an agent bound to a specific database. The prompt module (`agents.nl2sql.prompts`) provides `get_system_prompt()` for the base system prompt and `get_instructions(db_info)` which assembles schema, example queries, and dialect-specific rules (loaded from `prompts/sql/nl2sql/db_specific/` or `db_type/` if present). Tools are created with `get_all_tools(db_id)`, which binds a `SqlConnector` to the given database via closure, exposing `db_execute_sql_tool` and `db_get_row_by_id_tool`. Both tools raise `ModelRetry` on validation errors so the agent can self-correct.
 
 ## openapi
 

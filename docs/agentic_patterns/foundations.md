@@ -229,6 +229,13 @@ DEFAULT_SESSION_ID  # "default_session"
 `SANDBOX_PREFIX` (`"/workspace"`) is the path prefix agents see for sandbox paths. JWT constants (`JWT_SECRET`, `JWT_ALGORITHM`) are loaded from environment variables with development defaults.
 
 
+## Utilities
+
+`agentic_patterns.core.utils` provides two small helpers used across the codebase:
+
+`relative_to_home(path)` replaces the user's home directory with `$HOME` in a path string, useful for display in logs and notebooks. `str2bool(v)` converts common truthy strings (`"yes"`, `"true"`, `"on"`, `"1"`) to `bool`.
+
+
 ## Authentication
 
 `agentic_patterns.core.auth` provides JWT token generation and validation for propagating user identity across layers (HTTP requests, MCP servers, A2A calls).
