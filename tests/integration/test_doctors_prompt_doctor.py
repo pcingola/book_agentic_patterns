@@ -17,7 +17,9 @@ from agentic_patterns.core.doctors import (
 # sockets. This is a known PydanticAI behavior -- the transport is cleaned up
 # by GC, but the warning fires before that in tests. Filtering it here because
 # there is no public API to close the provider's HTTP client from our code.
-warnings.filterwarnings("ignore", category=ResourceWarning, module=r"asyncio\.selector_events")
+warnings.filterwarnings(
+    "ignore", category=ResourceWarning, module=r"asyncio\.selector_events"
+)
 
 
 WELL_DEFINED_PROMPT = """## System Prompt

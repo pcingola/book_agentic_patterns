@@ -200,7 +200,10 @@ class SandboxManager:
             logger.warning("Error removing container %s: %s", container_id, e)
 
     def _run_command(
-        self, session: SandboxSession, command: str | list[str], timeout: int | None = None
+        self,
+        session: SandboxSession,
+        command: str | list[str],
+        timeout: int | None = None,
     ) -> tuple[int, str]:
         """Execute a command in the session's container. Returns (exit_code, output).
 

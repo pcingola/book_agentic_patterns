@@ -31,6 +31,7 @@ def _is_docker_available() -> bool:
     """Check if Docker daemon is reachable."""
     try:
         import docker
+
         client = docker.from_env()
         client.ping()
         return True
@@ -93,13 +94,36 @@ async def execute_in_sandbox(
     (repl_dir / f"{cell_id}_input.pkl").write_bytes(pickle.dumps(input_data))
 
     if is_bwrap:
-        return await _execute_bwrap(sandbox, workspace_path, executor_workspace, executor_repl_dir, cell_id, timeout, user_id, session_id, repl_dir)
+        return await _execute_bwrap(
+            sandbox,
+            workspace_path,
+            executor_workspace,
+            executor_repl_dir,
+            cell_id,
+            timeout,
+            user_id,
+            session_id,
+            repl_dir,
+        )
 
     if _is_docker_available():
-        return await _execute_docker(workspace_path, cell_id, timeout, user_id, session_id, repl_dir)
+        return await _execute_docker(
+            workspace_path, cell_id, timeout, user_id, session_id, repl_dir
+        )
 
-    logger.warning("No bwrap or Docker available -- running REPL executor without isolation")
-    return await _execute_subprocess(sandbox, executor_workspace, executor_repl_dir, cell_id, timeout, user_id, session_id, repl_dir)
+    logger.warning(
+        "No bwrap or Docker available -- running REPL executor without isolation"
+    )
+    return await _execute_subprocess(
+        sandbox,
+        executor_workspace,
+        executor_repl_dir,
+        cell_id,
+        timeout,
+        user_id,
+        session_id,
+        repl_dir,
+    )
 
 
 async def _execute_bwrap(
@@ -162,7 +186,9 @@ async def _execute_docker(
     )
 
     command = [
-        "python", "-m", "agentic_patterns.core.repl.executor",
+        "python",
+        "-m",
+        "agentic_patterns.core.repl.executor",
         f"/workspace/{REPL_DIR_NAME}",
         cell_id,
     ]
@@ -170,14 +196,22 @@ async def _execute_docker(
     try:
         exit_code, output = await asyncio.to_thread(
             manager.execute_command,
-            user_id, session_id, command,
-            timeout, persistent=True,
+            user_id,
+            session_id,
+            command,
+            timeout,
+            persistent=True,
         )
     except Exception as e:
         logger.error("Docker execution failed: %s", e)
         return SubprocessResult(
             state=CellState.ERROR,
-            outputs=[CellOutput(output_type=OutputType.ERROR, content=f"Docker execution failed: {e}")],
+            outputs=[
+                CellOutput(
+                    output_type=OutputType.ERROR,
+                    content=f"Docker execution failed: {e}",
+                )
+            ],
         )
 
     output_path = repl_dir / f"{cell_id}_output.pkl"
@@ -186,7 +220,12 @@ async def _execute_docker(
 
     return SubprocessResult(
         state=CellState.ERROR,
-        outputs=[CellOutput(output_type=OutputType.ERROR, content=output or "Executor produced no output")],
+        outputs=[
+            CellOutput(
+                output_type=OutputType.ERROR,
+                content=output or "Executor produced no output",
+            )
+        ],
     )
 
 
