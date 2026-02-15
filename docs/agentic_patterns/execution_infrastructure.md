@@ -125,8 +125,7 @@ MCP server (`mcp/sandbox/`): same single `execute` tool, converts `DockerExcepti
 The REPL requires a Docker image. Build it once (and whenever `core/repl/docker/` changes):
 
 ```bash
-build-repl-image                        # builds agentic-patterns-repl:latest
-build-repl-image my-custom-tag:1.0      # custom tag
+build-repl-image
 ```
 
 ### Notebook and Cell

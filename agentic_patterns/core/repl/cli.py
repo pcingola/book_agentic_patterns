@@ -1,21 +1,20 @@
 """CLI to build the REPL Docker image."""
 
+import subprocess
 import sys
 from pathlib import Path
 
-import docker
-
 from agentic_patterns.core.sandbox.config import DOCKER_HOST
 
-
 DOCKER_DIR = Path(__file__).parent / "docker"
-DEFAULT_IMAGE = "agentic-patterns-repl:latest"
+IMAGE_TAG = "agentic-patterns-repl:latest"
 
 
 def main() -> None:
-    image_tag = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_IMAGE
-    client = docker.DockerClient(base_url=DOCKER_HOST) if DOCKER_HOST else docker.from_env()
-    client.images.build(path=str(DOCKER_DIR), tag=image_tag, rm=True)
+    cmd = ["docker", "build", "-t", IMAGE_TAG, "--rm", str(DOCKER_DIR)]
+    if DOCKER_HOST:
+        cmd = ["docker", "-H", DOCKER_HOST] + cmd[1:]
+    sys.exit(subprocess.call(cmd))
 
 
 if __name__ == "__main__":

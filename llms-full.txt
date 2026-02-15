@@ -1,0 +1,3611 @@
+# agentic_patterns
+
+Documentation for the `agentic_patterns` library -- a Python library for building AI agents using PydanticAI.
+
+## Getting Started
+
+[Foundations](agentic_patterns/foundations.md) -- Agent creation, model configuration, execution, multi-turn conversations, system prompts, environment setup, authentication, and user sessions.
+
+## Core
+
+[Tools](agentic_patterns/tools.md) -- Tool definition, structured outputs, tool selection, permissions, workspace isolation, context result decorator, built-in tool wrappers, and dynamic tool generation.
+
+[Context & Memory](agentic_patterns/context_memory.md) -- Prompt templates with includes and variable substitution, context processing pipeline (file type detection, truncation, processors), and history compaction.
+
+[RAG](agentic_patterns/rag.md) -- Embeddings, vector database, document ingestion, similarity search, and advanced retrieval techniques.
+
+## Data Access
+
+[Connectors](agentic_patterns/connectors.md) -- FileConnector, CsvConnector, JsonConnector, connector base, and connector chaining through the workspace.
+
+[SQL](agentic_patterns/sql.md) -- SQL connector, schema discovery, query validation, schema annotation pipeline, and NL2SQL agent.
+
+[OpenAPI](agentic_patterns/openapi.md) -- OpenAPI 3.x connector, spec ingestion, endpoint discovery, and HTTP request execution.
+
+[Vocabulary](agentic_patterns/vocabulary.md) -- Vocabulary connector with three resolution strategies (enum, tree, RAG), term validation, and hierarchy navigation.
+
+[Toolkits](agentic_patterns/toolkits.md) -- Pure Python business logic: todo management, data analysis, data visualization, and format conversion.
+
+## Agent Capabilities
+
+[MCP](agentic_patterns/mcp.md) -- MCP server creation, client configuration, error classification, authentication middleware, and network isolation.
+
+[A2A](agentic_patterns/a2a.md) -- A2A server exposure, client configuration, coordinator pattern, delegation tools, skill conversion, and testing with MockA2AServer.
+
+## Composition
+
+[Skills, Sub-Agents & Tasks](agentic_patterns/skills_sub_agents_tasks.md) -- Sub-agent delegation (fixed and dynamic), skill registry with progressive disclosure, task broker for background execution, OrchestratorAgent, and AgentSpec.
+
+[Domain Agents](agentic_patterns/domain_agents.md) -- Pre-configured agents: db_catalog, data_analysis, sql, openapi, and coordinator.
+
+## Quality & Testing
+
+[Evals](agentic_patterns/evals.md) -- Deterministic testing (ModelMock, tool_mock), evaluation framework with custom evaluators and auto-discovery, and doctors CLI for artifact quality analysis.
+
+## Production
+
+[Execution Infrastructure](agentic_patterns/execution_infrastructure.md) -- Process sandbox, Docker container sandbox, stateful REPL, MCP server isolation, and skill sandboxing.
+
+[Compliance](agentic_patterns/compliance.md) -- Data sensitivity levels, private data tagging, permission enforcement, and network isolation driven by compliance flags.
+
+[User Interface](agentic_patterns/ui.md) -- Authentication, Chainlit integration, AG-UI protocol, state management, feedback persistence, and file uploads.
+
+---
+
+# Foundations
+
+The foundations module (`agentic_patterns.core.agents`) provides the minimal surface for creating and running agents. It wraps PydanticAI's `Agent` with YAML-based model configuration so you never hardcode provider credentials or model names in Python code.
+
+## Configuration
+
+All model configuration lives in `config.yaml` at the project root. Each entry under `models:` defines a named configuration with a `model_family` that selects the provider, a `model_name`, credentials, and optional settings.
+
+```yaml
+models:
+  default:
+    model_family: openrouter
+    model_name: anthropic/claude-sonnet-4.5
+    api_key: ${OPENROUTER_API_KEY}
+    api_url: https://openrouter.ai/api/v1
+    timeout: 120
+
+  fast:
+    model_family: openai
+    model_name: gpt-4o-mini
+    api_key: ${OPENAI_API_KEY}
+    timeout: 60
+
+  local:
+    model_family: ollama
+    model_name: llama3
+    url: http://localhost:11434/v1
+    timeout: 300
+```
+
+Supported model families and their required fields:
+
+| Family | Required fields | Notes |
+|---|---|---|
+| `azure` | `model_name`, `api_key`, `endpoint`, `api_version` | Azure OpenAI Service |
+| `bedrock` | `model_name` | AWS credentials via profile or env vars. Optional `claude_sonnet_1m_tokens: true` for 1M context. |
+| `ollama` | `model_name`, `url` | Local models via Ollama |
+| `openai` | `model_name`, `api_key` | Direct OpenAI API |
+| `openrouter` | `model_name`, `api_key` | Multi-provider gateway. Optional `api_url` (defaults to `https://openrouter.ai/api/v1`). |
+
+All families support `timeout` (default 120 seconds) and `parallel_tool_calls` (optional boolean).
+
+## get_agent
+
+Creates a PydanticAI `Agent` from configuration.
+
+```python
+from agentic_patterns.core.agents import get_agent
+
+# Uses the "default" entry in config.yaml
+agent = get_agent()
+
+# Uses a named configuration
+agent = get_agent(config_name="fast")
+
+# With a system prompt
+agent = get_agent(system_prompt="Translate into French")
+
+# With tools
+agent = get_agent(tools=[my_tool_fn])
+```
+
+**Signature:**
+
+```python
+def get_agent(
+    model=None,
+    *,
+    config_name: str = "default",
+    config_path: Path | str | None = None,
+    model_settings=None,
+    http_client=None,
+    history_compactor=None,
+    **kwargs,
+) -> Agent
+```
+
+When `model` is `None` (the default), the function reads `config.yaml`, looks up the entry named `config_name`, creates the appropriate PydanticAI model instance, and passes it to `Agent()`. Any extra keyword arguments (`system_prompt`, `tools`, `toolsets`, `output_type`, `deps_type`, `retries`, etc.) are forwarded directly to PydanticAI's `Agent` constructor.
+
+If you pass a pre-configured `model` instance, configuration lookup is skipped entirely.
+
+## run_agent
+
+Executes an agent with a prompt and returns the run result plus execution nodes.
+
+```python
+from agentic_patterns.core.agents import get_agent, run_agent
+
+agent = get_agent()
+agent_run, nodes = await run_agent(agent, "Translate to French: I like coffee.")
+
+print(agent_run.result.output)  # "J'aime le cafe."
+```
+
+**Signature:**
+
+```python
+async def run_agent(
+    agent: Agent,
+    prompt: str | list[str],
+    message_history: Sequence[ModelMessage] | None = None,
+    usage_limits: UsageLimits | None = None,
+    verbose: bool = False,
+    catch_exceptions: bool = False,
+    ctx: Context | None = None,
+) -> tuple[AgentRun | None, list[AgentNode]]
+```
+
+The function uses PydanticAI's async iteration interface (`agent.iter()`) to stream execution step by step. Each step is a graph node -- `UserPromptNode`, `ModelRequestNode`, or `CallToolsNode` -- collected into the returned `nodes` list. This provides full visibility into what the agent did: which tools it called, what the model responded at each step, and how the conversation flowed.
+
+When `verbose=True`, each node is printed via `rich`. When a FastMCP `ctx` is provided (i.e., running inside an MCP server), debug messages are sent to the MCP client.
+
+If `catch_exceptions=True`, errors are swallowed and `agent_run` is returned as `None`. The default (`False`) lets exceptions propagate.
+
+## Multi-turn conversations
+
+LLMs are stateless. To maintain context across turns, pass the message history from the previous turn into the next call.
+
+```python
+from agentic_patterns.core.agents import get_agent, run_agent
+from agentic_patterns.core.agents.utils import nodes_to_message_history
+
+agent = get_agent()
+
+# Turn 1
+agent_run_1, nodes_1 = await run_agent(agent, "Translate to French: I like coffee.")
+
+# Extract history
+history = nodes_to_message_history(nodes_1)
+
+# Turn 2 -- agent knows "it" refers to coffee
+agent_run_2, nodes_2 = await run_agent(agent, "How do you like it?", message_history=history)
+```
+
+### nodes_to_message_history
+
+Converts the list of execution nodes from `run_agent()` into the `Sequence[ModelMessage]` format that `run_agent()` accepts as `message_history`.
+
+```python
+def nodes_to_message_history(
+    nodes: list,
+    remove_last_call_tool: bool = True,
+) -> Sequence[ModelMessage]
+```
+
+By default it strips the trailing `CallToolsNode` from the history (if present) because tool call/return pairs at the end of a turn are internal to that turn's execution and should not leak into the next turn's context.
+
+### Chaining turns
+
+Each turn uses the history from the immediately preceding turn:
+
+```python
+run_1, nodes_1 = await run_agent(agent, prompt_1)
+history_1 = nodes_to_message_history(nodes_1)
+
+run_2, nodes_2 = await run_agent(agent, prompt_2, message_history=history_1)
+history_2 = nodes_to_message_history(nodes_2)
+
+run_3, nodes_3 = await run_agent(agent, prompt_3, message_history=history_2)
+```
+
+## System prompts
+
+Pass `system_prompt` to `get_agent()` to separate persistent instructions from per-request content. The system prompt is included in every API call the agent makes.
+
+```python
+agent = get_agent(system_prompt="Translate into French")
+
+# Only the content varies per call
+run_1, _ = await run_agent(agent, "I like coffee.")
+run_2, _ = await run_agent(agent, "The weather is nice.")
+```
+
+Use a system prompt when the agent has a persistent role or behavior. Use the user prompt for the specific input to process. Combine with `message_history` for multi-turn conversations where both role and context are preserved.
+
+## Environment & Project Configuration
+
+The configuration module (`agentic_patterns.core.config`) handles environment loading, path resolution, and project-level constants. It is designed to work both when the library runs standalone and when it is installed as a package inside another project.
+
+### Environment loading
+
+At import time, `config.py` calls `load_env_variables()` which searches for a `.env` file in multiple locations: the current working directory and its parents, the project root (determined by the main script's location), and the config file's own directory. The first `.env` found wins. If no `.env` file exists, the process exits with code 1.
+
+```python
+from agentic_patterns.core.config.env import get_variable_env
+
+# Read an environment variable with a default
+api_key = get_variable_env("MY_API_KEY", default="fallback")
+
+# Require a variable to be set (raises ValueError if missing)
+db_url = get_variable_env("DATABASE_URL", allow_empty=False)
+```
+
+### Path constants
+
+All paths are `Path` objects. Most can be overridden via environment variables; otherwise they resolve relative to `MAIN_PROJECT_DIR` (the parent directory of the found `.env` file).
+
+| Constant | Env override | Default |
+|---|---|---|
+| `AGENTIC_PATTERNS_PROJECT_DIR` | -- | The `agentic_patterns/` package directory |
+| `MAIN_PROJECT_DIR` | -- | Parent of the `.env` file |
+| `SCRIPTS_DIR` | -- | `MAIN_PROJECT_DIR / "scripts"` |
+| `DATA_DIR` | `DATA_DIR` | `MAIN_PROJECT_DIR / "data"` |
+| `DATA_DB_DIR` | `DATA_DB_DIR` | `DATA_DIR / "db"` |
+| `PROMPTS_DIR` | `PROMPTS_DIR` | `MAIN_PROJECT_DIR / "prompts"` |
+| `WORKSPACE_DIR` | `WORKSPACE_DIR` | `DATA_DIR / "workspaces"` |
+| `PRIVATE_DATA_DIR` | `PRIVATE_DATA_DIR` | `DATA_DIR / "private_data"` |
+| `FEEDBACK_DIR` | `FEEDBACK_DIR` | `DATA_DIR / "feedback"` |
+| `SKILLS_DIR` | `SKILLS_DIR` | `DATA_DIR / "skills"` |
+| `LOGS_DIR` | -- | `MAIN_PROJECT_DIR / "logs"` |
+| `USER_DATABASE_FILE` | `USER_DATABASE_FILE` | `MAIN_PROJECT_DIR / "users.json"` |
+| `CHAINLIT_DATA_LAYER_DB` | `CHAINLIT_DATA_LAYER_DB` | `DATA_DIR / "chainlit.db"` |
+| `CHAINLIT_FILE_STORAGE_DIR` | `CHAINLIT_FILE_STORAGE_DIR` | `DATA_DIR / "chainlit_files"` |
+| `CHAINLIT_SCHEMA_FILE` | `CHAINLIT_SCHEMA_FILE` | `DATA_DIR / "sql" / "chainlit_data_layer.sql"` |
+
+### Session defaults
+
+Two constants provide default values for user/session identity, used by notebooks and development environments where no explicit session is established:
+
+```python
+from agentic_patterns.core.config.config import DEFAULT_USER_ID, DEFAULT_SESSION_ID
+
+DEFAULT_USER_ID   # "default_user"
+DEFAULT_SESSION_ID  # "default_session"
+```
+
+### Workspace and JWT constants
+
+`SANDBOX_PREFIX` (`"/workspace"`) is the path prefix agents see for sandbox paths. JWT constants (`JWT_SECRET`, `JWT_ALGORITHM`) are loaded from environment variables with development defaults.
+
+
+## Utilities
+
+`agentic_patterns.core.utils` provides two small helpers used across the codebase:
+
+`relative_to_home(path)` replaces the user's home directory with `$HOME` in a path string, useful for display in logs and notebooks. `str2bool(v)` converts common truthy strings (`"yes"`, `"true"`, `"on"`, `"1"`) to `bool`.
+
+
+## Authentication
+
+`agentic_patterns.core.auth` provides JWT token generation and validation for propagating user identity across layers (HTTP requests, MCP servers, A2A calls).
+
+```python
+from agentic_patterns.core.auth import create_token, decode_token
+
+token = create_token(user_id="alice", session_id="sess-42", expires_in=3600)
+claims = decode_token(token)
+# claims["sub"] == "alice", claims["session_id"] == "sess-42"
+```
+
+`create_token(user_id, session_id, expires_in=3600)` encodes a JWT with `sub` (user ID), `session_id`, `iat`, and `exp` claims using the HS256 algorithm and the secret from `JWT_SECRET`.
+
+`decode_token(token)` validates the signature and expiration, returning the claims dict. Raises `jwt.InvalidTokenError` on failure.
+
+
+## User Session
+
+`agentic_patterns.core.user_session` manages request-scoped user/session identity using Python's `contextvars`. This avoids threading identity parameters through every function call.
+
+```python
+from agentic_patterns.core.user_session import set_user_session, get_user_id, get_session_id
+
+# At request boundary (middleware, MCP handler, etc.)
+set_user_session("alice", "sess-42")
+
+# Anywhere downstream
+get_user_id()      # "alice"
+get_session_id()   # "sess-42"
+```
+
+When no session is set (e.g., in notebooks), the contextvars return `DEFAULT_USER_ID` and `DEFAULT_SESSION_ID` from the config module.
+
+`set_user_session_from_token(token)` is a convenience that decodes a JWT and calls `set_user_session()` with the extracted claims. Used by A2A servers and non-FastMCP entry points that receive raw token strings.
+
+
+## Examples
+
+See the notebooks in `agentic_patterns/examples/foundations/`:
+
+- `example_translate_basic.ipynb` -- single-turn agent with everything in the user prompt
+- `example_translate_system_prompt.ipynb` -- separating system prompt from user prompt
+- `example_multi_turn.ipynb` -- multi-turn conversation with message history
+
+---
+
+# Tools
+
+Tools let agents perform actions beyond text generation -- calculations, file I/O, API calls, database queries. The library provides infrastructure for defining tools, selecting them dynamically, enforcing permissions, managing the workspace where agents store artifacts, and controlling context size when tools return large results.
+
+All tool-related infrastructure lives in `agentic_patterns.core.tools`. PydanticAI tool wrappers (the actual tools agents use) live in `agentic_patterns.tools`.
+
+
+## Defining Tools
+
+A tool is a plain Python function with type hints and a docstring. The framework inspects the signature to generate the JSON schema the model needs to call the tool.
+
+```python
+def add(a: int, b: int) -> int:
+    """Add two numbers"""
+    return a + b
+
+def sub(a: int, b: int) -> int:
+    """Subtract two numbers"""
+    return a - b
+```
+
+Pass tools when creating an agent:
+
+```python
+from agentic_patterns.core.agents import get_agent, run_agent
+
+agent = get_agent(tools=[add, sub])
+result, nodes = await run_agent(agent, "What is 40123456789 + 2123456789?", verbose=True)
+print(result.result.output)
+```
+
+The model decides which tool to call based on the task. `run_agent` executes the agent loop, invoking tools as the model requests them.
+
+
+## Structured Output
+
+Structured output constrains the model to return data conforming to a Pydantic schema instead of free-form text. Define a model and pass it as `output_type`:
+
+```python
+from pydantic import BaseModel, Field
+
+class ProgrammingLanguage(BaseModel):
+    name: str
+    paradigm: str = Field(description="Primary paradigm: functional, OO, procedural, etc.")
+    typed: bool = Field(description="Whether the language is statically typed")
+
+agent = get_agent(output_type=list[ProgrammingLanguage])
+result, _ = await run_agent(agent, "List 3 popular programming languages.")
+
+for lang in result.result.output:
+    print(f"{lang.name}: {lang.paradigm}, typed={lang.typed}")
+```
+
+The result is a typed Python object (here a `list[ProgrammingLanguage]`), not a string. The `Field(description=...)` annotations guide the model on what each field means.
+
+
+## Tool Selection
+
+When an agent has access to many tools, passing all of them at once wastes context and can confuse the model. Tool selection solves this with a two-stage architecture: a selection agent picks the relevant tools, then the task agent runs with only those tools.
+
+### Manual approach
+
+Build tool descriptions, ask a selection agent to pick tool names, then filter:
+
+```python
+from agentic_patterns.core.tools import func_to_description
+
+# func_to_description generates a rich description from the function signature
+print(func_to_description(add))
+# Tool: add(a: int, b: int) -> int
+# Description: Add two numbers
+```
+
+### ToolSelector
+
+`ToolSelector` encapsulates the two-stage pattern:
+
+```python
+from agentic_patterns.core.tools import ToolSelector
+
+selector = ToolSelector([add, sub, mul, div, sqrt, log, ...])
+selected = await selector.select("What is 2 + 3?", verbose=True)
+
+agent = get_agent(tools=selected)
+result, _ = await run_agent(agent, "What is 2 + 3?")
+```
+
+Constructor parameters:
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `tools` | `list[Callable]` | required | All available tool functions |
+| `prompt_template` | `str \| None` | `None` | Custom selection prompt (must contain `{query}` and `{tools_description}` placeholders) |
+| `model` | model instance | `None` | Model override for the selection agent |
+| `config_name` | `str` | `"default"` | Model config name from `config.yaml` |
+
+The `select(query, verbose=False)` method returns a filtered `list[Callable]` of tools relevant to the query.
+
+
+## Tool Permissions
+
+Permissions define authority boundaries for tools. Three permission levels exist:
+
+| Permission | Meaning |
+|---|---|
+| `ToolPermission.READ` | Observation without mutation |
+| `ToolPermission.WRITE` | State mutation |
+| `ToolPermission.CONNECT` | External system access |
+
+### Annotating tools
+
+Use the `@tool_permission` decorator. Tools without the decorator default to READ:
+
+```python
+from agentic_patterns.core.tools import ToolPermission, tool_permission
+
+@tool_permission(ToolPermission.READ)
+def get_balance(account_id: str) -> float:
+    """Get account balance."""
+    return 1500.00
+
+@tool_permission(ToolPermission.WRITE)
+def transfer_funds(from_acct: str, to_acct: str, amount: float) -> bool:
+    """Transfer funds between accounts."""
+    return True
+
+@tool_permission(ToolPermission.WRITE, ToolPermission.CONNECT)
+def send_notification(email: str, amount: float) -> bool:
+    """Send payment notification to external email."""
+    return True
+```
+
+A tool can require multiple permissions. CONNECT tools are automatically blocked when the session contains private data (see Compliance).
+
+### Inspecting permissions
+
+```python
+from agentic_patterns.core.tools import get_permissions
+
+get_permissions(transfer_funds)  # {ToolPermission.WRITE}
+get_permissions(send_notification)  # {ToolPermission.WRITE, ToolPermission.CONNECT}
+```
+
+### Construction-time filtering
+
+Filter tools before passing them to the agent. The agent never sees disallowed tools:
+
+```python
+from agentic_patterns.core.tools import filter_tools_by_permission
+
+all_tools = [get_balance, transfer_funds, send_notification]
+
+read_only = filter_tools_by_permission(all_tools, granted={ToolPermission.READ})
+# [get_balance]
+
+read_write = filter_tools_by_permission(all_tools, granted={ToolPermission.READ, ToolPermission.WRITE})
+# [get_balance, transfer_funds]
+```
+
+### Runtime enforcement
+
+The agent sees all tools, but execution raises `ToolPermissionError` if the permission is denied:
+
+```python
+from agentic_patterns.core.tools import enforce_tools_permissions
+
+enforced = enforce_tools_permissions(all_tools, granted={ToolPermission.READ})
+agent = get_agent(tools=enforced)
+# Agent can attempt transfer_funds but it will raise ToolPermissionError
+```
+
+Construction-time filtering is cleaner (the agent cannot even attempt disallowed actions). Runtime enforcement lets the agent see the tool and explain why it cannot use it.
+
+
+## The Workspace
+
+The workspace is a shared file system where agents store artifacts too large for the context window. Agents see sandbox paths (`/workspace/...`) while actual files are stored in isolated directories per user and session.
+
+### Path translation
+
+```python
+from pathlib import PurePosixPath
+from agentic_patterns.core.workspace import workspace_to_host_path
+
+host_path = workspace_to_host_path(PurePosixPath("/workspace/reports/analysis.json"))
+# Resolves to: WORKSPACE_DIR / user_id / session_id / reports / analysis.json
+```
+
+User and session identity come from contextvars (set once at the request boundary via `set_user_session()`). All downstream code picks them up automatically.
+
+### Reading and writing
+
+```python
+from agentic_patterns.core.workspace import write_to_workspace, read_from_workspace, list_workspace_files
+
+write_to_workspace("/workspace/output.json", '{"key": "value"}')
+content = read_from_workspace("/workspace/output.json")
+files = list_workspace_files("*.json")
+```
+
+`write_to_workspace` creates parent directories automatically and accepts both `str` and `bytes`. `store_result(content, content_type)` is a convenience that generates a UUID filename and returns the sandbox path.
+
+### Tool pattern: write large output, return summary
+
+When a tool produces large output, write the full result to the workspace and return a concise summary with the file path:
+
+```python
+def analyze_dataset(query: str) -> str:
+    """Analyze data and save results to workspace."""
+    result = run_analysis(query)  # large result
+
+    write_to_workspace("/workspace/analysis/result.json", json.dumps(result))
+
+    return f"Analysis complete. Rows: {result['row_count']}, Mean: {result['mean']}\nFull results: /workspace/analysis/result.json"
+```
+
+### User isolation
+
+Each (user_id, session_id) pair maps to an isolated directory. Path traversal attempts raise `WorkspaceError`:
+
+```python
+workspace_to_host_path(PurePosixPath("/workspace/../../../etc/passwd"))
+# WorkspaceError: Path traversal not allowed
+```
+
+
+## Context Result Decorator
+
+`@context_result()` automates the "save large result, return truncated preview" pattern. When a tool's return value exceeds a configurable threshold, the decorator:
+
+1. Detects the content type (JSON, CSV, text)
+2. Saves the full content to the workspace
+3. Truncates according to content type (structural truncation for JSON, head/tail for CSV and text)
+4. Returns the file path and a preview
+
+```python
+from agentic_patterns.core.context.decorators import context_result
+
+@context_result()
+async def sql_execute(db_id: str, query: str) -> str:
+    # If this returns a large CSV string, the decorator saves it
+    # and returns a preview with the workspace path
+    return await run_query(db_id, query)
+
+@context_result(save=False)
+async def show_notebook() -> str:
+    # save=False: truncate but don't persist (view-only operation)
+    return format_notebook()
+
+@context_result("sql_query")
+async def run_sql(sql: str) -> str:
+    # Use a named truncation config from config.yaml
+    return await execute(sql)
+```
+
+Works with both sync and async functions. The truncation config controls thresholds, number of head/tail rows for CSV, array/key limits for JSON, and maximum preview size.
+
+
+## Built-in Tool Wrappers
+
+The library ships tool wrappers in `agentic_patterns.tools`. Each module exposes a `get_all_tools()` function returning a list of tool functions ready to pass to `Agent(tools=[...])`.
+
+| Module | Wraps | Tools |
+|---|---|---|
+| `file` | `core.connectors.file` | file_read, file_head, file_tail, file_find, file_list, file_write, file_append, file_edit, file_delete |
+| `csv` | `core.connectors.csv` | csv_headers, csv_head, csv_tail, csv_read_row, csv_find_rows, csv_append, csv_update_cell, csv_update_row, csv_delete_rows |
+| `json` | `core.connectors.json` | json_get, json_keys, json_head, json_tail, json_validate, json_set, json_merge, json_append, json_delete_key |
+| `sql` | `core.connectors.sql` | sql_list_databases, sql_list_tables, sql_show_schema, sql_show_table_details, sql_execute, sql_get_row_by_id |
+| `nl2sql` | `core.connectors.sql` | db_execute_sql_tool, db_get_row_by_id_tool (note: `get_all_tools(db_id: str)` requires a `db_id` argument to bind tools to a specific database) |
+| `openapi` | `core.connectors.openapi` | openapi_list_apis, openapi_list_endpoints, openapi_show_api_summary, openapi_show_endpoint_details, openapi_call_endpoint |
+| `todo` | `toolkits.todo` | todo_add, todo_add_many, todo_create_list, todo_delete, todo_show, todo_update_status |
+| `repl` | `core.repl` | repl_execute_cell, repl_rerun_cell, repl_show_notebook, repl_show_cell, repl_delete_cell, repl_clear_notebook, repl_export_ipynb |
+| `sandbox` | `core.sandbox` | sandbox_execute |
+| `data_analysis` | `toolkits.data_analysis` | list_dataframes + dynamically generated operation tools |
+| `data_viz` | `toolkits.data_viz` | list_plots + dynamically generated plot tools |
+| `format_conversion` | `toolkits.format_conversion` | convert_document |
+
+All wrappers follow the same conventions: READ/WRITE/CONNECT permissions via `@tool_permission`, `@context_result()` for tools that may return large results, and `ModelRetry` exceptions for retryable errors.
+
+Usage:
+
+```python
+from agentic_patterns.tools.file import get_all_tools as get_file_tools
+from agentic_patterns.tools.sql import get_all_tools as get_sql_tools
+from agentic_patterns.core.tools import filter_tools_by_permission, ToolPermission
+
+# Combine tools from multiple modules
+all_tools = get_file_tools() + get_sql_tools()
+
+# Optionally filter by permission
+read_tools = filter_tools_by_permission(all_tools, granted={ToolPermission.READ})
+
+agent = get_agent(tools=read_tools)
+```
+
+
+## Dynamic Tool Generation
+
+Some tool modules (data_analysis, data_viz) have large operation registries where each operation becomes a separate tool function. Instead of writing tool functions by hand, the `agentic_patterns.tools.dynamic` module generates them at import time from operation metadata.
+
+### Helpers
+
+`get_param_signature(param_name, param_default)` generates a parameter signature fragment for use in dynamically constructed function definitions. It handles type inference from default values: strings produce `param: str = 'value'`, type classes produce `param: type = None`, and `None` produces `param = None`.
+
+`generate_param_docs(parameters)` generates an Args-style docstring section from a parameter dict. Each entry includes the parameter name, inferred type, and default value.
+
+### How it works
+
+Each operation registry (e.g., `toolkits.data_analysis.executor.get_all_operations()`) returns a dict mapping operation names to config objects with `description`, `parameters`, and other metadata. The tool wrapper module iterates over this dict, builds a function signature string using `get_param_signature()`, and uses `exec()` to create a callable with the correct signature and docstring. This ensures the LLM sees accurate parameter names, types, and descriptions in the tool schema.
+
+Both the PydanticAI tool wrappers (`tools/data_analysis.py`, `tools/data_viz.py`) and MCP server wrappers (`mcp/data_analysis/tools.py`, `mcp/data_viz/tools.py`) use the same dynamic helpers, keeping tool definitions consistent across both interfaces.
+
+
+## API Reference
+
+### `agentic_patterns.core.tools`
+
+| Name | Kind | Description |
+|---|---|---|
+| `ToolPermission` | Enum | READ, WRITE, CONNECT |
+| `ToolPermissionError` | Exception | Raised when a tool lacks required permissions |
+| `tool_permission(*permissions)` | Decorator | Attach permission requirements to a tool function |
+| `get_permissions(func)` | Function | Get permissions for a tool (defaults to READ) |
+| `filter_tools_by_permission(tools, granted)` | Function | Filter tools to those allowed by granted permissions |
+| `enforce_tools_permissions(tools, granted)` | Function | Wrap tools with runtime permission checking |
+| `ToolSelector(tools, ...)` | Class | LLM-driven tool selection from a large catalog |
+| `func_to_description(func)` | Function | Generate human-readable description from function signature |
+
+### `agentic_patterns.core.workspace`
+
+| Name | Kind | Description |
+|---|---|---|
+| `WorkspaceError` | Exception | Invalid paths, missing files, traversal attempts |
+| `workspace_to_host_path(sandbox_path)` | Function | Convert `/workspace/...` path to host filesystem path |
+| `host_to_workspace_path(host_path)` | Function | Convert host path to `/workspace/...` path |
+| `write_to_workspace(sandbox_path, content)` | Function | Write str or bytes to workspace |
+| `read_from_workspace(sandbox_path)` | Function | Read text content from workspace |
+| `list_workspace_files(pattern)` | Function | List files matching glob pattern |
+| `store_result(content, content_type)` | Function | Store content with auto-generated filename |
+| `clean_up_session()` | Function | Delete workspace files and reset compliance flags |
+
+Async variants (`read_from_workspace_async`, `write_to_workspace_async`, `store_result_async`) are available for all I/O functions.
+
+### `agentic_patterns.tools.dynamic`
+
+| Name | Kind | Description |
+|---|---|---|
+| `get_param_signature(param_name, param_default)` | Function | Generate parameter signature string from name and default value |
+| `generate_param_docs(parameters)` | Function | Generate Args-style docstring from parameter dict |
+
+### `agentic_patterns.core.context.decorators`
+
+| Name | Kind | Description |
+|---|---|---|
+| `context_result(config_name, save)` | Decorator | Auto-truncate and persist large tool results |
+
+## Examples
+
+See the notebooks in `agentic_patterns/examples/tools/`:
+
+- `example_tools.ipynb` -- basic tool use with arithmetic functions
+- `example_structured_outputs.ipynb` -- constraining output to Pydantic schemas
+- `example_tool_selection.ipynb` -- manual selection and `ToolSelector`
+- `example_tool_permissions.ipynb` -- construction-time filtering and runtime enforcement
+- `example_workspace.ipynb` -- path translation, user isolation, write-and-summarize
+
+---
+
+# Context & Memory
+
+Context management controls what enters the LLM's context window and how it evolves over time. The library provides three mechanisms: prompt templates for composing system prompts from reusable fragments, the `@context_result()` decorator for bounding tool output size (documented in [Tools](tools.md#context-result-decorator)), and `HistoryCompactor` for summarizing conversation history when it grows too large.
+
+
+## Prompt Templates
+
+Prompt templates live as markdown files in the `prompts/` directory. The `load_prompt()` function loads a template, resolves `{% include %}` directives, and substitutes `{variable}` placeholders.
+
+```python
+from agentic_patterns.core.prompt import load_prompt
+from pathlib import Path
+
+prompt = load_prompt(
+    Path("prompts/analysis.md"),
+    database="bookstore",
+    max_rows=100,
+)
+```
+
+### Include directives
+
+Templates can include other templates using `{% include 'path.md' %}`. Paths are resolved relative to the `PROMPTS_DIR` directory (configured in `core/config/config.py`).
+
+```markdown
+# Analysis Agent
+
+You are a data analysis agent.
+
+{% include 'shared/workspace.md' %}
+{% include 'shared/file_tools.md' %}
+
+Analyze the {database} database. Limit results to {max_rows} rows.
+```
+
+This allows reusable prompt blocks (workspace instructions, tool descriptions, safety policies) to be shared across agents without duplication.
+
+### Variable substitution
+
+Variables use Python's `str.format()` syntax: `{variable_name}`. `load_prompt()` validates that all template variables are provided and that no extra variables are passed. Missing or unused variables raise `ValueError`.
+
+### Convenience functions
+
+```python
+from agentic_patterns.core.prompt import get_system_prompt, get_prompt, get_instructions
+
+# Loads prompts/system_prompt.md
+system = get_system_prompt(agent_name="sql")
+
+# Loads prompts/{name}.md
+p = get_prompt("analysis", database="bookstore")
+
+# Loads prompts/instructions.md
+instr = get_instructions()
+```
+
+### Prompt layers
+
+PydanticAI agents accept both `system_prompt` and `instructions`. These serve different purposes:
+
+`system_prompt` establishes persistent identity and invariant rules. It is included in the stored message history and persists across multi-turn conversations.
+
+`instructions` provide per-run task guidance. They are applied fresh on each agent call but are not replayed from prior turns in message history.
+
+```python
+from agentic_patterns.core.agents import get_agent
+
+agent = get_agent(
+    system_prompt="You are an expert Python developer.",
+    instructions="When explaining code, always include a brief example.",
+)
+```
+
+Use system prompts for invariants (role, safety policies, output constraints). Use instructions for task-specific procedure that may change between runs.
+
+
+## Context Processing Pipeline
+
+The context module (`agentic_patterns.core.context`) handles reading, type detection, and truncation of files that agents encounter. It ensures that large files are processed into bounded representations that fit within the LLM's context window without losing structural information.
+
+### FileType
+
+`FileType` is a `(str, Enum)` that classifies files for processor dispatch:
+
+ARCHIVE, AUDIO, BINARY, CODE, CSV, DOCX, IMAGE, JSON, MARKDOWN, PDF, PPTX, SPREADSHEET (xlsx), TEXT, XML, YAML.
+
+Detection uses file extension first (e.g., `.py` maps to CODE, `.csv` to CSV), falling back to MIME type for ambiguous cases. Unknown types resolve to BINARY.
+
+### ContextConfig
+
+`ContextConfig` is a Pydantic model loaded from `config.yaml` that controls all truncation thresholds. Key groups:
+
+**File processing** -- `max_tokens_per_file` (5000), `max_total_output` (50000), `max_lines` (200), `max_line_length` (1000).
+
+**Structured data** -- `max_nesting_depth` (5), `max_array_items` (50), `max_object_keys` (50), `max_string_value_length` (500), `max_object_string_length` (2000).
+
+**Tabular data** -- `max_columns` (50), `max_cell_length` (500), `rows_head` (20), `rows_tail` (10).
+
+**Image** -- `max_image_size_bytes` (2 MB). Images exceeding this size are resized before attachment.
+
+**History compaction** -- `history_max_tokens` (120,000), `history_target_tokens` (40,000), `summarizer_max_tokens` (180,000). These provide defaults for `CompactionConfig` when no explicit config is passed to `HistoryCompactor`.
+
+**Named truncation configs** -- `TruncationConfig` presets (default, sql_query, log_search) with their own thresholds for `rows_head`, `rows_tail`, `json_array_head`, `max_preview_tokens`, etc. The `@context_result()` decorator selects a named config via its first argument.
+
+### Reading files
+
+`read_file()` is the main entry point. It detects the file type, dispatches to the appropriate processor, and applies a final token limit:
+
+```python
+from agentic_patterns.core.context.reader import read_file
+from agentic_patterns.core.context.config import load_context_config
+
+config = load_context_config()
+result = read_file(Path("data/large_report.json"), config=config)
+
+result.content       # Truncated content string
+result.file_type     # FileType.JSON
+result.truncation_info  # TruncationInfo with stats
+result.metadata      # FileMetadata (size, modified time, MIME type)
+```
+
+`read_file_as_string()` is a convenience wrapper that returns just the content string or an error message.
+
+### Processors
+
+Each file type has a dedicated processor in `agentic_patterns.core.context.processors`:
+
+**text/code** -- Encoding detection (UTF-8, Latin-1 fallback), line range selection, long line truncation.
+
+**csv** -- Delimiter auto-detection, head+tail row sampling for large files, column and cell truncation.
+
+**json** -- Recursive structure truncation: limits nesting depth, array items, object keys, and string values. Preserves structure shape while bounding size.
+
+**yaml/xml** -- Parsed into structures, then truncated using the same recursive logic as JSON.
+
+**document** (PDF, DOCX, PPTX) -- Converted to markdown via `markitdown`, with file-based caching. Truncated by lines.
+
+**spreadsheet** (XLSX) -- Multi-sheet processing with head+tail row sampling per sheet, column and cell truncation.
+
+**image** -- Resized by file size or dimensions via Pillow. Returns `BinaryContent` for multimodal model attachment.
+
+### Data models
+
+`FileExtractionResult` is the standard return type from `read_file()`:
+
+| Field | Type | Description |
+|---|---|---|
+| `content` | `str \| BinaryContent \| None` | Processed content |
+| `success` | `bool` | Whether processing succeeded |
+| `error_message` | `str \| None` | Error description when `success` is False |
+| `was_extracted` | `bool` | Whether content was extracted from a non-text format (e.g., PDF, DOCX) |
+| `file_type` | `FileType \| None` | Detected file type |
+| `truncation_info` | `TruncationInfo \| None` | What was truncated and by how much |
+| `metadata` | `FileMetadata \| None` | File size, modified time, MIME type |
+
+`BinaryContent` is a dataclass holding `data: bytes` and `mime_type: str`, returned by the image processor for multimodal model attachment.
+
+`TruncationInfo` tracks what was cut: lines shown, rows shown, columns shown, cells truncated, tokens shown vs total tokens, and whether the total output limit was reached.
+
+
+## History Compaction
+
+Long conversations accumulate message history that eventually exceeds the context window or degrades model performance. `HistoryCompactor` monitors token usage and, when a threshold is exceeded, uses an LLM to summarize older messages into a compact narrative.
+
+### Basic usage
+
+```python
+from agentic_patterns.core.context.history import HistoryCompactor, CompactionConfig
+from agentic_patterns.core.agents import get_agent
+
+compactor = HistoryCompactor(config=CompactionConfig(max_tokens=120_000, target_tokens=40_000))
+agent = get_agent(system_prompt="You are a helpful assistant.", history_compactor=compactor)
+```
+
+The `history_compactor` parameter wires the compactor into PydanticAI's history processor pipeline. Compaction happens automatically before each agent call when the history exceeds `max_tokens`.
+
+### Constructor
+
+`HistoryCompactor.__init__` accepts:
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `config` | `CompactionConfig \| None` | `None` | Compaction thresholds. If None, loads defaults from `ContextConfig` in config.yaml. |
+| `model` | `Model \| None` | `None` | Model for summarization. If None, loads from config.yaml using `config_name`. |
+| `config_name` | `str` | `"default"` | Named model configuration to use when `model` is None. |
+| `on_compaction` | callback | `None` | Optional async callback receiving `CompactionResult` when compaction occurs. |
+
+### Configuration
+
+`CompactionConfig` has two parameters:
+
+| Parameter | Default | Description |
+|---|---|---|
+| `max_tokens` | 120,000 | Token threshold that triggers compaction |
+| `target_tokens` | 40,000 | Target token count after summarization |
+
+`target_tokens` must be less than `max_tokens`. If neither is provided, defaults are loaded from `config.yaml`.
+
+### How compaction works
+
+When the accumulated message history exceeds `max_tokens`:
+
+1. The compactor finds a safe boundary that preserves tool call/return pairing (see below).
+2. Messages before the boundary are serialized into a conversation transcript.
+3. An LLM summarizes the transcript, preserving key information, decisions, and context needed to continue.
+4. The summary replaces the old messages as a single continuation message.
+5. Recent messages (after the boundary) are preserved unchanged.
+
+The model sees the summary followed by the current prompt. It does not know compaction occurred.
+
+### Tool call/return pairing
+
+The OpenAI API requires that tool return messages always follow their corresponding tool call messages. The compactor respects this constraint by finding a "safe boundary" that never orphans tool returns. If no safe boundary exists (e.g., the only recent messages are a tool call/return pair), compaction is deferred to the next turn.
+
+### Fallback behavior
+
+When LLM summarization fails or the conversation text exceeds the summarizer's own limits, the compactor falls back to truncation. It preserves the head and tail of the conversation with a marker showing how many tokens were removed. This is less effective than summarization but ensures the system degrades gracefully.
+
+### Manual usage
+
+You can also use the compactor directly without PydanticAI's history processor:
+
+```python
+compactor = HistoryCompactor(config=CompactionConfig(max_tokens=500, target_tokens=200))
+
+# Check if compaction is needed
+if compactor.needs_compaction(messages):
+    messages = await compactor.compact(messages)
+
+# Count tokens in a message list
+tokens = compactor.count_tokens(messages)
+```
+
+`needs_compaction()` accepts an optional `current_tokens: int | None = None` parameter. When provided, it skips the internal token count and uses the given value directly, which avoids redundant counting if you already know the token total.
+
+### Compaction callback
+
+Pass `on_compaction` to receive notifications when compaction occurs:
+
+```python
+async def log_compaction(result: CompactionResult):
+    print(f"Compacted {result.original_messages} -> {result.compacted_messages} messages")
+    print(f"Tokens: {result.original_tokens} -> {result.compacted_tokens}")
+
+compactor = HistoryCompactor(
+    config=CompactionConfig(max_tokens=500, target_tokens=200),
+    on_compaction=log_compaction,
+)
+```
+
+### History processors
+
+`HistoryCompactor` provides two factory methods for creating PydanticAI-compatible history processors:
+
+`create_history_processor()` returns an `async (list[ModelMessage]) -> list[ModelMessage]` callable suitable for PydanticAI's `history_processors` parameter.
+
+`create_context_aware_processor()` returns an `async (RunContext, list[ModelMessage]) -> list[ModelMessage]` callable that also receives the `RunContext`. Use this variant when the processor needs access to run context (the compaction logic itself does not use it, but the signature matches PydanticAI's context-aware processor protocol).
+
+
+## API Reference
+
+### `agentic_patterns.core.prompt`
+
+| Name | Kind | Description |
+|---|---|---|
+| `load_prompt(prompt_path, **kwargs)` | Function | Load template, resolve includes, substitute variables |
+| `get_system_prompt(**kwargs)` | Function | Load `prompts/system_prompt.md` |
+| `get_prompt(prompt_name, **kwargs)` | Function | Load `prompts/{prompt_name}.md` |
+| `get_instructions(**kwargs)` | Function | Load `prompts/instructions.md` |
+
+### `agentic_patterns.core.context`
+
+| Name | Kind | Description |
+|---|---|---|
+| `FileType` | Enum | File type classification (CODE, CSV, JSON, etc.) |
+| `ContextConfig` | Pydantic model | Truncation thresholds for all content types |
+| `TruncationConfig` | Pydantic model | Named truncation preset (threshold, row/array limits) |
+| `FileExtractionResult` | Dataclass | Content + metadata + truncation info from file processing |
+| `BinaryContent` | Dataclass | Binary data (`bytes`) with MIME type, used for image attachments |
+| `TruncationInfo` | Dataclass | What was truncated and by how much |
+| `FileMetadata` | Dataclass | File size, modified time, MIME type, encoding |
+| `read_file(path, config, ...)` | Function | Read and process a file with type detection and truncation |
+| `read_file_as_string(path, config, ...)` | Function | Convenience wrapper returning content string |
+| `load_context_config()` | Function | Load ContextConfig from config.yaml (cached) |
+| `get_truncation_config(name)` | Function | Get a named TruncationConfig preset |
+
+### `agentic_patterns.core.context.history`
+
+| Name | Kind | Description |
+|---|---|---|
+| `CompactionConfig` | Pydantic model | `max_tokens` and `target_tokens` thresholds |
+| `CompactionResult` | Pydantic model | Compaction statistics (message/token counts, summary text) |
+| `HistoryCompactor` | Class | Main compactor; `compact()`, `needs_compaction()`, `count_tokens()`, `create_history_processor()`, `create_context_aware_processor()` |
+
+
+## Examples
+
+See the notebooks in `agentic_patterns/examples/context_memory/`:
+
+- `example_prompts.ipynb` -- prompt layers, system prompts vs instructions, message history interaction
+- `example_context_result.ipynb` -- `@context_result()` decorator with CSV, JSON, and log data
+- `example_history_compaction.ipynb` -- `HistoryCompactor` with observable compaction across multi-turn conversations
+
+---
+
+# RAG (Retrieval-Augmented Generation)
+
+RAG lets agents ground their responses in external documents rather than relying solely on training data. The library provides a vector database module (`agentic_patterns.core.vectordb`) that handles embedding generation, storage, and similarity search via Chroma. You write the chunking and prompt assembly logic; the module handles everything from embedding text to querying for relevant passages.
+
+## Configuration
+
+Embedding and vector database settings live in `config.yaml` under `embeddings:` and `vectordb:` sections. Environment variables are expanded via `${VAR}` syntax.
+
+```yaml
+embeddings:
+  default:
+    provider: openai
+    model_name: text-embedding-3-small
+    api_key: ${OPENAI_API_KEY}
+    dimensions: 1536
+
+  local:
+    provider: ollama
+    model_name: nomic-embed-text
+    url: http://localhost:11434
+
+vectordb:
+  default:
+    backend: chroma
+    persist_directory: data/vectordb
+```
+
+Supported embedding providers:
+
+| Provider | Required fields | Notes |
+|---|---|---|
+| `openai` | `model_name` | Optional `api_key`, `dimensions` |
+| `ollama` | `model_name` | Optional `url` (defaults to `http://localhost:11434`) |
+| `sentence_transformers` | `model_name` | Optional `device` (defaults to `cpu`) |
+| `openrouter` | `model_name` | Optional `api_key`, `api_url`, `dimensions` |
+
+Supported vector database backends:
+
+| Backend | Required fields |
+|---|---|
+| `chroma` | `persist_directory` |
+| `pgvector` | `connection_string` |
+
+Only Chroma is implemented. The `persist_directory` can be relative (resolved against the project root) or absolute.
+
+
+## Embeddings
+
+`get_embedder()` creates an embedder instance from configuration. It uses a singleton cache keyed by `provider:model_name`, so repeated calls with the same config return the same instance.
+
+```python
+from agentic_patterns.core.vectordb import get_embedder, embed_text, embed_texts
+
+# Create from config.yaml "default" entry
+embedder = get_embedder()
+
+# Create from a named config
+embedder = get_embedder("local")
+
+# Embed a single text
+vector = await embed_text("Hello world", embedder)
+# Returns list[float]
+
+# Embed multiple texts
+vectors = await embed_texts(["Hello", "World"], embedder)
+# Returns list[list[float]]
+```
+
+**Signature:**
+
+```python
+def get_embedder(
+    config: EmbeddingConfig | str | None = None,
+    config_path: Path | str | None = None,
+) -> Embedder
+```
+
+The `config` parameter accepts a named config string (looked up in config.yaml), an `EmbeddingConfig` object directly, or `None` for the default. The optional `config_path` parameter specifies which YAML file to load settings from; when omitted it defaults to the project's `config.yaml`.
+
+When no embedder is passed to `embed_text()` or `embed_texts()`, they create one from the default config automatically.
+
+
+## Vector Database
+
+### Creating a collection
+
+`get_vector_db()` creates or retrieves a Chroma collection. It uses a singleton cache, so calling it twice with the same collection name returns the same collection.
+
+```python
+from agentic_patterns.core.vectordb import get_vector_db
+
+vdb = get_vector_db("books")
+```
+
+The collection is persisted to disk. Data survives across process restarts. The embedding function is attached to the collection automatically -- you do not need to manage embeddings manually when adding or querying documents.
+
+**Signature:**
+
+```python
+def get_vector_db(
+    collection_name: str,
+    embedding_config: str | None = None,
+    vectordb_config: str | None = None,
+    config_path: Path | str | None = None,
+) -> chromadb.Collection
+```
+
+`embedding_config` and `vectordb_config` select named entries from `config.yaml`. Both default to `"default"`.
+
+
+### Adding documents
+
+```python
+from agentic_patterns.core.vectordb import vdb_add
+
+vdb_add(vdb, text="The answer is 42.", doc_id="doc-1", meta={"source": "guide"})
+```
+
+`vdb_add` is idempotent by default -- if `doc_id` already exists, the call is a no-op and returns `None`. Pass `force=True` to overwrite. Metadata is optional but useful for filtering during retrieval.
+
+**Signature:**
+
+```python
+def vdb_add(
+    vdb: chromadb.Collection,
+    text: str,
+    doc_id: str,
+    meta: dict | None = None,
+    force: bool = False,
+) -> str | None
+```
+
+
+### Querying
+
+```python
+from agentic_patterns.core.vectordb import vdb_query
+
+results = vdb_query(vdb, query="What is the answer?")
+
+for doc, meta, score in results:
+    print(f"[{score:.3f}] {doc[:80]}...")
+```
+
+Each result is a `(document_text, metadata, similarity_score)` tuple. Scores are similarity values (higher is better), converted from Chroma's distance metric via `1.0 - distance`.
+
+**Signature:**
+
+```python
+def vdb_query(
+    vdb: chromadb.Collection,
+    query: str,
+    filter: dict[str, str] | None = None,
+    where_document: dict[str, str] | None = None,
+    max_items: int = 10,
+    similarity_threshold: float | None = None,
+) -> list[tuple[str, dict, float]]
+```
+
+| Parameter | Description |
+|---|---|
+| `filter` | Metadata filter applied at the database level (e.g., `{"source": "guide"}`) |
+| `where_document` | Full-text filter on document content |
+| `max_items` | Maximum number of results (default 10) |
+| `similarity_threshold` | Drop results below this score |
+
+
+### Lookup and existence check
+
+```python
+from agentic_patterns.core.vectordb import vdb_get_by_id, vdb_has_id
+
+exists = vdb_has_id(vdb, "doc-1")
+record = vdb_get_by_id(vdb, "doc-1")
+```
+
+
+## The RAG Pattern
+
+The typical workflow has two phases.
+
+**Ingestion** (run once or when the corpus changes): load documents, split them into chunks, and add each chunk to the vector database with metadata.
+
+```python
+from pathlib import Path
+from agentic_patterns.core.vectordb import get_vector_db, vdb_add
+
+vdb = get_vector_db("books")
+
+for txt_file in Path("data/docs").glob("*.txt"):
+    text = txt_file.read_text()
+    for i, paragraph in enumerate(text.split("\n\n")):
+        if len(paragraph.strip()) < 50:
+            continue
+        vdb_add(vdb, text=paragraph, doc_id=f"{txt_file.stem}-{i}", meta={"source": txt_file.stem})
+```
+
+**Retrieval** (run on every query): embed the user's question, find similar chunks, and pass them as context to the agent.
+
+```python
+from agentic_patterns.core.vectordb import vdb_query
+from agentic_patterns.core.agents import get_agent, run_agent
+
+results = vdb_query(vdb, query="Who is a man with two heads?")
+
+docs_str = "\n\n".join(f"[{score:.3f}] {doc}" for doc, meta, score in results)
+
+prompt = f"Given these documents, answer the question.\n\n{docs_str}\n\nQuestion: Who is a man with two heads?"
+agent = get_agent()
+run, _ = await run_agent(agent, prompt)
+```
+
+The library handles embedding and search. You control chunking strategy, prompt construction, and any retrieval enhancements (query expansion, re-ranking, metadata filtering).
+
+
+## Advanced Retrieval Techniques
+
+The vector database module supports several techniques that improve retrieval quality beyond simple single-query search.
+
+**Metadata filtering.** Pass `filter` to `vdb_query()` to restrict results at the database level. This is more efficient than post-retrieval filtering and useful for access control, source restriction, or temporal constraints.
+
+```python
+results = vdb_query(vdb, query="main character", filter={"source": "hhgttg"})
+```
+
+**Query expansion.** Generate multiple reformulations of the user's query using an LLM, then query the vector database with each reformulation. Combine and deduplicate the results. This increases recall when documents use different terminology than the query.
+
+**Semantic chunking.** Instead of splitting on paragraph boundaries, use an LLM to identify topic boundaries. Pass `output_type=list[str]` to `get_agent()` to get structured chunk lists. For large documents, batch the text and carry incomplete chunks across batches.
+
+**Re-ranking.** After retrieving a candidate set from multiple queries, sort by similarity score and limit to top-N results. For higher precision, use a cross-encoder model to re-score query-document pairs.
+
+These techniques compose naturally with the core `vdb_query()` function -- they operate on the inputs (query expansion) or outputs (deduplication, re-ranking) of the same API.
+
+
+## API Reference
+
+### `agentic_patterns.core.vectordb`
+
+| Name | Kind | Description |
+|---|---|---|
+| `EmbeddingConfig` | Type alias | Union of all embedding config types (OpenAI, Ollama, SentenceTransformers, OpenRouter) |
+| `VectorDBConfig` | Type alias | Union of all vector DB config types (Chroma, PgVector) |
+| `get_vector_db(collection_name, ...)` | Function | Get or create a Chroma collection with singleton caching |
+| `vdb_add(vdb, text, doc_id, meta, force)` | Function | Add a document (idempotent by default) |
+| `vdb_query(vdb, query, filter, ...)` | Function | Similarity search returning `(doc, meta, score)` tuples |
+| `vdb_get_by_id(vdb, doc_id)` | Function | Retrieve a document by ID |
+| `vdb_has_id(vdb, doc_id)` | Function | Check if a document ID exists |
+| `get_embedder(config, config_path)` | Function | Get or create an embedder with singleton caching |
+| `embed_text(text, embedder)` | Async function | Embed a single text string |
+| `embed_texts(texts, embedder)` | Async function | Embed multiple text strings |
+| `load_vectordb_settings(config_path)` | Function | Load settings from YAML (`config_path` is required, no default) |
+
+### Configuration models (`agentic_patterns.core.vectordb.config`)
+
+| Name | Kind | Description |
+|---|---|---|
+| `VectorDBSettings` | Pydantic model | Container for embedding and vector DB configs. Not exported in `__all__`; import directly from `agentic_patterns.core.vectordb.config`. Provides `get_embedding(name)` and `get_vectordb(name)` lookup methods. |
+| `OpenAIEmbeddingConfig` | Pydantic model | OpenAI embedding settings |
+| `OllamaEmbeddingConfig` | Pydantic model | Ollama embedding settings |
+| `SentenceTransformersEmbeddingConfig` | Pydantic model | Sentence Transformers settings |
+| `OpenRouterEmbeddingConfig` | Pydantic model | OpenRouter embedding settings |
+| `ChromaVectorDBConfig` | Pydantic model | Chroma persistence settings |
+| `PgVectorDBConfig` | Pydantic model | PostgreSQL + pgvector settings |
+
+
+## Examples
+
+See the notebooks in `agentic_patterns/examples/rag/`:
+
+- `example_RAG_01_load.ipynb` -- simple paragraph-based document ingestion
+- `example_RAG_01_query.ipynb` -- basic similarity search and prompt augmentation
+- `example_RAG_02_load.ipynb` -- LLM-based semantic chunking with batch handling
+- `example_RAG_02_query.ipynb` -- query expansion, metadata filtering, deduplication, and re-ranking
+
+---
+
+# Connectors
+
+Connectors are framework-agnostic abstractions that define what operations an agent can perform against a data source. They are plain Python classes with typed methods -- no dependency on PydanticAI, MCP, or any agent runtime. Tools are thin wrappers that register connector methods so a specific framework can discover and invoke them. This separation keeps connector logic testable without an LLM, portable across frameworks, and free from lock-in.
+
+All connectors live in `agentic_patterns.core.connectors`. PydanticAI tool wrappers live in `agentic_patterns.tools`. MCP server wrappers live in `agentic_patterns.mcp`.
+
+
+## Connector Base
+
+All connectors extend a minimal base class:
+
+```python
+from agentic_patterns.core.connectors.base import Connector
+```
+
+`Connector` is an abstract base class with no methods. It serves as a type marker for the connector layer.
+
+
+## FileConnector
+
+`FileConnector` provides file operations with workspace sandbox isolation. The agent sees sandbox paths like `/workspace/notes.md`; the connector translates them to host filesystem paths via `workspace_to_host_path()`. User and session context is resolved from Python contextvars, not passed as arguments.
+
+```python
+from agentic_patterns.core.connectors.file import FileConnector
+
+connector = FileConnector()
+```
+
+### Binding as tools
+
+Connector methods are bound directly as agent tools without wrapper functions:
+
+```python
+from agentic_patterns.core.agents import get_agent
+
+tools = [connector.read, connector.write, connector.edit, connector.head,
+         connector.tail, connector.find, connector.list, connector.append, connector.delete]
+
+agent = get_agent(tools=tools)
+```
+
+### Operations
+
+**Read operations** (decorated with `@tool_permission(ToolPermission.READ)`):
+
+`read(path)` -- read entire file with automatic truncation for large files. Uses `@context_result()` to save full content to workspace and return a truncated preview when the result exceeds size limits.
+
+`head(path, n=10)` -- first N lines. Returns content with a line range indicator when the file is longer.
+
+`tail(path, n=10)` -- last N lines.
+
+`find(path, query)` -- search file contents for a string, returning matching lines with line numbers. Capped at 100 matches.
+
+`list(path, pattern="*")` -- list files matching a glob pattern. Capped at 200 entries.
+
+**Write operations** (decorated with `@tool_permission(ToolPermission.WRITE)`):
+
+`write(path, content)` -- write or overwrite a file. Creates parent directories automatically.
+
+`append(path, content)` -- append content to an existing file.
+
+`edit(path, start_line, end_line, new_content)` -- replace lines start_line to end_line (1-indexed, inclusive) with new content. Validates line bounds.
+
+`delete(path)` -- delete a file.
+
+All operations return strings (content or status messages). Recoverable errors are caught and re-raised as `ModelRetry`, which PydanticAI presents to the model as a retryable tool error.
+
+
+## CsvConnector
+
+`CsvConnector` extends `FileConnector` with CSV-aware operations. It inherits generic file operations (delete, edit, find, list, read, write) and adds or overrides CSV-specific methods. Delimiter detection is automatic.
+
+```python
+from agentic_patterns.core.connectors.csv import CsvConnector
+
+connector = CsvConnector()
+```
+
+**Read operations:**
+
+`headers(path)` -- column names with count, truncated for wide tables.
+
+`head(path, n=10)` -- first N rows with automatic column/cell truncation via the CSV processor. Decorated with `@context_result()` (unlike `FileConnector.head`, which returns raw lines).
+
+`tail(path, n=10)` -- last N rows. Also decorated with `@context_result()`.
+
+`read_row(path, row_number)` -- single row by 1-indexed number.
+
+`find_rows(path, column, value, limit=10)` -- rows where a column matches a value. The `column` parameter accepts a name (`str`) or a 0-indexed position (`int`).
+
+**Write operations:**
+
+`append(path, values)` -- append a row. Values can be a `dict[str, str]` keyed by column name or a `list[str]` matching column order.
+
+`delete_rows(path, column, value)` -- delete all rows where column matches value. The `column` parameter accepts a name (`str`) or a 0-indexed position (`int`).
+
+`update_cell(path, row_number, column, value)` -- update a single cell.
+
+`update_row(path, key_column, key_value, updates)` -- update all columns in rows matching a key, where `updates` is a `dict[str, str]`.
+
+
+## JsonConnector
+
+`JsonConnector` extends `FileConnector` with JSONPath-based navigation. It inherits generic file operations and adds or overrides JSON-specific methods.
+
+```python
+from agentic_patterns.core.connectors.json import JsonConnector
+
+connector = JsonConnector()
+```
+
+**Read operations:**
+
+`schema(path, json_path="$", max_depth=4)` -- show the structure of a JSON file: keys, types, nesting, array sizes. Walks the structure up to `max_depth` levels.
+
+`get(path, json_path)` -- get a value or subtree at a JSONPath. Scalar values return directly; complex values are processed through the JSON truncation pipeline.
+
+`keys(path, json_path="$")` -- list keys at a path with type annotations (e.g., "name (str)", "items (array, 42 items)").
+
+`head(path, json_path="$", n=10)` -- first N keys or elements at a path.
+
+`tail(path, json_path="$", n=10)` -- last N keys or elements at a path.
+
+`query(path, json_path, max_results=20)` -- extended JSONPath with filters. Supports expressions like `$.body[?name =~ "breast"]` and `$.items[?(@.age > 30)]`.
+
+`validate(path)` -- validate JSON syntax. Returns structure summary (root type, key count or array length, file size).
+
+**Write operations:**
+
+`set(path, json_path, value)` -- set a value at a specific path. Rejects root-level replacements and wildcard paths. The `value` parameter is a JSON-encoded string (e.g., `'"hello"'`, `'42'`, `'{"key": "val"}'`), not a Python object. Must be under 10 KB.
+
+`delete_key(path, json_path)` -- delete a key at a path. Rejects root and wildcard paths.
+
+`merge(path, json_path, updates)` -- merge a JSON object into an existing object at a path without replacing it entirely. The `updates` parameter is a JSON-encoded string representing an object (e.g., `'{"name": "new"}'`).
+
+`append(path, json_path, value)` -- append a value to an array at a path. The `value` parameter is a JSON-encoded string.
+
+
+## Connector Chaining
+
+Connectors compose through the workspace filesystem. One agent writes a file as output; another reads it as input. The agents have no knowledge of each other.
+
+A typical chain: an NL2SQL agent executes a query and saves results to `/workspace/results.csv`. A second agent equipped with `CsvConnector` picks up that file and inspects, filters, or transforms it. A third agent could produce a chart from the same CSV. Each operates through its own connector, and the workspace provides shared persistent storage.
+
+```python
+# Agent 1: SQL -> CSV
+nl2sql_agent = create_agent(db_id="bookstore")
+await run_agent(nl2sql_agent, "List all books... Save to /workspace/books.csv")
+
+# Agent 2: CSV inspection
+csv_connector = CsvConnector()
+csv_agent = get_agent(tools=[csv_connector.head, csv_connector.find_rows, csv_connector.headers])
+await run_agent(csv_agent, "Show headers and first 5 rows of /workspace/books.csv")
+```
+
+---
+
+# SQL Connector
+
+`SqlConnector` provides SQL database access with schema discovery, validated query execution, and result persistence. Configuration is loaded from `dbs.yaml` which declares database identifiers, connection details, and sensitivity levels.
+
+## Configuration
+
+Database connections are declared in `dbs.yaml` at the project root:
+
+```yaml
+databases:
+  bookstore:
+    type: sqlite
+    dbname: data/db/bookstore.db
+
+  inventory:
+    type: sqlite
+    dbname: data/db/inventory.db
+    sensitivity: confidential
+```
+
+Each entry defines a `type` (`sqlite`; `postgres` reserved for future use), connection parameters (`host`, `port`, `dbname`, `user`, `password`, `schema`), and an optional `sensitivity` level (`public`, `internal`, `confidential`, `restricted`). Relative `dbname` paths are resolved relative to `dbs.yaml`'s directory.
+
+`DbConnectionConfigs` is a singleton registry that auto-loads `dbs.yaml` on first access. `DbInfos` is the companion registry for extracted and annotated schema metadata. Both support `reset()` for notebook re-execution.
+
+```python
+from agentic_patterns.core.connectors.sql.db_connection_config import DbConnectionConfigs
+from agentic_patterns.core.connectors.sql.db_infos import DbInfos
+
+configs = DbConnectionConfigs.get()      # auto-loads dbs.yaml
+configs.list_db_ids()                    # ["bookstore", "inventory"]
+```
+
+## Data Models
+
+`DbInfo` -- database-level metadata: `db_id`, `description`, `tables: list[TableInfo]`, `example_queries`. Provides `schema_sql()` for formatted schema output.
+
+`TableInfo` -- table metadata: `name`, `columns: list[ColumnInfo]`, `foreign_keys`, `indexes`, `description`, `sample_data_csv`.
+
+`ColumnInfo` -- column metadata: `name`, `data_type`, `is_nullable`, `description`, `is_primary_key`, `is_enum`, `enum_values`.
+
+## Operations
+
+`list_databases()` -- list available databases with descriptions and table counts.
+
+`list_tables(db_id)` -- list tables with descriptions.
+
+`show_schema(db_id)` -- full annotated schema SQL with descriptions and example queries.
+
+`show_table_details(db_id, table_name)` -- detailed schema for a single table.
+
+`execute_sql(db_id, query, output_file=None, nl_query=None)` -- execute a validated SELECT query. Rejects non-SELECT and multi-statement queries. Writes results to a CSV file and returns a bounded preview. If the database has a non-PUBLIC sensitivity level, tags the session via `PrivateData`.
+
+`get_row_by_id(db_id, table_name, row_id, fetch_related=False)` -- fetch a single row by primary key, optionally expanding foreign key references.
+
+## Query Validation
+
+`validate_query()` ensures that only single SELECT statements reach the database. It rejects empty queries, multi-statement queries, and non-SELECT statements. Used internally by `execute_sql()`, but available as a standalone utility:
+
+```python
+from agentic_patterns.core.connectors.sql.query_validation import validate_query, QueryValidationError
+
+validate_query("SELECT * FROM books")  # OK
+validate_query("DROP TABLE books")     # raises QueryValidationError
+```
+
+## Configuration Constants
+
+Tunable via environment variables (`agentic_patterns.core.connectors.sql.config`):
+
+| Constant | Env var | Default | Description |
+|---|---|---|---|
+| `DBS_YAML_PATH` | `DBS_YAML` | `dbs.yaml` | Path to database config file |
+| `MAX_SAMPLE_ROWS` | `MAX_SAMPLE_ROWS` | 10 | Sample rows collected during annotation |
+| `MAX_ENUM_VALUES` | `MAX_ENUM_VALUES` | 50 | Maximum distinct values for enum detection |
+| `NUMBER_OF_EXAMPLE_QUERIES` | `NUMBER_OF_EXAMPLE_QUERIES` | 5 | Example queries generated per database |
+| `PREVIEW_ROWS` | `PREVIEW_ROWS` | 10 | Rows shown in query result preview |
+| `PREVIEW_COLUMNS` | `PREVIEW_COLUMNS` | 200 | Column character limit in preview |
+| `MAX_CSV_VIEW_ROWS` | `MAX_CSV_VIEW_ROWS` | 1000 | Maximum rows in CSV view |
+
+## Schema Annotation Pipeline
+
+Schema preparation is an offline step. The annotation pipeline (`DbSchemaAnnotator`) extracts raw schema from the database, then uses an LLM to generate descriptions for the database, each table, and each column. It also collects sample data, detects enum-like columns, and generates example queries. Results are cached as `.db_info.json` files. At runtime, the agent relies entirely on this cached metadata.
+
+Run the annotation pipeline via CLI:
+
+```bash
+scripts/annotate_schema.sh
+```
+
+## Database-Specific Components
+
+The SQL connector uses a factory pattern (`agentic_patterns.core.connectors.sql.factories`) to create database-specific implementations. Three factory functions dispatch on `DatabaseType`:
+
+`create_connection(db_id)` -- returns a `DbConnection` (currently `DbConnectionSqlite`).
+
+`create_schema_inspector(db_id, connection)` -- returns a `DbSchemaInspector` (currently `DbSchemaInspectorSqlite`).
+
+`create_db_operations(db_id)` -- returns a `DbOperations` (currently `DbOperationsSqlite`).
+
+To add a new database engine, create implementations of `DbConnection`, `DbSchemaInspector`, and `DbOperations` in a subdirectory (e.g., `postgres/`), add a new `DatabaseType` value, and extend each factory's `match` block.
+
+## NL2SQL Agent
+
+The NL2SQL agent combines the SQL connector with a domain-specific agent that translates natural language to validated SQL:
+
+```python
+from agentic_patterns.agents.nl2sql import create_agent
+
+agent = create_agent(db_id="bookstore")
+result, nodes = await run_agent(agent, "List all books with author name and average review rating")
+```
+
+`create_agent(db_id)` loads the annotated schema, builds a system prompt embedding the full schema, and binds two closure-based tools (`db_execute_sql_tool` and `db_get_row_by_id_tool`) that capture the database identifier. The agent never sees raw database identifiers or connection details.
+
+---
+
+# OpenAPI Connector
+
+`OpenApiConnector` lets agents interact with REST APIs described by OpenAPI 3.x specifications. The API spec is ingested once offline; at runtime the agent discovers endpoints, inspects parameters, and makes validated calls.
+
+## Configuration and Ingestion
+
+APIs are declared in `apis.yaml`:
+
+```yaml
+apis:
+  petstore:
+    spec_source: https://petstore3.swagger.io/api/v3/openapi.json
+    base_url: https://petstore3.swagger.io/api/v3
+
+  cbioportal:
+    spec_source: https://www.cbioportal.org/api/v3/api-docs
+    base_url: https://www.cbioportal.org
+
+  # Environment variables are expanded via ${VAR} syntax
+  production_api:
+    spec_source: ${API_SPEC_URL}
+    base_url: ${API_BASE_URL}
+    sensitivity: confidential
+```
+
+Each entry requires `spec_source` (URL or file path to an OpenAPI 3.x spec) and `base_url` (overrides the spec's `servers` section for environment-specific deployment). Optional `sensitivity` tags the session when data is accessed. Relative file paths resolve relative to `apis.yaml`'s directory.
+
+`ApiConnectionConfigs` is a singleton registry that auto-loads `apis.yaml` on first access.
+
+The ingestion CLI fetches the spec, parses endpoints, runs AI-powered annotation (descriptions, categories, example requests), and caches the result:
+
+```bash
+ingest-openapi cbioportal
+```
+
+The annotation pipeline (`ApiSpecAnnotator`) generates an API description, categorizes endpoints in batches, fills missing endpoint descriptions, and creates curl examples. Results are cached as `.api_info.json` files. At runtime, `ApiInfos.get()` loads cached metadata without re-fetching.
+
+## Data Models
+
+`ApiInfo` -- API-level metadata: `api_id`, `title`, `version`, `description`, `base_url`, `endpoints: list[EndpointInfo]`, `example_use_cases`.
+
+`EndpointInfo` -- endpoint specification: `path`, `method`, `operation_id`, `summary`, `description`, `parameters: list[ParameterInfo]`, `request_body: RequestSchemaInfo | None`, `responses: list[ResponseSchemaInfo]`, `category`, `example_request`.
+
+`ParameterInfo` -- single parameter: `name`, `location` (query/header/path/cookie), `required`, `schema_type`, `description`, `enum_values`, `example`.
+
+## Operations
+
+`list_apis()` -- all registered APIs with metadata and endpoint counts.
+
+`list_endpoints(api_id, category=None)` -- endpoints for an API, optionally filtered by category.
+
+`show_api_summary(api_id)` -- categorized endpoint overview.
+
+`show_endpoint_details(api_id, method, path)` -- parameters, request body schema, response schemas, and example request.
+
+`call_endpoint(api_id, method, path, parameters=None, body=None, output_file=None)` -- execute an HTTP request. Routes parameters to query/header/path automatically. Saves response to a JSON file. If the API has a non-PUBLIC sensitivity level, tags the session via `PrivateData`.
+
+## Tool Wrappers
+
+The OpenAPI tools in `agentic_patterns.tools.openapi` wrap the connector with `@tool_permission` annotations:
+
+```python
+from agentic_patterns.tools.openapi import get_all_tools
+
+tools = get_all_tools()  # returns 5 tool functions
+agent = get_agent(tools=tools)
+```
+
+Discovery tools (`list_endpoints`, `show_api_summary`, `show_endpoint_details`) carry READ permission. External-facing tools (`list_apis`, `call_endpoint`) carry CONNECT permission, which is blocked when the session contains private data.
+
+---
+
+# Vocabulary Connector
+
+`VocabularyConnector` resolves free-text terms into standardized vocabulary codes. It bridges natural language and structured databases by providing term discovery, validation, and hierarchy navigation.
+
+## Strategies
+
+Three resolution strategies are selected based on vocabulary size:
+
+**StrategyEnum** (fewer than 100 terms) -- stores terms in memory with exact lookup and fuzzy matching via `difflib.get_close_matches`. No hierarchy support.
+
+**StrategyTree** (fewer than 1,000 terms) -- stores terms in an adjacency list with parent-child relationships. Supports BFS traversal for hierarchical queries (ancestors, descendants, siblings, subtree), plus exact and substring search.
+
+**StrategyRag** (1,000+ terms) -- indexes terms into a Chroma vector database using embeddings. Supports semantic search where "cell death" finds "apoptotic process" even without word overlap. Also provides `suggest()` for free-text-to-code resolution.
+
+All strategies implement the same `Strategy` protocol, so the connector works identically regardless of backend.
+
+## Configuration
+
+Vocabularies are declared in `vocabularies.yaml`:
+
+```yaml
+vocabularies:
+  ensembl_biotypes:
+    strategy: enum
+    source: ensembl_biotypes.json
+    source_format: json_flat
+
+  sequence_ontology:
+    strategy: tree
+    source: so.obo
+    source_format: obo
+
+  gene_ontology:
+    strategy: rag
+    source: go.obo
+    source_format: obo
+    collection: gene_ontology
+
+  hgnc:
+    strategy: rag
+    source: hgnc_complete_set.txt
+    source_format: tsv
+    collection: hgnc
+    parser_options:
+      id_field: hgnc_id
+      label_field: symbol
+      definition_field: name
+```
+
+Each entry declares `strategy` (`enum`, `tree`, or `rag`), `source` (file path relative to the vocabulary data directory), and `source_format`. RAG vocabularies require a `collection` name for the vector database. For tabular formats (CSV, TSV, JSON), `parser_options` can override which fields map to id, label, and definition.
+
+Supported source formats: `obo`, `owl`, `rf2`, `json_flat`, `json_hierarchical`, `csv`, `tsv`, `mesh_xml`, `gmt`.
+
+`load_all()` loads all declared vocabularies, dispatching each source file to its format-specific parser and populating the appropriate strategy backend. Parsed terms are cached as JSON to skip re-parsing on subsequent loads.
+
+## Programmatic Registration
+
+```python
+from agentic_patterns.core.connectors.vocabulary.registry import register_vocabulary, reset
+from agentic_patterns.core.connectors.vocabulary.strategy_tree import StrategyTree
+
+reset()
+register_vocabulary("sequence_ontology", StrategyTree(name="sequence_ontology", terms=terms))
+```
+
+## Operations
+
+`list_vocabularies()` -- all registered vocabularies with strategy type and term count.
+
+`info(vocab_name)` -- metadata for a specific vocabulary.
+
+`search(vocab_name, query, max_results=10)` -- search for terms matching a query. Uses substring/fuzzy matching for Enum/Tree, semantic search for RAG.
+
+`suggest(vocab_name, text, max_results=10)` -- semantic suggestions (RAG strategy only).
+
+`lookup(vocab_name, term_code)` -- look up a term by code/ID.
+
+`validate(vocab_name, term_code)` -- check whether a code is valid. Returns validity status and a suggestion if invalid.
+
+`parent(vocab_name, term_code)` -- direct parent(s).
+
+`children(vocab_name, term_code)` -- direct children.
+
+`ancestors(vocab_name, term_code, max_depth=10)` -- ancestor chain to root.
+
+`descendants(vocab_name, term_code, max_depth=10)` -- all descendants.
+
+`siblings(vocab_name, term_code)` -- terms sharing the same parent.
+
+`roots(vocab_name)` -- top-level terms.
+
+`subtree(vocab_name, term_code, max_depth=3)` -- hierarchical view for browsing.
+
+`relationships(vocab_name, term_code)` -- all typed relationships for a term.
+
+`related(vocab_name, term_code, relation_type)` -- terms connected by a specific relation type.
+
+## Vocabulary Agent
+
+```python
+from agentic_patterns.agents.vocabulary import create_agent
+
+agent = create_agent(vocab_names=["sequence_ontology", "gene_ontology"])
+result, nodes = await run_agent(agent, "Find the code for 'programmed cell death' in Gene Ontology")
+```
+
+The agent's instructions list available vocabularies with strategy and term count, so the model knows which vocabulary to query.
+
+---
+
+# Toolkits
+
+Toolkits (`agentic_patterns.toolkits`) contain pure Python business logic with no framework dependency. They sit between connectors (data source access) and tool wrappers (framework integration). Each toolkit provides models and operations that PydanticAI tools and MCP servers delegate to.
+
+## Todo
+
+`agentic_patterns.toolkits.todo` manages hierarchical task lists with workspace persistence.
+
+`TodoState` enum: PENDING, IN_PROGRESS, COMPLETED, FAILED.
+
+`TodoItem` is a Pydantic model representing a task with `description`, `state`, and optional `subtasks`. Items use hierarchical IDs (e.g., "1", "1.1", "1.1.2") for nesting. `TodoList` is a collection of items with `load()`/`save()` for JSON persistence at `/workspace/todo/tasks.json`.
+
+Operations (`todo_add`, `todo_add_many`, `todo_create_list`, `todo_delete`, `todo_show`, `todo_update_status`) work with an in-memory cache keyed by (user_id, session_id), persisting to disk on mutation.
+
+## Data Analysis
+
+`agentic_patterns.toolkits.data_analysis` provides DataFrame operations via an operation registry pattern.
+
+`get_all_operations()` returns a dict mapping operation names to `OperationConfig` objects. 53 operations across six categories:
+
+| Category | Count | Examples |
+|---|---|---|
+| EDA | 17 | head, tail, shape, describe, info, dtypes, columns, unique, nunique, value_counts, correlation, missing_values, groupby_mean, groupby_count, groupby_sum, pivot_table, crosstab |
+| Transform | 11 | min_max_scale, standard_scale, select_columns, drop_columns, rename_columns, one_hot_encode, log_transform, sort_values, sample, filter_rows |
+| Statistics | 7 | t_test_one_sample, t_test_two_sample, chi_square_test, normality_test, correlation_test, anova_one_way, mann_whitney_u_test |
+| Classification | 6 | logistic_regression, random_forest, decision_tree, gradient_boosting, knn, svm |
+| Regression | 8 | linear, ridge, lasso, random_forest, decision_tree, gradient_boosting, knn, svr |
+| Feature importance | 4 | gradient_boosting, linear, permutation, random_forest |
+
+`execute_operation(input_file, output_file, operation_name, parameters)` loads a DataFrame from the workspace, executes the named operation, saves results (CSV for DataFrames, pickle for models), and returns a formatted string summary. Supporting utilities: `load_df()` and `save_df()` handle workspace I/O, `list_dataframe_files()` discovers available files.
+
+## Data Visualization
+
+`agentic_patterns.toolkits.data_viz` follows the same registry pattern for matplotlib plots.
+
+`get_all_operations()` returns a dict of `PlotConfig` objects. 12 plots across four categories:
+
+| Category | Plots |
+|---|---|
+| Basic | line_plot, bar_plot, scatter_plot, area_plot |
+| Distribution | histogram, box_plot, violin_plot, kde_plot |
+| Categorical | count_plot, pie_chart |
+| Matrix | heatmap, pair_plot |
+
+`execute_plot(input_file, output_file, plot_name, parameters)` loads a DataFrame, creates a matplotlib figure using the Agg backend, saves a PNG to the workspace, and returns the workspace path. Configuration defaults: DPI=150, figure size 10x6, seaborn "muted" palette.
+
+## Format Conversion
+
+`agentic_patterns.toolkits.format_conversion` converts between document formats.
+
+`InputFormat` enum: CSV, DOCX, MD, PDF, PPTX, XLSX. `OutputFormat` enum: CSV, DOCX, HTML, MD, PDF.
+
+`convert(input_path, output_format, output_path=None)` dispatches by input extension and output format. Returns a string for text outputs (MD, CSV) or a `Path` for binary outputs (PDF, DOCX, HTML). Non-markdown inputs going to binary formats use a two-stage pipeline: ingest to markdown first, then export via pandoc/weasyprint.
+
+---
+
+# MCP (Model Context Protocol)
+
+MCP standardizes how agents connect to external tools, data, and prompts. The library provides infrastructure on top of PydanticAI and FastMCP for building production MCP servers and clients: YAML-based configuration, error classification (retryable vs fatal), authentication middleware, network isolation for private data, and factory functions that wire everything together.
+
+All MCP infrastructure lives in `agentic_patterns.core.mcp`. Thin MCP server wrappers live in `agentic_patterns.mcp.*`.
+
+
+## Connecting Agents to MCP Servers
+
+Agents connect to MCP servers by passing them as `toolsets` to `get_agent()`. PydanticAI handles protocol mechanics (initialization, tool discovery, invocation) transparently.
+
+### STDIO transport (local development)
+
+The server runs as a subprocess. No separate process is needed.
+
+```python
+from pydantic_ai.mcp import MCPServerStdio
+from agentic_patterns.core.agents import get_agent, run_agent
+
+server = MCPServerStdio(command="fastmcp", args=["run", "-t", "stdio", "server.py"])
+agent = get_agent(toolsets=[server])
+
+async with agent:
+    result, nodes = await run_agent(agent, "What is 40 + 2?", verbose=True)
+```
+
+### HTTP transport (remote/persistent servers)
+
+The server must be started separately (e.g., `fastmcp run server.py`).
+
+```python
+from pydantic_ai.mcp import MCPServerStreamableHTTP
+from agentic_patterns.core.agents import get_agent, run_agent
+
+server = MCPServerStreamableHTTP(url="http://127.0.0.1:8000/mcp/")
+agent = get_agent(toolsets=[server])
+
+async with agent:
+    result, nodes = await run_agent(agent, "What is 40 + 2?", verbose=True)
+```
+
+The `async with agent:` context manager is required when using MCP toolsets. It manages the connection lifecycle.
+
+
+## Building MCP Servers
+
+### Server creation
+
+`create_mcp_server()` wraps FastMCP with `AuthSessionMiddleware` pre-wired for JWT-based user session handling.
+
+```python
+from agentic_patterns.core.mcp import create_mcp_server
+
+mcp = create_mcp_server("my-server", instructions="A server for data operations.")
+```
+
+Register tools on the server using FastMCP's `@mcp.tool()` decorator.
+
+### Error classification
+
+MCP tools should use two error types to communicate failure semantics to the agent:
+
+```python
+from agentic_patterns.core.mcp import ToolRetryError, ToolFatalError
+
+@mcp.tool()
+def query_data(sql: str) -> str:
+    """Execute a SQL query."""
+    try:
+        return execute(sql)
+    except ValueError as e:
+        # Agent should retry with different arguments
+        raise ToolRetryError(str(e))
+    except RuntimeError as e:
+        # Agent should stop -- unrecoverable error
+        raise ToolFatalError(str(e))
+```
+
+`ToolRetryError` extends FastMCP's `ToolError` and signals the LLM to try again with corrected arguments. `ToolFatalError` prefixes the message with `[FATAL]` and causes the agent run to abort immediately rather than retrying.
+
+### The thin wrapper pattern
+
+All MCP servers in `agentic_patterns/mcp/` follow the same structure: a `server.py` that creates the server and a `tools.py` that registers tools delegating to toolkits or connectors. Error conversion maps domain exceptions to `ToolRetryError` or `ToolFatalError`.
+
+```
+agentic_patterns/mcp/todo/
+    server.py       # create_mcp_server("todo-server")
+    tools.py        # @mcp.tool() wrappers delegating to toolkits/todo/operations
+```
+
+
+## Configuration
+
+MCP client and server settings are defined in `config.yaml` and loaded via `load_mcp_settings()`. Environment variables are expanded using `${VAR}` syntax.
+
+```yaml
+mcp_servers:
+  sql:
+    url: http://localhost:8101/mcp
+    url_isolated: http://localhost:8102/mcp   # Optional: for private data sessions
+    read_timeout: 60
+
+  file_ops:
+    url: http://localhost:8103/mcp
+```
+
+`url_isolated` is optional. When present, sessions containing private data are routed to the isolated endpoint (which may have network restrictions). See Network Isolation below.
+
+### Client factories
+
+```python
+from agentic_patterns.core.mcp import get_mcp_client, get_mcp_clients
+
+# Single client
+sql_client = get_mcp_client("sql")
+
+# Multiple clients
+clients = get_mcp_clients(["sql", "file_ops"])
+
+# With Bearer token for authenticated servers
+sql_client = get_mcp_client("sql", bearer_token="eyJ...")
+```
+
+`get_mcp_client()` reads the config, creates the appropriate server wrapper, injects the Bearer token in request headers, and attaches a log handler that forwards MCP log messages to Python's logging.
+
+When `url_isolated` is configured, `get_mcp_client()` returns an `MCPServerPrivateData` instance (see below). Otherwise, it returns an `MCPServerStrict` instance.
+
+
+## Authentication Middleware
+
+`AuthSessionMiddleware` extracts JWT claims from the access token and calls `set_user_session()` at the request boundary. It is pre-wired by `create_mcp_server()`.
+
+```python
+from agentic_patterns.core.mcp import AuthSessionMiddleware
+
+# Typically you don't use this directly; create_mcp_server() adds it.
+# But you can add it to a raw FastMCP server:
+mcp = FastMCP("my-server", middleware=[AuthSessionMiddleware()])
+```
+
+The middleware reads `sub` (user ID) and `session_id` from JWT claims and sets the contextvars that downstream code (workspace paths, compliance checks, etc.) relies on.
+
+
+## Network Isolation
+
+`MCPServerPrivateData` provides a dual-instance wrapper for compliance-sensitive deployments. It holds two connections -- a normal one and an isolated one (with restricted network access) -- and routes calls based on whether the session contains private data.
+
+```python
+# Configured via url_isolated in config.yaml
+# The client factory handles this automatically:
+client = get_mcp_client("sql")  # Returns MCPServerPrivateData if url_isolated is set
+```
+
+The routing is a one-way ratchet: once private data is detected in a session, all subsequent calls go to the isolated endpoint. This prevents data leakage through external network access.
+
+`MCPServerStrict` extends `MCPServerStreamableHTTP` and intercepts fatal errors. When a tool response contains the `[FATAL]` prefix, it raises `RuntimeError` to abort the agent run instead of allowing the model to retry.
+
+
+## API Reference
+
+### `agentic_patterns.core.mcp`
+
+| Name | Kind | Description |
+|---|---|---|
+| `create_mcp_server(name, instructions)` | Function | Create a FastMCP server with auth middleware |
+| `get_mcp_client(name, config_path, bearer_token)` | Function | Create an MCP client from config |
+| `get_mcp_clients(names, config_path, bearer_token)` | Function | Create multiple MCP clients |
+| `ToolRetryError` | Exception | Agent should retry with different arguments |
+| `ToolFatalError` | Exception | Agent run should abort |
+| `AuthSessionMiddleware` | Middleware | JWT claims to user session bridge |
+| `MCPServerStrict` | Toolset | MCP client with fatal error interception |
+| `MCPServerPrivateData` | Toolset | Dual-instance client with compliance routing |
+| `MCPClientConfig` | Pydantic model | Client config (url, url_isolated, read_timeout) |
+| `MCPServerConfig` | Pydantic model | Server config (name, instructions, port) |
+| `MCPSettings` | Class | Container for loaded MCP configs with `get(name)` accessor |
+| `load_mcp_settings(config_path)` | Function | Load MCP settings from YAML |
+| `get_mcp_server(name, config_path)` | Function | Create a FastMCP server from config (loads from YAML) |
+| `create_process_tool_call(bearer_token)` | Function | Create callback that injects Bearer token into MCP request metadata |
+
+
+## Examples
+
+See the notebooks in `agentic_patterns/examples/mcp/`:
+
+- `example_mcp_stdio.ipynb` -- raw MCP protocol over STDIO transport
+- `example_agent_mcp_client_stdio.ipynb` -- agent connected to MCP server via STDIO
+- `example_agent_mcp_client_http.ipynb` -- agent connected to MCP server via HTTP
+- `example_mcp_features.ipynb` -- tools, resources, and prompts via FastMCP client
+
+---
+
+# A2A (Agent-to-Agent Protocol)
+
+A2A standardizes how autonomous agents discover, communicate with, and delegate work to other agents over HTTP. While MCP connects agents to tools and data, A2A connects agents to other agents as opaque, autonomous peers. A common composition is A2A for delegation (coordinator to specialist) and MCP for tool-use (specialist to databases, file systems, sandboxes).
+
+The library provides A2A client infrastructure, a coordinator factory, delegation tools, authentication middleware, skill conversion utilities, and a mock server for testing. All A2A infrastructure lives in `agentic_patterns.core.a2a`. A2A server implementations (thin wrappers over agents + MCP) live in `agentic_patterns.a2a.*`.
+
+
+## Exposing an Agent as an A2A Server
+
+Any PydanticAI agent can be exposed as an A2A server using `to_a2a()`. This creates an ASGI application that handles JSON-RPC requests for task creation, message sending, and task retrieval. It also serves the Agent Card at `/.well-known/agent-card.json`.
+
+```python
+from agentic_patterns.core.agents import get_agent
+
+def add(a: int, b: int) -> int:
+    """Add two numbers"""
+    return a + b
+
+agent = get_agent(tools=[add])
+app = agent.to_a2a()
+```
+
+Run with uvicorn:
+
+```bash
+uvicorn mymodule:app --host 0.0.0.0 --port 8000
+```
+
+### Declaring skills
+
+Skills appear in the Agent Card and let clients understand what the agent can do before sending any task. Use `tool_to_skill()` to convert tool functions into A2A Skill objects:
+
+```python
+from agentic_patterns.core.a2a import tool_to_skill
+
+tools = [add, sub, mul]
+skills = [tool_to_skill(f) for f in tools]
+
+app = agent.to_a2a(
+    name="Arithmetic",
+    description="Basic arithmetic operations",
+    skills=skills
+)
+```
+
+`tool_to_skill()` extracts the function name as the skill ID/name and the docstring as the description.
+
+### Building skills from multiple sources
+
+A2A servers often compose skills from several sources. The library provides conversion functions for each:
+
+```python
+from agentic_patterns.core.a2a import (
+    tool_to_skill,              # local function -> Skill
+    mcp_to_skills_sync,         # MCP server tools -> list[Skill]
+    card_to_skills,             # A2A sub-agent card -> list[Skill]
+    skill_metadata_to_a2a_skill # SKILL.md metadata -> Skill
+)
+```
+
+`mcp_to_skills_sync()` connects to an MCP server by config name, lists its tools, and converts each to a Skill. It is safe to call even if an event loop is already running (spawns a thread if needed). The async variant is `mcp_to_skills()`.
+
+### Authentication middleware
+
+A2A servers should use `AuthSessionMiddleware` to extract JWT Bearer tokens from incoming requests and set the user session context:
+
+```python
+from agentic_patterns.core.a2a import AuthSessionMiddleware
+
+app = agent.to_a2a(name="MyAgent", skills=skills)
+app.add_middleware(AuthSessionMiddleware)
+```
+
+The middleware reads `sub` (user ID) and `session_id` from JWT claims and calls `set_user_session_from_token()`, propagating identity into contextvars for downstream code (workspace paths, compliance checks, etc.).
+
+### Server implementation pattern
+
+All A2A servers in `agentic_patterns/a2a/` follow the same structure:
+
+```
+agentic_patterns/a2a/nl2sql/
+    server.py       # Load prompt, build skills, create agent, expose via to_a2a()
+```
+
+Each server: loads a system prompt, connects to MCP servers via `get_mcp_client()`, builds the skills list via `mcp_to_skills_sync()`, creates the agent with `get_agent(toolsets=...)`, and exposes it with `agent.to_a2a()` plus `AuthSessionMiddleware`. Servers are started with uvicorn.
+
+
+## Calling Remote A2A Agents
+
+### Client configuration
+
+A2A client settings are defined in `config.yaml` under `a2a.clients` and loaded via `load_a2a_settings()`. Environment variables are expanded with `${VAR}` syntax.
+
+```yaml
+a2a:
+  clients:
+    nl2sql:
+      url: http://localhost:8002
+      timeout: 300
+      poll_interval: 1.0
+      max_retries: 3
+      retry_delay: 1.0
+      bearer_token: ${A2A_TOKEN}
+
+    data_analysis:
+      url: http://localhost:8201
+```
+
+### Creating clients
+
+```python
+from agentic_patterns.core.a2a import A2AClientExtended, A2AClientConfig, get_a2a_client
+
+# From config.yaml by name
+client = get_a2a_client("nl2sql")
+
+# From explicit config
+client = A2AClientExtended(A2AClientConfig(url="http://localhost:8002", timeout=300))
+```
+
+### Agent discovery
+
+Before sending work, a client can fetch the Agent Card to understand what the agent offers:
+
+```python
+card = await client.get_agent_card()
+# card contains: name, description, skills, capabilities, authentication
+```
+
+### Sending tasks and observing results
+
+`send_and_observe()` encapsulates the complete send-then-poll loop. It returns a `(TaskStatus, task)` tuple:
+
+```python
+from agentic_patterns.core.a2a import TaskStatus
+
+status, task = await client.send_and_observe("Reconcile invoice #4812")
+
+match status:
+    case TaskStatus.COMPLETED:
+        from agentic_patterns.core.a2a import extract_text
+        result = extract_text(task)
+    case TaskStatus.INPUT_REQUIRED:
+        from agentic_patterns.core.a2a import extract_question
+        question = extract_question(task)
+        # Continue the conversation on the same task
+        status, task = await client.send_and_observe(
+            "The answer is yes",
+            task_id=task['id']
+        )
+    case TaskStatus.FAILED:
+        ...
+    case TaskStatus.TIMEOUT:
+        ...  # client auto-cancels the remote task on timeout
+    case TaskStatus.CANCELLED:
+        ...
+```
+
+`TaskStatus` values: `COMPLETED`, `FAILED`, `INPUT_REQUIRED`, `CANCELLED`, `TIMEOUT`. The first four map to A2A protocol states. `TIMEOUT` is a client-side addition -- when the configured deadline is exceeded, the client cancels the remote task before returning.
+
+### Client resilience
+
+`A2AClientExtended` provides production-ready behavior on top of the base `fasta2a.A2AClient`:
+
+- Retry with exponential backoff on transient `ConnectionError` and `TimeoutError` (configurable `max_retries` and `retry_delay`).
+- Timeout with auto-cancel. A configurable `timeout` bounds total wait time. On expiration, the client cancels the remote task.
+- Cooperative cancellation via an `is_cancelled` callback checked on every poll cycle:
+
+```python
+status, task = await client.send_and_observe(
+    "Long computation",
+    is_cancelled=lambda: user_pressed_cancel
+)
+```
+
+
+## Coordinator Pattern
+
+The coordinator pattern is a local agent that routes tasks to specialized remote A2A agents. The coordinator fetches Agent Cards, understands capabilities, and delegates via delegation tools.
+
+### Quick setup with `create_coordinator()`
+
+`create_coordinator()` automates the full setup: fetches agent cards, creates delegation tools, and builds the system prompt.
+
+```python
+from agentic_patterns.core.a2a import create_coordinator, A2AClientConfig
+
+coordinator = await create_coordinator(
+    clients=[
+        A2AClientConfig(url="http://localhost:8000"),
+        A2AClientConfig(url="http://localhost:8001"),
+    ]
+)
+
+result = await coordinator.run("What is the area of a circle with radius 5?")
+```
+
+You can also pass `A2AClientExtended` instances or a custom `system_prompt` (appended to the auto-generated prompt describing available agents). An `is_cancelled` callback propagates cancellation to all delegation tools.
+
+### Manual coordinator construction
+
+For full control over the coordinator setup, build the pieces individually. `create_a2a_tool()` wraps an A2A client and agent card into a PydanticAI tool that handles the delegation lifecycle:
+
+```python
+from agentic_patterns.core.a2a import (
+    A2AClientExtended, A2AClientConfig,
+    create_a2a_tool, build_coordinator_prompt
+)
+from agentic_patterns.core.agents import get_agent
+
+clients = [
+    A2AClientExtended(A2AClientConfig(url="http://localhost:8000")),
+    A2AClientExtended(A2AClientConfig(url="http://localhost:8001")),
+]
+
+cards = [await c.get_agent_card() for c in clients]
+tools = [create_a2a_tool(c, card) for c, card in zip(clients, cards)]
+prompt = build_coordinator_prompt(cards)
+
+coordinator = get_agent(tools=tools, instructions=prompt)
+```
+
+`create_a2a_tool()` produces a tool function `delegate(ctx, prompt, task_id=None)` that returns formatted status strings: `[COMPLETED] result text`, `[INPUT_REQUIRED:task_id=xyz] question`, `[FAILED] error`, `[CANCELLED]`, `[TIMEOUT]`. The status prefix lets the LLM understand the outcome and decide next steps (e.g., answering a follow-up question for `INPUT_REQUIRED`).
+
+`build_coordinator_prompt()` generates a system prompt section listing each agent's name, description, and skills.
+
+
+## Testing
+
+### MockA2AServer
+
+`MockA2AServer` implements the A2A JSON-RPC interface with configurable responses, allowing deterministic testing without running LLM-backed agents.
+
+```python
+from agentic_patterns.core.a2a.mock import MockA2AServer
+
+mock = MockA2AServer(name="Arithmetic", description="Does math")
+
+# Exact prompt match
+mock.on_prompt("add 2 and 3", result="5")
+
+# Regex pattern match
+mock.on_pattern(r"subtract \d+ from \d+", result="0")
+
+# Default fallback
+mock.set_default(result="unknown operation")
+
+# Delayed response (returns "working" for N polls, then completes)
+mock.on_prompt_delayed("factorial(100)", polls=3, result="9332621544...")
+
+# Error responses
+mock.on_prompt("crash", error="Division by zero")
+
+# Input-required responses
+mock.on_prompt("need clarification", input_required="Which account?")
+
+app = mock.to_app()  # FastAPI instance for test clients
+```
+
+After a test run, inspect what was received:
+
+```python
+assert "add 2 and 3" in mock.received_prompts
+assert task_id in mock.cancelled_task_ids  # if cancellation was tested
+```
+
+Configuration methods return `self` for chaining:
+
+```python
+mock = (MockA2AServer(name="Agent")
+    .on_prompt("hello", result="hi")
+    .on_pattern(r"sum.*", result="42")
+    .set_default(result="unknown"))
+```
+
+
+## Utilities
+
+Helper functions in `agentic_patterns.core.a2a`:
+
+`create_message(text, message_id=None)` creates an A2A user message dict with a generated `message_id`.
+
+`extract_text(task)` joins text from all task artifact parts into a single string. Returns `None` if no text artifacts.
+
+`extract_question(task)` extracts the question text from an `input-required` task status message.
+
+`card_to_prompt(card)` formats an agent card as a markdown string for inclusion in system prompts (name, description, skills list).
+
+`slugify(name)` converts a name to a valid Python identifier (lowercase, non-alphanumeric replaced with underscores).
+
+
+## API Reference
+
+### `agentic_patterns.core.a2a`
+
+| Name | Kind | Description |
+|---|---|---|
+| `A2AClientExtended(config)` | Class | A2A client with retry, timeout, cancellation |
+| `A2AClientConfig` | Pydantic model | Client config (url, timeout, poll_interval, max_retries, retry_delay, bearer_token) |
+| `TaskStatus` | Enum | Task outcome: COMPLETED, FAILED, INPUT_REQUIRED, CANCELLED, TIMEOUT |
+| `get_a2a_client(name)` | Function | Create client from config.yaml by name |
+| `create_coordinator(clients, system_prompt, is_cancelled)` | Function | Create coordinator agent with delegation tools |
+| `create_a2a_tool(client, card, name, is_cancelled)` | Function | Create delegation tool from client + agent card |
+| `build_coordinator_prompt(cards)` | Function | Build system prompt from agent cards |
+| `AuthSessionMiddleware` | Middleware | JWT Bearer token to user session bridge |
+| `tool_to_skill(func)` | Function | Convert tool function to fasta2a Skill |
+| `card_to_skills(card)` | Function | Extract skills from agent card |
+| `mcp_to_skills(config_name)` | Function | MCP server tools to skills (async) |
+| `mcp_to_skills_sync(config_name)` | Function | MCP server tools to skills (sync) |
+| `skill_metadata_to_a2a_skill(meta)` | Function | SKILL.md metadata to fasta2a Skill |
+| `create_message(text, message_id)` | Function | Create A2A user message dict |
+| `extract_text(task)` | Function | Extract text from task artifacts |
+| `extract_question(task)` | Function | Extract question from input-required status |
+| `card_to_prompt(card)` | Function | Format agent card as prompt markdown |
+| `slugify(name)` | Function | Name to valid Python identifier |
+| `MockA2AServer` | Class | Mock A2A server for testing |
+| `A2ASettings` | Pydantic model | Container for A2A client configs |
+| `load_a2a_settings(config_path)` | Function | Load A2A settings from YAML |
+
+
+## Examples
+
+See the files in `agentic_patterns/examples/a2a/`:
+
+- `example_a2a_server.py` -- minimal A2A server with arithmetic tools
+- `example_a2a_server_1.py` -- A2A server with skills (arithmetic)
+- `example_a2a_server_2.py` -- A2A server with skills (area calculations)
+- `example_a2a_client.ipynb` -- basic client: discover, send task, poll, extract result
+- `example_a2a_coordinator.ipynb` -- coordinator agent routing to multiple specialists
+
+---
+
+# Skills, Sub-Agents & Tasks
+
+Sub-agents decompose work within a single process by giving each child its own context, prompt, and tools. Skills package reusable agent capabilities as discoverable artifacts with progressive disclosure. Tasks wrap sub-agent execution with durable state, observation, and lifecycle control. These three patterns work together: `OrchestratorAgent` composes them declaratively via `AgentSpec`.
+
+All infrastructure lives in `agentic_patterns.core.agents.orchestrator` (AgentSpec, OrchestratorAgent), `agentic_patterns.core.skills` (registry, models, tools), and `agentic_patterns.core.tasks` (broker, worker, store, models).
+
+
+## Sub-Agents
+
+A sub-agent is a PydanticAI `Agent` created and run by a parent agent to handle a scoped task. Each sub-agent has its own system prompt, tools, and context window. The parent delegates via tool calls and integrates results.
+
+### Fixed sub-agents
+
+Create specialized agents up front and expose them as tools on the coordinator:
+
+```python
+from pydantic import BaseModel, Field
+from agentic_patterns.core.agents import get_agent, run_agent
+
+class Summary(BaseModel):
+    summary: str = Field(description="2-3 sentence summary")
+
+summarizer = get_agent(
+    output_type=Summary,
+    system_prompt="You are a summarization specialist."
+)
+
+async def get_summary(ctx: RunContext[None], document: str) -> str:
+    """Delegate to summarizer sub-agent."""
+    agent_run, _ = await run_agent(summarizer, f"Summarize:\n\n{document}")
+    ctx.usage.incr(agent_run.result.usage())
+    return agent_run.result.output.summary
+
+coordinator = get_agent(
+    tools=[get_summary],
+    system_prompt="You are a document analysis coordinator."
+)
+```
+
+The `ctx.usage.incr()` call propagates the sub-agent's token usage to the coordinator's totals, so usage tracking remains accurate across delegation boundaries.
+
+### Dynamic sub-agents
+
+Let the coordinator create sub-agents at runtime with arbitrary system prompts:
+
+```python
+async def run_sub_agent(ctx: RunContext[None], system_prompt: str, task: str) -> str:
+    """Create and run a sub-agent with the given system prompt."""
+    sub_agent = get_agent(system_prompt=system_prompt)
+    agent_run, _ = await run_agent(sub_agent, task)
+    ctx.usage.incr(agent_run.result.usage())
+    return agent_run.result.output
+
+coordinator = get_agent(
+    tools=[run_sub_agent],
+    system_prompt="Break problems down and delegate to specialized sub-agents."
+)
+```
+
+The coordinator decides what specialists to create and what system prompts to give them, adapting to any problem domain.
+
+
+## Skills
+
+Skills are packaged capability definitions that agents load on demand. A skill is a directory containing a `SKILL.md` file with YAML frontmatter and markdown instructions, plus optional supporting files.
+
+### Directory structure
+
+```
+skills/
+  code-review/
+    SKILL.md              # Required: frontmatter + instructions
+    scripts/              # Optional: executable scripts
+    references/           # Optional: reference documents
+    assets/               # Optional: static resources
+```
+
+### SKILL.md format
+
+```yaml
+---
+name: code-review
+description: Review code for quality, bugs, and security issues.
+compatibility: Works with Python, JavaScript, and TypeScript files.
+metadata:
+  author: example-org
+  version: "1.0"
+---
+
+# Code Review
+
+## When to use this skill
+Use when the task involves reviewing code for quality, bugs, or security.
+
+## How to use
+Analyze the provided code and return structured feedback.
+```
+
+Required frontmatter fields: `name` (1-64 chars, lowercase alphanumeric and hyphens) and `description` (1-1024 chars). Optional fields: `license`, `compatibility`, `metadata`, `allowed-tools`.
+
+### Progressive disclosure
+
+Skills use a three-tier loading strategy to minimize context consumption:
+
+**Tier 1 -- Discovery (cheap).** `SkillRegistry.discover()` scans directories for `SKILL.md` files and extracts only the `name` and `description` from frontmatter. This produces `SkillMetadata` objects (~100 tokens each) that are injected into the system prompt as a catalog.
+
+**Tier 2 -- Activation (expensive).** When the agent calls `activate_skill(name)`, the full `SKILL.md` body is loaded via `SkillRegistry.get()`. This returns a `Skill` object with the complete markdown instructions, frontmatter, and paths to scripts/references/assets.
+
+**Tier 3 -- Resources (on demand).** Files in `scripts/`, `references/`, and `assets/` are only accessed when the agent explicitly reads or executes them.
+
+### SkillRegistry
+
+```python
+from pathlib import Path
+from agentic_patterns.core.skills.registry import SkillRegistry
+from agentic_patterns.core.skills.tools import list_available_skills, get_skill_instructions
+
+registry = SkillRegistry()
+metadata = registry.discover([Path("skills/")])   # Tier 1: scan and cache
+catalog = list_available_skills(registry)          # "name: description\n..."
+
+skill = registry.get("code-review")               # Tier 2: load full skill
+instructions = get_skill_instructions(registry, "code-review")  # skill.body
+```
+
+`SkillMetadata` holds `name`, `description`, and `path`. `Skill` adds `frontmatter` (full YAML dict), `body` (markdown string), and `script_paths`, `reference_paths`, `asset_paths` (lists of `Path`).
+
+### Skill tools
+
+`get_all_tools(registry)` returns an `activate_skill` function for use as a PydanticAI tool:
+
+```python
+from agentic_patterns.core.skills.tools import get_all_tools
+
+tools = get_all_tools(registry)
+agent = get_agent(tools=tools, system_prompt=f"Available skills:\n{catalog}")
+```
+
+When called, `activate_skill(skill_name)` returns the full SKILL.md body. If the skill is not found, it returns an error message.
+
+### Skill sandbox
+
+`create_skill_sandbox_manager(registry)` creates a `SandboxManager` with read-only mounts for all discovered skill script directories. Use `run_skill_script()` to execute a skill's bundled scripts inside the container:
+
+```python
+from agentic_patterns.core.skills.tools import create_skill_sandbox_manager, run_skill_script
+
+manager = create_skill_sandbox_manager(registry)
+exit_code, output = run_skill_script(
+    manager, registry, user_id, session_id,
+    skill_name="code-review", script_name="analyze.py", args="main.py"
+)
+```
+
+
+## Tasks
+
+The task system wraps sub-agent execution with durable state, background dispatch, and observation channels. It enables fire-and-forget delegation where the coordinator continues reasoning while sub-agents work in the background.
+
+### State machine
+
+```
+pending --> running --> completed
+               |-----> failed
+               |-----> cancelled
+         |---> cancelled
+```
+
+`TaskState` enum values: `PENDING`, `RUNNING`, `COMPLETED`, `FAILED`, `INPUT_REQUIRED`, `CANCELLED`. Terminal states: `COMPLETED`, `FAILED`, `CANCELLED`.
+
+### Task model
+
+```python
+from agentic_patterns.core.tasks.models import Task, TaskEvent, EventType
+
+task = Task(input="Analyze this dataset")
+# task.id: auto-generated UUID
+# task.state: TaskState.PENDING
+# task.result: None (set on completion)
+# task.error: None (set on failure)
+# task.events: [] (state changes, progress, logs)
+# task.metadata: {} (carries agent_name, system_prompt, config_name)
+```
+
+`TaskEvent` records state transitions and progress. `EventType` values: `STATE_CHANGE`, `PROGRESS`, `LOG`.
+
+### Task storage
+
+`TaskStore` is the abstract persistence interface with two implementations:
+
+`TaskStoreMemory` -- in-memory dict-backed, no filesystem access. Ideal for notebooks and tests.
+
+`TaskStoreJson` -- one JSON file per task in `DATA_DIR/tasks/`. Survives process restarts.
+
+Both implement: `create()`, `get()`, `update_state()`, `list_by_state()`, `next_pending()`, `add_event()`.
+
+### TaskBroker
+
+`TaskBroker` coordinates task submission, dispatch, and observation. It runs a background dispatch loop that picks pending tasks and hands them to a `Worker` for execution.
+
+```python
+from agentic_patterns.core.tasks.broker import TaskBroker
+from agentic_patterns.core.tasks.store import TaskStoreMemory
+
+async with TaskBroker(store=TaskStoreMemory()) as broker:
+    task_id = await broker.submit("Analyze revenue trends", agent_name="analyst")
+
+    # Observation methods
+    task = await broker.poll(task_id)         # Get current state
+    task = await broker.wait(task_id)         # Block until terminal
+    async for event in broker.stream(task_id): # Yield events as they arrive
+        print(event.event_type, event.payload)
+
+    await broker.cancel(task_id)              # Cancel a task
+    await broker.cancel_all()                 # Cancel all non-terminal tasks
+
+    # Callbacks
+    await broker.notify(task_id, {TaskState.COMPLETED}, my_callback)
+```
+
+`register_agents(specs)` binds `AgentSpec` instances so the worker can resolve sub-agents by name. When `agent_name` is present in task metadata, the worker uses `OrchestratorAgent` with the registered spec. Otherwise it falls back to `get_agent()` with `system_prompt` and `config_name` from metadata.
+
+### Worker
+
+`Worker` executes tasks by running sub-agents. It transitions the task through `RUNNING` to `COMPLETED` or `FAILED`, emitting `STATE_CHANGE` events at each transition. During execution with an `AgentSpec`, it creates a node hook that emits `PROGRESS` events (tool calls) and `LOG` events (model reasoning) to the task's event stream.
+
+
+## OrchestratorAgent
+
+`OrchestratorAgent` composes all six capabilities into a single agent: direct tools, MCP servers, A2A clients, skills, sub-agents, and tasks. It takes an `AgentSpec` and wires everything up as an async context manager.
+
+### AgentSpec
+
+`AgentSpec` is the declarative specification for an orchestrator agent:
+
+```python
+from agentic_patterns.core.agents.orchestrator import AgentSpec
+
+spec = AgentSpec(
+    name="coordinator",
+    description="Coordinates analysis tasks",
+    system_prompt="You are an analysis coordinator.",
+    tools=[my_tool],
+    mcp_servers=[mcp_config],
+    a2a_clients=[a2a_client],
+    skills=[skill],
+    sub_agents=[analyst_spec, researcher_spec],
+)
+```
+
+Fields: `name` (required), `description`, `model` (defaults to config.yaml default), `system_prompt` or `system_prompt_path` (template with `{sub_agents_catalog}` and `{skills_catalog}` variables), `tools`, `mcp_servers` (list of `MCPClientConfig`), `a2a_clients` (list of `A2AClientExtended`), `skills` (list of `Skill`), `sub_agents` (list of `AgentSpec`).
+
+### Loading from config.yaml
+
+`AgentSpec.from_config()` resolves all components from configuration:
+
+```python
+spec = AgentSpec.from_config(
+    "coordinator",
+    model_name="azure_gpt4",
+    system_prompt_path=Path("prompts/coordinator.md"),
+    tool_names=["agentic_patterns.tools.file:get_all_tools"],
+    mcp_server_names=["data_analysis", "sql"],
+    a2a_client_names=["nl2sql"],
+    skill_roots=[Path("skills/")],
+    skill_names=["code-review"],  # None = load all discovered skills
+)
+```
+
+If an `agents` section in `config.yaml` contains an entry matching the name, its values serve as defaults. Explicit parameters override YAML values.
+
+### Running the orchestrator
+
+```python
+from agentic_patterns.core.agents.orchestrator import OrchestratorAgent
+
+async with OrchestratorAgent(spec, verbose=True) as orchestrator:
+    result = await orchestrator.run("Analyze Q4 revenue data")
+    print(result.output)
+
+    # Multi-turn: history accumulates across run() calls
+    result = await orchestrator.run("Now compare with Q3")
+```
+
+On entry, `OrchestratorAgent` connects MCP servers, fetches A2A agent cards, discovers skills, creates the task broker (if sub-agents are present), builds the system prompt from templates and catalogs, and creates the underlying PydanticAI `Agent`.
+
+### Auto-injected tools
+
+When `sub_agents` are present in the spec, three tools are automatically added:
+
+`delegate(agent_name, prompt)` -- submit a task to a sub-agent and block until it completes. Returns the result string or an error message. Propagates token usage to the coordinator.
+
+`submit_task(agent_name, prompt)` -- submit a task for background execution. Returns immediately with the task ID.
+
+`wait(timeout=120)` -- block until at least one background task finishes or the timeout fires. Returns status and results for all submitted tasks.
+
+The coordinator decides which pattern to use based on its system prompt: `delegate` for synchronous delegation, `submit_task` + `wait` for parallel background work.
+
+### Background task injection
+
+Between `run()` calls, `OrchestratorAgent` checks for completed background tasks and prepends their results to the next prompt. This happens automatically -- the coordinator sees results from tasks it submitted earlier without explicitly polling.
+
+### Node hooks
+
+The `on_node` callback (or `verbose=True` for the built-in `_log_node` hook) observes the agent's execution graph. The hook receives each node as the agent processes it, enabling logging of model reasoning and tool calls.
+
+
+## API Reference
+
+### `agentic_patterns.core.agents.orchestrator`
+
+| Name | Kind | Description |
+|---|---|---|
+| `AgentSpec` | Pydantic model | Declarative agent spec (name, model, prompt, tools, mcp, a2a, skills, sub_agents) |
+| `AgentSpec.from_config(name, ...)` | Class method | Load and resolve all components from config.yaml |
+| `OrchestratorAgent(spec, verbose, on_node)` | Class | Async context manager that composes and runs the agent |
+| `OrchestratorAgent.run(prompt, ...)` | Method | Execute a turn, returns `AgentRunResult` |
+| `OrchestratorAgent.runs` | Property | History of all (AgentRun, nodes) pairs |
+| `OrchestratorAgent.system_prompt` | Property | Final composed system prompt |
+| `NodeHook` | Type alias | `Callable[[Any], None]` for node observation |
+
+### `agentic_patterns.core.skills`
+
+| Name | Kind | Description |
+|---|---|---|
+| `SkillMetadata` | Pydantic model | Lightweight: name, description, path |
+| `Skill` | Pydantic model | Full: name, description, path, frontmatter, body, script/reference/asset paths |
+| `SkillRegistry` | Class | Discover (tier 1) and load (tier 2) skills |
+| `SkillRegistry.discover(roots)` | Method | Scan directories, cache metadata, return `list[SkillMetadata]` |
+| `SkillRegistry.get(name)` | Method | Load full `Skill` by name |
+| `SkillRegistry.list_all()` | Method | Return cached metadata list |
+| `list_available_skills(registry)` | Function | Compact catalog string for system prompts |
+| `get_skill_instructions(registry, name)` | Function | Return SKILL.md body for activation |
+| `get_all_tools(registry)` | Function | Return `[activate_skill]` tool list |
+| `create_skill_sandbox_manager(registry)` | Function | SandboxManager with read-only skill mounts |
+| `run_skill_script(manager, registry, ...)` | Function | Execute skill script in sandbox |
+
+### `agentic_patterns.core.tasks`
+
+| Name | Kind | Description |
+|---|---|---|
+| `TaskState` | Enum | PENDING, RUNNING, COMPLETED, FAILED, INPUT_REQUIRED, CANCELLED |
+| `TERMINAL_STATES` | Set | {COMPLETED, FAILED, CANCELLED} |
+| `EventType` | Enum | STATE_CHANGE, PROGRESS, LOG |
+| `Task` | Pydantic model | Work unit: id, state, input, result, error, events, metadata |
+| `TaskEvent` | Pydantic model | Event record: task_id, event_type, payload, timestamp |
+| `TaskStore` | ABC | Persistence interface: create, get, update_state, list_by_state, next_pending, add_event |
+| `TaskStoreMemory` | Class | In-memory implementation |
+| `TaskStoreJson` | Class | JSON file-per-task implementation |
+| `TaskBroker` | Class | Async context manager for task coordination and dispatch |
+| `TaskBroker.submit(input, **metadata)` | Method | Create task, return task_id |
+| `TaskBroker.poll(task_id)` | Method | Get current task state |
+| `TaskBroker.wait(task_id)` | Method | Block until terminal state |
+| `TaskBroker.stream(task_id)` | Method | Async iterator of TaskEvent |
+| `TaskBroker.cancel(task_id)` | Method | Cancel a task |
+| `TaskBroker.cancel_all()` | Method | Cancel all non-terminal tasks |
+| `TaskBroker.notify(task_id, states, callback)` | Method | Register callback for state changes |
+| `TaskBroker.register_agents(specs)` | Method | Bind AgentSpec dict for sub-agent resolution |
+| `Worker` | Class | Executes tasks by running sub-agents |
+
+
+## Examples
+
+See the files in `agentic_patterns/examples/sub_agents/` and `agentic_patterns/examples/skills/`:
+
+- `example_sub_agents_fixed.ipynb` -- fixed sub-agents with structured outputs and usage propagation
+- `example_sub_agents_dynamic.ipynb` -- dynamic sub-agent creation at runtime
+- `example_tasks.ipynb` -- task broker, background submission, streaming, cancellation
+- `example_skills.ipynb` -- skill discovery, activation, progressive disclosure
+
+---
+
+# Domain Agents
+
+Domain agents (`agentic_patterns.agents`) are pre-configured agents for specific tasks. Each module exposes a `create_agent()` factory returning a PydanticAI `Agent` and optionally a `get_spec()` factory returning an `AgentSpec` for composition via `OrchestratorAgent`.
+
+## db_catalog
+
+`create_agent()` returns an agent with `output_type=DatabaseSelection` (a Pydantic model with `database` and `reasoning` fields). Given a natural language query, the agent inspects all available database schemas and selects the most appropriate one. Used as a routing step before NL2SQL.
+
+## data_analysis
+
+`create_agent()` returns an agent with file, CSV, JSON, data analysis, data visualization, and REPL tools directly attached.
+
+`get_spec()` returns an `AgentSpec` with `name="data_analyst"`, a system prompt, and the same tool set. This spec can be registered as a sub-agent in an `OrchestratorAgent`.
+
+## nl2sql
+
+`create_agent(db_id: str)` returns an agent bound to a specific database. The prompt module (`agents.nl2sql.prompts`) provides `get_system_prompt()` for the base system prompt and `get_instructions(db_info)` which assembles schema, example queries, and dialect-specific rules (loaded from `prompts/sql/nl2sql/db_specific/` or `db_type/` if present). Tools are created with `get_all_tools(db_id)`, which binds a `SqlConnector` to the given database via closure, exposing `db_execute_sql_tool` and `db_get_row_by_id_tool`. Both tools raise `ModelRetry` on validation errors so the agent can self-correct.
+
+## openapi
+
+`create_agent()` returns an agent with OpenAPI tools for discovering and calling REST APIs.
+
+`get_spec()` returns an `AgentSpec` with `name="api_specialist"`.
+
+## sql
+
+`create_agent()` returns an agent with file, CSV, and SQL tools.
+
+`get_spec()` returns an `AgentSpec` with `name="sql_analyst"` for sub-agent composition.
+
+## vocabulary
+
+`create_agent(vocab_names: list[str] | None = None)` returns an agent for resolving terms across controlled vocabularies (biomedical, scientific). The optional `vocab_names` parameter filters which vocabularies are available.
+
+`get_spec(vocab_names)` returns an `AgentSpec` with `name="vocabulary_expert"`, a system prompt listing available vocabularies with their strategies and term counts, and vocabulary tools: `vocab_lookup`, `vocab_search`, `vocab_validate`, `vocab_suggest`, `vocab_parent`, `vocab_children`, `vocab_ancestors`, `vocab_descendants`, `vocab_relationships`, `vocab_related`, `vocab_info`, `vocab_list`.
+
+## coordinator
+
+`create_agent(tools=None)` returns an `OrchestratorAgent` that delegates work to sub-agents (data_analysis, sql, vocabulary). It uses `AgentSpec` with `name="coordinator"`, a system prompt loaded from a template, optional direct tools, and sub-agent specs registered for delegation via `TaskBroker`.
+
+---
+
+# Evals
+
+The library provides three layers for verifying agent behavior: deterministic testing utilities for unit tests without LLM calls, an evaluation framework for measuring agent quality with real models, and doctor tools for analyzing the quality of prompts, tools, MCP servers, A2A cards, and skills.
+
+Testing utilities live in `agentic_patterns.testing`. The eval framework lives in `agentic_patterns.core.evals`. The doctors CLI lives in `agentic_patterns.core.doctors`.
+
+
+## Deterministic Testing
+
+### ModelMock
+
+`ModelMock` is a drop-in replacement for real LLM models that returns predefined responses sequentially. It implements the PydanticAI `Model` interface, so agents use it without modification.
+
+```python
+from pydantic_ai.messages import ToolCallPart
+from agentic_patterns.testing import ModelMock
+
+model = ModelMock(responses=[
+    ToolCallPart(tool_name="search", args={"query": "test"}),
+    "The answer is 42.",
+])
+
+agent = get_agent(model=model, tools=[search])
+agent_run, _ = await run_agent(agent, "Find the answer")
+```
+
+Each call to the model consumes the next response from the list. The agent keeps calling the model until it receives a text response (not a `ToolCallPart`), so responses typically alternate between tool calls and text.
+
+Response items can be: `str` (text), `TextPart`, `ToolCallPart`, `list[str | TextPart | ToolCallPart]` (multiple parts in one response), `MockFinishReason` (custom finish reason), `Exception` (raised on consumption), or `Callable` (called with `(model, messages)` to generate a response dynamically).
+
+For agents with structured output types (`output_type=MyModel`), use `final_result_tool()` to create the tool call that PydanticAI expects:
+
+```python
+from agentic_patterns.testing import ModelMock, final_result_tool
+
+class Analysis(BaseModel):
+    summary: str
+
+model = ModelMock(responses=[
+    ToolCallPart(tool_name="analyze", args={"data": "xyz"}),
+    final_result_tool(Analysis(summary="All clear")),
+])
+```
+
+Properties: `last_message` (last `ModelResponse`), `last_message_part` (last part of the response).
+
+### tool_mock
+
+`tool_mock()` creates a mock version of a tool function that returns predefined values sequentially while tracking call statistics.
+
+```python
+from agentic_patterns.testing import tool_mock
+
+mocked_search = tool_mock(search, return_values=[["result1"], ["result2"]])
+
+agent = get_agent(model=model, tools=[mocked_search])
+agent_run, _ = await run_agent(agent, "Search twice")
+
+assert mocked_search.call_count == 2
+assert mocked_search.was_called
+assert mocked_search.call_args_list[0] == ((), {"query": "test"})
+```
+
+The returned `ToolMockWrapper` preserves the original function's name and docstring (via `functools.update_wrapper`), so PydanticAI sees it as the original tool. It supports both sync and async functions automatically.
+
+Properties: `call_count` (int), `was_called` (bool), `call_args_list` (list of `(args, kwargs)` tuples). Call `reset()` to clear state and restore original return values. Raises `IndexError` if called more times than there are return values.
+
+### AgentMock
+
+`AgentMock` replays previously recorded agent nodes for testing code that iterates over agent execution without re-running the agent.
+
+```python
+from agentic_patterns.testing import AgentMock
+
+mock = AgentMock(nodes=[node1, node2], result_output="final answer")
+async with mock.iter() as run:
+    async for node in run:
+        process(node)
+print(run.result.output)  # "final answer"
+```
+
+
+## Evaluation Framework
+
+The eval framework builds on `pydantic_evals` and adds agent-specific evaluators, auto-discovery of eval files, and a CLI runner. All imports are available from `agentic_patterns.core.evals`.
+
+### Writing an eval file
+
+Eval files follow naming conventions for auto-discovery. Place them in an evals directory as `eval_*.py`. Each file must contain exactly one `target_*` function, one or more `dataset_*` objects, and optionally `scorer_*` functions.
+
+```python
+# evals/eval_search.py
+from agentic_patterns.core.evals import Case, Dataset, Contains, ToolWasCalled
+
+async def target_search(inputs: str) -> str:
+    """The function being evaluated -- runs the agent."""
+    agent_run, _ = await run_agent(agent, inputs)
+    return agent_run.result.output
+
+dataset_basic = Dataset(
+    cases=[
+        Case(name="simple_query", inputs="What is Python?", expected_output="programming"),
+        Case(name="complex_query", inputs="Explain recursion", expected_output="function"),
+    ],
+    evaluators=[Contains(), ToolWasCalled(tool_name="search")],
+)
+
+def scorer_strict(report, min_assertions):
+    """Custom pass/fail logic."""
+    return average_assertions(report, min_assertions)
+```
+
+### Built-in evaluators (from pydantic_evals)
+
+`EqualsExpected()` -- exact match against `expected_output`. `Contains()` -- substring check. `IsInstance(type_name=...)` -- type check. `MaxDuration(seconds=...)` -- latency constraint. `LLMJudge(rubric=...)` -- uses another model to grade the output. `HasMatchingSpan(...)` -- checks the execution span tree.
+
+### Custom evaluators
+
+The library provides four agent-specific evaluators:
+
+`OutputContainsJson()` -- validates that the output is parseable JSON.
+
+`ToolWasCalled(tool_name="search")` -- checks if a specific tool was called during execution by searching the span tree.
+
+`NoToolErrors()` -- verifies no tool calls resulted in errors by recursively scanning the span tree for error statuses.
+
+`OutputMatchesSchema(schema=MyModel)` -- validates output against a Pydantic model or dict schema. Accepts both `type[BaseModel]` and `dict` (checks key presence). Automatically parses JSON strings.
+
+All evaluators implement the `Evaluator` protocol and return `EvaluationReason(value=True|False, reason="...")`.
+
+### Running evals
+
+**CLI:**
+
+```bash
+python -m agentic_patterns.core.evals --evals-dir evals/
+python -m agentic_patterns.core.evals --filter search --min-assertions 0.8 --verbose
+```
+
+The `evals` console script (installed via pyproject.toml) provides the same interface.
+
+Options: `--evals-dir PATH` (default: `evals`), `--filter TEXT` (match by module/file/dataset name), `--min-assertions FLOAT` (default: 1.0), `--include-input`, `--include-output`, `--include-reasons`, `--include-evaluator-failures`, `--verbose`. Exit code 0 on all pass, 1 on any failure.
+
+**Programmatic:**
+
+```python
+from agentic_patterns.core.evals import (
+    find_eval_files, discover_datasets, run_all_evaluations, PrintOptions
+)
+
+files = find_eval_files(Path("evals"))
+datasets = discover_datasets(files, name_filter="search")
+success = await run_all_evaluations(datasets, PrintOptions())
+```
+
+### Discovery mechanics
+
+`find_eval_files(evals_dir)` finds all `eval_*.py` files in the directory.
+
+`discover_datasets(eval_files, name_filter)` loads each file, finds `dataset_*` instances (must be `Dataset`), pairs them with the single `target_*` function, collects `scorer_*` functions, and returns `DiscoveredDataset` bundles. Files with zero or more than one `target_*` function are skipped.
+
+`DiscoveredDataset` holds `dataset`, `target_func`, `scorers`, `name` (e.g., `eval_search.dataset_basic`), and `file_path`.
+
+### Scoring
+
+When a `DiscoveredDataset` has custom `scorer_*` functions, all must return `True` for the evaluation to pass. Each scorer receives `(report: EvaluationReport, min_assertions: float)`. When no custom scorers exist, the default `average_assertions(report, min_assertions)` checks that the average assertion score meets the threshold.
+
+
+## Doctors
+
+Doctors are CLI tools that use an LLM to analyze the quality of agent artifacts and return structured recommendations. Run via `python -m agentic_patterns.core.doctors` or the installed `doctors` console script.
+
+### ToolDoctor
+
+Analyzes tool function signatures, type hints, docstrings, and parameter documentation.
+
+```bash
+doctors tool my_module:my_tools
+```
+
+Programmatic:
+
+```python
+from agentic_patterns.core.doctors import ToolDoctor
+
+doctor = ToolDoctor()
+rec = await doctor.analyze(my_tool_function)
+if rec.needs_improvement:
+    for issue in rec.issues:
+        print(f"[{issue.level}] {issue.category}: {issue.message}")
+```
+
+Returns `ToolRecommendation` with `issues`, `arguments` (list of `ArgumentRecommendation`), and `return_type_issues`.
+
+### PromptDoctor
+
+Analyzes prompt templates for clarity, completeness, and context.
+
+```bash
+doctors prompt prompts/coordinator.md prompts/analyst.md
+```
+
+Accepts string prompts or file paths. Returns `PromptRecommendation` with `issues` and `placeholders_found`.
+
+### MCPDoctor
+
+Connects to an MCP server, discovers all tools, and analyzes each one.
+
+```bash
+doctors mcp --url http://localhost:8000
+doctors mcp --stdio "uv run server.py"
+```
+
+Returns a list of `ToolRecommendation` for each tool exposed by the server.
+
+### A2ADoctor
+
+Analyzes A2A agent cards for completeness and quality.
+
+```bash
+doctors a2a http://localhost:8001
+```
+
+Accepts agent card URLs or `AgentCard` objects. Returns `A2ARecommendation` with `capabilities` and `skills` (list of `SkillRecommendation`).
+
+### SkillDoctor
+
+Validates Agent Skills against the specification (directory structure, frontmatter, body, scripts).
+
+```bash
+doctors skill ./my-skill
+doctors skill ./skills-dir --all
+```
+
+Returns `AgentSkillRecommendation` with `frontmatter_issues`, `body_issues`, `structure_issues`, `consistency_issues`, `scripts` (list of `ScriptRecommendation`), and `references`.
+
+### Issue model
+
+All doctors return recommendations containing `Issue` objects:
+
+```python
+class Issue(BaseModel):
+    level: IssueLevel    # ERROR, WARNING, INFO
+    category: IssueCategory  # AMBIGUITY, ARGUMENTS, CLARITY, COMPLETENESS, ...
+    message: str
+    suggestion: str | None
+```
+
+The `needs_improvement` field on any recommendation is `True` when issues of level `ERROR` or `WARNING` are present.
+
+### Batch analysis
+
+All doctors support batch analysis with configurable batch size:
+
+```python
+recs = await doctor.analyze_batch(targets, batch_size=5)
+```
+
+The convenience functions `tool_doctor()`, `prompt_doctor()`, `mcp_doctor()`, `a2a_doctor()`, and `skill_doctor()` wrap the class APIs for quick one-shot analysis.
+
+
+## API Reference
+
+### `agentic_patterns.testing`
+
+| Name | Kind | Description |
+|---|---|---|
+| `ModelMock(responses, sleep_time)` | Class | Drop-in LLM model returning predefined responses |
+| `MockFinishReason(reason, response)` | Class | Custom finish reason wrapper |
+| `final_result_tool(result)` | Function | Create ToolCallPart for structured output |
+| `FINAL_RESULT_TOOL_NAME` | Constant | `"final_result"` |
+| `tool_mock(func, return_values)` | Function | Create mock tool with sequential return values |
+| `ToolMockWrapper` | Class | Mock wrapper with call_count, was_called, call_args_list, reset() |
+| `AgentMock(nodes, result_output)` | Class | Replay recorded agent nodes |
+| `AgentRunMock` | Class | Mock agent run iterator |
+| `MockResult` | Class | Mock result with output attribute |
+
+### `agentic_patterns.core.evals`
+
+| Name | Kind | Description |
+|---|---|---|
+| `Case` | Class | Test scenario (from pydantic_evals) |
+| `Dataset` | Class | Cases + evaluators (from pydantic_evals) |
+| `Evaluator` | Protocol | Evaluation logic interface |
+| `EvaluatorContext` | Class | Context with case, output, span_tree |
+| `EvaluationReason` | Class | Result with value and reason |
+| `EvaluationReport` | Class | Aggregate evaluation results |
+| `EqualsExpected` | Evaluator | Exact match |
+| `Contains` | Evaluator | Substring presence |
+| `IsInstance` | Evaluator | Type check |
+| `MaxDuration` | Evaluator | Latency constraint |
+| `LLMJudge` | Evaluator | LLM-graded output |
+| `HasMatchingSpan` | Evaluator | Span tree check |
+| `OutputContainsJson` | Evaluator | Valid JSON check |
+| `ToolWasCalled(tool_name)` | Evaluator | Tool invocation check |
+| `NoToolErrors` | Evaluator | No tool errors check |
+| `OutputMatchesSchema(schema)` | Evaluator | Pydantic/dict schema validation |
+| `find_eval_files(evals_dir)` | Function | Find eval_*.py files |
+| `discover_datasets(files, filter)` | Function | Auto-discover datasets from files |
+| `DiscoveredDataset` | Dataclass | Bundle of dataset, target, scorers, name, path |
+| `run_evaluation(discovered, opts)` | Function | Run single evaluation |
+| `run_all_evaluations(datasets, opts)` | Function | Run all evaluations |
+| `average_assertions(report, min)` | Function | Check average score threshold |
+| `PrintOptions` | Dataclass | Report formatting options |
+
+### `agentic_patterns.core.doctors`
+
+| Name | Kind | Description |
+|---|---|---|
+| `ToolDoctor` | Class | Analyze tool functions |
+| `PromptDoctor` | Class | Analyze prompt templates |
+| `MCPDoctor` | Class | Analyze MCP server tools |
+| `A2ADoctor` | Class | Analyze A2A agent cards |
+| `SkillDoctor` | Class | Analyze Agent Skills |
+| `Issue` | Model | level, category, message, suggestion |
+| `IssueLevel` | Enum | ERROR, WARNING, INFO |
+| `IssueCategory` | Enum | AMBIGUITY, ARGUMENTS, CLARITY, COMPLETENESS, ... |
+| `Recommendation` | Model | Base: name, needs_improvement, issues |
+| `ToolRecommendation` | Model | + arguments, return_type_issues |
+| `PromptRecommendation` | Model | + placeholders_found |
+| `A2ARecommendation` | Model | + capabilities, skills |
+| `AgentSkillRecommendation` | Model | + frontmatter/body/structure/consistency issues, scripts |
+
+
+## Examples
+
+See the files in `agentic_patterns/examples/evals/`:
+
+- `eval_todo.py` -- eval file for the todo agent with custom evaluators
+- `eval_search.py` -- eval file for the search agent with tool call checks
+- `skill-bad/` and `skill-good/` -- skill directories for doctor analysis comparison
+
+---
+
+# Execution Infrastructure
+
+Infrastructure for running agent-generated code safely: process sandboxes, a stateful REPL, Docker-based container sandboxes, and MCP server network isolation driven by data sensitivity.
+
+## Process Sandbox
+
+`core/process_sandbox.py` provides a generic sandbox for running commands in isolated environments.
+
+### Data Models
+
+`BindMount(source, target, readonly)` maps a host `Path` to a path visible inside the sandbox. `SandboxResult(exit_code, stdout, stderr, timed_out)` holds the command output.
+
+### Sandbox Implementations
+
+`Sandbox` is the abstract base class with a single `run()` method:
+
+```python
+result = await sandbox.run(
+    command=["python3", "-m", "my_module", "/tmp/workdir"],
+    bind_mounts=[BindMount(Path("/data/workspace"), "/workspace")],
+    timeout=30,
+    isolate_network=True,
+    isolate_pid=True,
+    cwd="/workspace",
+    env={"KEY": "value"},
+)
+```
+
+`SandboxBubblewrap` is the Linux production implementation using bubblewrap (`bwrap`). It creates a minimal filesystem view with read-only system mounts (`/usr`, `/lib`, `/bin`, etc.), a private `/tmp`, and only the bind mounts explicitly granted. The Python prefix is mounted read-only so installed packages remain importable. PID and network namespaces can be unshared independently via `--unshare-pid` and `--unshare-net`. Timeout enforcement uses `asyncio.wait_for` -- on expiry, the process is killed and the result has `timed_out=True`.
+
+`SandboxSubprocess` is the macOS/development fallback that runs commands as plain subprocesses with no isolation. Same timeout enforcement, but no filesystem or network restrictions.
+
+### Factory
+
+```python
+from agentic_patterns.core.process_sandbox import get_sandbox
+
+sandbox = get_sandbox()  # SandboxBubblewrap if bwrap on PATH, else SandboxSubprocess
+```
+
+## Docker Sandbox
+
+`core/sandbox/` provides container-based sandboxing with Docker for production multi-tenant deployments.
+
+### Configuration
+
+`ContainerConfig` defines the container settings:
+
+```python
+from agentic_patterns.core.sandbox.container_config import ContainerConfig
+
+config = ContainerConfig(
+    image="my-sandbox:latest",    # default from SANDBOX_DOCKER_IMAGE
+    cpu_limit=1.0,                # default from SANDBOX_CPU_LIMIT
+    memory_limit="512m",          # default from SANDBOX_MEMORY_LIMIT
+    working_dir="/workspace",
+    network_mode=NetworkMode.FULL,
+    read_only_mounts={"/host/skills": "/skills"},
+    user="nobody",
+)
+```
+
+Defaults are in `core/sandbox/config.py`: `SANDBOX_DOCKER_IMAGE`, `SANDBOX_CPU_LIMIT`, `SANDBOX_MEMORY_LIMIT`, `SANDBOX_COMMAND_TIMEOUT`, `SANDBOX_CONTAINER_PREFIX`.
+
+### Network Mode
+
+`NetworkMode` is an enum driven by the `PrivateData` compliance module:
+
+```python
+from agentic_patterns.core.sandbox.network_mode import NetworkMode, get_network_mode
+
+mode = get_network_mode(user_id, session_id)
+# NetworkMode.FULL ("bridge") -- normal
+# NetworkMode.NONE ("none")   -- session has private data
+```
+
+This is a one-way ratchet: once private data enters a session, network access never returns.
+
+### SandboxManager
+
+`SandboxManager` manages Docker containers per user session:
+
+```python
+from agentic_patterns.core.sandbox.manager import SandboxManager
+
+manager = SandboxManager(read_only_mounts={"/host/skills": "/skills"})
+
+# Ephemeral (default) -- create, run, destroy
+exit_code, output = manager.execute_command(user_id, session_id, "python script.py")
+
+# Persistent -- reuse container across calls
+exit_code, output = manager.execute_command(user_id, session_id, "ls /workspace", persistent=True)
+
+# Close a persistent session
+manager.close_session(user_id, session_id)
+```
+
+On every access to a persistent session, the manager checks `get_network_mode()`. If private data appeared since the container was created, the container is stopped and recreated with `network_mode="none"`. The workspace directory survives recreation because it is a bind mount on the host filesystem.
+
+### SandboxSession
+
+`SandboxSession` tracks the container lifecycle for a `(user_id, session_id)` pair. It records the container ID, name, network mode, config, data directory, and timestamps. `touch()` updates the `last_active_at` timestamp on every command execution.
+
+### Tool Wrappers
+
+PydanticAI tool (`tools/sandbox.py`):
+
+```python
+from agentic_patterns.tools.sandbox import get_all_tools
+
+tools = get_all_tools()  # [sandbox_execute]
+agent = Agent("model", tools=tools)
+```
+
+`sandbox_execute(command, timeout)` runs a shell command in the Docker sandbox and returns the exit code and output. Uses `asyncio.to_thread()` to avoid blocking the event loop.
+
+MCP server (`mcp/sandbox/`): same single `execute` tool, converts `DockerException`/`NotFound` to `ToolFatalError`.
+
+## REPL
+
+`core/repl/` provides a stateful, notebook-like execution environment for iterative code. Each cell runs in a fresh subprocess (optionally sandboxed with bubblewrap) while preserving the illusion of a continuous namespace through pickle-based IPC.
+
+### Prerequisites
+
+The REPL requires a Docker image. Build it once (and whenever `core/repl/docker/` changes):
+
+```bash
+build-repl-image
+```
+
+### Notebook and Cell
+
+A `Notebook` is scoped to a `(user_id, session_id)` pair and manages a list of `Cell` objects, a shared namespace, accumulated import statements, and function definitions.
+
+```python
+from agentic_patterns.core.repl.notebook import Notebook
+
+nb = Notebook.load(user_id, session_id)  # loads from disk or creates new
+cell = await nb.add_cell("x = 42", execute=True, timeout=30)
+cell = await nb.add_cell("print(x)", execute=True)  # x is available
+nb.delete_cell(0)
+nb.clear()
+nb.save_as_ipynb(Path("/workspace/output.ipynb"))
+```
+
+Each `Cell` tracks its code, state (`CellState`: IDLE, RUNNING, COMPLETED, ERROR, TIMEOUT), typed outputs, execution count, and timing. Outputs are `CellOutput` objects with an `OutputType` (TEXT, ERROR, HTML, IMAGE, DATAFRAME).
+
+### Execution Model
+
+Cell execution follows this flow:
+
+1. `Cell.execute()` offloads to a worker thread via `asyncio.to_thread()` so the event loop stays responsive.
+2. Inside the thread, a private event loop runs the async sandbox call.
+3. The sandbox function (`repl/sandbox.py`) pickles the input (code, namespace, imports, function definitions) to a temp directory, runs the executor subprocess inside the generic sandbox, and reads the pickled output back.
+4. The executor (`repl/executor.py`) restores the namespace, replays imports and function definitions, executes the cell code, captures stdout/stderr/matplotlib figures, filters the namespace to picklable objects, and writes the result.
+5. After execution, the notebook parses the cell code via AST to extract new import statements and function definitions, which are accumulated and replayed before subsequent cells.
+
+Network isolation is automatic: `execute_in_sandbox` checks `session_has_private_data(user_id, session_id)` and sets `isolate_network=True` when private data is present.
+
+### Persistence
+
+Notebooks are persisted as JSON at `WORKSPACE_DIR / user_id / session_id / mcp_repl / cells.json`. The notebook saves after every operation (add, execute, delete, clear). It can be exported to Jupyter `.ipynb` format via `save_as_ipynb()`.
+
+### Tool Wrappers
+
+PydanticAI tools (`tools/repl.py`):
+
+```python
+from agentic_patterns.tools.repl import get_all_tools
+
+tools = get_all_tools()
+# repl_execute_cell, repl_rerun_cell, repl_show_notebook, repl_show_cell,
+# repl_delete_cell, repl_clear_notebook, repl_export_ipynb
+```
+
+MCP server (`mcp/repl/`): same seven tools, converts `ValueError`/`IndexError` to `ToolRetryError`.
+
+## MCP Server Isolation
+
+The `MCPServerPrivateData` class in `core/mcp/servers.py` implements dual-instance MCP server switching based on data sensitivity. It runs two connections to the same MCP server -- one normal, one network-isolated -- and routes all calls through the isolated instance once private data appears.
+
+### Configuration
+
+Add `url_isolated` to the MCP server config in `config.yaml`:
+
+```yaml
+mcp_servers:
+  data_tools:
+    type: client
+    url: "http://data-tools:8000/mcp"
+    url_isolated: "http://data-tools-isolated:8000/mcp"
+    read_timeout: 60
+```
+
+The `MCPClientConfig` model has the optional `url_isolated` field. When set, `get_mcp_client()` returns an `MCPServerPrivateData` instance; when absent, it returns a plain `MCPServerStrict`.
+
+### Client-Side Switching
+
+```python
+from agentic_patterns.core.mcp.factories import get_mcp_client
+
+server = get_mcp_client("data_tools")  # MCPServerPrivateData if url_isolated present
+
+async with server:  # opens both connections
+    # all calls route to normal instance while session_has_private_data() is False
+    # once private data appears, all calls route to isolated instance
+    pass
+```
+
+`MCPServerPrivateData` extends `MCPServerStrict` and is a drop-in replacement in any toolset list. Both connections are alive for the entire session -- switching happens internally via `_target()` with no reconnection. The switch is a one-way ratchet. It reads session identity from contextvars (set by middleware at request boundaries).
+
+### MCPServerStrict
+
+`MCPServerStrict` extends PydanticAI's `MCPServerStreamableHTTP` and intercepts fatal tool errors. When a tool response starts with `[FATAL]`, it raises `RuntimeError` (aborting the agent run) instead of `ModelRetry` (which would retry). Non-fatal errors pass through as normal `ModelRetry` instances.
+
+### Deployment
+
+In production, run two instances of the same MCP server image:
+
+```yaml
+services:
+  data-tools:
+    image: my-mcp-server:latest
+    networks: [bridge]
+    volumes: [workspace:/workspace]
+
+  data-tools-isolated:
+    image: my-mcp-server:latest
+    network_mode: "none"
+    volumes: [workspace:/workspace]
+```
+
+The server code is identical between instances. Tools that require external connectivity fail with connection errors in the isolated instance.
+
+## Skill Sandbox
+
+Skills are developer-authored scripts that the agent can invoke but not modify. The `SandboxManager` supports `read_only_mounts` that map host directories to container paths with Docker's `ro` flag.
+
+```python
+from agentic_patterns.core.sandbox.manager import SandboxManager
+
+read_only_mounts = {}
+for meta in registry.list_all():
+    scripts_dir = meta.path / "scripts"
+    if scripts_dir.exists():
+        read_only_mounts[str(scripts_dir)] = f"/skills/{meta.path.name}/scripts"
+
+manager = SandboxManager(read_only_mounts=read_only_mounts)
+manager.execute_command(user_id, session_id, f"python /skills/{skill_name}/scripts/{script_name}")
+```
+
+Inside the container, `/workspace` is the agent's writable scratch space, and `/skills` is an immutable library of developer-authored scripts. The `ro` flag is enforced at the filesystem level by Docker.
+
+---
+
+# Compliance & Private Data
+
+When a connector retrieves sensitive data, the session is tagged to prevent exfiltration through external connectivity tools. This operates at the infrastructure layer, below the prompt level, where it cannot be circumvented by the agent or user.
+
+## DataSensitivity
+
+```python
+from agentic_patterns.core.compliance.private_data import DataSensitivity
+
+# Ordered from least to most restrictive
+DataSensitivity.PUBLIC
+DataSensitivity.INTERNAL
+DataSensitivity.CONFIDENTIAL
+DataSensitivity.SECRET
+```
+
+## PrivateData
+
+`PrivateData` manages the compliance flag for a session. The state is persisted as a `.private_data` JSON file in `PRIVATE_DATA_DIR` -- outside the agent's workspace so the agent cannot tamper with it.
+
+```python
+from agentic_patterns.core.compliance.private_data import PrivateData, DataSensitivity
+
+pd = PrivateData()
+pd.add_private_dataset("patient_records", DataSensitivity.CONFIDENTIAL)
+pd.has_private_data   # True
+pd.sensitivity        # DataSensitivity.CONFIDENTIAL
+pd.get_private_datasets()  # ["patient_records"]
+```
+
+`add_private_dataset(dataset_name, sensitivity)` registers a dataset and persists immediately. Sensitivity only escalates within a session (ratchet principle): if the session starts with INTERNAL and later loads CONFIDENTIAL, it becomes CONFIDENTIAL permanently. The flag cannot be cleared by the agent -- only an external action (admin, session reset) can downgrade it.
+
+## Enforcement
+
+The `@tool_permission` decorator checks private data state on every CONNECT tool invocation. When the session is tagged, any tool carrying `CONNECT` permission raises `ToolPermissionError` before its function body executes.
+
+```python
+from agentic_patterns.core.tools.permissions import tool_permission, ToolPermission
+
+@tool_permission(ToolPermission.WRITE, ToolPermission.CONNECT)
+def send_notification(email: str, subject: str, body: str) -> str:
+    """Send email to external address."""
+    return f"Email sent to {email}"
+
+# If the session has private data, calling send_notification raises ToolPermissionError
+```
+
+This is a hard block. The agent cannot rephrase its request or be instructed to bypass it. The error fires before any code inside the tool runs.
+
+## Where Tagging Happens
+
+Connectors tag sessions automatically when retrieving sensitive data. The SQL connector checks the database's sensitivity level in its configuration. The OpenAPI connector checks the API's sensitivity level. The tagging is a side effect of data retrieval, independent of agent reasoning or user instructions.
+
+```python
+# Inside a connector:
+if db_config.sensitivity != DataSensitivity.PUBLIC:
+    pd = PrivateData()
+    pd.add_private_dataset(f"sql:{db_id}", db_config.sensitivity)
+```
+
+At the sandbox level, sessions containing private data get `network_mode="none"` (Docker removes all network interfaces), preventing data exfiltration even through code execution.
+
+---
+
+# User Interface
+
+The UI module provides two integration paths for exposing agents to users: Chainlit (a ready-made chat framework) and AG-UI (a streaming event protocol). It also provides authentication, feedback persistence, and helpers for file uploads.
+
+## Authentication
+
+`agentic_patterns.core.ui.auth` provides a JSON-backed user database with SHA-256 password hashing.
+
+```python
+from agentic_patterns.core.ui.auth import UserDatabase, generate_password
+from agentic_patterns.core.config.config import USER_DATABASE_FILE
+
+db = UserDatabase(USER_DATABASE_FILE)            # db_path: Path is required
+db.add_user("alice", "password123")              # creates user with hashed password
+db.add_user("bob", "secret", role="admin")       # optional role
+user = db.authenticate("alice", "password123")   # returns User or None
+db.change_password("alice", "password123", "new_password")  # requires old_password
+db.get_user("bob")                               # returns User or None
+db.delete_user("alice")
+users = db.list_users()                          # returns list[str] (usernames)
+password = generate_password()                   # random 16-char password
+```
+
+The `User` model has fields `username`, `password_hash`, and `role` (defaults to `"user"`).
+
+The `manage-users` CLI (registered as a console script in pyproject.toml) provides user management from the terminal:
+
+```bash
+manage-users add alice -p password123
+manage-users add bob -r admin          # auto-generates password if -p omitted
+manage-users list
+manage-users passwd alice -p new_pass
+manage-users delete alice
+```
+
+## Chainlit Integration
+
+`agentic_patterns.core.ui.chainlit` provides lifecycle handlers, SQLite persistence, and filesystem storage for Chainlit applications.
+
+### Handler Registration
+
+`register_all()` sets up authentication, data layer, and chat resume in one call:
+
+```python
+from agentic_patterns.core.ui.chainlit.handlers import register_all, setup_user_session
+
+register_all()
+```
+
+This registers three Chainlit callbacks. `@cl.password_auth_callback` authenticates against the JSON user database. `@cl.data_layer` configures SQLite storage for chat threads. `@cl.on_chat_resume` restores conversation history when a user returns to a previous thread.
+
+Individual registration functions are also available: `register_auth_callback()`, `register_data_layer()`, `register_chat_resume()`.
+
+### Session Setup
+
+`setup_user_session()` bridges Chainlit's user context into the core `user_session` contextvars so that workspace, connectors, and compliance modules see the correct identity:
+
+```python
+import chainlit as cl
+from agentic_patterns.core.ui.chainlit.handlers import setup_user_session
+
+@cl.on_chat_start
+async def on_chat_start():
+    setup_user_session()  # sets user_id and session_id from Chainlit context
+    # ... create agent, initialize session state
+```
+
+Call `setup_user_session()` at the start of `@cl.on_chat_start` and `@cl.on_message` handlers.
+
+### Data Layer
+
+`get_sqlite_data_layer()` returns a SQLAlchemy-backed data layer for Chainlit thread persistence. `init_db()` creates the schema tables on first run. The database path defaults to `CHAINLIT_DATA_LAYER_DB`. File attachments are stored on the local filesystem via `FilesystemStorageClient` (at `CHAINLIT_FILE_STORAGE_DIR`).
+
+### Tool Visualization
+
+Chainlit's `@cl.step(type="tool")` decorator makes tool calls visible in the chat UI as collapsible steps. Apply it to functions that are also registered as agent tools:
+
+```python
+@cl.step(type="tool")
+async def search(query: str) -> str:
+    """Search for documents."""
+    return do_search(query)
+
+agent = get_agent(tools=[search])
+```
+
+When the agent calls the tool, the step appears in the Chainlit interface showing the tool name and result.
+
+## AG-UI Integration
+
+`agentic_patterns.core.ui.agui` provides factory functions and event helpers for exposing agents via the AG-UI protocol.
+
+### App Creation
+
+`create_agui_app()` creates an AG-UI application from model configuration:
+
+```python
+from agentic_patterns.core.ui.agui.app import create_agui_app
+
+app = create_agui_app(
+    instructions="You are a helpful assistant.",
+    tools=[my_tool],
+)
+```
+
+It accepts the same parameters as `get_agent()` (config name, instructions, tools, `state_type`) and wraps the resulting agent in PydanticAI's `AGUIApp`. For wrapping an existing agent, use `create_agui_app_from_agent(agent, state=None)`.
+
+The returned `app` is an ASGI application. Run it with uvicorn:
+
+```bash
+uvicorn mymodule:app --reload
+```
+
+### State Management
+
+AG-UI supports shared state between frontend and agent via `StateDeps`. Define a Pydantic model for the state, wrap it in `StateDeps`, and tools receive it through `RunContext`:
+
+```python
+from pydantic import BaseModel
+from pydantic_ai import RunContext
+from pydantic_ai.ui.ag_ui import StateDeps
+
+class AppState(BaseModel):
+    items: list[str] = []
+
+async def add_item(ctx: RunContext[StateDeps[AppState]], item: str) -> str:
+    ctx.deps.state.items.append(item)
+    return f"Added {item}"
+
+app = create_agui_app(
+    state_type=AppState,
+    tools=[add_item],
+)
+```
+
+PydanticAI's AG-UI adapter automatically serializes state changes as `StateSnapshotEvent` in the SSE stream.
+
+### Event Helpers
+
+`agentic_patterns.core.ui.agui.events` provides helpers for constructing `ToolReturn` values with events:
+
+```python
+from agentic_patterns.core.ui.agui.events import tool_return_with_state
+
+async def my_tool(ctx: RunContext[StateDeps[AppState]], value: str) -> ToolReturn:
+    ctx.deps.state.items.append(value)
+    return tool_return_with_state(
+        return_value=f"Added {value}",
+        state=ctx.deps.state,
+        custom_events=[("item_added", {"value": value})],
+    )
+```
+
+`tool_return_with_state()` builds a `ToolReturn` carrying the return value (what the LLM sees), a `StateSnapshotEvent` (what the frontend sees to update its state), and optional `CustomEvent` entries for domain-specific signals.
+
+Lower-level helpers `state_snapshot(state)` and `custom_event(name, value)` create individual events.
+
+### Side-Channel Endpoints
+
+AG-UI is a text-streaming protocol. Binary uploads, feedback, and other non-conversational interactions are handled as REST endpoints on the same Starlette app via the `routes` parameter:
+
+```python
+from starlette.routing import Route
+from pydantic_ai.ui.ag_ui.app import AGUIApp
+
+app = AGUIApp(
+    agent,
+    routes=[
+        Route("/upload", upload_handler, methods=["POST"]),
+        Route("/feedback", feedback_handler, methods=["POST"]),
+    ],
+)
+```
+
+## Feedback
+
+`agentic_patterns.core.feedback` provides feedback persistence per user session. Feedback entries are stored as JSON at `FEEDBACK_DIR / user_id / session_id / feedback.json`.
+
+```python
+from agentic_patterns.core.feedback import FeedbackType, add_feedback, get_feedback
+
+add_feedback(FeedbackType.THUMBS_UP, comment="Great answer")
+add_feedback(FeedbackType.THUMBS_DOWN, comment="Wrong result")
+
+# With explicit user/session (otherwise reads from contextvars)
+add_feedback(FeedbackType.COMMENT, comment="Needs more detail", user_id="alice", session_id="sess-1")
+
+session_fb = get_feedback(user_id="alice", session_id="sess-1")
+for entry in session_fb.entries:
+    print(entry.feedback_type, entry.comment, entry.timestamp)
+```
+
+`FeedbackType` has four values: `THUMBS_UP`, `THUMBS_DOWN`, `ERROR_REPORT`, `COMMENT`.
+
+Conversation history can also be persisted per session via `save_session_history()` and `load_session_history()`, which serialize PydanticAI `ModelMessage` lists to `history.json` in the same directory.
+
+## File Uploads
+
+File uploads follow a save-summarize-tag pattern that keeps large files out of the context window while giving the agent enough information to work with them.
+
+1. **Save** the file to the workspace via `write_to_workspace_async()`. The workspace persists across turns and is accessible to tools and connectors.
+
+2. **Tag** the session as containing private data via `PrivateData().add_private_dataset()`. This activates compliance guardrails that block outbound tools for the rest of the session.
+
+3. **Summarize** the file via `read_file_as_string()` from the context reader. The reader detects the file type and produces a compact, type-aware summary within token limits (headers + sample rows for CSV, truncated structure for JSON, extracted text for documents).
+
+The summary and workspace path are appended to the user's message so the agent receives both a preview and a stable reference:
+
+```python
+from agentic_patterns.core.workspace import write_to_workspace_async
+from agentic_patterns.core.compliance.private_data import PrivateData, DataSensitivity
+from agentic_patterns.core.context.reader import read_file_as_string
+
+async def handle_upload(filename: str, content: bytes) -> tuple[str, str]:
+    workspace_path = f"/workspace/uploads/{filename}"
+    await write_to_workspace_async(workspace_path, content)
+    PrivateData().add_private_dataset(f"upload:{filename}", DataSensitivity.CONFIDENTIAL)
+    summary = read_file_as_string(host_path)
+    return workspace_path, summary
+```
+
+The agent can then use `FileConnector`, `CsvConnector`, or other tools to access the full file content on demand.
