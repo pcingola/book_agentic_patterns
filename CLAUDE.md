@@ -65,9 +65,9 @@ All scripts source `config.sh` (sets PROJECT_DIR, loads .env, activates .venv, s
 
 ## Configuration
 
-**config.yaml**: Named model configs (default, fast, azure_gpt4, bedrock_claude, etc.) with provider, credentials, timeout. Pretty much everything is configured here, except the things that frameworks force us to keep in `.env` (CHAINLIT_AUTH_SECRET is probably the only exception)
+**config.yaml**: Single source of truth for all configuration. Sections: `models` (named LLM configs with provider, credentials, timeout), `embeddings`, `vectordb`, `auth` (jwt_secret, jwt_algorithm), `sandbox` (docker_host, named profiles like default/repl), `openapi`, `mcp_servers`, `a2a` (clients), `agents` (system prompts, tools, sub_agents). Use `config_example.yaml` as reference when adding new sections -- keep both files in sync.
 
-**.env**: Only things that must be in environment variables for framework compatibility (e.g. `CHAINLIT_AUTH_SECRET` for Chainlit). Everything else MUST be in `config.yaml`
+**.env**: Only things that must be in environment variables for framework compatibility (e.g. `CHAINLIT_AUTH_SECRET` for Chainlit). Everything else MUST be in `config.yaml`.
 
 **pyproject.toml**: Dependencies and console scripts (`doctors`, `evals`, `manage-users`, `annotate-schema`, `ingest-openapi`, `build-repl-image`).
 
