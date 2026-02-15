@@ -50,4 +50,4 @@ Operations (`todo_add`, `todo_add_many`, `todo_create_list`, `todo_delete`, `tod
 
 `InputFormat` enum: CSV, DOCX, MD, PDF, PPTX, XLSX. `OutputFormat` enum: CSV, DOCX, HTML, MD, PDF.
 
-`convert(input_path, output_format, output_path=None)` dispatches by input extension and output format. Returns a string for text outputs (MD, CSV) or a `Path` for binary outputs (PDF, DOCX, HTML). Non-markdown inputs going to binary formats use a two-stage pipeline: ingest to markdown first, then export via pandoc/weasyprint.
+`convert(input_path, output_format, output_path=None)` dispatches by input extension and output format. Returns a string for text outputs (MD, CSV) or a `Path` for binary outputs (PDF, DOCX, HTML). Non-markdown inputs going to binary formats use a two-stage pipeline: ingest to markdown first, then export via mistune/xhtml2pdf/htmldocx.

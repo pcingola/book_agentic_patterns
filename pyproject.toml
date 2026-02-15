@@ -1,6 +1,6 @@
 [project]
 name = "book-agentic-patterns"
-version = "0.3.5"
+version = "0.3.6"
 description = "Agentic patterns"
 readme = "README.md"
 requires-python = ">=3.12.2"
@@ -22,7 +22,9 @@ dependencies = [
     "pandas>=3.0.0",
     "pydantic-ai[ag-ui]>=1.39.0",
     "pymupdf>=1.25.0",
-    "pypandoc>=1.14",
+    "mistune>=3.1.0",
+    "xhtml2pdf>=0.2.16",
+    "htmldocx>=0.0.6",
     "python-docx>=1.1.0",
     "python-pptx>=1.0.0",
     "pyyaml>=6.0.0",
@@ -34,7 +36,6 @@ dependencies = [
     "matplotlib>=3.10.8",
     "seaborn>=0.13.2",
     "ruff>=0.15.0",
-    "weasyprint>=68.1",
     "nbconvert>=7.17.0",
 ]
 

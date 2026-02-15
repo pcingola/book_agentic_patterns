@@ -54,7 +54,7 @@ def convert(
             return input_path.read_text()
         raise ValueError(f"Cannot convert {input_fmt.value} to CSV")
 
-    # Binary export via pandoc (requires Markdown input)
+    # Binary export (requires Markdown input)
     if output_path is None:
         output_path = input_path.with_suffix(f".{output_format.value}")
 
