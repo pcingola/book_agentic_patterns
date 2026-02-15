@@ -111,12 +111,12 @@ class TestSandboxNetworkIsolation(unittest.TestCase):
 
         self.manager.close_session(self.user_id, self.session_id)
 
-        # Container should be gone
+        # Container should be gone -- use the manager's own client
+        # (docker.from_env() may fail if the socket is at a non-default path)
         import docker
 
-        client = docker.from_env()
         with self.assertRaises(docker.errors.NotFound):
-            client.containers.get(container_id)
+            self.manager.client.containers.get(container_id)
 
 
 if __name__ == "__main__":
