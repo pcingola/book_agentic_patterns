@@ -202,7 +202,6 @@ async def _execute_docker(
             session_id,
             command,
             timeout,
-            persistent=True,
         )
     except Exception as e:
         logger.error("Docker execution failed: %s", e)

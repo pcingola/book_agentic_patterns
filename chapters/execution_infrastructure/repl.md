@@ -69,6 +69,14 @@ Our implementation uses a generic sandbox abstraction with two backends. On Linu
 
 When bubblewrap is not available (e.g. macOS), the system uses Docker containers via the SandboxManager. If neither bubblewrap nor Docker is available, the system raises a clear error rather than silently falling back to unsandboxed execution.
 
+The Docker path introduces a subtlety that bubblewrap does not have. Under bubblewrap the executor runs on the same host, so it can import from the application directly. Docker containers are a different platform: the host may run macOS while the container runs Linux, and the host's Python packages contain platform-specific compiled extensions (`.so` / `.dylib` files) that will not load inside the container. Mounting the host project into the container and setting `PYTHONPATH` to point at it would cause the container's Python to find the host's binary extensions and fail with import errors.
+
+The solution is to make the executor **standalone**. The executor source is stored as a string constant in the application code. At runtime, just before launching the container, the host writes this string to a file inside the REPL data directory, which is already mounted read-write at `/repl` for pickle IPC. The container then runs `python /repl/_executor.py <cell_id>` using only its own installed packages. No host directory is mounted, no `PYTHONPATH` is set, and the executor has zero imports from the application -- it uses only the standard library and packages installed in the container image (pandas, matplotlib, openpyxl, and so on).
+
+This decoupling also makes the REPL suitable for **remote deployment**. When the REPL is exposed as an MCP server, it may run on a machine that has no copy of the application source tree. Because the executor is self-contained, the only requirement on the remote host is a reachable Docker daemon and a writable data directory -- the same requirements any containerized service has.
+
+One consequence of using a standalone executor is that the IPC format changes. The bubblewrap executor can import the application's pydantic models and write them directly into the output pickle. The Docker executor cannot, so it writes plain dictionaries instead. The host side converts these dictionaries back into the application's typed models after reading the pickle. The input format (a plain dictionary with code, namespace, imports, and function definitions) is the same for both paths, so the divergence is limited to the output.
+
 One useful refinement is **data-driven network isolation**. If a session has been flagged as containing private data (for example, after loading sensitive files), the sandbox enables network isolation automatically. This prevents exfiltration of sensitive data through code execution, even if the agent or user does not explicitly request it.
 
 #### Import and function tracking

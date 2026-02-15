@@ -88,12 +88,14 @@ manager = SandboxManager(read_only_mounts={"/host/skills": "/skills"})
 # Ephemeral (default) -- create, run, destroy
 exit_code, output = manager.execute_command(user_id, session_id, "python script.py")
 
-# Persistent -- reuse container across calls
+# Persistent -- reuse container across calls (container stays alive until explicitly closed)
 exit_code, output = manager.execute_command(user_id, session_id, "ls /workspace", persistent=True)
 
 # Close a persistent session
 manager.close_session(user_id, session_id)
 ```
+
+By default, `execute_command` is ephemeral: it creates a container, runs the command, and destroys the container on exit (via a context manager). This guarantees cleanup even if the command fails. Only pass `persistent=True` when the container must survive across multiple calls (e.g. long-running services that maintain in-process state). Persistent sessions must be closed explicitly with `close_session()`.
 
 On every access to a persistent session, the manager checks `get_network_mode()`. If private data appeared since the container was created, the container is stopped and recreated with `network_mode="none"`. The workspace directory survives recreation because it is a bind mount on the host filesystem.
 
@@ -153,11 +155,30 @@ Cell execution follows this flow:
 
 1. `Cell.execute()` offloads to a worker thread via `asyncio.to_thread()` so the event loop stays responsive.
 2. Inside the thread, a private event loop runs the async sandbox call.
-3. The sandbox function (`repl/sandbox.py`) pickles the input (code, namespace, imports, function definitions) to a temp directory, runs the executor subprocess inside the generic sandbox, and reads the pickled output back.
-4. The executor (`repl/executor.py`) restores the namespace, replays imports and function definitions, executes the cell code, captures stdout/stderr/matplotlib figures, filters the namespace to picklable objects, and writes the result.
+3. The sandbox function (`repl/sandbox.py`) pickles the input (code, namespace, imports, function definitions) to the REPL data directory, runs the executor inside the sandbox, and reads the pickled output back.
+4. The executor restores the namespace, replays imports and function definitions, executes the cell code, captures stdout/stderr/matplotlib figures, filters the namespace to picklable objects, and writes the result.
 5. After execution, the notebook parses the cell code via AST to extract new import statements and function definitions, which are accumulated and replayed before subsequent cells.
 
 Network isolation is automatic: `execute_in_sandbox` checks `session_has_private_data(user_id, session_id)` and sets `isolate_network=True` when private data is present.
+
+### Sandbox Backends
+
+The sandbox selection order is: bwrap first (Linux), then Docker, then `RuntimeError`. There is no unsandboxed fallback.
+
+**bwrap** runs `python -m agentic_patterns.core.repl.executor` inside the bubblewrap sandbox. The host project is on `PYTHONPATH`, so the executor imports from `agentic_patterns` directly. It writes pydantic-model pickles (`SubprocessResult`) that the host reads back unchanged.
+
+**Docker** uses a standalone executor (`repl/standalone_executor.py`) that is completely decoupled from the host project. The `EXECUTOR_SOURCE` string constant contains a self-contained Python script with zero `agentic_patterns` imports -- it uses only stdlib and packages installed in the container image (matplotlib, openpyxl, etc.). At runtime, `_execute_docker` writes this script to `repl_dir/_executor.py` and runs `python /repl/_executor.py <cell_id>` inside the container.
+
+The container has two volume mounts and nothing else:
+
+| Container path | Host path | Mode | Contents |
+|---|---|---|---|
+| `/workspace` | `WORKSPACE_DIR/<user>/<session>` | rw | User files (auto-mounted by `SandboxManager`) |
+| `/repl` | `DATA_DIR/repl/<user>/<session>` | rw | `_executor.py`, input/output pickles, temp workbooks |
+
+There is no project mount and no `PYTHONPATH` override. This decoupling is essential for two reasons: it prevents the host's `.venv` (with platform-specific binaries like `pydantic_core`) from shadowing the container's own packages, and it allows the MCP REPL server to run on a remote machine where the project source tree does not exist.
+
+IPC uses plain dicts for the Docker path. The standalone executor writes `{"state": "COMPLETED"|"ERROR", "outputs": [...], "namespace": {...}}` to the output pickle. The host-side `_dict_to_subprocess_result` converts this back into `SubprocessResult` with `CellOutput` and `Image` objects.
 
 ### Persistence
 
