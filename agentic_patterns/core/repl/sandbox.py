@@ -14,10 +14,12 @@ Sandbox selection order:
 3. Raises RuntimeError (no silent fallback to unsandboxed execution)
 """
 
+import base64
 import logging
 import pickle
 import shutil
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -25,6 +27,7 @@ from agentic_patterns.core.repl.cell_output import CellOutput
 from agentic_patterns.core.repl.cell_utils import SubprocessResult
 from agentic_patterns.core.repl.config import REPL_SANDBOX_MOUNT
 from agentic_patterns.core.repl.enums import CellState, OutputType
+from agentic_patterns.core.repl.image import Image
 from agentic_patterns.core.process_sandbox import BindMount, get_sandbox
 
 logger = logging.getLogger(__name__)
@@ -172,29 +175,25 @@ async def _execute_docker(
     user_id: str,
     session_id: str,
 ) -> SubprocessResult:
-    """Execute via Docker container using SandboxManager."""
+    """Execute via Docker container using SandboxManager.
+
+    Writes a standalone executor script to repl_dir (mounted RW at /repl) so
+    the container needs zero agentic_patterns imports and no project mount.
+    """
     import asyncio
 
+    from agentic_patterns.core.repl.standalone_executor import EXECUTOR_SOURCE
     from agentic_patterns.core.sandbox.config import get_sandbox_profile
     from agentic_patterns.core.sandbox.manager import SandboxManager
 
-    project_dir = Path(__file__).resolve().parents[3]
-    read_only_mounts = {str(project_dir): "/app"}
+    (repl_dir / "_executor.py").write_text(EXECUTOR_SOURCE)
 
     manager = SandboxManager(
-        read_only_mounts=read_only_mounts,
         rw_mounts={str(repl_dir): REPL_SANDBOX_MOUNT},
         profile=get_sandbox_profile("repl"),
-        environment={"PYTHONPATH": "/app"},
     )
 
-    command = [
-        "python",
-        "-m",
-        "agentic_patterns.core.repl.executor",
-        REPL_SANDBOX_MOUNT,
-        cell_id,
-    ]
+    command = ["python", f"{REPL_SANDBOX_MOUNT}/_executor.py", cell_id]
 
     try:
         exit_code, output = await asyncio.to_thread(
@@ -219,7 +218,7 @@ async def _execute_docker(
 
     output_path = repl_dir / f"{cell_id}_output.pkl"
     if output_path.exists():
-        return pickle.loads(output_path.read_bytes())
+        return _dict_to_subprocess_result(pickle.loads(output_path.read_bytes()))
 
     return SubprocessResult(
         state=CellState.ERROR,
@@ -230,6 +229,27 @@ async def _execute_docker(
             )
         ],
     )
+
+
+def _dict_to_subprocess_result(data: dict) -> SubprocessResult:
+    """Convert plain dict from the standalone executor into a SubprocessResult."""
+    state = CellState(data["state"])
+    outputs = []
+    for out in data["outputs"]:
+        output_type = OutputType(out["output_type"])
+        content = out["content"]
+        ts = datetime.fromisoformat(out["timestamp"]) if out.get("timestamp") else None
+        if output_type == OutputType.IMAGE and isinstance(content, dict):
+            content = Image(
+                data=base64.b64decode(content["data"]),
+                format=content["format"],
+                width=content.get("width"),
+                height=content.get("height"),
+                source=content.get("source"),
+                metadata=content.get("metadata", {}),
+            )
+        outputs.append(CellOutput(output_type=output_type, content=content, timestamp=ts))
+    return SubprocessResult(state=state, outputs=outputs, namespace=data.get("namespace", {}))
 
 
 def _process_sandbox_result(
