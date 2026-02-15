@@ -1,6 +1,6 @@
 [project]
 name = "book-agentic-patterns"
-version = "0.3.4"
+version = "0.3.5"
 description = "Agentic patterns"
 readme = "README.md"
 requires-python = ">=3.12.2"
