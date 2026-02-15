@@ -135,9 +135,6 @@ class SandboxBubblewrap(Sandbox):
             "--ro-bind",
             "/sbin",
             "/sbin",
-            "--ro-bind",
-            "/etc/resolv.conf",
-            "/etc/resolv.conf",
             "--proc",
             "/proc",
             "--dev",
@@ -145,6 +142,9 @@ class SandboxBubblewrap(Sandbox):
             "--tmpfs",
             "/tmp",
         ]
+
+        if not isolate_network:
+            cmd.extend(["--ro-bind", "/etc/resolv.conf", "/etc/resolv.conf"])
 
         # Bind Python prefix so the child can import installed packages
         python_prefix = Path(sys.prefix)

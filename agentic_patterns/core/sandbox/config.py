@@ -69,18 +69,3 @@ def get_sandbox_profile(name: str = "default") -> SandboxProfile:
     """Get a sandbox profile by name. Falls back to default if not found."""
     config = load_sandbox_config()
     return getattr(config, name, config.default)
-
-
-# Backward-compatible module-level constants (from 'default' profile)
-def _default() -> SandboxProfile:
-    return get_sandbox_profile("default")
-
-
-DOCKER_HOST = load_sandbox_config().docker_host
-SANDBOX_DOCKER_IMAGE = _default().image
-SANDBOX_CPU_LIMIT = _default().cpu_limit
-SANDBOX_MEMORY_LIMIT = _default().memory_limit
-SANDBOX_COMMAND_TIMEOUT = _default().command_timeout
-SANDBOX_SESSION_TIMEOUT = _default().session_timeout
-SANDBOX_CONTAINER_PREFIX = _default().container_prefix
-REPL_DOCKER_IMAGE = get_sandbox_profile("repl").image

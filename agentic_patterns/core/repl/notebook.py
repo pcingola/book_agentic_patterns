@@ -213,44 +213,6 @@ class Notebook(BaseModel):
         with open(notebook_path, "w") as f:
             json.dump(data, f, indent=2)
 
-    def save_as_ipynb(self, path: str | Path) -> None:
-        """Save the notebook as a Jupyter notebook file."""
-        if isinstance(path, str):
-            path = Path(path)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        with open(path, "w") as f:
-            json.dump(self.to_ipynb(), f, indent=2)
-
-    def to_ipynb(self) -> dict:
-        """Convert the notebook to Jupyter notebook format."""
-        return {
-            "metadata": {
-                "kernelspec": {
-                    "display_name": "Python 3",
-                    "language": "python",
-                    "name": "python3",
-                },
-                "language_info": {
-                    "codemirror_mode": {"name": "ipython", "version": 3},
-                    "file_extension": ".py",
-                    "mimetype": "text/x-python",
-                    "name": "python",
-                    "nbconvert_exporter": "python",
-                    "pygments_lexer": "ipython3",
-                    "version": "3.10.0",
-                },
-                "mcp_repl": {
-                    "user_id": self.user_id,
-                    "session_id": self.session_id,
-                    "created_at": self.created_at.isoformat(),
-                    "updated_at": self.updated_at.isoformat(),
-                },
-            },
-            "nbformat": 4,
-            "nbformat_minor": 5,
-            "cells": [cell.to_ipynb() for cell in self.cells],
-        }
-
     def __getitem__(self, key: int | str) -> Cell:
         if isinstance(key, int):
             if key < 0 or key >= len(self.cells):

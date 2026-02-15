@@ -31,11 +31,16 @@ logger = logging.getLogger(__name__)
 
 
 def _is_docker_available() -> bool:
-    """Check if Docker daemon is reachable."""
+    """Check if Docker daemon is reachable via docker_host from config.yaml."""
     try:
         import docker
 
-        client = docker.from_env()
+        from agentic_patterns.core.sandbox.config import load_sandbox_config
+
+        docker_host = load_sandbox_config().docker_host
+        if not docker_host:
+            return False
+        client = docker.DockerClient(base_url=docker_host)
         client.ping()
         return True
     except Exception:

@@ -1,16 +1,13 @@
 """PydanticAI agent tools for REPL notebook -- wraps core/repl/."""
 
-from pathlib import PurePosixPath
-
 from pydantic_ai import ModelRetry
 
-from agentic_patterns.core.config.config import SANDBOX_PREFIX
 from agentic_patterns.core.context.decorators import context_result
 from agentic_patterns.core.repl.config import DEFAULT_CELL_TIMEOUT
 from agentic_patterns.core.repl.notebook import Notebook
 from agentic_patterns.core.tools.permissions import ToolPermission, tool_permission
 from agentic_patterns.core.user_session import get_session_id, get_user_id
-from agentic_patterns.core.workspace import workspace_to_host_path
+from agentic_patterns.toolkits.repl.export import export_notebook_as_ipynb
 
 
 def _load_notebook() -> Notebook:
@@ -58,15 +55,12 @@ def get_all_tools() -> list:
         The notebook is saved to /workspace/<name>.ipynb and can be downloaded
         and opened in VS Code or JupyterLab.
         """
-        nb = _load_notebook()
-        if not nb.cells:
-            raise ModelRetry("No cells in the notebook. Execute some cells first.")
-        if not name.endswith(".ipynb"):
-            name = f"{name}.ipynb"
-        sandbox_path = PurePosixPath(SANDBOX_PREFIX) / name
-        host_path = workspace_to_host_path(sandbox_path)
-        nb.save_as_ipynb(host_path)
-        return f"Notebook created at {sandbox_path}"
+        try:
+            nb = _load_notebook()
+            sandbox_path = export_notebook_as_ipynb(nb, name)
+            return f"Notebook created at {sandbox_path}"
+        except ValueError as e:
+            raise ModelRetry(str(e)) from e
 
     @tool_permission(ToolPermission.WRITE)
     @context_result()
@@ -74,9 +68,8 @@ def get_all_tools() -> list:
         """Export the notebook to a .ipynb file at the given workspace path."""
         try:
             nb = _load_notebook()
-            host_path = workspace_to_host_path(PurePosixPath(path))
-            nb.save_as_ipynb(host_path)
-            return f"Notebook exported to {path}"
+            sandbox_path = export_notebook_as_ipynb(nb, path)
+            return f"Notebook exported to {sandbox_path}"
         except ValueError as e:
             raise ModelRetry(str(e)) from e
 

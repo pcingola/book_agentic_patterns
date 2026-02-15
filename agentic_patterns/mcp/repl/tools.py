@@ -1,17 +1,14 @@
 """MCP REPL server tools -- thin wrapper delegating to core/repl/."""
 
-from pathlib import PurePosixPath
-
 from fastmcp import Context, FastMCP
 
-from agentic_patterns.core.config.config import SANDBOX_PREFIX
 from agentic_patterns.core.context.decorators import context_result
 from agentic_patterns.core.mcp import ToolFatalError, ToolRetryError
 from agentic_patterns.core.repl.config import DEFAULT_CELL_TIMEOUT
 from agentic_patterns.core.repl.notebook import Notebook
 from agentic_patterns.core.tools.permissions import ToolPermission, tool_permission
 from agentic_patterns.core.user_session import get_session_id, get_user_id
-from agentic_patterns.core.workspace import workspace_to_host_path
+from agentic_patterns.toolkits.repl.export import export_notebook_as_ipynb
 
 
 def _load_notebook() -> Notebook:
@@ -83,15 +80,11 @@ def register_tools(mcp: FastMCP) -> None:
         Args:
             name: Notebook filename (e.g. 'analysis'). Extension .ipynb added automatically.
         """
-        nb = _load_notebook()
-        if not nb.cells:
-            raise ToolRetryError("No cells in the notebook. Execute some cells first.")
-        if not name.endswith(".ipynb"):
-            name = f"{name}.ipynb"
-        sandbox_path = PurePosixPath(SANDBOX_PREFIX) / name
         try:
-            host_path = workspace_to_host_path(sandbox_path)
-            nb.save_as_ipynb(host_path)
+            nb = _load_notebook()
+            sandbox_path = export_notebook_as_ipynb(nb, name)
+        except ValueError as e:
+            raise ToolRetryError(str(e)) from e
         except OSError as e:
             raise ToolFatalError(str(e)) from e
         await ctx.info(f"create_notebook: {sandbox_path}")
@@ -108,14 +101,13 @@ def register_tools(mcp: FastMCP) -> None:
         """
         try:
             nb = _load_notebook()
-            host_path = workspace_to_host_path(PurePosixPath(path))
-            nb.save_as_ipynb(host_path)
+            sandbox_path = export_notebook_as_ipynb(nb, path)
         except ValueError as e:
             raise ToolRetryError(str(e)) from e
         except OSError as e:
             raise ToolFatalError(str(e)) from e
-        await ctx.info(f"export_ipynb: {path}")
-        return f"Notebook exported to {path}"
+        await ctx.info(f"export_ipynb: {sandbox_path}")
+        return f"Notebook exported to {sandbox_path}"
 
     @mcp.tool()
     @tool_permission(ToolPermission.WRITE)
