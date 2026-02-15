@@ -45,6 +45,7 @@ doctors = "agentic_patterns.core.doctors.__main__:main_sync"
 evals = "agentic_patterns.core.evals.__main__:main_sync"
 ingest-openapi = "agentic_patterns.core.connectors.openapi.cli.ingest:main_sync"
 build-repl-image = "agentic_patterns.core.repl.cli:main"
+export-notebook = "agentic_patterns.toolkits.repl.repl_export:main"
 
 [build-system]
 requires = ["setuptools>=75.0"]

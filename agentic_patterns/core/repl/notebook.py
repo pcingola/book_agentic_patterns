@@ -177,8 +177,13 @@ class Notebook(BaseModel):
             notebook.save()
             return notebook
 
-        logger.debug("Loading notebook from %s", notebook_path)
-        with open(notebook_path) as f:
+        return cls.load_from_path(notebook_path)
+
+    @classmethod
+    def load_from_path(cls, path: Path) -> "Notebook":
+        """Load a notebook from an arbitrary cells.json file."""
+        logger.debug("Loading notebook from %s", path)
+        with open(path) as f:
             data = json.load(f)
 
         notebook = cls(

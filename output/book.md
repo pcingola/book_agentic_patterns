@@ -15302,22 +15302,24 @@ class SandboxBubblewrap(Sandbox):
 
 The child process sees a read-only root filesystem, a private `/tmp`, and only the bind mounts explicitly granted. The Python prefix is mounted read-only so that installed packages remain importable inside the sandbox. PID and network namespaces can be unshared independently. This is lightweight (no daemon, no images, no layers) and fast to start.
 
-#### Fallback: Plain Subprocess
+#### No Subprocess Fallback
 
-On platforms without bwrap (macOS, Windows), a subprocess fallback runs the command directly. No isolation is provided -- this is a development convenience, not a security boundary. The factory function selects the appropriate implementation:
+There is no subprocess fallback. Running agent-generated code in a plain subprocess is a security risk. If bwrap is not available, `get_sandbox()` raises `RuntimeError`. On platforms without bwrap (macOS, Windows), Docker is used instead (see below).
 
 ```python
-def get_sandbox() -> Sandbox:
+def get_sandbox() -> SandboxBubblewrap:
     if shutil.which("bwrap"):
         return SandboxBubblewrap()
-    return SandboxSubprocess()
+    raise RuntimeError("bubblewrap (bwrap) not found on PATH")
 ```
+
+The REPL sandbox selection order is: bwrap first, Docker second, exception if neither is available.
 
 #### Heavyweight Isolation: Containers
 
-For production multi-tenant deployments, container runtimes (Docker, Podman) provide stronger isolation: separate filesystem layers, cgroup resource limits, full network namespace control, and seccomp profiles. Container-based sandboxes are heavier to start and manage, but offer guarantees that bwrap alone does not (CPU/memory limits, storage quotas, image-based reproducibility).
+For production multi-tenant deployments or platforms without bwrap, container runtimes (Docker) provide stronger isolation: separate filesystem layers, cgroup resource limits, full network namespace control, and seccomp profiles. Container-based sandboxes are heavier to start and manage, but offer guarantees that bwrap alone does not (CPU/memory limits, storage quotas, image-based reproducibility).
 
-The sandbox abstraction accommodates both: the `Sandbox` ABC defines a uniform `run()` interface, and implementations range from "no isolation" through "user namespaces" to "full containers". The choice depends on the deployment context.
+The `Sandbox` ABC defines a uniform `run()` interface. The two implementations are `SandboxBubblewrap` (lightweight, Linux) and Docker containers via `SandboxManager` (heavier, cross-platform).
 
 ### Filesystem Isolation
 
@@ -15589,9 +15591,17 @@ Some objects require special handling. For example, openpyxl workbooks are not d
 
 Process isolation alone does not provide meaningful security. The subprocess inherits the host's filesystem access, network, and process namespace. A production REPL needs a sandbox layer that restricts what the subprocess can do.
 
-Our implementation uses a generic sandbox abstraction with two backends. On Linux, it uses bubblewrap (`bwrap`), a lightweight container tool that provides filesystem, network, and PID namespace isolation. The sandbox mounts system directories (`/usr`, `/lib`, `/bin`) as read-only, exposes the Python installation for package access, and bind-mounts only the specific directories the cell needs: the workspace (for user data) and the temporary directory (for pickle IPC). Network access and PID isolation can be toggled independently.
+Our implementation uses a generic sandbox abstraction with two backends. On Linux, it uses bubblewrap (`bwrap`), a lightweight container tool that provides filesystem, network, and PID namespace isolation. The sandbox mounts system directories (`/usr`, `/lib`, `/bin`) as read-only, exposes the Python installation for package access, and bind-mounts only the specific directories the cell needs: the user workspace at `/workspace` and the REPL internal data directory at `/repl` (for pickle IPC and temp files). The REPL data is kept separate from the user workspace so that user code never sees internal pickle files or notebook state. Network access and PID isolation can be toggled independently.
 
-On macOS and in development environments where bubblewrap is not available, the sandbox falls back to a plain subprocess with no isolation. A factory function selects the appropriate backend at runtime.
+When bubblewrap is not available (e.g. macOS), the system uses Docker containers via the SandboxManager. If neither bubblewrap nor Docker is available, the system raises a clear error rather than silently falling back to unsandboxed execution.
+
+The Docker path introduces a subtlety that bubblewrap does not have. Under bubblewrap the executor runs on the same host, so it can import from the application directly. Docker containers are a different platform: the host may run macOS while the container runs Linux, and the host's Python packages contain platform-specific compiled extensions (`.so` / `.dylib` files) that will not load inside the container. Mounting the host project into the container and setting `PYTHONPATH` to point at it would cause the container's Python to find the host's binary extensions and fail with import errors.
+
+The solution is to make the executor **standalone**. The executor source is stored as a string constant in the application code. At runtime, just before launching the container, the host writes this string to a file inside the REPL data directory, which is already mounted read-write at `/repl` for pickle IPC. The container then runs `python /repl/_executor.py <cell_id>` using only its own installed packages. No host directory is mounted, no `PYTHONPATH` is set, and the executor has zero imports from the application -- it uses only the standard library and packages installed in the container image (pandas, matplotlib, openpyxl, and so on).
+
+This decoupling also makes the REPL suitable for **remote deployment**. When the REPL is exposed as an MCP server, it may run on a machine that has no copy of the application source tree. Because the executor is self-contained, the only requirement on the remote host is a reachable Docker daemon and a writable data directory -- the same requirements any containerized service has.
+
+One consequence of using a standalone executor is that the IPC format changes. The bubblewrap executor can import the application's pydantic models and write them directly into the output pickle. The Docker executor cannot, so it writes plain dictionaries instead. The host side converts these dictionaries back into the application's typed models after reading the pickle. The input format (a plain dictionary with code, namespace, imports, and function definitions) is the same for both paths, so the divergence is limited to the output.
 
 One useful refinement is **data-driven network isolation**. If a session has been flagged as containing private data (for example, after loading sensitive files), the sandbox enables network isolation automatically. This prevents exfiltration of sensitive data through code execution, even if the agent or user does not explicitly request it.
 
@@ -15671,7 +15681,7 @@ The `asyncio.to_thread` call is the key boundary: it moves the blocking work off
 
 #### Sessions, persistence, and multi-user concerns
 
-Unlike a local shell, an agent REPL usually operates in a multi-user environment. Each notebook is scoped to a `(user_id, session_id)` pair and persisted to a well-known path on disk (`WORKSPACE_DIR / user_id / session_id / mcp_repl / cells.json`). The notebook saves its state -- all cells with their code, outputs, and metadata -- after every operation (add, execute, delete, clear). This ensures that work is not lost and that sessions can be resumed after failures.
+Unlike a local shell, an agent REPL usually operates in a multi-user environment. Each notebook is scoped to a `(user_id, session_id)` pair and persisted to a well-known path on disk (`DATA_DIR / repl / user_id / session_id / cells.json`), separate from the user-visible workspace. The notebook saves its state -- all cells with their code, outputs, and metadata -- after every operation (add, execute, delete, clear). This ensures that work is not lost and that sessions can be resumed after failures.
 
 Persistence also enables secondary capabilities. The notebook can be exported to Jupyter's `.ipynb` format, making it possible to continue work in a standard notebook interface or share results with collaborators who do not use the agent platform.
 

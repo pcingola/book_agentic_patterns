@@ -26,11 +26,19 @@ def export_notebook_as_ipynb(nb: Notebook, name_or_path: str) -> str:
         sandbox_path = PurePosixPath(SANDBOX_PREFIX) / sandbox_path
 
     host_path = workspace_to_host_path(sandbox_path)
-    _save_ipynb(nb, host_path)
+    save_as_ipynb(nb, host_path)
     return str(sandbox_path)
 
 
-def _save_ipynb(nb: Notebook, path: Path) -> None:
+def convert_cells_to_ipynb(input_path: Path, output_path: Path) -> None:
+    """Convert a REPL cells.json file to a Jupyter .ipynb notebook."""
+    nb = Notebook.load_from_path(input_path)
+    if not nb.cells:
+        raise ValueError("Notebook has no cells")
+    save_as_ipynb(nb, output_path)
+
+
+def save_as_ipynb(nb: Notebook, path: Path) -> None:
     """Write the notebook in Jupyter .ipynb format."""
     path.parent.mkdir(parents=True, exist_ok=True)
     ipynb = {
