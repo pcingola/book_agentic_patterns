@@ -1,6 +1,6 @@
 [project]
 name = "book-agentic-patterns"
-version = "0.3.0"
+version = "0.3.1"
 description = "Agentic patterns"
 readme = "README.md"
 requires-python = ">=3.12.2"
@@ -44,6 +44,7 @@ manage-users = "agentic_patterns.core.ui.cli:main"
 doctors = "agentic_patterns.core.doctors.__main__:main_sync"
 evals = "agentic_patterns.core.evals.__main__:main_sync"
 ingest-openapi = "agentic_patterns.core.connectors.openapi.cli.ingest:main_sync"
+build-repl-image = "agentic_patterns.core.repl.cli:main"
 
 [build-system]
 requires = ["setuptools>=75.0"]
@@ -54,6 +55,9 @@ build-backend = "setuptools.build_meta"
 
 [tool.uv]
 package = true
+
+[tool.setuptools.package-data]
+"agentic_patterns.core.repl" = ["docker/*"]
 
 [tool.setuptools.packages.find]
 include = ["agentic_patterns*"]

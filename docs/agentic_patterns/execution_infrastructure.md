@@ -120,6 +120,15 @@ MCP server (`mcp/sandbox/`): same single `execute` tool, converts `DockerExcepti
 
 `core/repl/` provides a stateful, notebook-like execution environment for iterative code. Each cell runs in a fresh subprocess (optionally sandboxed with bubblewrap) while preserving the illusion of a continuous namespace through pickle-based IPC.
 
+### Prerequisites
+
+The REPL requires a Docker image. Build it once (and whenever `core/repl/docker/` changes):
+
+```bash
+build-repl-image                        # builds agentic-patterns-repl:latest
+build-repl-image my-custom-tag:1.0      # custom tag
+```
+
 ### Notebook and Cell
 
 A `Notebook` is scoped to a `(user_id, session_id)` pair and manages a list of `Cell` objects, a shared namespace, accumulated import statements, and function definitions.

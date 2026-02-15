@@ -1,0 +1,50 @@
+# Data manipulation
+pandas==2.2.3
+polars==1.20.0
+numpy==2.2.2
+scipy==1.15.1
+pyarrow==18.1.0
+
+# ML / statistics
+scikit-learn==1.6.1
+statsmodels==0.14.4
+xgboost==2.1.4
+lightgbm==4.5.0
+
+# Visualization
+matplotlib==3.10.0
+seaborn==0.13.2
+plotly==6.0.0
+
+# Office / document formats
+openpyxl==3.1.5
+xlsxwriter==3.2.2
+python-docx==1.1.2
+python-pptx==1.0.2
+
+# Data formats
+pyyaml==6.0.2
+lxml==5.3.1
+pillow==11.1.0
+
+# Database
+sqlalchemy==2.0.37
+aiosqlite==0.21.0
+
+# HTTP / web
+requests==2.32.3
+httpx==0.28.1
+beautifulsoup4==4.13.3
+
+# NLP
+nltk==3.9.1
+
+# Math / graphs
+sympy==1.13.3
+networkx==3.4.2
+
+# Utilities
+tqdm==4.67.1
+tabulate==0.9.0
+rich==13.9.4
+pydantic==2.10.6
