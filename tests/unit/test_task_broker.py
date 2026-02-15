@@ -1,3 +1,4 @@
+import asyncio
 import shutil
 import tempfile
 import unittest
@@ -9,11 +10,17 @@ from agentic_patterns.core.tasks.state import TaskState
 from agentic_patterns.core.tasks.store import TaskStoreJson
 from agentic_patterns.testing import ModelMock
 
+# IsolatedAsyncioTestCase enables loop.set_debug(True) which warns on callbacks
+# taking >100ms. Agent setup (config.yaml parsing, model instantiation) and
+# TaskStoreJson file I/O legitimately exceed that in a book/PoC context.
+SLOW_CALLBACK_DURATION = 0.5
+
 
 class TestTaskBroker(unittest.IsolatedAsyncioTestCase):
     """Tests for the TaskBroker."""
 
     def setUp(self) -> None:
+        asyncio.get_event_loop().slow_callback_duration = SLOW_CALLBACK_DURATION
         self._temp_dir = Path(tempfile.mkdtemp())
         self.store = TaskStoreJson(directory=self._temp_dir)
 

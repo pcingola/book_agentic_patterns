@@ -1,3 +1,4 @@
+import asyncio
 import socket
 import threading
 import time
@@ -45,14 +46,16 @@ def sample_tool(x: int) -> int:
     return x * 2
 
 
+# IsolatedAsyncioTestCase enables loop.set_debug(True) which warns on callbacks
+# taking >100ms. Agent setup (config.yaml parsing, model instantiation) and
+# TaskStoreJson file I/O legitimately exceed that in a book/PoC context.
+SLOW_CALLBACK_DURATION = 0.5
+
+
 class TestOrchestratorAgent(unittest.IsolatedAsyncioTestCase):
     @classmethod
     def setUpClass(cls):
         cls.port = find_free_port()
-        cls.loop = asyncio.new_event_loop()
-
-    def setUp(self):
-        asyncio.get_event_loop().slow_callback_duration = 0.5
         cls.mock_server = MockA2AServer(
             name="Researcher", description="Researches topics"
         )
@@ -69,6 +72,7 @@ class TestOrchestratorAgent(unittest.IsolatedAsyncioTestCase):
         cls.server_thread.stop()
 
     def setUp(self):
+        asyncio.get_event_loop().slow_callback_duration = SLOW_CALLBACK_DURATION
         self.config = A2AClientConfig(
             url=f"http://127.0.0.1:{self.port}", timeout=10, poll_interval=0.1
         )
