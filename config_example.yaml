@@ -118,6 +118,22 @@ embeddings:
 #       json_array_tail: 5
 #       json_max_keys: 20
 
+auth:
+  jwt_secret: change-this-secret-in-production
+  jwt_algorithm: HS256
+
+sandbox:
+  # docker_host: "unix:///path/to/.rd/docker.sock"
+  default:
+    image: python:3.12-slim
+    cpu_limit: 1.0
+    memory_limit: 512m
+    command_timeout: 30
+    session_timeout: 3600
+    container_prefix: sandbox
+  repl:
+    image: agentic-patterns-repl:latest
+
 vectordb:
   default:
     backend: chroma
@@ -201,6 +217,11 @@ mcp_servers:
     url: http://localhost:8106/mcp
     read_timeout: 60
 
+  openapi:
+    type: client
+    url: http://localhost:8107/mcp
+    read_timeout: 120
+
 a2a:
   clients:
     nl2sql:
@@ -211,6 +232,9 @@ a2a:
       timeout: 300
     vocabulary:
       url: http://localhost:8202
+      timeout: 300
+    openapi:
+      url: http://localhost:8203
       timeout: 300
 
 agents:
@@ -232,6 +256,7 @@ agents:
       - agentic_patterns.agents.data_analysis:get_spec
       - agentic_patterns.agents.sql:get_spec
       - agentic_patterns.agents.vocabulary:get_spec
+      - agentic_patterns.agents.openapi:get_spec
 
   full_agent:
     system_prompt: the_complete_agent/agent_full.md
@@ -244,8 +269,9 @@ agents:
       - agentic_patterns.agents.data_analysis:get_spec
       - agentic_patterns.agents.sql:get_spec
       - agentic_patterns.agents.vocabulary:get_spec
+      - agentic_patterns.agents.openapi:get_spec
 
   infrastructure_agent:
     system_prompt: the_complete_agent/agent_infrastructure.md
     mcp_servers: [file_ops, sandbox, todo, format_conversion]
-    a2a_clients: [nl2sql, data_analysis, vocabulary]
+    a2a_clients: [nl2sql, data_analysis, vocabulary, openapi]

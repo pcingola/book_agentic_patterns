@@ -22,6 +22,7 @@ class SandboxProfile(BaseModel):
 class SandboxConfig(BaseModel):
     """Top-level sandbox configuration with named profiles."""
 
+    docker_host: str | None = None
     default: SandboxProfile = SandboxProfile()
     repl: SandboxProfile = SandboxProfile(image="agentic-patterns-repl:latest")
 
@@ -44,11 +45,15 @@ def load_sandbox_config(config_path: Path | None = None) -> SandboxConfig:
             yaml_config = yaml.safe_load(f)
             if yaml_config and "sandbox" in yaml_config:
                 raw = yaml_config["sandbox"]
+                # Extract top-level sandbox fields (not profiles)
+                docker_host = raw.get("docker_host")
                 # Profiles inherit from default: merge default values under each profile
                 default_data = raw.get("default", {})
-                merged = {"default": default_data}
+                merged: dict = {"default": default_data}
+                if docker_host:
+                    merged["docker_host"] = docker_host
                 for name, profile_data in raw.items():
-                    if name == "default":
+                    if name in ("default", "docker_host"):
                         continue
                     merged[name] = {**default_data, **profile_data}
                 config = SandboxConfig.model_validate(merged)
@@ -71,6 +76,7 @@ def _default() -> SandboxProfile:
     return get_sandbox_profile("default")
 
 
+DOCKER_HOST = load_sandbox_config().docker_host
 SANDBOX_DOCKER_IMAGE = _default().image
 SANDBOX_CPU_LIMIT = _default().cpu_limit
 SANDBOX_MEMORY_LIMIT = _default().memory_limit

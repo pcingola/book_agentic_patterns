@@ -11,6 +11,7 @@ from docker.models.containers import Container
 
 from agentic_patterns.core.config.config import WORKSPACE_DIR
 from agentic_patterns.core.sandbox.config import (
+    DOCKER_HOST,
     SANDBOX_COMMAND_TIMEOUT,
     SANDBOX_CONTAINER_PREFIX,
     SandboxProfile,
@@ -47,7 +48,7 @@ class SandboxManager:
     @property
     def client(self) -> docker.DockerClient:
         if self._client is None:
-            self._client = docker.from_env()
+            self._client = docker.DockerClient(base_url=DOCKER_HOST) if DOCKER_HOST else docker.from_env()
         return self._client
 
     def close_session(self, user_id: str, session_id: str) -> None:

@@ -65,7 +65,9 @@ All scripts source `config.sh` (sets PROJECT_DIR, loads .env, activates .venv, s
 
 ## Configuration
 
-**config.yaml**: Named model configs (default, fast, azure_gpt4, bedrock_claude, etc.) with provider, credentials, timeout.
+**config.yaml**: Named model configs (default, fast, azure_gpt4, bedrock_claude, etc.) with provider, credentials, timeout. Pretty much everything is configured here, except the things that frameworks force us to keep in `.env` (CHAINLIT_AUTH_SECRET is probably the only exception)
+
+**.env**: Only things that must be in environment variables for framework compatibility (e.g. `CHAINLIT_AUTH_SECRET` for Chainlit). Everything else MUST be in `config.yaml`
 
 **pyproject.toml**: Dependencies and console scripts (`doctors`, `evals`, `manage-users`, `annotate-schema`, `ingest-openapi`, `build-repl-image`).
 

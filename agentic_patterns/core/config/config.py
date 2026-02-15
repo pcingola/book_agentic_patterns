@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import yaml
+
 from agentic_patterns.core.config.env import get_variable_env, load_env_variables
 
 
@@ -31,9 +33,19 @@ SANDBOX_PREFIX = "/workspace"
 DEFAULT_USER_ID = "default_user"
 DEFAULT_SESSION_ID = "default_session"
 
-# JWT
-JWT_SECRET = get_variable_env("JWT_SECRET") or "dev-secret-change-in-production"
-JWT_ALGORITHM = get_variable_env("JWT_ALGORITHM") or "HS256"
+# Auth (from config.yaml, with env fallback for backward compatibility)
+def _load_auth_config() -> dict:
+    config_path = MAIN_PROJECT_DIR / "config.yaml"
+    if config_path.exists():
+        with open(config_path) as f:
+            cfg = yaml.safe_load(f)
+            if cfg and "auth" in cfg:
+                return cfg["auth"]
+    return {}
+
+_auth = _load_auth_config()
+JWT_SECRET = _auth.get("jwt_secret", "dev-secret-change-in-production")
+JWT_ALGORITHM = _auth.get("jwt_algorithm", "HS256")
 
 # UI
 USER_DATABASE_FILE = Path(
