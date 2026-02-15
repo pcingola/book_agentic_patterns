@@ -62,22 +62,24 @@ class SandboxBubblewrap(Sandbox):
 
 The child process sees a read-only root filesystem, a private `/tmp`, and only the bind mounts explicitly granted. The Python prefix is mounted read-only so that installed packages remain importable inside the sandbox. PID and network namespaces can be unshared independently. This is lightweight (no daemon, no images, no layers) and fast to start.
 
-#### Fallback: Plain Subprocess
+#### No Subprocess Fallback
 
-On platforms without bwrap (macOS, Windows), a subprocess fallback runs the command directly. No isolation is provided -- this is a development convenience, not a security boundary. The factory function selects the appropriate implementation:
+There is no subprocess fallback. Running agent-generated code in a plain subprocess is a security risk. If bwrap is not available, `get_sandbox()` raises `RuntimeError`. On platforms without bwrap (macOS, Windows), Docker is used instead (see below).
 
 ```python
-def get_sandbox() -> Sandbox:
+def get_sandbox() -> SandboxBubblewrap:
     if shutil.which("bwrap"):
         return SandboxBubblewrap()
-    return SandboxSubprocess()
+    raise RuntimeError("bubblewrap (bwrap) not found on PATH")
 ```
+
+The REPL sandbox selection order is: bwrap first, Docker second, exception if neither is available.
 
 #### Heavyweight Isolation: Containers
 
-For production multi-tenant deployments, container runtimes (Docker, Podman) provide stronger isolation: separate filesystem layers, cgroup resource limits, full network namespace control, and seccomp profiles. Container-based sandboxes are heavier to start and manage, but offer guarantees that bwrap alone does not (CPU/memory limits, storage quotas, image-based reproducibility).
+For production multi-tenant deployments or platforms without bwrap, container runtimes (Docker) provide stronger isolation: separate filesystem layers, cgroup resource limits, full network namespace control, and seccomp profiles. Container-based sandboxes are heavier to start and manage, but offer guarantees that bwrap alone does not (CPU/memory limits, storage quotas, image-based reproducibility).
 
-The sandbox abstraction accommodates both: the `Sandbox` ABC defines a uniform `run()` interface, and implementations range from "no isolation" through "user namespaces" to "full containers". The choice depends on the deployment context.
+The `Sandbox` ABC defines a uniform `run()` interface. The two implementations are `SandboxBubblewrap` (lightweight, Linux) and Docker containers via `SandboxManager` (heavier, cross-platform).
 
 ### Filesystem Isolation
 

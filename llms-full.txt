@@ -3096,16 +3096,16 @@ result = await sandbox.run(
 )
 ```
 
-`SandboxBubblewrap` is the Linux production implementation using bubblewrap (`bwrap`). It creates a minimal filesystem view with read-only system mounts (`/usr`, `/lib`, `/bin`, etc.), a private `/tmp`, and only the bind mounts explicitly granted. The Python prefix is mounted read-only so installed packages remain importable. PID and network namespaces can be unshared independently via `--unshare-pid` and `--unshare-net`. Timeout enforcement uses `asyncio.wait_for` -- on expiry, the process is killed and the result has `timed_out=True`.
+`SandboxBubblewrap` is the Linux production implementation using bubblewrap (`bwrap`). It creates a minimal filesystem view with read-only system mounts (`/usr`, `/lib`, `/bin`, etc.), a private `/tmp`, and only the bind mounts explicitly granted. The Python prefix is mounted read-only so installed packages remain importable. PID and network namespaces can be unshared independently via `--unshare-pid` and `--unshare-net`. When network is isolated, `/etc/resolv.conf` is not mounted. Timeout enforcement uses `asyncio.wait_for` -- on expiry, the process is killed and the result has `timed_out=True`.
 
-`SandboxSubprocess` is the macOS/development fallback that runs commands as plain subprocesses with no isolation. Same timeout enforcement, but no filesystem or network restrictions.
+There is no subprocess fallback. If bwrap is not available, `get_sandbox()` raises `RuntimeError`.
 
 ### Factory
 
 ```python
 from agentic_patterns.core.process_sandbox import get_sandbox
 
-sandbox = get_sandbox()  # SandboxBubblewrap if bwrap on PATH, else SandboxSubprocess
+sandbox = get_sandbox()  # SandboxBubblewrap if bwrap on PATH, else RuntimeError
 ```
 
 ## Docker Sandbox
@@ -3120,9 +3120,9 @@ sandbox = get_sandbox()  # SandboxBubblewrap if bwrap on PATH, else SandboxSubpr
 from agentic_patterns.core.sandbox.container_config import ContainerConfig
 
 config = ContainerConfig(
-    image="my-sandbox:latest",    # default from SANDBOX_DOCKER_IMAGE
-    cpu_limit=1.0,                # default from SANDBOX_CPU_LIMIT
-    memory_limit="512m",          # default from SANDBOX_MEMORY_LIMIT
+    image="my-sandbox:latest",
+    cpu_limit=1.0,
+    memory_limit="512m",
     working_dir="/workspace",
     network_mode=NetworkMode.FULL,
     read_only_mounts={"/host/skills": "/skills"},
@@ -3130,7 +3130,7 @@ config = ContainerConfig(
 )
 ```
 
-Defaults are in `core/sandbox/config.py`: `SANDBOX_DOCKER_IMAGE`, `SANDBOX_CPU_LIMIT`, `SANDBOX_MEMORY_LIMIT`, `SANDBOX_COMMAND_TIMEOUT`, `SANDBOX_CONTAINER_PREFIX`.
+All defaults come from `config.yaml` via `load_sandbox_config()` and `get_sandbox_profile()` in `core/sandbox/config.py`. Docker host, image names, resource limits, timeouts, and container prefixes are all configured in the `sandbox` section of `config.yaml`.
 
 ### Network Mode
 
@@ -3188,7 +3188,7 @@ MCP server (`mcp/sandbox/`): same single `execute` tool, converts `DockerExcepti
 
 ## REPL
 
-`core/repl/` provides a stateful, notebook-like execution environment for iterative code. Each cell runs in a fresh subprocess (optionally sandboxed with bubblewrap) while preserving the illusion of a continuous namespace through pickle-based IPC.
+`core/repl/` provides a stateful, notebook-like execution environment for iterative code. Each cell runs inside a sandbox (bwrap on Linux, Docker otherwise; never a plain subprocess) while preserving the illusion of a continuous namespace through pickle-based IPC.
 
 ### Prerequisites
 
@@ -3210,7 +3210,9 @@ cell = await nb.add_cell("x = 42", execute=True, timeout=30)
 cell = await nb.add_cell("print(x)", execute=True)  # x is available
 nb.delete_cell(0)
 nb.clear()
-nb.save_as_ipynb(Path("/workspace/output.ipynb"))
+
+from agentic_patterns.toolkits.repl.export import export_notebook_as_ipynb
+export_notebook_as_ipynb(nb, "output")
 ```
 
 Each `Cell` tracks its code, state (`CellState`: IDLE, RUNNING, COMPLETED, ERROR, TIMEOUT), typed outputs, execution count, and timing. Outputs are `CellOutput` objects with an `OutputType` (TEXT, ERROR, HTML, IMAGE, DATAFRAME).
@@ -3229,7 +3231,7 @@ Network isolation is automatic: `execute_in_sandbox` checks `session_has_private
 
 ### Persistence
 
-Notebooks are persisted as JSON at `WORKSPACE_DIR / user_id / session_id / mcp_repl / cells.json`. The notebook saves after every operation (add, execute, delete, clear). It can be exported to Jupyter `.ipynb` format via `save_as_ipynb()`.
+Notebooks are persisted as JSON at `WORKSPACE_DIR / user_id / session_id / mcp_repl / cells.json`. The notebook saves after every operation (add, execute, delete, clear). Export to Jupyter `.ipynb` format is handled by `toolkits/repl/export.py` (`export_notebook_as_ipynb`).
 
 ### Tool Wrappers
 
