@@ -13,17 +13,32 @@ book_agentic_patterns/
 ├── chapters/           # Book chapters (markdown files)
 ├── agentic_patterns/   # Python code examples and core library
 │   ├── core/          # Reusable infrastructure
+│   │   ├── agents/    #   Agent creation, sub-agent orchestration (OrchestratorAgent, AgentSpec)
+│   │   ├── skills/    #   Skill registry and activation (AgentSkills format, SKILL.md)
+│   │   ├── tasks/     #   Task state machine, broker, storage, workers
+│   │   ├── a2a/       #   A2A client and server utilities
+│   │   ├── mcp/       #   MCP configuration and server management
+│   │   ├── connectors/#   Data source access (OpenAPI, SQL, vocabulary, etc.)
+│   │   ├── config/    #   Configuration loading
+│   │   ├── context/   #   Request context and processors
+│   │   ├── repl/      #   REPL execution
+│   │   ├── sandbox/   #   Sandbox environment management
+│   │   ├── tools/     #   Tool utilities
+│   │   ├── evals/     #   Evaluation framework
+│   │   ├── ui/        #   UI implementations (Chainlit, AG-UI)
+│   │   ├── doctors/   #   Code quality analysis
+│   │   └── vectordb/  #   Vector database utilities
+│   ├── toolkits/      # Business logic (pure Python, no framework dependency)
+│   ├── tools/         # PydanticAI tool wrappers (each file exposes get_all_tools())
+│   ├── mcp/           # MCP servers (each subdir: tools.py + server.py)
 │   ├── agents/        # Domain-specific agents (db_catalog, vocabulary, nl2sql, openapi, etc.)
-│   ├── a2a/           # A2A server implementations (thin wrappers over agents + MCP)
-│   ├── toolkits/      # Business logic (no framework dependency)
-│   ├── tools/         # PydanticAI agent tool wrappers
-│   ├── mcp/           # MCP server thin wrappers
+│   ├── a2a/           # A2A servers (wrap agents for inter-agent communication)
 │   ├── examples/      # Code examples by chapter
 │   └── testing/       # Testing utilities for agents
 ├── scripts/            # Build, validation, lint scripts
 ├── tests/              # Tests (unit/ and integration/ subdirectories)
 ├── prompts/            # Prompt templates (markdown files)
-├── data/               # Runtime data (db/, workspaces/)
+├── data/               # Runtime data (db/, workspaces/, skills/)
 ├── docs/               # Design and reference documents
 └── output/             # Generated book output (book.md, PDF)
 ```
@@ -42,16 +57,15 @@ book_agentic_patterns/
 
 **References**: All citations in a `references.md` file.
 
-## Three-Layer Architecture
+## How the code fits together
 
-```
-toolkits/*          Business logic. Pure Python: models, operations, I/O.
-    |
-    +-> tools/*             PydanticAI agent tool wrappers (get_all_tools()).
-    +-> mcp/*/tools.py      MCP server thin wrappers (ctx, @mcp.tool(), error conversion).
-```
+- `toolkits/` has the actual business logic -- plain Python, no framework. 
+- `tools/` and `mcp/` are thin wrappers that make toolkit functions available to PydanticAI agents and MCP servers respectively. 
+- `agents/` are the agents themselves; they use those tools. An agent can delegate work to other agents as sub-agents
+- `a2a/` exposes agents over the network so external agents can call them.
+- Skills are defined in `data/skills/`, each as a directory with a `SKILL.md` file (YAML frontmatter + markdown instructions). The registry in `core/skills/` discovers and loads them.
 
-Connectors (`core/connectors/`) are for data source access. Toolkits are for domain logic, operations, services. Each tool file exposes `get_all_tools()` returning plain functions for `Agent(tools=[...])`.
+IMPORTANT: NEVER implement a tool / MCP tool directly. Use either a toolkit or a connector (if it's a data tool).
 
 ## Library Documentation
 

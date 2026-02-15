@@ -31,7 +31,7 @@ from agentic_patterns.core.repl.openpyxl_handler import restore_workbook_referen
 _INTERNAL_PATH_MARKER = "agentic_patterns/core/repl/"
 
 
-def _format_cell_error(exc: BaseException) -> str:
+def _format_cell_error(exc: BaseException, code: str) -> str:
     """Format a cell error, stripping internal REPL frames from the traceback."""
     tb = traceback.extract_tb(exc.__traceback__)
     user_frames = [f for f in tb if _INTERNAL_PATH_MARKER not in f.filename]
@@ -44,6 +44,10 @@ def _format_cell_error(exc: BaseException) -> str:
             )
             if frame.line:
                 lines.append(f"    {frame.line}")
+    lines.append("")
+    lines.append("Cell code:")
+    for line in code.splitlines():
+        lines.append(f"  {line}")
     return "\n".join(lines)
 
 
@@ -110,7 +114,9 @@ def main() -> None:
     except Exception as e:
         result.state = CellState.ERROR
         result.outputs.append(
-            CellOutput(output_type=OutputType.ERROR, content=_format_cell_error(e))
+            CellOutput(
+                output_type=OutputType.ERROR, content=_format_cell_error(e, code)
+            )
         )
 
     result.namespace, namespace_messages = filter_picklable_namespace(
