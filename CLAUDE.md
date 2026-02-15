@@ -1,5 +1,7 @@
 # CLAUDE.md
 
+Full documentation: `docs/agentic_patterns.md` (main file) and `docs/agentic_patterns/` (detail files).
+
 ## Project Overview
 
 Repository for the book "Agentic Patterns" -- a proof-of-concept agentic platform teaching architectural principles for AI agent systems. Targets software engineers and ML practitioners. All code uses PydanticAI. Book is written in markdown with each chapter in its own directory.
