@@ -1,9 +1,9 @@
 """Standalone executor script that runs inside a sandbox.
 
-Entry point: python -m agentic_patterns.core.repl.executor <temp_dir>
+Entry point: python -m agentic_patterns.core.repl.executor <repl_dir> <cell_id>
 
-Reads pickled input from <temp_dir>/input.pkl, executes the code, and writes
-pickled SubprocessResult to <temp_dir>/output.pkl.
+Reads pickled input from <repl_dir>/<cell_id>_input.pkl, executes the code,
+and writes pickled SubprocessResult to <repl_dir>/<cell_id>_output.pkl.
 """
 
 import io
@@ -30,8 +30,13 @@ from agentic_patterns.core.repl.openpyxl_handler import restore_workbook_referen
 
 
 def main() -> None:
-    temp_dir = Path(sys.argv[1])
-    input_data = pickle.loads((temp_dir / "input.pkl").read_bytes())
+    repl_dir = Path(sys.argv[1])
+    cell_id = sys.argv[2]
+
+    input_path = repl_dir / f"{cell_id}_input.pkl"
+    output_path = repl_dir / f"{cell_id}_output.pkl"
+
+    input_data = pickle.loads(input_path.read_bytes())
 
     code = input_data["code"]
     namespace = input_data["namespace"]
@@ -101,7 +106,7 @@ def main() -> None:
             )
         )
 
-    (temp_dir / "output.pkl").write_bytes(pickle.dumps(result))
+    output_path.write_bytes(pickle.dumps(result))
 
 
 if __name__ == "__main__":

@@ -114,6 +114,7 @@ class Cell(BaseModel):
                     user_id=user_id,
                     session_id=session_id,
                     workspace_path=workspace_path,
+                    cell_id=self.id,
                 )
             )
         finally:

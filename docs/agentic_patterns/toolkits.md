@@ -16,17 +16,33 @@ Operations (`todo_add`, `todo_add_many`, `todo_create_list`, `todo_delete`, `tod
 
 `agentic_patterns.toolkits.data_analysis` provides DataFrame operations via an operation registry pattern.
 
-`get_all_operations()` returns a dict mapping operation names to `OperationConfig` objects. Operations are registered across six categories: EDA (describe, info, dtypes, shape, missing values), statistics (correlation, distribution), transforms (filter, sort, group, pivot, merge), classification, regression, and feature importance.
+`get_all_operations()` returns a dict mapping operation names to `OperationConfig` objects. 53 operations across six categories:
 
-`execute_operation(input_file, output_file, operation_name, parameters)` loads a DataFrame from the workspace, executes the named operation, saves results (CSV/Excel for DataFrames, pickle for models), and returns a formatted string summary.
+| Category | Count | Examples |
+|---|---|---|
+| EDA | 17 | head, tail, shape, describe, info, dtypes, columns, unique, nunique, value_counts, correlation, missing_values, groupby_mean, groupby_count, groupby_sum, pivot_table, crosstab |
+| Transform | 11 | min_max_scale, standard_scale, select_columns, drop_columns, rename_columns, one_hot_encode, log_transform, sort_values, sample, filter_rows |
+| Statistics | 7 | t_test_one_sample, t_test_two_sample, chi_square_test, normality_test, correlation_test, anova_one_way, mann_whitney_u_test |
+| Classification | 6 | logistic_regression, random_forest, decision_tree, gradient_boosting, knn, svm |
+| Regression | 8 | linear, ridge, lasso, random_forest, decision_tree, gradient_boosting, knn, svr |
+| Feature importance | 4 | gradient_boosting, linear, permutation, random_forest |
+
+`execute_operation(input_file, output_file, operation_name, parameters)` loads a DataFrame from the workspace, executes the named operation, saves results (CSV for DataFrames, pickle for models), and returns a formatted string summary. Supporting utilities: `load_df()` and `save_df()` handle workspace I/O, `list_dataframe_files()` discovers available files.
 
 ## Data Visualization
 
 `agentic_patterns.toolkits.data_viz` follows the same registry pattern for matplotlib plots.
 
-`get_all_operations()` returns a dict of `PlotConfig` objects across four categories: basic (line, bar, scatter), distribution (histogram, box, violin), categorical (count, strip, swarm), and matrix (heatmap, pair).
+`get_all_operations()` returns a dict of `PlotConfig` objects. 12 plots across four categories:
 
-`execute_plot(input_file, output_file, plot_name, parameters)` loads a DataFrame, creates a matplotlib figure using the Agg backend, saves a PNG to the workspace, and returns the workspace path.
+| Category | Plots |
+|---|---|
+| Basic | line_plot, bar_plot, scatter_plot, area_plot |
+| Distribution | histogram, box_plot, violin_plot, kde_plot |
+| Categorical | count_plot, pie_chart |
+| Matrix | heatmap, pair_plot |
+
+`execute_plot(input_file, output_file, plot_name, parameters)` loads a DataFrame, creates a matplotlib figure using the Agg backend, saves a PNG to the workspace, and returns the workspace path. Configuration defaults: DPI=150, figure size 10x6, seaborn "muted" palette.
 
 ## Format Conversion
 

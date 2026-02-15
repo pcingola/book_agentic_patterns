@@ -14,6 +14,7 @@ from agentic_patterns.core.repl.cell_utils import (
     cleanup_temp_workbooks,
     extract_function_definitions,
 )
+from agentic_patterns.core.repl.sandbox import delete_cell_pkl_files, delete_repl_dir
 from agentic_patterns.core.repl.config import (
     DEFAULT_CELL_TIMEOUT,
     MAX_CELLS,
@@ -36,6 +37,12 @@ class Notebook(BaseModel):
     function_definitions: list[str] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
+
+    def _get_workspace_path(self) -> Path:
+        """Get the workspace path for this notebook's user/session."""
+        from agentic_patterns.core.config.config import WORKSPACE_DIR
+
+        return WORKSPACE_DIR / self.user_id / self.session_id
 
     @staticmethod
     def _get_session_notebook_dir(user_id: str, session_id: str) -> Path:
@@ -82,6 +89,7 @@ class Notebook(BaseModel):
         self.namespace = {}
         self.execution_count = 0
         cleanup_temp_workbooks(self.user_id, self.session_id)
+        delete_repl_dir(self._get_workspace_path())
         self.save()
 
     def delete_cell(self, cell_id_or_number: str | int) -> None:
@@ -91,14 +99,19 @@ class Notebook(BaseModel):
                 raise ValueError(
                     f"Cell number {cell_id_or_number} out of range (0-{len(self.cells) - 1})"
                 )
+            cell_id = self.cells[cell_id_or_number].id
             del self.cells[cell_id_or_number]
         else:
+            cell_id = None
             for i, cell in enumerate(self.cells):
                 if cell.id == cell_id_or_number:
+                    cell_id = cell.id
                     del self.cells[i]
                     break
             else:
                 raise ValueError(f"Cell with ID {cell_id_or_number} not found")
+        if cell_id:
+            delete_cell_pkl_files(self._get_workspace_path(), cell_id)
         self._renumber_cells()
         self.save()
 

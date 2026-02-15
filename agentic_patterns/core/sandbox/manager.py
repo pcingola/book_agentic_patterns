@@ -13,10 +13,11 @@ from agentic_patterns.core.config.config import WORKSPACE_DIR
 from agentic_patterns.core.sandbox.config import (
     SANDBOX_COMMAND_TIMEOUT,
     SANDBOX_CONTAINER_PREFIX,
+    SandboxProfile,
 )
 from agentic_patterns.core.sandbox.container_config import (
     ContainerConfig,
-    create_default_config,
+    create_container_config,
 )
 from agentic_patterns.core.sandbox.network_mode import NetworkMode, get_network_mode
 from agentic_patterns.core.sandbox.session import SandboxSession
@@ -31,9 +32,16 @@ class SandboxManager:
     private data run in containers with no network access (network_mode="none").
     """
 
-    def __init__(self, read_only_mounts: dict[str, str] | None = None) -> None:
+    def __init__(
+        self,
+        read_only_mounts: dict[str, str] | None = None,
+        profile: SandboxProfile | None = None,
+        environment: dict[str, str] | None = None,
+    ) -> None:
         self._client: docker.DockerClient | None = None
         self._read_only_mounts: dict[str, str] = read_only_mounts or {}
+        self._profile: SandboxProfile | None = profile
+        self._environment: dict[str, str] = environment or {}
         self._sessions: dict[tuple[str, str], SandboxSession] = {}
 
     @property
@@ -67,13 +75,14 @@ class SandboxManager:
         self,
         user_id: str,
         session_id: str,
-        command: str,
+        command: str | list[str],
         timeout: int | None = None,
         *,
         persistent: bool = False,
     ) -> tuple[int, str]:
         """Execute a command in a sandbox container. Returns (exit_code, output).
 
+        command can be a shell string (wrapped in bash -c) or a raw command list.
         persistent=False (default): create container, run, destroy.
         persistent=True: reuse cached session across calls.
         """
@@ -132,6 +141,12 @@ class SandboxManager:
         )
         return container
 
+    def _create_config(self, network_mode: NetworkMode) -> ContainerConfig:
+        """Create a ContainerConfig using the manager's profile and environment."""
+        return create_container_config(
+            network_mode, self._read_only_mounts, self._profile, self._environment
+        )
+
     def _ensure_network_mode(self, session: SandboxSession) -> None:
         """Check if session's network mode matches PrivateData state; recreate if not."""
         required = get_network_mode(session.user_id, session.session_id)
@@ -150,7 +165,7 @@ class SandboxManager:
     ) -> SandboxSession:
         """Create a brand new session with container."""
         network_mode = get_network_mode(user_id, session_id)
-        config = create_default_config(network_mode, self._read_only_mounts)
+        config = self._create_config(network_mode)
         data_dir = WORKSPACE_DIR / user_id / session_id
 
         suffix = f"-{uuid.uuid4().hex[:8]}" if ephemeral else ""
@@ -170,7 +185,7 @@ class SandboxManager:
         """Stop old container and create a new one with updated network mode."""
         self._remove_container(session.container_id)
         network_mode = get_network_mode(session.user_id, session.session_id)
-        config = create_default_config(network_mode, self._read_only_mounts)
+        config = self._create_config(network_mode)
         self._create_container(session, config)
 
     def _remove_container(self, container_id: str) -> None:
@@ -185,16 +200,20 @@ class SandboxManager:
             logger.warning("Error removing container %s: %s", container_id, e)
 
     def _run_command(
-        self, session: SandboxSession, command: str, timeout: int | None = None
+        self, session: SandboxSession, command: str | list[str], timeout: int | None = None
     ) -> tuple[int, str]:
-        """Execute a command in the session's container. Returns (exit_code, output)."""
+        """Execute a command in the session's container. Returns (exit_code, output).
+
+        command can be a shell string (wrapped in bash -c) or a raw command list.
+        """
         session.touch()
         timeout = timeout or SANDBOX_COMMAND_TIMEOUT
+        cmd = command if isinstance(command, list) else ["bash", "-c", command]
 
         try:
             container = self.client.containers.get(session.container_id)
             result = container.exec_run(
-                cmd=["bash", "-c", command],
+                cmd=cmd,
                 workdir=session.config.working_dir,
                 demux=True,
             )

@@ -53,46 +53,9 @@ toolkits/*          Business logic. Pure Python: models, operations, I/O.
 
 Connectors (`core/connectors/`) are for data source access. Toolkits are for domain logic, operations, services. Each tool file exposes `get_all_tools()` returning plain functions for `Agent(tools=[...])`.
 
-## Core Library (`agentic_patterns/core/`)
+## Library Documentation
 
-| Module | Purpose |
-|---|---|
-| `agents/` | Agent instantiation (`get_agent()` from YAML config), execution (`run_agent()`), `OrchestratorAgent` + `AgentSpec` for composition with tools/MCP/A2A/skills/sub-agents/tasks. Five providers: Azure OpenAI, Bedrock, Ollama, OpenAI, OpenRouter. |
-| `config/` | Environment/project config. Key paths: DATA_DIR, PROMPTS_DIR, WORKSPACE_DIR, PRIVATE_DATA_DIR. `.env` loading with fallback. |
-| `connectors/` | Data source connectors (file, csv, json, sql, vocabulary, openapi). Use `@context_result()` for large results. SQL supports SQLite (Postgres via new subdirs + factory branches). OpenAPI ingests 3.x specs. Vocabulary has three strategies by size (enum/tree/rag). |
-| `context/` | Large file handling, history compaction (`HistoryCompactor`), result truncation (`@context_result()` decorator). Type-specific processors. |
-| `compliance/` | Private data management. `DataSensitivity` enum, `mark_session_private()`. Drives network isolation in sandbox. |
-| `mcp/` | MCP config, errors (`ToolRetryError`/`ToolFatalError`), server factories (`create_mcp_server()`), client factories (`get_mcp_client()`), `AuthSessionMiddleware`. |
-| `a2a/` | A2A client (`A2AClientExtended`), coordinator factory, delegation tools, `MockA2AServer` for testing, skill conversion helpers. |
-| `tasks/` | Async task system: `TaskBroker` for submission/observation, `Worker` for execution, event-driven wait. `TaskStoreJson` and `TaskStoreMemory`. |
-| `skills/` | Skill registry with progressive disclosure. Skills defined via `SKILL.md` with YAML frontmatter. `activate_skill` tool for on-demand loading. |
-| `tools/` | Tool permissions (`@tool_permission()`), AI-driven tool selection (`ToolSelector`). |
-| `evals/` | Eval framework with auto-discovery. Custom evaluators: `OutputContainsJson`, `ToolWasCalled`, `NoToolErrors`, `OutputMatchesSchema`. |
-| `doctors/` | CLI for AI-powered analysis of prompts, tools, MCP servers, A2A cards, skills. |
-| `repl/` | Stateful Python REPL with process isolation, pickle-based IPC, notebook persistence. |
-| `sandbox/` | Docker-based sandbox with network isolation driven by compliance flags. |
-| `process_sandbox.py` | Generic command sandbox: `SandboxBubblewrap` (Linux) / `SandboxSubprocess` (macOS fallback). |
-| `feedback/` | User feedback and session history persistence (JSON per session). |
-| `vectordb/` | Embedding + Chroma integration. Four providers (OpenAI, Ollama, SentenceTransformers, OpenRouter). |
-| `ui/` | `UserDatabase` (JSON-backed auth), AG-UI integration (`AGUIApp`), Chainlit chat UI. |
-| `auth.py` | JWT token generation/validation (HS256). |
-| `prompt.py` | Template loading with `{% include %}` and variable substitution. |
-| `user_session.py` | User/session context via contextvars. `set_user_session()` at request boundaries only. |
-| `workspace.py` | Sandbox workspace isolation. Path translation between `/workspace/...` and host paths. |
-
-Key patterns: async-first with sync wrappers, Pydantic config validation, factory + singleton caching, match/case provider dispatch, decorator-based permissions/truncation, multi-tenant isolation via (user_id, session_id).
-
-## Domain Agents (`agentic_patterns/agents/`)
-
-Each module exposes `create_*()` factory returning a PydanticAI `Agent` and optionally `get_spec()` returning `AgentSpec` for composition. Agents: `db_catalog`, `vocabulary`, `nl2sql/`, `data_analysis`, `sql`, `openapi`, `coordinator`.
-
-## MCP Servers (`agentic_patterns/mcp/`)
-
-All follow the same thin-wrapper pattern: `server.py` + `tools.py`, delegate to toolkits/connectors, convert exceptions to `ToolRetryError`/`ToolFatalError`. Servers: `template/` (reference impl), `todo/`, `data_analysis/`, `data_viz/`, `format_conversion/`, `file_ops/`, `sql/`, `repl/`, `sandbox/`, `vocabulary/`, `openapi/`.
-
-## A2A Servers (`agentic_patterns/a2a/`)
-
-Each server: loads prompt, connects MCP via `get_mcp_client()`, builds skills list, creates agent with `get_agent()`, exposes via `agent.to_a2a()` + `AuthSessionMiddleware`. Servers: `template/`, `nl2sql/` (port 8002), `data_analysis/` (8201), `vocabulary/` (8202), `openapi/` (8203).
+For detailed documentation of `core/`, `agents/`, `mcp/`, `a2a/`, `toolkits/`, `tools/`, and `testing/`, see `docs/agentic_patterns.md` and its linked detail files in `docs/agentic_patterns/`.
 
 ## Scripts
 

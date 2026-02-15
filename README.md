@@ -35,6 +35,10 @@ The book is organized in two sections. The first covers the building blocks: rea
 
 Full table of contents with section-level detail: [chapters.md](chapters.md)
 
+## Library Documentation
+
+API and module documentation for the `agentic_patterns` library: [docs/agentic_patterns.md](docs/agentic_patterns.md)
+
 ## Repository Structure
 
 ```

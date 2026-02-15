@@ -91,7 +91,7 @@ agentic_patterns/mcp/todo/
 
 ## Configuration
 
-MCP client and server settings are defined in `config.yaml` and loaded via `load_mcp_settings()`.
+MCP client and server settings are defined in `config.yaml` and loaded via `load_mcp_settings()`. Environment variables are expanded using `${VAR}` syntax.
 
 ```yaml
 mcp_servers:
@@ -172,7 +172,10 @@ The routing is a one-way ratchet: once private data is detected in a session, al
 | `MCPServerPrivateData` | Toolset | Dual-instance client with compliance routing |
 | `MCPClientConfig` | Pydantic model | Client config (url, url_isolated, read_timeout) |
 | `MCPServerConfig` | Pydantic model | Server config (name, instructions, port) |
+| `MCPSettings` | Class | Container for loaded MCP configs with `get(name)` accessor |
 | `load_mcp_settings(config_path)` | Function | Load MCP settings from YAML |
+| `get_mcp_server(name, config_path)` | Function | Create a FastMCP server from config (loads from YAML) |
+| `create_process_tool_call(bearer_token)` | Function | Create callback that injects Bearer token into MCP request metadata |
 
 
 ## Examples
