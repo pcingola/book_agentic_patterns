@@ -1,5 +1,5 @@
 # Project specific
-PROMPT.md
+PROMPT*.md
 output/*
 !output/book.md
 !output/book.pdf

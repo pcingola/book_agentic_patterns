@@ -4,7 +4,7 @@
 
 Run the MCP server:
 ```bash
-./scripts/example_mcp_server.sh
+fastmcp run -t stdio agentic_patterns/examples/mcp/example_mcp_server.py
 ```
 
 ### 1. Initialize request
