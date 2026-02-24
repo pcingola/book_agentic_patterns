@@ -107,7 +107,7 @@ Structuring multi-agent execution through workflows, graphs, delegation, and asy
 
 ### Chapter: [RAG](chapters/rag/chapter.md)
 
-Retrieval-Augmented Generation: embeddings, vector databases, document ingestion/retrieval pipelines, evaluation, and attribution.
+Retrieval-Augmented Generation: embeddings, vector databases, document ingestion/retrieval pipelines, evaluation, attribution, multi-source retrieval, and semantic clustering.
 
 - [x] Introduction -- Core RAG pattern combining retrieval with generation to ground answers in external knowledge
 - [x] Historical Perspective -- From vector space models and probabilistic IR through dense embeddings to integrated RAG systems
@@ -117,9 +117,13 @@ Retrieval-Augmented Generation: embeddings, vector databases, document ingestion
 - [x] Document Retrieval -- Multi-stage pipeline: query interpretation, candidate generation, scoring, re-ranking, and filtering
 - [x] Evaluating RAG Systems -- Layered metrics for vector search quality, document retrieval relevance, and generation faithfulness
 - [x] References and Attribution -- Provenance mechanisms linking generated statements to source documents for auditability
-- [x] Hands-on: Introduction -- Overview of exercises from simple paragraph-based RAG through advanced semantic chunking
+- [x] Multi-Source RAG & Evidence Grounding -- Managing named indices with a unified retrieval interface; attaching source spans to every claim
+- [x] Semantic Clustering -- Embedding-based clustering for corpus exploration, cluster labeling, and mapping themes to structured criteria
+- [x] Hands-on: Introduction -- Overview of exercises from simple paragraph-based RAG through multi-source retrieval and semantic clustering
 - [x] Hands-on: Simple Document Ingestion and Retrieval -- Foundational RAG with paragraph chunking, Chroma storage, and similarity retrieval
 - [x] Hands-on: Advanced Document Ingestion and Retrieval -- Semantic chunking with LLM boundary detection, query expansion, and re-ranking
+- [x] Hands-on: Multi-Source RAG -- Querying multiple indices in parallel, merging results with provenance metadata
+- [x] Hands-on: Semantic Clustering -- Clustering an ingested collection, labeling clusters with LLM, and indexing summaries as a navigational layer
 - [x] References
 
 ### Chapter: [Context & Memory](chapters/context_memory/chapter.md)
@@ -265,13 +269,17 @@ Five progressively capable monolithic agents combining all prior patterns, then 
 - [x] Infrastructure -- Decomposing the monolithic agent into distributed MCP servers and A2A services with identical agent architecture
 - [x] References
 
-### Section: Advanced Agents (TODO)
+### Chapter: [Advanced Agents](chapters/advanced_agents/chapter.md)
 
-- [ ] Deep research agent
-- [ ] Rubric agent
-- [ ] Documentation agent (SOWs, Handbooks)
-- [ ] Code Indexing and Search Agent
-- [ ] Biomni
-- [ ] Debate / Personas and simulation, 
-  - [ ] Role-playing and multi-perspective reasoning. 
-  - [ ] Debate and arbitration agents (one on the positive, one on the negative)
+Complex agents built by composing prior patterns: adversarial simulation, iterative research, and rubric-based compliance evaluation.
+
+- [ ] Introduction -- How the patterns from previous chapters compose into agents that reason, challenge, and synthesize at scale
+- [ ] Adversarial & Debate Agents -- Red-team agent generating challenges from gaps; debate pattern with two opposing sub-agents and an arbiter; persona simulation
+- [ ] Deep Research Agent -- Iterative plan-retrieve-gap-requery loop with evidence accumulation, conflict resolution, and stopping criteria
+- [ ] Rubric Agent -- Criteria-driven assessment: rubric creation from policy docs, refinement via semantic clustering of historical data, multi-source evidence retrieval, adversarial stress-test; compliance framing (GxP, HIPAA, SOC 2)
+- [ ] Code Indexing and Search Agent -- Semantic indexing of large codebases with natural-language search and cross-reference resolution
+- [ ] Hands-on: Introduction -- Overview of exercises building up from adversarial agents through the full rubric pipeline
+- [ ] Hands-on: Debate Agent -- Two sub-agents argue opposing positions on a proposal; arbiter produces a verdict with reasoning
+- [ ] Hands-on: Deep Research Agent -- Multi-step research loop over a heterogeneous corpus with gap detection and source conflict handling
+- [ ] Hands-on: Rubric Agent -- End-to-end compliance assessment: extract SOC 2 controls, refine with audit findings, assess a project, simulate the external auditor
+- [ ] References

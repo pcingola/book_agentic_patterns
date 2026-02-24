@@ -11,6 +11,7 @@ from agentic_patterns.core.vectordb.config import (
     load_vectordb_settings,
 )
 from agentic_patterns.core.vectordb.embeddings import embed_texts, get_embedder
+from agentic_patterns.core.vectordb.models import ChunkLevel, RetrievedDocument
 
 _vector_dbs: dict[str, chromadb.Collection] = {}
 _chroma_clients: dict[str, chromadb.PersistentClient] = {}
@@ -131,8 +132,8 @@ def vdb_query(
     where_document: dict[str, str] | None = None,
     max_items: int = 10,
     similarity_threshold: float | None = None,
-) -> list[tuple[str, dict, float]]:
-    """Query vector database with a given query, return top k results as (document, metadata, score) tuples."""
+) -> list[RetrievedDocument]:
+    """Query vector database with a given query, return top k results as RetrievedDocument list."""
     results = vdb.query(
         query_texts=[query],
         n_results=max_items,
@@ -141,14 +142,22 @@ def vdb_query(
         include=["documents", "metadatas", "distances"],
     )
 
+    ids = results.get("ids", [[]])[0]
     documents = results.get("documents", [[]])[0]
     metadatas = results.get("metadatas", [[]])[0]
     distances = results.get("distances", [[]])[0]
 
     items = []
-    for doc, meta, dist in zip(documents, metadatas, distances):
+    for doc_id, doc, meta, dist in zip(ids, documents, metadatas, distances):
         score = 1.0 - dist  # Convert distance to similarity score
         if similarity_threshold is None or score >= similarity_threshold:
-            items.append((doc, meta, score))
+            meta = meta or {}
+            level_str = meta.get("level", ChunkLevel.PARAGRAPH)
+            try:
+                level = ChunkLevel(level_str)
+            except ValueError:
+                level = ChunkLevel.PARAGRAPH
+            parent_id = meta.get("parent_id") or None
+            items.append(RetrievedDocument(doc_id=doc_id, text=doc, score=score, level=level, parent_id=parent_id, metadata=meta))
 
     return items

@@ -8,6 +8,14 @@ from agentic_patterns.core.vectordb.embeddings import (
     embed_texts,
     get_embedder,
 )
+from agentic_patterns.core.vectordb.models import (
+    Chunk,
+    ChunkLevel,
+    Cluster,
+    ClusterItem,
+    ClusterResult,
+    RetrievedDocument,
+)
 from agentic_patterns.core.vectordb.vectordb import (
     get_vector_db,
     vdb_add,
@@ -17,7 +25,13 @@ from agentic_patterns.core.vectordb.vectordb import (
 )
 
 __all__ = [
+    "Chunk",
+    "ChunkLevel",
+    "Cluster",
+    "ClusterItem",
+    "ClusterResult",
     "EmbeddingConfig",
+    "RetrievedDocument",
     "VectorDBConfig",
     "embed_text",
     "embed_texts",

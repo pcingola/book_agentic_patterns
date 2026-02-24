@@ -168,7 +168,7 @@ class StrategyRag:
     def search(self, query: str, max_results: int = 10) -> list[VocabularyTerm]:
         """Semantic search via vector DB."""
         results = vdb_query(self._vdb, query, max_items=max_results)
-        return [_meta_to_term(meta["term_id"], meta) for _, meta, _ in results if meta]
+        return [_meta_to_term(doc.metadata["term_id"], doc.metadata) for doc in results if doc.metadata]
 
     def siblings(self, term_code: str) -> list[VocabularyTerm]:
         term = self._get_term_by_id(term_code)
