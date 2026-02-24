@@ -23,13 +23,18 @@ class TaskStore(ABC):
     async def create(self, task: Task) -> Task: ...
 
     @abstractmethod
+    async def dependents(self, task_id: str) -> list[Task]:
+        """Return tasks that depend on the given task ID."""
+        ...
+
+    @abstractmethod
     async def get(self, task_id: str) -> Task | None: ...
 
     @abstractmethod
     async def list_by_state(self, state: TaskState) -> list[Task]: ...
 
     @abstractmethod
-    async def next_pending(self) -> Task | None: ...
+    async def next_pending(self, exclude: set[str] | None = None) -> Task | None: ...
 
     @abstractmethod
     async def update_state(
@@ -63,6 +68,10 @@ class TaskStoreMemory(TaskStore):
             logger.debug("Created task %s", task.id[:8])
             return task
 
+    async def dependents(self, task_id: str) -> list[Task]:
+        async with self._lock:
+            return [t for t in self._tasks.values() if task_id in t.depends_on]
+
     async def get(self, task_id: str) -> Task | None:
         async with self._lock:
             return self._tasks.get(task_id)
@@ -74,9 +83,19 @@ class TaskStoreMemory(TaskStore):
                 key=lambda t: t.created_at,
             )
 
-    async def next_pending(self) -> Task | None:
-        tasks = await self.list_by_state(TaskState.PENDING)
-        return tasks[0] if tasks else None
+    async def next_pending(self, exclude: set[str] | None = None) -> Task | None:
+        async with self._lock:
+            exclude = exclude or set()
+            for t in sorted(self._tasks.values(), key=lambda t: t.created_at):
+                if t.state != TaskState.PENDING or t.id in exclude:
+                    continue
+                if t.depends_on and not all(
+                    self._tasks.get(dep_id) and self._tasks[dep_id].state == TaskState.COMPLETED
+                    for dep_id in t.depends_on
+                ):
+                    continue
+                return t
+            return None
 
     async def update_state(
         self,
@@ -135,6 +154,15 @@ class TaskStoreJson(TaskStore):
             logger.debug("Created task %s", task.id[:8])
             return task
 
+    async def dependents(self, task_id: str) -> list[Task]:
+        async with self._lock:
+            result = []
+            for path in self._dir.glob("*.json"):
+                task = Task.model_validate_json(path.read_text())
+                if task_id in task.depends_on:
+                    result.append(task)
+            return result
+
     async def get(self, task_id: str) -> Task | None:
         async with self._lock:
             return self._read(task_id)
@@ -148,9 +176,25 @@ class TaskStoreJson(TaskStore):
                     tasks.append(task)
             return sorted(tasks, key=lambda t: t.created_at)
 
-    async def next_pending(self) -> Task | None:
-        tasks = await self.list_by_state(TaskState.PENDING)
-        return tasks[0] if tasks else None
+    async def next_pending(self, exclude: set[str] | None = None) -> Task | None:
+        async with self._lock:
+            exclude = exclude or set()
+            pending = []
+            all_tasks: dict[str, Task] = {}
+            for path in self._dir.glob("*.json"):
+                task = Task.model_validate_json(path.read_text())
+                all_tasks[task.id] = task
+                if task.state == TaskState.PENDING and task.id not in exclude:
+                    pending.append(task)
+            pending.sort(key=lambda t: t.created_at)
+            for t in pending:
+                if t.depends_on and not all(
+                    all_tasks.get(dep_id) and all_tasks[dep_id].state == TaskState.COMPLETED
+                    for dep_id in t.depends_on
+                ):
+                    continue
+                return t
+            return None
 
     async def update_state(
         self,

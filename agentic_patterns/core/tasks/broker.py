@@ -56,9 +56,9 @@ class TaskBroker:
 
     # -- Submission --
 
-    async def submit(self, input: str, **metadata: Any) -> str:
+    async def submit(self, input: str, depends_on: list[str] | None = None, **metadata: Any) -> str:
         """Create a task and return its id."""
-        task = Task(input=input, metadata=metadata)
+        task = Task(input=input, depends_on=depends_on or [], metadata=metadata)
         await self._store.create(task)
         logger.info("Submitted task %s", task.id[:8])
         return task.id
@@ -140,10 +140,14 @@ class TaskBroker:
         """Background loop that picks pending tasks and dispatches them concurrently."""
         while True:
             try:
-                task = await self._store.next_pending()
-                if task is not None and task.id not in self._running:
+                running_ids = set(self._running.keys())
+                while True:
+                    task = await self._store.next_pending(exclude=running_ids)
+                    if task is None:
+                        break
                     atask = asyncio.create_task(self._run_and_notify(task.id))
                     self._running[task.id] = atask
+                    running_ids.add(task.id)
                 await asyncio.sleep(self._poll_interval)
             except asyncio.CancelledError:
                 raise
@@ -152,9 +156,12 @@ class TaskBroker:
                 await asyncio.sleep(self._poll_interval)
 
     async def _run_and_notify(self, task_id: str) -> None:
-        """Run worker for a task, fire callbacks, handle cancellation."""
+        """Run worker for a task, fire callbacks, cascade failures."""
         try:
             await self._worker.execute(task_id)
+            task = await self._store.get(task_id)
+            if task and task.state == TaskState.FAILED:
+                await self._cascade_failure(task_id)
             await self._fire_callbacks(task_id)
         except asyncio.CancelledError:
             # Worker handles CancelledError internally (marks CANCELLED)
@@ -165,6 +172,31 @@ class TaskBroker:
             self._running.pop(task_id, None)
             if self._activity is not None:
                 self._activity.set()
+
+    async def _cascade_failure(self, failed_task_id: str) -> None:
+        """BFS-walk transitive dependents and mark them FAILED."""
+        queue = [failed_task_id]
+        visited: set[str] = set()
+        while queue:
+            current_id = queue.pop(0)
+            if current_id in visited:
+                continue
+            visited.add(current_id)
+            for dep_task in await self._store.dependents(current_id):
+                if dep_task.state in TERMINAL_STATES:
+                    continue
+                error = f"Dependency {current_id[:8]} failed"
+                await self._store.update_state(dep_task.id, TaskState.FAILED, error=error)
+                await self._store.add_event(
+                    dep_task.id,
+                    TaskEvent(
+                        task_id=dep_task.id,
+                        event_type=EventType.STATE_CHANGE,
+                        payload={"state": TaskState.FAILED.value, "reason": error},
+                    ),
+                )
+                logger.info("Cascade-failed task %s (dep of %s)", dep_task.id[:8], current_id[:8])
+                queue.append(dep_task.id)
 
     async def _fire_callbacks(self, task_id: str) -> None:
         """Fire registered callbacks if the task state matches."""

@@ -52,3 +52,11 @@ Persistence enables three things beyond basic durability. Recovery after failure
 The worker IS a sub-agent executor with lifecycle management around it. It reads metadata, calls `get_agent()` and `run_agent()`, and writes results back -- exactly the dynamic sub-agent pattern from the previous section, wrapped in state tracking and persistence.
 
 The same concepts appear in A2A as protocol-level guarantees. A2A defines task states, streaming via Server-Sent Events, push notifications via webhooks, and task storage as protocol requirements. The `core/tasks/` module is the local implementation of those ideas -- the same architecture applied within a single process instead of across a network.
+
+#### Dependencies and DAG Execution
+
+Tasks rarely exist in isolation. A research task must complete before the writing task that uses its findings. Two independent research tasks can run in parallel, but the summary that combines them must wait for both. These relationships form a directed acyclic graph (DAG).
+
+Each task declares its dependencies via `depends_on`, a list of task IDs that must reach COMPLETED state before the broker will dispatch it. The broker checks readiness on every dispatch cycle: a pending task with no dependencies (or all dependencies completed) is dispatched immediately. Independent tasks run in parallel. Tasks whose dependencies are not yet met remain pending.
+
+When a task fails, the broker cascades the failure transitively to all dependents. If task A fails and task B depends on A, B is marked FAILED with an error indicating the upstream failure. If task C depends on B, it is also marked FAILED. This prevents wasted work: there is no point running a summary task if the research it needs has failed.

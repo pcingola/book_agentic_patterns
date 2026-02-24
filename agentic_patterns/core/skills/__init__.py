@@ -5,7 +5,7 @@ from agentic_patterns.core.skills.tools import (
     get_all_tools,
     get_skill_instructions,
     list_available_skills,
-    run_skill_script,
+    run_skill_script_sandboxed,
 )
 
 __all__ = [
@@ -13,7 +13,7 @@ __all__ = [
     "get_all_tools",
     "get_skill_instructions",
     "list_available_skills",
-    "run_skill_script",
+    "run_skill_script_sandboxed",
     "Skill",
     "SkillMetadata",
     "SkillRegistry",

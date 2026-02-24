@@ -12,7 +12,7 @@ from pathlib import Path
 from agentic_patterns.core.config.config import WORKSPACE_DIR
 from agentic_patterns.core.sandbox.manager import SandboxManager
 from agentic_patterns.core.skills.registry import SkillRegistry
-from agentic_patterns.core.skills.tools import run_skill_script
+from agentic_patterns.core.skills.tools import run_skill_script_sandboxed as run_skill_script
 
 
 class TestSandboxReadOnlyMounts(unittest.TestCase):

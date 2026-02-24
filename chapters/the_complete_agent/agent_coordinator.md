@@ -43,6 +43,8 @@ Turn 2 asks for a markdown report with a bar chart, converted to PDF. This mixes
 
 The `delegate` tool is synchronous from the agent's perspective: it submits a task to the broker, waits for the result, and returns it as a string. Under the hood, the broker dispatches the task to a `Worker`, which instantiates a fresh `OrchestratorAgent` from the sub-agent's `AgentSpec`, runs it, and collects the output. Each sub-agent gets its own context window, its own tool set, and its own reasoning trace. The coordinator never sees the sub-agent's intermediate steps -- only the final result.
 
+Tasks also support dependencies via `depends_on`, so the coordinator can express execution order when delegating multiple related tasks -- for example, ensuring a data analysis task completes before a report-writing task that uses its output.
+
 This separation matters. The SQL sub-agent can reason about schemas, validate queries, and retry on syntax errors without those details leaking into the coordinator's context. The data analysis sub-agent can iterate on DataFrame operations without cluttering the coordinator's message history. Each agent stays focused on its domain.
 
 The full example is in `agentic_patterns/examples/the_complete_agent/example_agent_coordinator.ipynb`.

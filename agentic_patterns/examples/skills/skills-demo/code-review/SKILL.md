@@ -12,7 +12,14 @@ Use this skill when asked to review, analyze, or check code for issues. This inc
 
 ## How to use
 
-After activating this skill, use the `analyze_code` tool to examine code snippets.
+Run the bundled analysis script to scan for common issues:
+
+```
+python scripts/analyze.py <file>          # analyze a file
+python scripts/analyze.py -c '<code>'     # analyze inline code
+```
+
+Use the script output as the basis for your review, then add your own observations about logic and design.
 
 ## What to look for
 

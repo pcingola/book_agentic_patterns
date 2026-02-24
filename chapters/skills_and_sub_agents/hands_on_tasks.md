@@ -27,6 +27,7 @@ class Task(BaseModel):
     input: str
     result: str | None = None
     error: str | None = None
+    depends_on: list[str] = Field(default_factory=list)
     events: list[TaskEvent] = Field(default_factory=list)
     metadata: dict = Field(default_factory=dict)
 ```
@@ -55,7 +56,7 @@ class TaskStore(ABC):
     async def add_event(self, task_id: str, event: TaskEvent) -> None: ...
 ```
 
-`TaskStoreJson` implements this with one JSON file per task, using `pathlib.Path` for file operations and `asyncio.Lock` for concurrency safety. The implementation is intentionally simple -- production use would swap in a database-backed store without changing any other code.
+`TaskStoreJson` implements this with one JSON file per task, using `pathlib.Path` for file operations and `asyncio.Lock` for concurrency safety. The `next_pending()` method is dependency-aware: it only returns tasks whose `depends_on` list is empty or whose every dependency has reached COMPLETED state. An optional `exclude` parameter lets the broker skip tasks already being dispatched. The `dependents()` method returns all tasks that depend on a given task ID, used for failure cascading. The implementation is intentionally simple -- production use would swap in a database-backed store without changing any other code.
 
 #### Worker
 
@@ -88,7 +89,7 @@ async with TaskBroker() as broker:
     print(task.result)
 ```
 
-The dispatch loop is a simple polling loop: check for pending tasks, hand them to the worker, fire callbacks when done. The broker exposes five observation methods: `poll()` returns current state, `wait()` blocks until terminal, `stream()` yields events, `cancel()` stops execution, and `notify()` registers callbacks for specific state changes.
+The dispatch loop polls for ready tasks each cycle, dispatching all of them concurrently (not just one). A task is ready when it is PENDING and all its `depends_on` IDs have reached COMPLETED state. `submit()` accepts an optional `depends_on` parameter to declare dependencies. When a task fails, the broker cascades the failure transitively to all dependents via BFS, marking them FAILED with a descriptive error. The broker exposes five observation methods: `poll()` returns current state, `wait()` blocks until terminal, `stream()` yields events, `cancel()` stops execution, and `notify()` registers callbacks for specific state changes.
 
 #### Sub-Agent to Task Mapping
 
@@ -104,3 +105,4 @@ The following table shows how sub-agent concepts map to the task lifecycle:
 | No observation | `broker.poll()`, `broker.stream()`, `broker.notify()` |
 | No persistence | `TaskStore` with durable backend |
 | No cancellation | `broker.cancel()` |
+| No dependency ordering | `depends_on` + DAG-aware dispatch |

@@ -1,5 +1,7 @@
 """PydanticAI tool functions for agent integration with skills."""
 
+import subprocess
+
 from agentic_patterns.core.sandbox.manager import SandboxManager
 from agentic_patterns.core.skills.registry import SkillRegistry
 
@@ -36,20 +38,46 @@ def list_available_skills(registry: SkillRegistry) -> str:
 
 
 def get_all_tools(registry: SkillRegistry) -> list:
-    """Get skill tools for use with PydanticAI agents."""
+    """Get skill tools for use with PydanticAI agents.
+
+    Returns activate_skill (Tier 2) and run_skill_script (Tier 3).
+    Scripts run locally via subprocess. For sandboxed execution see
+    run_skill_script_sandboxed().
+    """
+    activated: set[str] = set()
 
     def activate_skill(skill_name: str) -> str:
         """Activate a skill by name to load its full instructions into context."""
-        instructions = get_skill_instructions(registry, skill_name)
-        if instructions is None:
+        skill = registry.get(skill_name)
+        if skill is None:
             return f"Skill '{skill_name}' not found. Use the skill catalog to see available skills."
-        print(f"[SKILL ACTIVATED: {skill_name}]")
-        return instructions
+        activated.add(skill_name)
+        parts = [skill.body]
+        if skill.script_paths:
+            scripts = ", ".join(p.name for p in skill.script_paths)
+            parts.append(f"\nAvailable scripts: {scripts}")
+        return "\n".join(parts)
 
-    return [activate_skill]
+    def run_skill_script(skill_name: str, script_name: str, args: str = "") -> str:
+        """Run a script bundled with an activated skill."""
+        if skill_name not in activated:
+            return f"Error: activate the '{skill_name}' skill first."
+        skill = registry.get(skill_name)
+        if skill is None:
+            return f"Skill '{skill_name}' not found."
+        matching = [p for p in skill.script_paths if p.name == script_name]
+        if not matching:
+            return f"Script '{script_name}' not found in skill '{skill_name}'."
+        interpreter = "python" if script_name.endswith(".py") else "bash"
+        cmd = [interpreter, str(matching[0])] + (args.split() if args else [])
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        output = result.stdout.strip() if result.returncode == 0 else result.stderr.strip()
+        return f"Exit code: {result.returncode}\n{output}" if output else "Script produced no output."
+
+    return [activate_skill, run_skill_script]
 
 
-def run_skill_script(
+def run_skill_script_sandboxed(
     manager: SandboxManager,
     registry: SkillRegistry,
     user_id: str,

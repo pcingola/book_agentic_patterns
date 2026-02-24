@@ -30,12 +30,12 @@ class Task(BaseModel):
     input: str
     result: str | None = None
     error: str | None = None
+    depends_on: list[str] = Field(default_factory=list)
     events: list[TaskEvent] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     metadata: dict = Field(default_factory=dict)
 
     def __str__(self) -> str:
-        return (
-            f"Task(id={self.id[:8]}, state={self.state.value}, input={self.input[:40]})"
-        )
+        deps = f", deps={len(self.depends_on)}" if self.depends_on else ""
+        return f"Task(id={self.id[:8]}, state={self.state.value}{deps}, input={self.input[:40]})"
