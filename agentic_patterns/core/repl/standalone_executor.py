@@ -8,7 +8,7 @@ IPC protocol: reads plain dict from <cell_id>_input.pkl, writes plain dict to
 <cell_id>_output.pkl. The host converts dicts back to pydantic models.
 """
 
-EXECUTOR_SOURCE = '''\
+EXECUTOR_SOURCE = """\
 import ast
 import base64
 import builtins
@@ -350,4 +350,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-'''
+"""

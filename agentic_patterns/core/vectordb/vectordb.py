@@ -7,7 +7,10 @@ import chromadb
 from chromadb.api.types import Documents, Embeddings, EmbeddingFunction
 
 from agentic_patterns.core.doc_ingestion.models import DocumentProvenance
-from agentic_patterns.core.vectordb.config import ChromaVectorDBConfig, load_vectordb_settings
+from agentic_patterns.core.vectordb.config import (
+    ChromaVectorDBConfig,
+    load_vectordb_settings,
+)
 from agentic_patterns.core.vectordb.embeddings import embed_texts, get_embedder
 from agentic_patterns.core.vectordb.models import Chunk, ChunkLevel, RetrievedDocument
 
@@ -18,7 +21,9 @@ _chroma_clients: dict[str, chromadb.PersistentClient] = {}
 class PydanticAIEmbeddingFunction(EmbeddingFunction):
     """Wraps a pydantic-ai embedder for use with Chroma."""
 
-    def __init__(self, embedding_config: str | None = None, config_path: Path | str | None = None):
+    def __init__(
+        self, embedding_config: str | None = None, config_path: Path | str | None = None
+    ):
         self._embedding_config = embedding_config
         self._config_path = config_path
         self._embedder = get_embedder(embedding_config, config_path)
@@ -34,7 +39,9 @@ class PydanticAIEmbeddingFunction(EmbeddingFunction):
         }
 
     @staticmethod
-    def build_from_config(config: dict[str, str | None]) -> "PydanticAIEmbeddingFunction":
+    def build_from_config(
+        config: dict[str, str | None],
+    ) -> "PydanticAIEmbeddingFunction":
         return PydanticAIEmbeddingFunction(
             embedding_config=config.get("embedding_config"),
             config_path=config.get("config_path"),
@@ -44,8 +51,11 @@ class PydanticAIEmbeddingFunction(EmbeddingFunction):
         loop = asyncio.get_event_loop()
         if loop.is_running():
             import nest_asyncio
+
             nest_asyncio.apply()
-        return asyncio.get_event_loop().run_until_complete(embed_texts(list(input), self._embedder))
+        return asyncio.get_event_loop().run_until_complete(
+            embed_texts(list(input), self._embedder)
+        )
 
 
 class VectorDB:
@@ -66,11 +76,15 @@ class VectorDB:
     # Low-level operations
     # ------------------------------------------------------------------
 
-    def add(self, text: str, doc_id: str, meta: dict | None = None, force: bool = False) -> str | None:
+    def add(
+        self, text: str, doc_id: str, meta: dict | None = None, force: bool = False
+    ) -> str | None:
         """Add a document. Skips if doc_id already exists and force=False."""
         if not force and self.has(doc_id):
             return None
-        self._collection.add(documents=[text], ids=[doc_id], metadatas=[meta] if meta else None)
+        self._collection.add(
+            documents=[text], ids=[doc_id], metadatas=[meta] if meta else None
+        )
         return doc_id
 
     def count(self) -> int:
@@ -113,10 +127,16 @@ class VectorDB:
                     level = ChunkLevel(meta.get("level", ChunkLevel.PARAGRAPH))
                 except ValueError:
                     level = ChunkLevel.PARAGRAPH
-                items.append(RetrievedDocument(
-                    doc_id=doc_id, text=doc, score=score, level=level,
-                    parent_id=meta.get("parent_id") or None, metadata=meta,
-                ))
+                items.append(
+                    RetrievedDocument(
+                        doc_id=doc_id,
+                        text=doc,
+                        score=score,
+                        level=level,
+                        parent_id=meta.get("parent_id") or None,
+                        metadata=meta,
+                    )
+                )
         return items
 
     # ------------------------------------------------------------------
@@ -134,7 +154,11 @@ class VectorDB:
         effective_filter = dict(filter) if filter else None
         if level is not None:
             level_filter: dict = {"level": {"$eq": level.value}}
-            effective_filter = {"$and": [effective_filter, level_filter]} if effective_filter else level_filter
+            effective_filter = (
+                {"$and": [effective_filter, level_filter]}
+                if effective_filter
+                else level_filter
+            )
 
         docs = self.query(query, filter=effective_filter, max_items=max_results)
 
@@ -193,9 +217,11 @@ class VectorDB:
 
         if file.suffix.lower() == ".md":
             from agentic_patterns.core.doc_ingestion.loader import load_markdown
+
             text = load_markdown(file, provenance)
         else:
             from agentic_patterns.core.doc_ingestion.loader import load_document
+
             text = load_document(file, provenance, pipeline=pipeline)
 
         return self.ingest(_chunk(text, provenance), force=force)
@@ -213,6 +239,7 @@ def get_vector_db(
 
     if config_path is None:
         from agentic_patterns.core.config.config import MAIN_PROJECT_DIR
+
         config_path = MAIN_PROJECT_DIR / "config.yaml"
 
     settings = load_vectordb_settings(config_path)
@@ -224,6 +251,7 @@ def get_vector_db(
     persist_dir = Path(vdb_config.persist_directory)
     if not persist_dir.is_absolute():
         from agentic_patterns.core.config.config import MAIN_PROJECT_DIR
+
         persist_dir = MAIN_PROJECT_DIR / persist_dir
     persist_dir.mkdir(parents=True, exist_ok=True)
 

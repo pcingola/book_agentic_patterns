@@ -32,10 +32,11 @@ def _collect_paths(directory: Path) -> list[Path]:
 
 SKILL_USAGE_INSTRUCTIONS = """To use a skill:
 1. Call activate_skill(skill_name) to load its instructions
-2. The instructions will tell you what scripts are available
-3. Call run_skill_script(skill_name, script_name, args) to execute them
+2. The instructions will tell you what scripts, references, and assets are available
+3. Call run_skill_script(skill_name, script_name, args) to execute scripts
+4. Call read_skill_resource(skill_name, resource_type, file_name) to read references or assets
 
-You must activate a skill before running its scripts."""
+You must activate a skill before running its scripts or reading its resources."""
 
 
 class SkillRegistry:
@@ -64,6 +65,7 @@ class SkillRegistry:
                         frontmatter
                         and "name" in frontmatter
                         and "description" in frontmatter
+                        and frontmatter["name"] == skill_dir.name
                     ):
                         self._metadata_cache.append(
                             SkillMetadata(
@@ -72,7 +74,7 @@ class SkillRegistry:
                                 path=skill_dir,
                             )
                         )
-                except (OSError, UnicodeDecodeError):
+                except (OSError, UnicodeDecodeError, ValueError):
                     continue
         self._discovered = True
         return self._metadata_cache
@@ -85,7 +87,7 @@ class SkillRegistry:
         return None
 
     def get_all_tools(self) -> list:
-        """Return PydanticAI tools: activate_skill (Tier 2) and run_skill_script (Tier 3).
+        """Return PydanticAI tools: activate_skill (Tier 2), run_skill_script and read_skill_resource (Tier 3).
 
         Scripts run locally via subprocess. For sandboxed execution see
         run_skill_script_sandboxed() in tools.py.
@@ -103,7 +105,42 @@ class SkillRegistry:
             if skill.script_paths:
                 scripts = ", ".join(p.name for p in skill.script_paths)
                 parts.append(f"\nAvailable scripts: {scripts}")
+            if skill.reference_paths:
+                refs = ", ".join(p.name for p in skill.reference_paths)
+                parts.append(f"\nAvailable references: {refs}")
+            if skill.asset_paths:
+                assets = ", ".join(p.name for p in skill.asset_paths)
+                parts.append(f"\nAvailable assets: {assets}")
             return "\n".join(parts)
+
+        def read_skill_resource(
+            skill_name: str, resource_type: str, file_name: str
+        ) -> str:
+            """Read a reference or asset file from an activated skill.
+            resource_type must be 'reference' or 'asset'."""
+            if skill_name not in activated:
+                return f"Error: activate the '{skill_name}' skill first."
+            skill = registry.get(skill_name)
+            if skill is None:
+                return f"Skill '{skill_name}' not found."
+            if resource_type == "reference":
+                paths = skill.reference_paths
+            elif resource_type == "asset":
+                paths = skill.asset_paths
+            else:
+                return f"Error: resource_type must be 'reference' or 'asset', got '{resource_type}'."
+            matching = [p for p in paths if p.name == file_name]
+            if not matching:
+                available = ", ".join(p.name for p in paths) or "(none)"
+                return f"File '{file_name}' not found in {resource_type}s for '{skill_name}'. Available: {available}"
+            try:
+                return matching[0].read_text(encoding="utf-8")
+            except UnicodeDecodeError:
+                return (
+                    f"Error: '{file_name}' is a binary file and cannot be read as text."
+                )
+            except OSError as e:
+                return f"Error reading '{file_name}': {e}"
 
         def run_skill_script(skill_name: str, script_name: str, args: str = "") -> str:
             """Run a script bundled with an activated skill."""
@@ -118,11 +155,19 @@ class SkillRegistry:
             interpreter = "python" if script_name.endswith(".py") else "bash"
             cmd = [interpreter, str(matching[0])] + (args.split() if args else [])
             result = subprocess.run(cmd, capture_output=True, text=True)
-            output = result.stdout.strip() if result.returncode == 0 else result.stderr.strip()
+            output = (
+                result.stdout.strip()
+                if result.returncode == 0
+                else result.stderr.strip()
+            )
             header = f"[EXECUTE] {skill_name}/{script_name}"
-            return f"{header}\nExit code: {result.returncode}\n{output}" if output else f"{header}\nScript produced no output."
+            return (
+                f"{header}\nExit code: {result.returncode}\n{output}"
+                if output
+                else f"{header}\nScript produced no output."
+            )
 
-        return [activate_skill, run_skill_script]
+        return [activate_skill, run_skill_script, read_skill_resource]
 
     def list_all(self) -> list[SkillMetadata]:
         """Return cached metadata list."""
@@ -147,6 +192,7 @@ class SkillRegistry:
                 not frontmatter
                 or "name" not in frontmatter
                 or "description" not in frontmatter
+                or frontmatter["name"] != skill_dir.name
             ):
                 return None
             return Skill(

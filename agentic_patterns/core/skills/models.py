@@ -1,8 +1,27 @@
 """Data models for the skills library."""
 
+import re
 from pathlib import Path
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
+
+_NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
+
+
+def _validate_skill_name(value: str) -> str:
+    if not 1 <= len(value) <= 64:
+        raise ValueError("name must be 1-64 characters")
+    if not _NAME_RE.match(value):
+        raise ValueError(
+            "name must be lowercase alphanumeric with hyphens (no leading/trailing/consecutive hyphens)"
+        )
+    return value
+
+
+def _validate_skill_description(value: str) -> str:
+    if not 1 <= len(value) <= 1024:
+        raise ValueError("description must be 1-1024 characters")
+    return value
 
 
 class SkillMetadata(BaseModel):
@@ -13,6 +32,16 @@ class SkillMetadata(BaseModel):
     name: str
     description: str
     path: Path
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, v: str) -> str:
+        return _validate_skill_name(v)
+
+    @field_validator("description")
+    @classmethod
+    def validate_description(cls, v: str) -> str:
+        return _validate_skill_description(v)
 
     def __str__(self) -> str:
         return f"{self.name}: {self.description}"
@@ -31,6 +60,16 @@ class Skill(BaseModel):
     script_paths: list[Path]
     reference_paths: list[Path]
     asset_paths: list[Path]
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, v: str) -> str:
+        return _validate_skill_name(v)
+
+    @field_validator("description")
+    @classmethod
+    def validate_description(cls, v: str) -> str:
+        return _validate_skill_description(v)
 
     def __str__(self) -> str:
         return f"Skill({self.name})"

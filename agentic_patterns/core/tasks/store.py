@@ -52,7 +52,7 @@ class TaskStoreMemory(TaskStore):
     """In-memory task store backed by a Tasks collection. Ideal for notebooks."""
 
     def __init__(self, tasks: Tasks | None = None) -> None:
-        self.tasks = tasks or Tasks()
+        self.tasks = tasks if tasks is not None else Tasks()
         self._lock = asyncio.Lock()
 
     async def add_event(self, task_id: str, event: TaskEvent) -> None:
@@ -67,7 +67,8 @@ class TaskStoreMemory(TaskStore):
         async with self._lock:
             self.tasks.add(task)
             logger.debug("Created task %s", task.id[:8])
-            return task
+        await self._notify()
+        return task
 
     async def dependents(self, task_id: str) -> list[Task]:
         async with self._lock:
@@ -97,7 +98,17 @@ class TaskStoreMemory(TaskStore):
             task = self.tasks.update_state(task_id, state, result=result, error=error)
             if task:
                 logger.debug("Task %s -> %s", task_id[:8], state.value)
-            return task
+        await self._notify()
+        return task
+
+    async def _notify(self) -> None:
+        cb = self.tasks.on_update
+        if cb is None:
+            return
+        if asyncio.iscoroutinefunction(cb):
+            await cb(self.tasks)
+        else:
+            cb(self.tasks)
 
 
 class TaskStoreJson(TaskStore):
@@ -170,7 +181,8 @@ class TaskStoreJson(TaskStore):
             pending.sort(key=lambda t: t.created_at)
             for t in pending:
                 if t.depends_on and not all(
-                    all_tasks.get(dep_id) and all_tasks[dep_id].state == TaskState.COMPLETED
+                    all_tasks.get(dep_id)
+                    and all_tasks[dep_id].state == TaskState.COMPLETED
                     for dep_id in t.depends_on
                 ):
                     continue

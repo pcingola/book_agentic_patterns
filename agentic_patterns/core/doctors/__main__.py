@@ -25,9 +25,12 @@ import argparse
 import asyncio
 import importlib
 import sys
+import warnings
 from pathlib import Path
 
-from pydantic_ai.mcp import MCPServerHTTP, MCPServerStdio
+import httpx
+
+from pydantic_ai.mcp import MCPServerStdio, MCPServerStreamableHTTP
 
 
 def _import_tools(module_spec: str) -> list:
@@ -114,12 +117,16 @@ async def cmd_mcp(args: argparse.Namespace) -> int:
         parts = args.stdio.split()
         server = MCPServerStdio(command=parts[0], args=parts[1:])
     else:
-        server = MCPServerHTTP(url=args.url)
+        server = MCPServerStreamableHTTP(url=args.url)
 
     if args.verbose:
         print(f"Connecting to MCP server: {args.url or args.stdio}")
 
-    results = await mcp_doctor(server, verbose=args.verbose)
+    try:
+        results = await mcp_doctor(server, verbose=args.verbose)
+    except Exception as e:
+        print(f"Failed to connect to MCP server: {e}")
+        return 1
 
     for result in results:
         print(result)
@@ -137,9 +144,16 @@ async def cmd_a2a(args: argparse.Namespace) -> int:
     if args.verbose:
         print(f"Analyzing {len(args.urls)} agent cards")
 
-    results = await a2a_doctor(
-        args.urls, batch_size=args.batch_size, verbose=args.verbose
-    )
+    try:
+        results = await a2a_doctor(
+            args.urls, batch_size=args.batch_size, verbose=args.verbose
+        )
+    except httpx.ConnectError as e:
+        print(f"Failed to connect to A2A server: {e}")
+        return 1
+    except httpx.HTTPStatusError as e:
+        print(f"A2A server returned error: {e}")
+        return 1
 
     for result in results:
         print(result)
@@ -262,6 +276,7 @@ async def main() -> int:
 
 def main_sync() -> int:
     """Sync wrapper for console script entry point."""
+    warnings.filterwarnings("ignore", category=DeprecationWarning)
     sys.path.insert(0, str(Path.cwd()))
     return asyncio.run(main())
 

@@ -31,7 +31,10 @@ class MultiSourceRetriever:
             return docs
 
         with ThreadPoolExecutor() as executor:
-            futures = {executor.submit(_query, name, vdb): name for name, vdb in self.sources.items()}
+            futures = {
+                executor.submit(_query, name, vdb): name
+                for name, vdb in self.sources.items()
+            }
             for future in as_completed(futures):
                 all_docs.extend(future.result())
 

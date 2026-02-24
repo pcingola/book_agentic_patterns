@@ -56,7 +56,9 @@ class TaskBroker:
 
     # -- Submission --
 
-    async def submit(self, input: str, depends_on: list[str] | None = None, **metadata: Any) -> str:
+    async def submit(
+        self, input: str, depends_on: list[str] | None = None, **metadata: Any
+    ) -> str:
         """Create a task and return its id."""
         task = Task(input=input, depends_on=depends_on or [], metadata=metadata)
         await self._store.create(task)
@@ -186,7 +188,9 @@ class TaskBroker:
                 if dep_task.state in TERMINAL_STATES:
                     continue
                 error = f"Dependency {current_id[:8]} failed"
-                await self._store.update_state(dep_task.id, TaskState.FAILED, error=error)
+                await self._store.update_state(
+                    dep_task.id, TaskState.FAILED, error=error
+                )
                 await self._store.add_event(
                     dep_task.id,
                     TaskEvent(
@@ -195,7 +199,11 @@ class TaskBroker:
                         payload={"state": TaskState.FAILED.value, "reason": error},
                     ),
                 )
-                logger.info("Cascade-failed task %s (dep of %s)", dep_task.id[:8], current_id[:8])
+                logger.info(
+                    "Cascade-failed task %s (dep of %s)",
+                    dep_task.id[:8],
+                    current_id[:8],
+                )
                 queue.append(dep_task.id)
 
     async def _fire_callbacks(self, task_id: str) -> None:

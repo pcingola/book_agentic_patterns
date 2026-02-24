@@ -247,8 +247,12 @@ def _dict_to_subprocess_result(data: dict) -> SubprocessResult:
                 source=content.get("source"),
                 metadata=content.get("metadata", {}),
             )
-        outputs.append(CellOutput(output_type=output_type, content=content, timestamp=ts))
-    return SubprocessResult(state=state, outputs=outputs, namespace=data.get("namespace", {}))
+        outputs.append(
+            CellOutput(output_type=output_type, content=content, timestamp=ts)
+        )
+    return SubprocessResult(
+        state=state, outputs=outputs, namespace=data.get("namespace", {})
+    )
 
 
 def _process_sandbox_result(

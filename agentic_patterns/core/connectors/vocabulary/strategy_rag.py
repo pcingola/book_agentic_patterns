@@ -142,7 +142,11 @@ class StrategyRag:
         term = self._get_term_by_id(term_code)
         if not term:
             return []
-        return [t for rid in term.relationships.get(relation_type, []) if (t := self._get_term_by_id(rid))]
+        return [
+            t
+            for rid in term.relationships.get(relation_type, [])
+            if (t := self._get_term_by_id(rid))
+        ]
 
     def relationships(self, term_code: str) -> dict[str, list[str]]:
         term = self._get_term_by_id(term_code)

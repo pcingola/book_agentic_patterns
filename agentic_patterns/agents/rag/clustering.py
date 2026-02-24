@@ -16,7 +16,9 @@ class _ClusterLabel(BaseModel):
     summary: str
 
 
-async def label_clusters(result: ClusterResult, agent: Agent | None = None) -> ClusterResult:
+async def label_clusters(
+    result: ClusterResult, agent: Agent | None = None
+) -> ClusterResult:
     """Prompt the LLM to assign a label and summary to each cluster."""
     if agent is None:
         agent = get_agent(output_type=_ClusterLabel)
@@ -26,12 +28,20 @@ async def label_clusters(result: ClusterResult, agent: Agent | None = None) -> C
 
     for cluster in result.clusters:
         items_text = json.dumps(
-            [{"doc_id": item.doc_id, "text": item.text[:500]} for item in cluster.items],
+            [
+                {"doc_id": item.doc_id, "text": item.text[:500]}
+                for item in cluster.items
+            ],
             indent=2,
         )
         prompt = load_prompt(prompt_path, items=items_text)
         run_result = await agent.run(prompt)
-        labeled = cluster.model_copy(update={"label": run_result.output.label, "summary": run_result.output.summary})
+        labeled = cluster.model_copy(
+            update={
+                "label": run_result.output.label,
+                "summary": run_result.output.summary,
+            }
+        )
         labeled_clusters.append(labeled)
 
     return ClusterResult(clusters=labeled_clusters)

@@ -8,9 +8,17 @@ from agentic_patterns.toolkits.repl.export import convert_cells_to_ipynb
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Convert a REPL cells.json to a Jupyter notebook (.ipynb)")
+    parser = argparse.ArgumentParser(
+        description="Convert a REPL cells.json to a Jupyter notebook (.ipynb)"
+    )
     parser.add_argument("input", type=Path, help="Path to cells.json")
-    parser.add_argument("output", type=Path, nargs="?", default=None, help="Output .ipynb path (default: same name as input with .ipynb extension)")
+    parser.add_argument(
+        "output",
+        type=Path,
+        nargs="?",
+        default=None,
+        help="Output .ipynb path (default: same name as input with .ipynb extension)",
+    )
     args = parser.parse_args()
 
     if not args.input.exists():

@@ -1,6 +1,6 @@
 """MCP doctor: Analyze tools from MCP servers and provide recommendations."""
 
-from pydantic_ai.mcp import MCPServerHTTP, MCPServerStdio
+from pydantic_ai.mcp import MCPServerStdio, MCPServerStreamableHTTP
 
 from agentic_patterns.core.agents import get_agent, run_agent
 from agentic_patterns.core.config.config import PROMPTS_DIR
@@ -12,7 +12,7 @@ from agentic_patterns.core.prompt import load_prompt
 class MCPDoctor(DoctorBase):
     """Analyzes tools from MCP servers for clarity and completeness."""
 
-    def __init__(self, mcp_server: MCPServerHTTP | MCPServerStdio):
+    def __init__(self, mcp_server: MCPServerStreamableHTTP | MCPServerStdio):
         self.mcp_server = mcp_server
 
     async def _analyze_batch_internal(
@@ -37,7 +37,7 @@ class MCPDoctor(DoctorBase):
 
 
 async def mcp_doctor(
-    server: MCPServerHTTP | MCPServerStdio | str,
+    server: MCPServerStreamableHTTP | MCPServerStdio | str,
     verbose: bool = False,
 ) -> list[ToolRecommendation]:
     """Analyze tools from an MCP server and provide recommendations.
@@ -50,7 +50,7 @@ async def mcp_doctor(
         List of recommendations for each tool.
     """
     if isinstance(server, str):
-        server = MCPServerHTTP(url=server)
+        server = MCPServerStreamableHTTP(url=server)
 
     doctor = MCPDoctor(server)
     return await doctor.analyze_all(verbose=verbose)

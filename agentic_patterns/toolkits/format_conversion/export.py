@@ -30,7 +30,9 @@ def markdown_to(
             with open(output_path, "wb") as f:
                 result = pisa.CreatePDF(html, dest=f, path=str(input_path.parent))
                 if result.err:
-                    raise RuntimeError(f"PDF conversion failed with {result.err} errors")
+                    raise RuntimeError(
+                        f"PDF conversion failed with {result.err} errors"
+                    )
         case OutputFormat.DOCX:
             html = _md_to_html(input_path)
             doc = Document()

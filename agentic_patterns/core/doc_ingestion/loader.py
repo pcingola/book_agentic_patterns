@@ -5,7 +5,9 @@ from pathlib import Path
 from agentic_patterns.core.doc_ingestion.models import DocumentProvenance
 
 
-def load_document(file: Path, provenance: DocumentProvenance, pipeline: str = "standard") -> str:
+def load_document(
+    file: Path, provenance: DocumentProvenance, pipeline: str = "standard"
+) -> str:
     """Parse any document format (PDF, DOCX, PPTX, HTML, images) and return markdown text.
 
     pipeline="standard" uses docling's text extraction pipeline.
@@ -18,7 +20,11 @@ def load_document(file: Path, provenance: DocumentProvenance, pipeline: str = "s
         from docling.pipeline.vlm_pipeline import VlmPipeline
         from docling.datamodel.pipeline_options import VlmPipelineOptions
 
-        format_options = {InputFormat.PDF: PdfFormatOption(pipeline_cls=VlmPipeline, pipeline_options=VlmPipelineOptions())}
+        format_options = {
+            InputFormat.PDF: PdfFormatOption(
+                pipeline_cls=VlmPipeline, pipeline_options=VlmPipelineOptions()
+            )
+        }
         converter = DocumentConverter(format_options=format_options)
     else:
         converter = DocumentConverter()

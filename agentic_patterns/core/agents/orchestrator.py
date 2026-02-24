@@ -294,7 +294,9 @@ class OrchestratorAgent:
         from agentic_patterns.core.tasks.broker import TaskBroker
 
         self._broker = TaskBroker(
-            store=TaskStoreMemory(self._tasks), poll_interval=0.3, activity=self._activity
+            store=TaskStoreMemory(self._tasks),
+            poll_interval=0.3,
+            activity=self._activity,
         )
         self._broker.register_agents(sub_map)
         await self._exit_stack.enter_async_context(self._broker)
@@ -350,11 +352,18 @@ class OrchestratorAgent:
         sub_map: dict[str, "AgentSpec"],
         names: list[str],
     ) -> Any:
-        async def submit_task(ctx: RunContext, agent_name: str, prompt: str, depends_on: list[str] | None = None) -> str:
+        async def submit_task(
+            ctx: RunContext,
+            agent_name: str,
+            prompt: str,
+            depends_on: list[str] | None = None,
+        ) -> str:
             """Submit a task to a sub-agent for background execution. Returns task_id. Use depends_on to list task_ids that must complete first."""
             if agent_name not in sub_map:
                 return f"Unknown agent '{agent_name}'. Available: {', '.join(names)}"
-            task_id = await broker.submit(prompt, depends_on=depends_on, agent_name=agent_name)
+            task_id = await broker.submit(
+                prompt, depends_on=depends_on, agent_name=agent_name
+            )
             submitted.append(task_id)
             return f"Task submitted: {task_id[:8]}"
 

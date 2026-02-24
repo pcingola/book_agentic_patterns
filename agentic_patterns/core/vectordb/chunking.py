@@ -1,7 +1,6 @@
 """Pure-text chunking functions. No LLM calls. All return list[Chunk]."""
 
 import re
-from pathlib import Path
 
 from agentic_patterns.core.doc_ingestion.models import DocumentProvenance
 from agentic_patterns.core.vectordb.models import Chunk, ChunkLevel
@@ -20,8 +19,12 @@ def _get_stem(provenance: DocumentProvenance) -> str:
 
 def _provenance_to_meta(provenance: DocumentProvenance) -> dict:
     return {
-        "original_file": str(provenance.original_file) if provenance.original_file else "",
-        "markdown_file": str(provenance.markdown_file) if provenance.markdown_file else "",
+        "original_file": str(provenance.original_file)
+        if provenance.original_file
+        else "",
+        "markdown_file": str(provenance.markdown_file)
+        if provenance.markdown_file
+        else "",
         "source": provenance.source or "",
     }
 
@@ -76,21 +79,35 @@ def _parse_sections(text: str) -> list[tuple[int, str, str]]:
 def _split_paragraphs(text: str, min_lines: int) -> list[str]:
     """Split text at blank lines, keeping only blocks with at least min_lines."""
     blocks = re.split(r"\n{2,}", text)
-    return [b.strip() for b in blocks if b.strip() and len(b.strip().splitlines()) >= min_lines]
+    return [
+        b.strip()
+        for b in blocks
+        if b.strip() and len(b.strip().splitlines()) >= min_lines
+    ]
 
 
-def chunk_by_paragraphs(text: str, provenance: DocumentProvenance, min_lines: int = 3) -> list[Chunk]:
+def chunk_by_paragraphs(
+    text: str, provenance: DocumentProvenance, min_lines: int = 3
+) -> list[Chunk]:
     """Naive splitter at blank lines. All chunks at PARAGRAPH level with parent_id=None."""
     stem = _get_stem(provenance)
     meta = _provenance_to_meta(provenance)
     paragraphs = _split_paragraphs(text, min_lines)
     return [
-        Chunk(doc_id=f"{stem}-p{i + 1}", text=p, level=ChunkLevel.PARAGRAPH, parent_id=None, metadata=dict(meta))
+        Chunk(
+            doc_id=f"{stem}-p{i + 1}",
+            text=p,
+            level=ChunkLevel.PARAGRAPH,
+            parent_id=None,
+            metadata=dict(meta),
+        )
         for i, p in enumerate(paragraphs)
     ]
 
 
-def chunk_by_markdown(text: str, provenance: DocumentProvenance, max_chunk_size: int = 2000) -> list[Chunk]:
+def chunk_by_markdown(
+    text: str, provenance: DocumentProvenance, max_chunk_size: int = 2000
+) -> list[Chunk]:
     """Split at heading boundaries with hierarchy tracking.
 
     Heading mapping: #->DOCUMENT, ##->CHAPTER, ###->SECTION, no heading->PARAGRAPH.
@@ -143,11 +160,23 @@ def chunk_by_markdown(text: str, provenance: DocumentProvenance, max_chunk_size:
             chunk_level = ChunkLevel.PARAGRAPH
             parent_id = current_section_id or current_chapter_id or current_doc_id
 
-        full_text = (f"{'#' * level} {heading}\n\n" if level > 0 else "") + body if body else (f"{'#' * level} {heading}" if level > 0 else "")
+        full_text = (
+            (f"{'#' * level} {heading}\n\n" if level > 0 else "") + body
+            if body
+            else (f"{'#' * level} {heading}" if level > 0 else "")
+        )
         if not full_text.strip():
             continue
 
-        chunks.append(Chunk(doc_id=doc_id, text=full_text, level=chunk_level, parent_id=parent_id, metadata=dict(meta)))
+        chunks.append(
+            Chunk(
+                doc_id=doc_id,
+                text=full_text,
+                level=chunk_level,
+                parent_id=parent_id,
+                metadata=dict(meta),
+            )
+        )
 
         # Add paragraph sub-chunks when body exceeds max_chunk_size
         if len(body) > max_chunk_size:
@@ -159,7 +188,15 @@ def chunk_by_markdown(text: str, provenance: DocumentProvenance, max_chunk_size:
                     continue
                 sub_idx += 1
                 sub_id = f"{doc_id}-p{sub_idx}"
-                chunks.append(Chunk(doc_id=sub_id, text=sub, level=ChunkLevel.PARAGRAPH, parent_id=doc_id, metadata=dict(meta)))
+                chunks.append(
+                    Chunk(
+                        doc_id=sub_id,
+                        text=sub,
+                        level=ChunkLevel.PARAGRAPH,
+                        parent_id=doc_id,
+                        metadata=dict(meta),
+                    )
+                )
 
     return chunks
 

@@ -7,9 +7,13 @@ def analyze(code: str) -> list[str]:
     """Scan code for common security issues."""
     issues = []
     if "eval(" in code:
-        issues.append("CRITICAL: eval() with user input allows arbitrary code execution")
+        issues.append(
+            "CRITICAL: eval() with user input allows arbitrary code execution"
+        )
     if "exec(" in code:
-        issues.append("CRITICAL: exec() with user input allows arbitrary code execution")
+        issues.append(
+            "CRITICAL: exec() with user input allows arbitrary code execution"
+        )
     if "os.system(" in code:
         issues.append("WARNING: os.system() is vulnerable to command injection")
     if not issues:

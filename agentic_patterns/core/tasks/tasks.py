@@ -1,20 +1,24 @@
 from collections.abc import Callable
 from datetime import datetime, timezone
+from typing import Any
 
 from agentic_patterns.core.tasks.models import Task
 from agentic_patterns.core.tasks.state import TaskState
 
 
 class Tasks:
-    """Domain collection managing Task objects with dependency-aware queries."""
+    """Domain collection managing Task objects with dependency-aware queries.
+
+    The on_update callback is fired by TaskStoreMemory after releasing its
+    async lock. It accepts both sync and async callables.
+    """
 
     def __init__(self) -> None:
         self._tasks: dict[str, Task] = {}
-        self.on_update: Callable[["Tasks"], None] | None = None
+        self.on_update: Callable[["Tasks"], Any] | None = None
 
     def add(self, task: Task) -> Task:
         self._tasks[task.id] = task
-        self._fire()
         return task
 
     def dependents(self, task_id: str) -> list[Task]:
@@ -42,7 +46,14 @@ class Tasks:
             return t
         return None
 
-    def update_state(self, task_id: str, state: TaskState, *, result: str | None = None, error: str | None = None) -> Task | None:
+    def update_state(
+        self,
+        task_id: str,
+        state: TaskState,
+        *,
+        result: str | None = None,
+        error: str | None = None,
+    ) -> Task | None:
         task = self._tasks.get(task_id)
         if task is None:
             return None
@@ -52,12 +63,7 @@ class Tasks:
         if error is not None:
             task.error = error
         task.updated_at = datetime.now(timezone.utc)
-        self._fire()
         return task
-
-    def _fire(self) -> None:
-        if self.on_update is not None:
-            self.on_update(self)
 
     def __len__(self) -> int:
         return len(self._tasks)
