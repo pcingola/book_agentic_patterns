@@ -9,4 +9,5 @@ from agentic_patterns.core.tasks.store import (
     TaskStoreJson as TaskStoreJson,
     TaskStoreMemory as TaskStoreMemory,
 )
+from agentic_patterns.core.tasks.tasks import Tasks as Tasks
 from agentic_patterns.core.tasks.worker import Worker as Worker

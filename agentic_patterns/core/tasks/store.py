@@ -7,6 +7,7 @@ from pathlib import Path
 from agentic_patterns.core.config.config import DATA_DIR
 from agentic_patterns.core.tasks.models import Task, TaskEvent
 from agentic_patterns.core.tasks.state import TaskState
+from agentic_patterns.core.tasks.tasks import Tasks
 
 logger = logging.getLogger(__name__)
 
@@ -48,15 +49,15 @@ class TaskStore(ABC):
 
 
 class TaskStoreMemory(TaskStore):
-    """In-memory dict-backed task store. No filesystem, ideal for notebooks."""
+    """In-memory task store backed by a Tasks collection. Ideal for notebooks."""
 
-    def __init__(self) -> None:
-        self._tasks: dict[str, Task] = {}
+    def __init__(self, tasks: Tasks | None = None) -> None:
+        self.tasks = tasks or Tasks()
         self._lock = asyncio.Lock()
 
     async def add_event(self, task_id: str, event: TaskEvent) -> None:
         async with self._lock:
-            task = self._tasks.get(task_id)
+            task = self.tasks.get(task_id)
             if task is None:
                 return
             task.events.append(event)
@@ -64,38 +65,25 @@ class TaskStoreMemory(TaskStore):
 
     async def create(self, task: Task) -> Task:
         async with self._lock:
-            self._tasks[task.id] = task
+            self.tasks.add(task)
             logger.debug("Created task %s", task.id[:8])
             return task
 
     async def dependents(self, task_id: str) -> list[Task]:
         async with self._lock:
-            return [t for t in self._tasks.values() if task_id in t.depends_on]
+            return self.tasks.dependents(task_id)
 
     async def get(self, task_id: str) -> Task | None:
         async with self._lock:
-            return self._tasks.get(task_id)
+            return self.tasks.get(task_id)
 
     async def list_by_state(self, state: TaskState) -> list[Task]:
         async with self._lock:
-            return sorted(
-                [t for t in self._tasks.values() if t.state == state],
-                key=lambda t: t.created_at,
-            )
+            return self.tasks.list_by_state(state)
 
     async def next_pending(self, exclude: set[str] | None = None) -> Task | None:
         async with self._lock:
-            exclude = exclude or set()
-            for t in sorted(self._tasks.values(), key=lambda t: t.created_at):
-                if t.state != TaskState.PENDING or t.id in exclude:
-                    continue
-                if t.depends_on and not all(
-                    self._tasks.get(dep_id) and self._tasks[dep_id].state == TaskState.COMPLETED
-                    for dep_id in t.depends_on
-                ):
-                    continue
-                return t
-            return None
+            return self.tasks.next_pending(exclude)
 
     async def update_state(
         self,
@@ -106,16 +94,9 @@ class TaskStoreMemory(TaskStore):
         error: str | None = None,
     ) -> Task | None:
         async with self._lock:
-            task = self._tasks.get(task_id)
-            if task is None:
-                return None
-            task.state = state
-            if result is not None:
-                task.result = result
-            if error is not None:
-                task.error = error
-            task.updated_at = datetime.now(timezone.utc)
-            logger.debug("Task %s -> %s", task_id[:8], state.value)
+            task = self.tasks.update_state(task_id, state, result=result, error=error)
+            if task:
+                logger.debug("Task %s -> %s", task_id[:8], state.value)
             return task
 
 

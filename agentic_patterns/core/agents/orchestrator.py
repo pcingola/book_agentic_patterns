@@ -25,10 +25,10 @@ from agentic_patterns.core.config.config import MAIN_PROJECT_DIR, PROMPTS_DIR
 from agentic_patterns.core.mcp import MCPClientConfig, load_mcp_settings
 from agentic_patterns.core.skills.models import Skill, SkillMetadata
 from agentic_patterns.core.skills.registry import SkillRegistry
-from agentic_patterns.core.skills.tools import list_available_skills
 from agentic_patterns.core.tasks.models import EventType
 from agentic_patterns.core.tasks.state import TERMINAL_STATES, TaskState
 from agentic_patterns.core.tasks.store import TaskStoreMemory
+from agentic_patterns.core.tasks.tasks import Tasks
 
 NodeHook = Callable[[Any], None]
 
@@ -202,6 +202,7 @@ class OrchestratorAgent:
         self._message_history: list[ModelMessage] = []
         self._runs: list[tuple[AgentRun, list]] = []
         # Task broker (powers both delegate and submit_task/wait)
+        self._tasks = Tasks()
         self._broker = None
         self._activity = asyncio.Event()
         self._submitted_task_ids: list[str] = []
@@ -268,12 +269,10 @@ class OrchestratorAgent:
         ]
 
     def _add_skill_tools(self, tools: list[Any]) -> None:
-        """Add activate_skill tool when skills are present."""
+        """Add activate_skill and run_skill_script tools when skills are present."""
         if not self.spec.skills:
             return
-        from agentic_patterns.core.skills.tools import get_all_tools as get_skill_tools
-
-        tools.extend(get_skill_tools(self._make_skill_registry()))
+        tools.extend(self._make_skill_registry().get_all_tools())
 
     def _make_skill_registry(self) -> SkillRegistry:
         """Create a SkillRegistry populated with current spec's skills."""
@@ -295,7 +294,7 @@ class OrchestratorAgent:
         from agentic_patterns.core.tasks.broker import TaskBroker
 
         self._broker = TaskBroker(
-            store=TaskStoreMemory(), poll_interval=0.3, activity=self._activity
+            store=TaskStoreMemory(self._tasks), poll_interval=0.3, activity=self._activity
         )
         self._broker.register_agents(sub_map)
         await self._exit_stack.enter_async_context(self._broker)
@@ -351,15 +350,15 @@ class OrchestratorAgent:
         sub_map: dict[str, "AgentSpec"],
         names: list[str],
     ) -> Any:
-        async def submit_task(ctx: RunContext, agent_name: str, prompt: str) -> str:
-            """Submit a task to a sub-agent for background execution. Returns task_id."""
+        async def submit_task(ctx: RunContext, agent_name: str, prompt: str, depends_on: list[str] | None = None) -> str:
+            """Submit a task to a sub-agent for background execution. Returns task_id. Use depends_on to list task_ids that must complete first."""
             if agent_name not in sub_map:
                 return f"Unknown agent '{agent_name}'. Available: {', '.join(names)}"
-            task_id = await broker.submit(prompt, agent_name=agent_name)
+            task_id = await broker.submit(prompt, depends_on=depends_on, agent_name=agent_name)
             submitted.append(task_id)
             return f"Task submitted: {task_id[:8]}"
 
-        submit_task.__doc__ = f"Submit a task to a sub-agent for background execution. Returns task_id. Available agents: {', '.join(names)}."
+        submit_task.__doc__ = f"Submit a task to a sub-agent for background execution. Returns task_id. Use depends_on to list task_ids that must complete first. Available agents: {', '.join(names)}."
         return submit_task
 
     def _make_wait_tool(self, broker: Any, submitted: list[str]) -> Any:
@@ -413,6 +412,10 @@ class OrchestratorAgent:
     def system_prompt(self) -> str:
         """Final system prompt built from template, sub-agent catalog, skill catalog, and A2A cards."""
         return self._system_prompt
+
+    @property
+    def tasks(self) -> Tasks:
+        return self._tasks
 
     @property
     def runs(self) -> list[tuple[AgentRun, list]]:
@@ -507,9 +510,7 @@ class OrchestratorAgent:
             variables["sub_agents_catalog"] = "\n".join(lines)
 
         if self.spec.skills:
-            variables["skills_catalog"] = list_available_skills(
-                self._make_skill_registry()
-            )
+            variables["skills_catalog"] = self._make_skill_registry().system_prompt()
 
         if self.spec.system_prompt_path:
             prompt = load_prompt(self.spec.system_prompt_path, **variables)

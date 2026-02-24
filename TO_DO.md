@@ -1,5 +1,17 @@
 # To do
 
+- Doctors -> doctor 
+  - MCP: Broken
+  - A2A: Broken
+
+- Test: Skills 
+  - progressive disclosure
+  - script execution
+
+- A2UI
+
+- Chapter: Long Running agents / Swarms / OpenClaw
+
 ### References and Suggested topics
 
 - Claude Engineering blog: See resource from https://www.anthropic.com/engineering
