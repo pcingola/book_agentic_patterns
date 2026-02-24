@@ -8,7 +8,6 @@ The exercise ingests the same book texts used in previous examples, but this tim
 
 ```python
 from agentic_patterns.core.vectordb import get_vector_db
-from agentic_patterns.core.vectordb.ingestion import ingest_file
 from agentic_patterns.core.doc_ingestion.models import DocumentProvenance
 
 vdb_scifi = get_vector_db("books_scifi")
@@ -19,7 +18,7 @@ SCIFI_TITLES = {"hhgttg", "foundation"}
 for txt_file in DOCS_DIR.glob("*.txt"):
     vdb = vdb_scifi if txt_file.stem in SCIFI_TITLES else vdb_other
     provenance = DocumentProvenance(original_file=txt_file, source=txt_file.stem)
-    ingest_file(vdb, txt_file, provenance, force=False)
+    vdb.ingest_file(txt_file, provenance, force=False)
 ```
 
 Each collection uses the same embedding model and the same chunking strategy (markdown-aware chunking, falling back to paragraph splitting). The only difference is which files are ingested into which collection.

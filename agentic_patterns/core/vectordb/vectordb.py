@@ -1,28 +1,24 @@
-"""Vector database implementation for embedding storage and similarity search."""
+"""Vector database: VectorDB class wrapping a Chroma collection."""
 
 import asyncio
 from pathlib import Path
 
 import chromadb
-from chromadb.api.types import EmbeddingFunction, Documents, Embeddings
+from chromadb.api.types import Documents, Embeddings, EmbeddingFunction
 
-from agentic_patterns.core.vectordb.config import (
-    ChromaVectorDBConfig,
-    load_vectordb_settings,
-)
+from agentic_patterns.core.doc_ingestion.models import DocumentProvenance
+from agentic_patterns.core.vectordb.config import ChromaVectorDBConfig, load_vectordb_settings
 from agentic_patterns.core.vectordb.embeddings import embed_texts, get_embedder
-from agentic_patterns.core.vectordb.models import ChunkLevel, RetrievedDocument
+from agentic_patterns.core.vectordb.models import Chunk, ChunkLevel, RetrievedDocument
 
-_vector_dbs: dict[str, chromadb.Collection] = {}
+_vector_dbs: dict[str, "VectorDB"] = {}
 _chroma_clients: dict[str, chromadb.PersistentClient] = {}
 
 
 class PydanticAIEmbeddingFunction(EmbeddingFunction):
-    """Embedding function that wraps pydantic-ai embedder for use with Chroma."""
+    """Wraps a pydantic-ai embedder for use with Chroma."""
 
-    def __init__(
-        self, embedding_config: str | None = None, config_path: Path | str | None = None
-    ):
+    def __init__(self, embedding_config: str | None = None, config_path: Path | str | None = None):
         self._embedding_config = embedding_config
         self._config_path = config_path
         self._embedder = get_embedder(embedding_config, config_path)
@@ -38,9 +34,7 @@ class PydanticAIEmbeddingFunction(EmbeddingFunction):
         }
 
     @staticmethod
-    def build_from_config(
-        config: dict[str, str | None],
-    ) -> "PydanticAIEmbeddingFunction":
+    def build_from_config(config: dict[str, str | None]) -> "PydanticAIEmbeddingFunction":
         return PydanticAIEmbeddingFunction(
             embedding_config=config.get("embedding_config"),
             config_path=config.get("config_path"),
@@ -50,11 +44,161 @@ class PydanticAIEmbeddingFunction(EmbeddingFunction):
         loop = asyncio.get_event_loop()
         if loop.is_running():
             import nest_asyncio
-
             nest_asyncio.apply()
-        return asyncio.get_event_loop().run_until_complete(
-            embed_texts(list(input), self._embedder)
+        return asyncio.get_event_loop().run_until_complete(embed_texts(list(input), self._embedder))
+
+
+class VectorDB:
+    """Wraps a Chroma collection with add, query, retrieve, and ingest operations."""
+
+    def __init__(self, collection: chromadb.Collection) -> None:
+        self._collection = collection
+
+    def __str__(self) -> str:
+        return f"VectorDB({self._collection.name}, count={self._collection.count()})"
+
+    @property
+    def collection(self) -> chromadb.Collection:
+        """Direct access to the underlying Chroma collection (escape hatch)."""
+        return self._collection
+
+    # ------------------------------------------------------------------
+    # Low-level operations
+    # ------------------------------------------------------------------
+
+    def add(self, text: str, doc_id: str, meta: dict | None = None, force: bool = False) -> str | None:
+        """Add a document. Skips if doc_id already exists and force=False."""
+        if not force and self.has(doc_id):
+            return None
+        self._collection.add(documents=[text], ids=[doc_id], metadatas=[meta] if meta else None)
+        return doc_id
+
+    def count(self) -> int:
+        return self._collection.count()
+
+    def get_by_id(self, doc_id: str) -> dict:
+        return self._collection.get(ids=[doc_id])
+
+    def has(self, doc_id: str) -> bool:
+        return len(self.get_by_id(doc_id)["ids"]) > 0
+
+    def query(
+        self,
+        query: str,
+        filter: dict | None = None,
+        where_document: dict | None = None,
+        max_items: int = 10,
+        similarity_threshold: float | None = None,
+    ) -> list[RetrievedDocument]:
+        """Raw similarity search. Returns RetrievedDocument list sorted by score."""
+        results = self._collection.query(
+            query_texts=[query],
+            n_results=max_items,
+            where=filter,
+            where_document=where_document,
+            include=["documents", "metadatas", "distances"],
         )
+
+        ids = results.get("ids", [[]])[0]
+        documents = results.get("documents", [[]])[0]
+        metadatas = results.get("metadatas", [[]])[0]
+        distances = results.get("distances", [[]])[0]
+
+        items = []
+        for doc_id, doc, meta, dist in zip(ids, documents, metadatas, distances):
+            score = 1.0 - dist
+            if similarity_threshold is None or score >= similarity_threshold:
+                meta = meta or {}
+                try:
+                    level = ChunkLevel(meta.get("level", ChunkLevel.PARAGRAPH))
+                except ValueError:
+                    level = ChunkLevel.PARAGRAPH
+                items.append(RetrievedDocument(
+                    doc_id=doc_id, text=doc, score=score, level=level,
+                    parent_id=meta.get("parent_id") or None, metadata=meta,
+                ))
+        return items
+
+    # ------------------------------------------------------------------
+    # Higher-level retrieval
+    # ------------------------------------------------------------------
+
+    def retrieve(
+        self,
+        query: str,
+        max_results: int = 10,
+        filter: dict | None = None,
+        level: ChunkLevel | None = None,
+    ) -> list[RetrievedDocument]:
+        """Query with deduplication and optional chunk-level filtering."""
+        effective_filter = dict(filter) if filter else None
+        if level is not None:
+            level_filter: dict = {"level": {"$eq": level.value}}
+            effective_filter = {"$and": [effective_filter, level_filter]} if effective_filter else level_filter
+
+        docs = self.query(query, filter=effective_filter, max_items=max_results)
+
+        seen: dict[str, RetrievedDocument] = {}
+        for doc in docs:
+            if doc.doc_id not in seen or doc.score > seen[doc.doc_id].score:
+                seen[doc.doc_id] = doc
+        return sorted(seen.values(), key=lambda d: d.score, reverse=True)
+
+    def fetch_parent(self, doc: RetrievedDocument) -> RetrievedDocument | None:
+        """Fetch the parent chunk by following parent_id for context widening."""
+        if not doc.parent_id:
+            return None
+        result = self.get_by_id(doc.parent_id)
+        ids = result.get("ids", [])
+        if not ids:
+            return None
+        parent_meta = (result.get("metadatas") or [{}])[0] or {}
+        try:
+            level = ChunkLevel(parent_meta.get("level", ChunkLevel.PARAGRAPH))
+        except ValueError:
+            level = ChunkLevel.PARAGRAPH
+        return RetrievedDocument(
+            doc_id=ids[0],
+            text=(result.get("documents") or [""])[0],
+            score=0.0,
+            level=level,
+            parent_id=parent_meta.get("parent_id") or None,
+            metadata=parent_meta,
+        )
+
+    # ------------------------------------------------------------------
+    # Ingestion
+    # ------------------------------------------------------------------
+
+    def ingest(self, chunks: list[Chunk], force: bool = False) -> int:
+        """Store chunks in the collection. Returns count of added chunks."""
+        added = 0
+        for c in chunks:
+            meta = dict(c.metadata)
+            meta["level"] = c.level.value
+            meta["parent_id"] = c.parent_id or ""
+            if self.add(c.text, c.doc_id, meta=meta, force=force) is not None:
+                added += 1
+        return added
+
+    def ingest_file(
+        self,
+        file: Path,
+        provenance: DocumentProvenance,
+        pipeline: str = "standard",
+        force: bool = False,
+    ) -> int:
+        """Load a file, chunk it, and store in the collection."""
+        from agentic_patterns.core.vectordb.chunking import chunk as _chunk
+
+        if file.suffix.lower() == ".md":
+            from agentic_patterns.core.doc_ingestion.loader import load_markdown
+            text = load_markdown(file, provenance)
+        else:
+            from agentic_patterns.core.doc_ingestion.loader import load_document
+            text = load_document(file, provenance, pipeline=pipeline)
+
+        return self.ingest(_chunk(text, provenance), force=force)
 
 
 def get_vector_db(
@@ -62,14 +206,13 @@ def get_vector_db(
     embedding_config: str | None = None,
     vectordb_config: str | None = None,
     config_path: Path | str | None = None,
-) -> chromadb.Collection:
-    """Get or create a vector database collection. Uses singleton pattern."""
+) -> VectorDB:
+    """Get or create a VectorDB for the named collection. Uses singleton pattern."""
     if collection_name in _vector_dbs:
         return _vector_dbs[collection_name]
 
     if config_path is None:
         from agentic_patterns.core.config.config import MAIN_PROJECT_DIR
-
         config_path = MAIN_PROJECT_DIR / "config.yaml"
 
     settings = load_vectordb_settings(config_path)
@@ -81,7 +224,6 @@ def get_vector_db(
     persist_dir = Path(vdb_config.persist_directory)
     if not persist_dir.is_absolute():
         from agentic_patterns.core.config.config import MAIN_PROJECT_DIR
-
         persist_dir = MAIN_PROJECT_DIR / persist_dir
     persist_dir.mkdir(parents=True, exist_ok=True)
 
@@ -89,75 +231,10 @@ def get_vector_db(
     if persist_key not in _chroma_clients:
         _chroma_clients[persist_key] = chromadb.PersistentClient(path=str(persist_dir))
 
-    client = _chroma_clients[persist_key]
-    embedding_fn = PydanticAIEmbeddingFunction(embedding_config, config_path)
-
-    collection = client.get_or_create_collection(
-        name=collection_name, embedding_function=embedding_fn
+    collection = _chroma_clients[persist_key].get_or_create_collection(
+        name=collection_name,
+        embedding_function=PydanticAIEmbeddingFunction(embedding_config, config_path),
     )
-    _vector_dbs[collection_name] = collection
-    return collection
-
-
-def vdb_add(
-    vdb: chromadb.Collection,
-    text: str,
-    doc_id: str,
-    meta: dict | None = None,
-    force: bool = False,
-) -> str | None:
-    """Add a document to the collection if it doesn't already exist."""
-    if not force and vdb_has_id(vdb, doc_id):
-        return None
-    metadatas = [meta] if meta else None
-    vdb.add(documents=[text], ids=[doc_id], metadatas=metadatas)
-    return doc_id
-
-
-def vdb_get_by_id(vdb: chromadb.Collection, doc_id: str) -> dict:
-    """Get document by id."""
-    return vdb.get(ids=[doc_id])
-
-
-def vdb_has_id(vdb: chromadb.Collection, doc_id: str) -> bool:
-    """Check if a document with a given id exists."""
-    result = vdb_get_by_id(vdb, doc_id)
-    return len(result["ids"]) > 0
-
-
-def vdb_query(
-    vdb: chromadb.Collection,
-    query: str,
-    filter: dict[str, str] | None = None,
-    where_document: dict[str, str] | None = None,
-    max_items: int = 10,
-    similarity_threshold: float | None = None,
-) -> list[RetrievedDocument]:
-    """Query vector database with a given query, return top k results as RetrievedDocument list."""
-    results = vdb.query(
-        query_texts=[query],
-        n_results=max_items,
-        where=filter,
-        where_document=where_document,
-        include=["documents", "metadatas", "distances"],
-    )
-
-    ids = results.get("ids", [[]])[0]
-    documents = results.get("documents", [[]])[0]
-    metadatas = results.get("metadatas", [[]])[0]
-    distances = results.get("distances", [[]])[0]
-
-    items = []
-    for doc_id, doc, meta, dist in zip(ids, documents, metadatas, distances):
-        score = 1.0 - dist  # Convert distance to similarity score
-        if similarity_threshold is None or score >= similarity_threshold:
-            meta = meta or {}
-            level_str = meta.get("level", ChunkLevel.PARAGRAPH)
-            try:
-                level = ChunkLevel(level_str)
-            except ValueError:
-                level = ChunkLevel.PARAGRAPH
-            parent_id = meta.get("parent_id") or None
-            items.append(RetrievedDocument(doc_id=doc_id, text=doc, score=score, level=level, parent_id=parent_id, metadata=meta))
-
-    return items
+    vdb = VectorDB(collection)
+    _vector_dbs[collection_name] = vdb
+    return vdb

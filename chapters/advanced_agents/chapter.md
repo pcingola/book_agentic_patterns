@@ -6,9 +6,9 @@
 
 [Deep Research Agent](./deep_research_agent.md)
 
-[Rubric Agent]()
+[Rubric Agent](./rubric_agent.md)
 
-[Code Indexing and Search Agent]()
+[Code Indexing and Search Agent](./code_indexing.md)
 
 [Hands-on: Introduction]()
 

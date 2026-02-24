@@ -17,55 +17,46 @@ The ingestion notebook (`example_RAG_01_load.ipynb`) demonstrates the three core
 The notebook begins by creating a connection to a Chroma vector database:
 
 ```python
-from agentic_patterns.core.vectordb import get_vector_db, vdb_add
+from agentic_patterns.core.vectordb import get_vector_db
 
 vdb = get_vector_db('books')
 ```
 
 The `get_vector_db` function handles database initialization and configuration. The collection name `'books'` identifies this particular set of documents. Chroma persists the data to disk, so the database survives across notebook sessions.
 
-Before loading documents, the notebook checks whether the collection is empty:
-
-```python
-count = vdb.count()
-create_vdb = (count == 0)
-```
-
-This check prevents duplicate ingestion. If documents are already loaded, the notebook skips re-ingestion. This pattern is important in practice: you want ingestion to be idempotent so that rerunning the notebook doesn't create duplicate entries.
-
 #### Chunking Strategy
 
-The chunking function splits documents into paragraphs:
+`chunk_by_paragraphs` splits a document at blank lines and filters out blocks that are too short:
 
 ```python
-def chunks(file: Path, min_lines: int = 3):
-    """Chunk a book into paragraphs, returning (document, doc_id, metadata) tuples."""
-    text = file.read_text()
-    paragraphs = text.split('\n\n')
-    for paragraph_num, paragraph in enumerate(paragraphs):
-        doc = paragraph.strip()
-        if not doc or len(doc.strip().split('\n')) < min_lines:
-            continue
-        doc_id = f"{file.stem}-{paragraph_num}"
-        metadata = {'source': str(file.stem), 'paragraph': paragraph_num}
-        yield doc, doc_id, metadata
+from pathlib import Path
+from agentic_patterns.core.vectordb.chunking import chunk_by_paragraphs
+from agentic_patterns.core.doc_ingestion.models import DocumentProvenance
+
+txt_file = Path("data/books/hhgttg.txt")
+text = txt_file.read_text()
+provenance = DocumentProvenance(original_file=txt_file, source=txt_file.stem)
+chunks = chunk_by_paragraphs(text, provenance, min_lines=3)
 ```
 
-This is the simplest useful chunking strategy: split on double newlines (paragraph boundaries) and filter out chunks that are too short. Each chunk receives a unique ID and metadata tracking its source file and position. The metadata becomes important during retrieval for citation and filtering.
+This is the simplest useful chunking strategy: split on double newlines (paragraph boundaries) and discard blocks shorter than `min_lines`. Each `Chunk` object carries a unique `doc_id` derived from the filename and paragraph position, a `level` of `ChunkLevel.PARAGRAPH`, and a `metadata` dict containing the provenance fields. The provenance captures the source filename so that retrieved passages can be traced back to their origin.
 
-The `min_lines` filter removes trivial chunks like chapter headings or blank sections. Without this filter, the vector database would fill with short, semantically weak chunks that add noise to retrieval results.
+The `min_lines` filter removes trivial blocks like chapter headings or blank sections. Without it, the vector database fills with short, semantically weak chunks that add noise to retrieval results.
 
 #### Loading Documents
 
-The loading loop processes each text file and adds its chunks to the database:
+`vdb.ingest` stores the chunks as embeddings in the vector database:
 
 ```python
 for txt_file in DOCS_DIR.glob('*.txt'):
-    for doc, doc_id, meta in chunks(txt_file):
-        vdb_add(vdb, text=doc, doc_id=doc_id, meta=meta)
+    text = txt_file.read_text()
+    provenance = DocumentProvenance(original_file=txt_file, source=txt_file.stem)
+    chunks = chunk_by_paragraphs(text, provenance, min_lines=3)
+    added = vdb.ingest(chunks, force=False)
+    print(f"{txt_file.name}: {added} chunks added")
 ```
 
-The `vdb_add` function handles embedding generation internally. Each chunk is converted to a dense vector and stored alongside its text and metadata. The document ID ensures that re-ingesting the same document updates rather than duplicates entries.
+`ingest` embeds and stores each chunk and returns the count actually added. The `force=False` argument skips chunks whose `doc_id` already exists in the collection, making ingestion idempotent. Rerunning the notebook does not create duplicate entries.
 
 ### Part 2: Document Retrieval
 
@@ -76,16 +67,14 @@ The retrieval notebook (`example_RAG_01_query.ipynb`) demonstrates querying the 
 The query process starts by embedding the user's question and finding similar documents:
 
 ```python
-from agentic_patterns.core.vectordb import get_vector_db, vdb_query
+from agentic_patterns.core.vectordb import get_vector_db
 
 vdb = get_vector_db('books')
 query = "Who is a man with two heads?"
-documents_with_scores = vdb_query(vdb, query=query)
+results = vdb.retrieve(query=query, max_results=5)
 ```
 
-The `vdb_query` function converts the query string to an embedding using the same model that embedded the documents. It then performs a similarity search, returning the closest matches along with their similarity scores and metadata.
-
-The returned list contains tuples of `(document_text, metadata, score)`. The score indicates semantic similarity: higher scores mean the document is more relevant to the query. These scores help in two ways: they order results by relevance, and they provide a signal for filtering out weak matches.
+`vdb.retrieve` converts the query string to an embedding using the same model that embedded the documents, performs a similarity search, deduplicates by `doc_id` (keeping the highest score per document), and returns results sorted by descending score. Each result is a `RetrievedDocument` with `.text`, `.score`, `.doc_id`, `.level`, `.parent_id`, and `.metadata` attributes.
 
 #### Building the Augmented Prompt
 
@@ -93,8 +82,8 @@ The retrieved documents become part of the LLM prompt:
 
 ```python
 docs_str = ''
-for doc, meta, score in documents_with_scores:
-    docs_str += f"Similarity Score: {score:.3f}\nDocument:\n{doc}\n\n"
+for doc in results:
+    docs_str += f"Similarity Score: {doc.score:.3f}\nDocument:\n{doc.text}\n\n"
 
 prompt = f"""
 Given the following documents, answer the question:
@@ -127,18 +116,18 @@ The LLM now has access to relevant passages from the corpus. If the question ask
 
 The RAG pattern succeeds because it separates concerns. Embeddings capture semantic similarity without requiring exact keyword matches. Vector search scales to large corpora with sub-linear query time. LLMs excel at reading comprehension and synthesis but struggle with precise recall. By combining these components, RAG gets the best of each: broad semantic matching, efficient retrieval, and fluent answer generation.
 
-The simple paragraph-based chunking in this example works well for narrative text where paragraphs correspond to coherent units of meaning. For technical documentation, code, or structured data, more sophisticated chunking strategies (covered in later examples) may be needed.
+The simple paragraph-based chunking works well for narrative text where paragraphs correspond to coherent units of meaning. For technical documentation, code, or structured data, more sophisticated chunking strategies (covered in later examples) may be needed.
 
 ### Limitations of Simple RAG
 
 This basic implementation has several limitations that motivate the advanced techniques covered in subsequent examples.
 
-The paragraph chunking is naive. It doesn't consider semantic boundaries, so a topic that spans two paragraphs gets split into separate chunks. A query might retrieve only half of the relevant context.
+The paragraph chunking is naive. It does not consider semantic boundaries, so a topic that spans two paragraphs gets split into separate chunks. A query might retrieve only half of the relevant context.
 
 The retrieval uses a single query. If the user's question could be phrased multiple ways, the system might miss relevant documents that match an alternate phrasing. Query expansion addresses this.
 
-There's no re-ranking. The initial similarity scores from the vector database are approximate. A dedicated re-ranker that jointly considers query-document pairs can improve precision, especially at the top of the ranking.
+There is no re-ranking. The initial similarity scores from the vector database are approximate. A dedicated re-ranker that jointly considers query-document pairs can improve precision, especially at the top of the ranking.
 
-There's no metadata filtering. In a production system, you might want to restrict retrieval to documents from a specific time period, author, or category. The metadata is captured during ingestion but not used during retrieval in this basic example.
+There is no metadata filtering. In a production system, you might want to restrict retrieval to documents from a specific time period, author, or category. The metadata is captured during ingestion but not used during retrieval in this basic example.
 
-These limitations don't diminish the value of the simple approach. For many use cases, paragraph chunking and direct retrieval work well. The advanced techniques add complexity that should be justified by measured improvements in retrieval quality for your specific domain.
+These limitations do not diminish the value of the simple approach. For many use cases, paragraph chunking and direct retrieval work well. The advanced techniques add complexity that should be justified by measured improvements in retrieval quality for your specific domain.

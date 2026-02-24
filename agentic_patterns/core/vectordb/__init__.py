@@ -16,13 +16,7 @@ from agentic_patterns.core.vectordb.models import (
     ClusterResult,
     RetrievedDocument,
 )
-from agentic_patterns.core.vectordb.vectordb import (
-    get_vector_db,
-    vdb_add,
-    vdb_get_by_id,
-    vdb_has_id,
-    vdb_query,
-)
+from agentic_patterns.core.vectordb.vectordb import VectorDB, get_vector_db
 
 __all__ = [
     "Chunk",
@@ -32,14 +26,11 @@ __all__ = [
     "ClusterResult",
     "EmbeddingConfig",
     "RetrievedDocument",
+    "VectorDB",
     "VectorDBConfig",
     "embed_text",
     "embed_texts",
     "get_embedder",
     "get_vector_db",
     "load_vectordb_settings",
-    "vdb_add",
-    "vdb_get_by_id",
-    "vdb_has_id",
-    "vdb_query",
 ]

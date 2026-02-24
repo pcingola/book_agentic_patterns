@@ -1,25 +1,26 @@
-"""Embedding-based clustering for chunks and Chroma collections."""
+"""Embedding-based clustering for chunks and VectorDB collections."""
 
 import asyncio
 
-import chromadb
 import numpy as np
 
 from agentic_patterns.core.vectordb.models import Chunk, Cluster, ClusterItem, ClusterResult
 
 
 def cluster(
-    input: list[Chunk] | chromadb.Collection,
+    input: "list[Chunk] | VectorDB",
     n_clusters: int | None = None,
     algorithm: str = "hdbscan",
     embedder=None,
 ) -> ClusterResult:
-    """Cluster chunks or a Chroma collection by embedding similarity.
+    """Cluster chunks or a VectorDB collection by embedding similarity.
 
-    When input is a chromadb.Collection, stored embeddings are fetched directly.
-    algorithm="kmeans" requires n_clusters; algorithm="hdbscan" auto-discovers k.
+    When input is a VectorDB, stored embeddings are fetched directly (no re-embedding).
+    algorithm='kmeans' requires n_clusters; algorithm='hdbscan' auto-discovers k.
     Returns ClusterResult with label=None and summary=None on each cluster.
     """
+    from agentic_patterns.core.vectordb.vectordb import VectorDB
+
     if isinstance(input, list):
         ids, texts, metadatas, embeddings = _embed_chunks(input, embedder)
     else:
@@ -50,8 +51,8 @@ def _embed_chunks(chunks: list[Chunk], embedder) -> tuple[list, list, list, list
     return ids, texts, metadatas, embeddings
 
 
-def _fetch_collection(collection: chromadb.Collection) -> tuple[list, list, list, list]:
-    result = collection.get(include=["embeddings", "documents", "metadatas"])
+def _fetch_collection(vdb: "VectorDB") -> tuple[list, list, list, list]:
+    result = vdb.collection.get(include=["embeddings", "documents", "metadatas"])
     ids = result.get("ids", [])
     texts = result.get("documents", []) or [""] * len(ids)
     metadatas = result.get("metadatas", []) or [{}] * len(ids)
@@ -64,14 +65,12 @@ def _run_algorithm(embeddings: list, algorithm: str, n_clusters: int | None) -> 
     match algorithm:
         case "hdbscan":
             import hdbscan
-            clusterer = hdbscan.HDBSCAN(min_cluster_size=2)
-            return list(clusterer.fit_predict(X))
+            return list(hdbscan.HDBSCAN(min_cluster_size=2).fit_predict(X))
         case "kmeans":
             if n_clusters is None:
                 raise ValueError("n_clusters is required for kmeans algorithm")
             from sklearn.cluster import KMeans
-            km = KMeans(n_clusters=n_clusters, n_init="auto")
-            return list(km.fit_predict(X))
+            return list(KMeans(n_clusters=n_clusters, n_init="auto").fit_predict(X))
         case _:
             raise ValueError(f"Unsupported clustering algorithm: {algorithm!r}")
 
@@ -80,9 +79,7 @@ def _build_result(ids: list, texts: list, metadatas: list, labels: list[int]) ->
     clusters_dict: dict[int, list[ClusterItem]] = {}
     for doc_id, text, meta, label in zip(ids, texts, metadatas, labels):
         clusters_dict.setdefault(label, []).append(ClusterItem(doc_id=doc_id, text=text, metadata=meta or {}))
-
-    clusters = [
+    return ClusterResult(clusters=[
         Cluster(cluster_id=label, items=items)
         for label, items in sorted(clusters_dict.items())
-    ]
-    return ClusterResult(clusters=clusters)
+    ])

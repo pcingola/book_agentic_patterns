@@ -7,7 +7,7 @@ from agentic_patterns.core.connectors.vocabulary.models import (
     VocabularyStrategy,
     VocabularyTerm,
 )
-from agentic_patterns.core.vectordb.vectordb import get_vector_db, vdb_add, vdb_query
+from agentic_patterns.core.vectordb.vectordb import VectorDB, get_vector_db
 
 
 def _term_to_document(term: VocabularyTerm) -> str:
@@ -45,17 +45,16 @@ class StrategyRag:
         self._name = name
         self._collection_name = collection or name
         self._embedding_config = embedding_config
-        self._vdb = get_vector_db(
+        self._vdb: VectorDB = get_vector_db(
             self._collection_name, embedding_config=self._embedding_config
         )
         self._relation_types: set[str] = set()
 
     def _get_term_by_id(self, term_id: str) -> VocabularyTerm | None:
-        result = self._vdb.get(ids=[term_id], include=["metadatas"])
+        result = self._vdb.get_by_id(term_id)
         if not result["ids"]:
             return None
-        meta = result["metadatas"][0]
-        return _meta_to_term(term_id, meta)
+        return _meta_to_term(term_id, result["metadatas"][0])
 
     def add_term(self, term: VocabularyTerm) -> None:
         """Index a term into the vector DB."""
@@ -71,7 +70,7 @@ class StrategyRag:
         self._relation_types.update(term.relationships.keys())
         if term.parents:
             self._relation_types.add("is_a")
-        vdb_add(self._vdb, _term_to_document(term), term.id, meta=meta, force=True)
+        self._vdb.add(_term_to_document(term), term.id, meta=meta, force=True)
 
     def ancestors(self, term_code: str, max_depth: int = 10) -> list[VocabularyTerm]:
         result: list[VocabularyTerm] = []
@@ -122,12 +121,11 @@ class StrategyRag:
         return result
 
     def info(self) -> VocabularyInfo:
-        count = self._vdb.count()
         return VocabularyInfo(
             name=self._name,
             strategy=VocabularyStrategy.RAG,
             source_format="vector_db",
-            term_count=count,
+            term_count=self._vdb.count(),
             relation_types=sorted(self._relation_types),
         )
 
@@ -144,8 +142,7 @@ class StrategyRag:
         term = self._get_term_by_id(term_code)
         if not term:
             return []
-        ids = term.relationships.get(relation_type, [])
-        return [t for rid in ids if (t := self._get_term_by_id(rid))]
+        return [t for rid in term.relationships.get(relation_type, []) if (t := self._get_term_by_id(rid))]
 
     def relationships(self, term_code: str) -> dict[str, list[str]]:
         term = self._get_term_by_id(term_code)
@@ -157,18 +154,20 @@ class StrategyRag:
         return result
 
     def roots(self) -> list[VocabularyTerm]:
-        all_results = self._vdb.get(include=["metadatas"])
-        roots = []
-        for doc_id, meta in zip(all_results["ids"], all_results["metadatas"]):
-            parents = json.loads(meta.get("parents", "[]"))
-            if not parents:
-                roots.append(_meta_to_term(doc_id, meta))
-        return roots
+        all_results = self._vdb.collection.get(include=["metadatas"])
+        return [
+            _meta_to_term(doc_id, meta)
+            for doc_id, meta in zip(all_results["ids"], all_results["metadatas"])
+            if not json.loads(meta.get("parents", "[]"))
+        ]
 
     def search(self, query: str, max_results: int = 10) -> list[VocabularyTerm]:
         """Semantic search via vector DB."""
-        results = vdb_query(self._vdb, query, max_items=max_results)
-        return [_meta_to_term(doc.metadata["term_id"], doc.metadata) for doc in results if doc.metadata]
+        return [
+            _meta_to_term(doc.metadata["term_id"], doc.metadata)
+            for doc in self._vdb.query(query, max_items=max_results)
+            if doc.metadata
+        ]
 
     def siblings(self, term_code: str) -> list[VocabularyTerm]:
         term = self._get_term_by_id(term_code)

@@ -1,17 +1,15 @@
-"""Multi-source retrieval across named Chroma collections."""
+"""Multi-source retrieval across named VectorDB collections."""
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-import chromadb
-
 from agentic_patterns.core.vectordb.models import ChunkLevel, RetrievedDocument
-from agentic_patterns.core.vectordb.retrieval import retrieve
+from agentic_patterns.core.vectordb.vectordb import VectorDB
 
 
 class MultiSourceRetriever:
-    """Retrieves from multiple named vector database collections in parallel."""
+    """Retrieves from multiple named VectorDB collections in parallel."""
 
-    def __init__(self, sources: dict[str, chromadb.Collection]) -> None:
+    def __init__(self, sources: dict[str, VectorDB]) -> None:
         self.sources = sources
 
     def retrieve_all(
@@ -26,21 +24,19 @@ class MultiSourceRetriever:
         """
         all_docs: list[RetrievedDocument] = []
 
-        def _query_source(name: str, collection: chromadb.Collection) -> list[RetrievedDocument]:
-            docs = retrieve(collection, query, max_results=max_results, level=level)
+        def _query(name: str, vdb: VectorDB) -> list[RetrievedDocument]:
+            docs = vdb.retrieve(query, max_results=max_results, level=level)
             for doc in docs:
                 doc.metadata["source_collection"] = name
             return docs
 
         with ThreadPoolExecutor() as executor:
-            futures = {executor.submit(_query_source, name, col): name for name, col in self.sources.items()}
+            futures = {executor.submit(_query, name, vdb): name for name, vdb in self.sources.items()}
             for future in as_completed(futures):
                 all_docs.extend(future.result())
 
-        # Deduplicate by doc_id, keeping highest score
         seen: dict[str, RetrievedDocument] = {}
         for doc in all_docs:
             if doc.doc_id not in seen or doc.score > seen[doc.doc_id].score:
                 seen[doc.doc_id] = doc
-
         return sorted(seen.values(), key=lambda d: d.score, reverse=True)

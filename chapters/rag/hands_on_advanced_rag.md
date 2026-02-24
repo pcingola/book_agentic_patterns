@@ -12,94 +12,38 @@ Similarly, simple retrieval assumes the user's query directly matches how inform
 
 The ingestion notebook (`example_RAG_02_load.ipynb`) replaces naive paragraph splitting with an LLM that identifies semantic boundaries.
 
-#### The Chunking Prompt
+#### Chunking with chunk_with_llm
 
-The LLM receives explicit instructions about what makes a good chunk:
-
-```python
-CHUNKING_PROMPT = """
-You are a text chunking assistant. Your task is to divide the following text into coherent chunks based on topics or themes.
-
-Guidelines:
-- Each chunk should be self-contained and focus on a single topic, scene, or theme
-- Chunks should be substantial (at least a few sentences) but not too long
-- Preserve the original text exactly - do not summarize or modify the content
-- Return the chunks as a list of strings
-- IMPORTANT: If the text ends mid-topic (incomplete), include that partial content as the LAST chunk so it can be continued in the next batch
-
-TEXT TO CHUNK:
-{text}
-"""
-
-chunking_agent = get_agent(config_name="fast", output_type=list[str])
-```
-
-The prompt emphasizes self-containment and topic coherence. Unlike heuristic approaches that count characters or split on punctuation, the LLM understands when a scene changes or a new concept begins. The instruction to preserve text exactly prevents the LLM from summarizing, which would lose detail needed for retrieval.
-
-The `output_type=list[str]` ensures structured output. The LLM returns a list of strings rather than free-form text, making the result directly usable without parsing.
-
-#### Batching for Large Documents
-
-Documents often exceed LLM context limits. The notebook addresses this with a batching strategy that splits at natural boundaries:
+The `chunk_with_llm` function in `agents/rag/chunking.py` handles the full ingestion pipeline: batching the text, prompting the LLM to identify topic boundaries, and managing the leftover strategy across batch edges.
 
 ```python
-BATCH_SIZE_CHARS = 15000
+from agentic_patterns.core.doc_ingestion.models import DocumentProvenance
+from agentic_patterns.agents.rag.chunking import chunk_with_llm
+from agentic_patterns.core.vectordb import get_vector_db
 
-def split_into_batches(text: str, batch_size: int) -> list[str]:
-    """Split text into batches by paragraphs, respecting batch_size limit."""
-    paragraphs = text.split('\n\n')
-    batches = []
-    current_batch = []
-    current_size = 0
+vdb = get_vector_db('books_semantic')
 
-    for para in paragraphs:
-        para_size = len(para) + 2
-        if current_size + para_size > batch_size and current_batch:
-            batches.append('\n\n'.join(current_batch))
-            current_batch = [para]
-            current_size = para_size
-        else:
-            current_batch.append(para)
-            current_size += para_size
-
-    if current_batch:
-        batches.append('\n\n'.join(current_batch))
-
-    return batches
+for txt_file in DOCS_DIR.glob('*.txt'):
+    text = txt_file.read_text()
+    provenance = DocumentProvenance(original_file=txt_file, source=txt_file.stem)
+    chunks = await chunk_with_llm(text, provenance, batch_size=15000)
+    added = vdb.ingest(chunks, force=False)
+    print(f"{txt_file.name}: {added} semantic chunks added")
 ```
 
-The function splits on paragraph boundaries rather than at arbitrary character positions. This prevents breaking mid-sentence and gives the LLM complete paragraphs to work with. Each batch stays under 15000 characters, roughly 3000-4000 tokens, leaving headroom for the prompt template and LLM response.
+`chunk_with_llm` splits the text into batches at paragraph boundaries so that no single batch exceeds the LLM's practical context limit. It prompts the LLM to identify where topics or scenes change within each batch, returning a list of coherent text segments. Each chunk comes back at `ChunkLevel.SECTION` — one level coarser than the paragraph-level chunks produced by `chunk_by_paragraphs`.
 
 #### Handling Incomplete Chunks Across Batches
 
-When batch boundaries fall in the middle of a semantic unit, the last chunk from one batch might be incomplete. The notebook handles this with a "leftover" strategy:
+The key challenge with batching is that a semantic unit might straddle a batch boundary. `chunk_with_llm` addresses this with a leftover strategy: the last chunk of each batch is treated as potentially incomplete and is prepended to the next batch. The LLM then sees that fragment with sufficient following context to determine where the topic actually ends.
 
-```python
-async def chunk_with_llm(file: Path) -> list[tuple[str, str, dict]]:
-    text = file.read_text()
-    batches = split_into_batches(text, BATCH_SIZE_CHARS)
+This approach maintains coherence across arbitrary batch boundaries without requiring the LLM to see the entire document at once. The prompt instructs the LLM to place potentially incomplete content last, which makes the detection reliable: the final element of each batch response is always the candidate for continuation.
 
-    all_chunks = []
-    leftover = ""
+#### Why Semantic Chunking Matters
 
-    for batch_num, batch in enumerate(batches):
-        batch_text = leftover + batch if leftover else batch
-        leftover = ""
+Unlike heuristic approaches that count characters or split on punctuation, the LLM understands when a scene changes or a new concept begins. Two ideas that happen to share a paragraph boundary will be separated; a single paragraph that covers two distinct topics will be split. The resulting chunks are more semantically self-contained, which directly improves retrieval precision because each embedding represents one coherent idea.
 
-        prompt = CHUNKING_PROMPT.format(text=batch_text)
-        agent_run, _ = await run_agent(chunking_agent, prompt, verbose=False)
-        chunks: list[str] = agent_run.result.output
-
-        if batch_num < len(batches) - 1 and chunks:
-            leftover = chunks.pop()
-
-        all_chunks.extend(chunks)
-
-    if leftover:
-        all_chunks.append(leftover)
-```
-
-The key insight is that the LLM is instructed to place potentially incomplete content in the last chunk. By removing that last chunk and prepending it to the next batch, the LLM sees the incomplete content with additional context and can properly determine where the semantic boundary falls. This approach maintains coherence across arbitrary batch boundaries without requiring the LLM to see the entire document at once.
+The trade-off is cost and latency. LLM chunking requires one or more API calls per document at ingestion time. For small corpora this is acceptable; for very large corpora, the markdown-aware `chunk_by_markdown` chunker provides a cheaper approximation that still respects heading structure.
 
 ### Part 2: Advanced Retrieval
 
@@ -107,69 +51,53 @@ The retrieval notebook (`example_RAG_02_query.ipynb`) demonstrates a multi-stage
 
 #### Query Expansion
 
-A single query embedding might miss relevant documents that express the same concept differently. Query expansion generates multiple reformulations:
+A single query embedding might miss relevant documents that express the same concept differently. `expand_query` reformulates the user's question into multiple variants:
 
 ```python
-prompt = f"""
-Given the following user query, reformulate the query in three to five different ways to retrieve relevant documents from the vector database.
+from agentic_patterns.agents.rag.retrieval import expand_query
 
-{query}
-"""
-
-agent = get_agent(output_type=list[str])
-agent_run, nodes = await run_agent(agent, prompt=prompt, verbose=True)
-reformulated_queries = agent_run.result.output
+query = "Who is a man with two heads?"
+queries = await expand_query(query)
+# e.g. ["character described as having two heads",
+#        "dual-headed individual in the story",
+#        "person with two heads description", ...]
 ```
 
-For a query like "Who is a man with two heads?", the LLM might generate variations like "character with multiple heads", "person with two heads description", and "dual-headed individual". Each reformulation captures a different lexical angle on the same semantic intent. Querying with all variations increases recall because documents matching any phrasing will be retrieved.
+For a question like "Who is a man with two heads?", the LLM might generate variations like "character with multiple heads", "dual-headed individual", and "person with two heads description". Each reformulation captures a different lexical angle on the same semantic intent. Querying with all variations increases recall because documents matching any phrasing will be retrieved.
 
 #### Multi-Query Retrieval with Metadata Filtering
 
-Each reformulated query runs against the vector database with a metadata filter applied at query time:
+Each reformulated query runs against the vector database with an optional metadata filter applied at query time:
 
 ```python
+from agentic_patterns.core.vectordb import get_vector_db
+
+vdb = get_vector_db('books_semantic')
 book_name = 'hhgttg'
-metadata_filter = {'source': book_name}
 
-documents_with_scores = []
-for q in reformulated_queries:
-    documents_with_scores.extend(vdb_query(vdb, query=q, filter=metadata_filter))
+all_results = []
+for q in queries:
+    all_results.extend(vdb.retrieve(q, filter={'source': book_name}, max_results=10))
 ```
 
-The `filter` parameter restricts results at the database level, which is more efficient than filtering after retrieval. This filter restricts results to a specific book. In production systems, metadata filtering handles access control (only documents the user is authorized to see), temporal constraints (only documents from a certain time period), or domain restrictions (only documents from a particular category).
+The `filter` parameter restricts results at the database level, which is more efficient than filtering after retrieval. In production systems, metadata filtering handles access control (only documents the user is authorized to see), temporal constraints (only documents from a certain time period), or domain restrictions (only documents from a particular category).
 
-The same document might appear multiple times if it matches several reformulations. This duplication is handled in the next stage.
+The same document might appear multiple times because it matches several reformulations. This duplication is handled in the next step.
 
-#### Deduplication
+#### Deduplication and Re-ranking
 
-The combined results need deduplication to remove repeated documents:
+`vdb.retrieve` already deduplicates within a single query. Across multiple queries, we deduplicate by `doc_id`, keeping the highest score, then sort:
 
 ```python
-seen_ids = set()
-documents_deduplicated = []
-for doc, meta, score in documents_with_scores:
-    doc_id = f"{meta['source']}-{meta['chunk']}"
-    if doc_id in seen_ids:
-        continue
-    documents_deduplicated.append((doc, meta, score, doc_id))
-    seen_ids.add(doc_id)
+seen: dict[str, RetrievedDocument] = {}
+for doc in all_results:
+    if doc.doc_id not in seen or doc.score > seen[doc.doc_id].score:
+        seen[doc.doc_id] = doc
+
+top_results = sorted(seen.values(), key=lambda d: d.score, reverse=True)[:10]
 ```
 
-The document ID constructed from source and chunk number provides a unique key. Documents that appear in multiple query results are kept only once.
-
-#### Sorting and Limiting
-
-The results are sorted by similarity score and limited to a manageable number:
-
-```python
-documents_sorted = sorted(documents_deduplicated, key=lambda x: x[2], reverse=True)
-
-max_results = 10
-if len(documents_sorted) > max_results:
-    documents_sorted = documents_sorted[:max_results]
-```
-
-This example uses a simple score-based sort. Production systems often use cross-encoder models that jointly encode the query and document to produce more accurate relevance scores. The computational cost of cross-encoders makes them impractical for the initial search over thousands of documents, but they work well for re-ranking a small candidate set.
+This score-based sort provides a simple re-ranking baseline. Production systems often use cross-encoder models that jointly encode the query and document to produce more accurate relevance scores. Cross-encoders are too slow for an initial search over thousands of documents, but work well for re-ranking a small candidate set of ten to twenty documents.
 
 The `max_results` limit caps how many documents enter the final prompt. More documents provide more context but increase token usage and may dilute the most relevant passages.
 
@@ -179,8 +107,8 @@ The filtered, deduplicated, sorted documents become context for the LLM:
 
 ```python
 docs_str = ''
-for doc, meta, score, doc_id in documents_sorted:
-    docs_str += f"Similarity Score: {score:.3f}\nDocument ID: {doc_id}\nDocument:\n{doc}\n\n"
+for doc in top_results:
+    docs_str += f"Similarity Score: {doc.score:.3f}\nDocument ID: {doc.doc_id}\nDocument:\n{doc.text}\n\n"
 
 prompt = f"""
 Given the following documents, answer the user's question.
@@ -206,4 +134,4 @@ For small corpora with well-structured documents, simple paragraph chunking and 
 
 ### Connection to the Chapter
 
-The techniques demonstrated here correspond to concepts from the chapter sections on document ingestion and retrieval. LLM-based chunking implements the topic-aware segmentation described in the ingestion section. Query expansion, filtering, and re-ranking implement stages of the retrieval pipeline described in the retrieval section. The code makes these abstract concepts concrete and runnable.
+The techniques demonstrated here correspond to concepts from the chapter sections on document ingestion and retrieval. `chunk_with_llm` implements the topic-aware segmentation described in the ingestion section. `expand_query`, metadata filtering, and score-based re-ranking implement stages of the retrieval pipeline described in the retrieval section. The code makes these abstract concepts concrete and runnable.
