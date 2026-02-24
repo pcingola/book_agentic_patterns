@@ -265,8 +265,13 @@ Five progressively capable monolithic agents combining all prior patterns, then 
 - [x] Infrastructure -- Decomposing the monolithic agent into distributed MCP servers and A2A services with identical agent architecture
 - [x] References
 
-### Chapter: Research & Science Agents (TODO)
+### Section: Advanced Agents (TODO)
 
-- [ ] Deep research
+- [ ] Deep research agent
+- [ ] Rubric agent
+- [ ] Documentation agent (SOWs, Handbooks)
+- [ ] Code Indexing and Search Agent
 - [ ] Biomni
-- [ ] Personas and simulation, Role-playing and multi-perspective reasoning. Debate and arbitration agents
+- [ ] Debate / Personas and simulation, 
+  - [ ] Role-playing and multi-perspective reasoning. 
+  - [ ] Debate and arbitration agents (one on the positive, one on the negative)
