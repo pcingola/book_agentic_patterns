@@ -5,6 +5,7 @@ output/*
 !output/book.pdf
 data/
 aixtools/
+plans/
 
 # Python
 __pycache__/

@@ -1,11 +1,6 @@
 # To do
 
-- Test: Skills 
-  - progressive disclosure
-  - script execution
-
-- A2UI
-
+- Chapter UI: Add A2UI
 - Chapter: Long Running agents / Swarms / OpenClaw
 
 ### References and Suggested topics
