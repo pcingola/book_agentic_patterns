@@ -1,5 +1,6 @@
 # To do
 
+- Check RAG chapter: New examples
 - Chapter UI: Add A2UI
 - Chapter: Long Running agents / Swarms / OpenClaw
 
