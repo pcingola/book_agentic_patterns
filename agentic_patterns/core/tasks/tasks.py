@@ -68,15 +68,24 @@ class Tasks:
     def __len__(self) -> int:
         return len(self._tasks)
 
+    _STATE_MARKER = {
+        TaskState.COMPLETED: "[x]",
+        TaskState.RUNNING: "[~]",
+        TaskState.FAILED: "[!]",
+        TaskState.CANCELLED: "[-]",
+    }
+
     def __str__(self) -> str:
         if not self._tasks:
             return "Tasks: (empty)"
-        lines = ["Tasks:"]
-        for t in sorted(self._tasks.values(), key=lambda t: t.created_at):
+        sorted_tasks = sorted(self._tasks.values(), key=lambda t: t.created_at)
+        lines: list[str] = []
+        for t in sorted_tasks:
+            marker = self._STATE_MARKER.get(t.state, "[ ]")
             agent = t.metadata.get("agent_name", "?")
-            deps = ""
+            desc = t.input[:70] + ("..." if len(t.input) > 70 else "")
+            line = f"  {marker} {t.id}. ({agent}) {desc}"
             if t.depends_on:
-                dep_ids = ", ".join(d[:8] for d in t.depends_on)
-                deps = f" <- [{dep_ids}]"
-            lines.append(f"  {t.id[:8]}  {t.state.value:<12} {agent:<14}{deps}")
+                line += f"\n       depends on: {', '.join(t.depends_on)}"
+            lines.append(line)
         return "\n".join(lines)

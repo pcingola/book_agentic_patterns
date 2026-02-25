@@ -39,7 +39,7 @@ class Worker:
     async def execute(self, task_id: str) -> None:
         task = await self._store.get(task_id)
         if task is None:
-            logger.warning("Task %s not found", task_id[:8])
+            logger.warning("Task %s not found", task_id)
             return
 
         await self._transition(task_id, TaskState.RUNNING)
@@ -56,17 +56,17 @@ class Worker:
             await self._transition(
                 task_id, TaskState.COMPLETED, result=result, usage=usage_dict
             )
-            logger.info("Task %s completed", task_id[:8])
+            logger.info("Task %s completed", task_id)
 
         except asyncio.CancelledError:
             await self._transition(task_id, TaskState.CANCELLED)
-            logger.info("Task %s cancelled", task_id[:8])
+            logger.info("Task %s cancelled", task_id)
             raise
 
         except Exception as e:
             error_msg = f"{type(e).__name__}: {e}"
             await self._transition(task_id, TaskState.FAILED, error=error_msg)
-            logger.error("Task %s failed: %s", task_id[:8], error_msg)
+            logger.error("Task %s failed: %s", task_id, error_msg)
 
     async def _transition(
         self,

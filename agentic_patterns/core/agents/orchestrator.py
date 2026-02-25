@@ -272,7 +272,11 @@ class OrchestratorAgent:
         """Add activate_skill and run_skill_script tools when skills are present."""
         if not self.spec.skills:
             return
-        tools.extend(self._make_skill_registry().get_all_tools())
+        from agentic_patterns.core.skills.tools import create_skill_sandbox_manager
+
+        registry = self._make_skill_registry()
+        sandbox = create_skill_sandbox_manager(registry)
+        tools.extend(registry.get_all_tools(sandbox=sandbox))
 
     def _make_skill_registry(self) -> SkillRegistry:
         """Create a SkillRegistry populated with current spec's skills."""
@@ -365,7 +369,7 @@ class OrchestratorAgent:
                 prompt, depends_on=depends_on, agent_name=agent_name
             )
             submitted.append(task_id)
-            return f"Task submitted: {task_id[:8]}"
+            return f"Task submitted: {task_id}"
 
         submit_task.__doc__ = f"Submit a task to a sub-agent for background execution. Returns task_id. Use depends_on to list task_ids that must complete first. Available agents: {', '.join(names)}."
         return submit_task
@@ -484,12 +488,12 @@ class OrchestratorAgent:
             agent_name = task.metadata.get("agent_name", "unknown")
             if task.state == TaskState.COMPLETED and task.result:
                 injections.append(
-                    f"[BACKGROUND TASK COMPLETED: {agent_name} (task_id={tid[:8]})]\n"
+                    f"[BACKGROUND TASK COMPLETED: {agent_name} (task_id={tid})]\n"
                     f"Result: {task.result}"
                 )
             elif task.state == TaskState.FAILED:
                 injections.append(
-                    f"[BACKGROUND TASK FAILED: {agent_name} (task_id={tid[:8]})]\n"
+                    f"[BACKGROUND TASK FAILED: {agent_name} (task_id={tid})]\n"
                     f"Error: {task.error or 'unknown'}"
                 )
 
@@ -519,7 +523,7 @@ class OrchestratorAgent:
             variables["sub_agents_catalog"] = "\n".join(lines)
 
         if self.spec.skills:
-            variables["skills_catalog"] = self._make_skill_registry().system_prompt()
+            variables["skills_catalog"] = self._make_skill_registry().catalog()
 
         if self.spec.system_prompt_path:
             prompt = load_prompt(self.spec.system_prompt_path, **variables)
@@ -548,11 +552,11 @@ async def _collect_status(broker: Any, submitted: list[str]) -> tuple[list[str],
     for tid in submitted:
         task = await broker.poll(tid)
         if task is None:
-            lines.append(f"- {tid[:8]}: not found")
+            lines.append(f"- {tid}: not found")
             continue
         agent_name = task.metadata.get("agent_name", "unknown")
         status = task.state.value
-        line = f"- {tid[:8]} ({agent_name}): {status}"
+        line = f"- {tid} ({agent_name}): {status}"
         if task.state == TaskState.COMPLETED and task.result:
             line += f"\n  Result: {task.result[:200]}"
         elif task.state == TaskState.FAILED and task.error:

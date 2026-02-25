@@ -1,9 +1,5 @@
 # To do
 
-- Doctors -> doctor 
-  - MCP: Broken
-  - A2A: Broken
-
 - Test: Skills 
   - progressive disclosure
   - script execution

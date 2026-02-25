@@ -1,11 +1,20 @@
 """Skill registry for discovering and loading skills."""
 
+import logging
 import subprocess
+from collections.abc import Callable
 from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
 import yaml
 
-from agentic_patterns.core.skills.models import Skill, SkillMetadata
+from agentic_patterns.core.prompt import get_prompt
+from agentic_patterns.core.skills.models import Skill, SkillEvent, SkillEventType, SkillMetadata
+
+if TYPE_CHECKING:
+    from agentic_patterns.core.sandbox.manager import SandboxManager
+
+logger = logging.getLogger(__name__)
 
 
 def _parse_frontmatter(content: str) -> tuple[dict | None, str]:
@@ -30,13 +39,41 @@ def _collect_paths(directory: Path) -> list[Path]:
     return sorted(p for p in directory.iterdir() if p.is_file())
 
 
-SKILL_USAGE_INSTRUCTIONS = """To use a skill:
-1. Call activate_skill(skill_name) to load its instructions
-2. The instructions will tell you what scripts, references, and assets are available
-3. Call run_skill_script(skill_name, script_name, args) to execute scripts
-4. Call read_skill_resource(skill_name, resource_type, file_name) to read references or assets
+def _run_script_sandboxed(
+    sandbox: "SandboxManager",
+    registry: "SkillRegistry",
+    skill_name: str,
+    script_name: str,
+    args: str,
+) -> tuple[int, str]:
+    """Execute a skill script inside the Docker sandbox."""
+    from agentic_patterns.core.skills.tools import run_skill_script_sandboxed
+    from agentic_patterns.core.user_session import get_session_id, get_user_id
 
-You must activate a skill before running its scripts or reading its resources."""
+    return run_skill_script_sandboxed(
+        sandbox, registry, get_user_id(), get_session_id(),
+        skill_name, script_name, args,
+    )
+
+
+def _run_script_local(
+    registry: "SkillRegistry",
+    skill_name: str,
+    script_name: str,
+    args: str,
+) -> tuple[int, str]:
+    """Execute a skill script locally via subprocess (notebooks/demos only)."""
+    skill = registry.get(skill_name)
+    if skill is None:
+        return 1, f"Skill '{skill_name}' not found."
+    matching = [p for p in skill.script_paths if p.name == script_name]
+    if not matching:
+        return 1, f"Script '{script_name}' not found in skill '{skill_name}'."
+    interpreter = "python" if script_name.endswith(".py") else "bash"
+    cmd = [interpreter, str(matching[0])] + (args.split() if args else [])
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    output = result.stdout.strip() if result.returncode == 0 else result.stderr.strip()
+    return result.returncode, output
 
 
 class SkillRegistry:
@@ -45,6 +82,15 @@ class SkillRegistry:
     def __init__(self) -> None:
         self._metadata_cache: list[SkillMetadata] = []
         self._discovered = False
+        self.on_event: Callable[[SkillEvent], Any] | None = None
+
+    def _fire(self, event: SkillEvent) -> None:
+        if self.on_event is None:
+            return
+        try:
+            self.on_event(event)
+        except Exception:
+            logger.exception("on_event callback error for %s", event.event_type.value)
 
     def discover(self, roots: list[Path]) -> list[SkillMetadata]:
         """Scan skill directories and cache metadata (cheap operation)."""
@@ -86,12 +132,22 @@ class SkillRegistry:
                 return self._load_skill(meta.path)
         return None
 
-    def get_all_tools(self) -> list:
+    def get_all_tools(
+        self,
+        sandbox: "SandboxManager | None" = None,
+        *,
+        allow_local: bool = False,
+    ) -> list:
         """Return PydanticAI tools: activate_skill (Tier 2), run_skill_script and read_skill_resource (Tier 3).
 
-        Scripts run locally via subprocess. For sandboxed execution see
-        run_skill_script_sandboxed() in tools.py.
+        sandbox is required for script execution. Pass allow_local=True only in
+        notebooks/demos where Docker is unavailable.
         """
+        if sandbox is None and not allow_local:
+            raise ValueError(
+                "A SandboxManager is required for skill script execution. "
+                "Pass allow_local=True only in notebooks/demos."
+            )
         activated: set[str] = set()
         registry = self
 
@@ -101,6 +157,7 @@ class SkillRegistry:
             if skill is None:
                 return f"Skill '{skill_name}' not found. Use the skill catalog to see available skills."
             activated.add(skill_name)
+            registry._fire(SkillEvent(skill_name=skill_name, event_type=SkillEventType.ACTIVATE))
             parts = [f"[SKILL ACTIVATED] {skill_name}", "", skill.body]
             if skill.script_paths:
                 scripts = ", ".join(p.name for p in skill.script_paths)
@@ -134,7 +191,12 @@ class SkillRegistry:
                 available = ", ".join(p.name for p in paths) or "(none)"
                 return f"File '{file_name}' not found in {resource_type}s for '{skill_name}'. Available: {available}"
             try:
-                return matching[0].read_text(encoding="utf-8")
+                content = matching[0].read_text(encoding="utf-8")
+                registry._fire(SkillEvent(
+                    skill_name=skill_name, event_type=SkillEventType.READ,
+                    payload={"resource_type": resource_type, "file_name": file_name},
+                ))
+                return content
             except UnicodeDecodeError:
                 return (
                     f"Error: '{file_name}' is a binary file and cannot be read as text."
@@ -146,39 +208,37 @@ class SkillRegistry:
             """Run a script bundled with an activated skill."""
             if skill_name not in activated:
                 return f"Error: activate the '{skill_name}' skill first."
-            skill = registry.get(skill_name)
-            if skill is None:
-                return f"Skill '{skill_name}' not found."
-            matching = [p for p in skill.script_paths if p.name == script_name]
-            if not matching:
-                return f"Script '{script_name}' not found in skill '{skill_name}'."
-            interpreter = "python" if script_name.endswith(".py") else "bash"
-            cmd = [interpreter, str(matching[0])] + (args.split() if args else [])
-            result = subprocess.run(cmd, capture_output=True, text=True)
-            output = (
-                result.stdout.strip()
-                if result.returncode == 0
-                else result.stderr.strip()
-            )
+            if sandbox is not None:
+                exit_code, output = _run_script_sandboxed(sandbox, registry, skill_name, script_name, args)
+            else:
+                exit_code, output = _run_script_local(registry, skill_name, script_name, args)
+            registry._fire(SkillEvent(
+                skill_name=skill_name, event_type=SkillEventType.EXEC,
+                payload={"script": script_name, "exit_code": exit_code},
+            ))
             header = f"[EXECUTE] {skill_name}/{script_name}"
             return (
-                f"{header}\nExit code: {result.returncode}\n{output}"
+                f"{header}\nExit code: {exit_code}\n{output}"
                 if output
                 else f"{header}\nScript produced no output."
             )
 
         return [activate_skill, run_skill_script, read_skill_resource]
 
+    def catalog(self) -> str:
+        """Return just the skill catalog listing (for use inside prompt templates)."""
+        return "\n".join(str(s) for s in self._metadata_cache)
+
     def list_all(self) -> list[SkillMetadata]:
         """Return cached metadata list."""
         return self._metadata_cache
 
     def system_prompt(self) -> str:
-        """Return the skills block ready to inject into a system prompt."""
-        catalog = "\n".join(str(s) for s in self._metadata_cache)
-        if not catalog:
+        """Return the skills prompt block ready to inject into a system prompt."""
+        cat = self.catalog()
+        if not cat:
             return ""
-        return f"{catalog}\n\n{SKILL_USAGE_INSTRUCTIONS}"
+        return get_prompt("shared/skills", skills_catalog=cat)
 
     def _load_skill(self, skill_dir: Path) -> Skill | None:
         """Load full skill from directory."""

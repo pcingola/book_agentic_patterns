@@ -66,7 +66,7 @@ class TaskStoreMemory(TaskStore):
     async def create(self, task: Task) -> Task:
         async with self._lock:
             self.tasks.add(task)
-            logger.debug("Created task %s", task.id[:8])
+            logger.debug("Created task %s", task.id)
         await self._notify()
         return task
 
@@ -97,7 +97,7 @@ class TaskStoreMemory(TaskStore):
         async with self._lock:
             task = self.tasks.update_state(task_id, state, result=result, error=error)
             if task:
-                logger.debug("Task %s -> %s", task_id[:8], state.value)
+                logger.debug("Task %s -> %s", task_id, state.value)
         await self._notify()
         return task
 
@@ -143,7 +143,7 @@ class TaskStoreJson(TaskStore):
     async def create(self, task: Task) -> Task:
         async with self._lock:
             self._write(task)
-            logger.debug("Created task %s", task.id[:8])
+            logger.debug("Created task %s", task.id)
             return task
 
     async def dependents(self, task_id: str) -> list[Task]:
@@ -208,5 +208,5 @@ class TaskStoreJson(TaskStore):
                 task.error = error
             task.updated_at = datetime.now(timezone.utc)
             self._write(task)
-            logger.debug("Task %s -> %s", task_id[:8], state.value)
+            logger.debug("Task %s -> %s", task_id, state.value)
             return task

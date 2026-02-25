@@ -1,10 +1,12 @@
-import uuid
+import itertools
 from datetime import datetime, timezone
 from enum import Enum
 
 from pydantic import BaseModel, Field
 
 from agentic_patterns.core.tasks.state import TaskState
+
+_task_counter = itertools.count(1)
 
 
 class EventType(str, Enum):
@@ -25,7 +27,7 @@ class TaskEvent(BaseModel):
 class Task(BaseModel):
     """A unit of work submitted to the broker and executed by a worker."""
 
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    id: str = Field(default_factory=lambda: str(next(_task_counter)))
     state: TaskState = TaskState.PENDING
     input: str
     result: str | None = None
@@ -37,5 +39,5 @@ class Task(BaseModel):
     metadata: dict = Field(default_factory=dict)
 
     def __str__(self) -> str:
-        deps = f", deps={len(self.depends_on)}" if self.depends_on else ""
-        return f"Task(id={self.id[:8]}, state={self.state.value}{deps}, input={self.input[:40]})"
+        deps = f", deps={self.depends_on}" if self.depends_on else ""
+        return f"Task({self.id}, {self.state.value}{deps}, {self.input[:40]})"

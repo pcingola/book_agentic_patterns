@@ -62,7 +62,7 @@ class TaskBroker:
         """Create a task and return its id."""
         task = Task(input=input, depends_on=depends_on or [], metadata=metadata)
         await self._store.create(task)
-        logger.info("Submitted task %s", task.id[:8])
+        logger.info("Submitted task %s", task.id)
         return task.id
 
     # -- Observation --
@@ -85,7 +85,7 @@ class TaskBroker:
                 payload={"state": TaskState.CANCELLED.value},
             ),
         )
-        logger.info("Cancelled task %s", task_id[:8])
+        logger.info("Cancelled task %s", task_id)
         return updated
 
     async def cancel_all(self) -> None:
@@ -169,7 +169,7 @@ class TaskBroker:
             # Worker handles CancelledError internally (marks CANCELLED)
             pass
         except Exception:
-            logger.exception("Error running task %s", task_id[:8])
+            logger.exception("Error running task %s", task_id)
         finally:
             self._running.pop(task_id, None)
             if self._activity is not None:
@@ -187,7 +187,7 @@ class TaskBroker:
             for dep_task in await self._store.dependents(current_id):
                 if dep_task.state in TERMINAL_STATES:
                     continue
-                error = f"Dependency {current_id[:8]} failed"
+                error = f"Dependency {current_id} failed"
                 await self._store.update_state(
                     dep_task.id, TaskState.FAILED, error=error
                 )
@@ -201,8 +201,8 @@ class TaskBroker:
                 )
                 logger.info(
                     "Cascade-failed task %s (dep of %s)",
-                    dep_task.id[:8],
-                    current_id[:8],
+                    dep_task.id,
+                    current_id,
                 )
                 queue.append(dep_task.id)
 
@@ -216,4 +216,4 @@ class TaskBroker:
                 try:
                     await callback(task)
                 except Exception:
-                    logger.exception("Callback error for task %s", task_id[:8])
+                    logger.exception("Callback error for task %s", task_id)
