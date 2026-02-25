@@ -62,6 +62,13 @@ These are the new function calling tools that have been introduced to Claude to 
 
 ![](./img/task_create.jpeg)
 
+| Input | Required | Description |
+|---|---|---|
+| `subject` | Yes | Brief title in imperative form |
+| `description` | Yes | Detailed requirements and context |
+| `activeForm` | No | Spinner text shown during work (present continuous) |
+| `metadata` | No | Arbitrary key/value data (stored but not returned in queries) |
+
 Tasks start with status pending and no owner. The metadata field is not actively used but stored for future features potentially.
 
 #### 2. **TaskUpdate** - Modify any aspect of an existing task
@@ -79,6 +86,19 @@ Tasks start with status pending and no owner. The metadata field is not actively
 ```
 
 ![](./img/task_update.jpeg)
+
+| Input | Description |
+  |---|---|
+  | `taskId` | **Required.** The task to update. |
+  | `status` | "pending" -> "in_progress" -> "completed" |
+  | `subject` | Change the title |
+  | `description` | Change the details |
+  | `activeForm` | Change the spinner text |
+  | `owner` | Assign to a named agent (label for filtering) |
+  | `metadata` | Merge keys into existing metadata. Set a key to `null` to delete it. |
+  | `addBlocks` | Task IDs this task will block (appends to existing) |
+  | `addBlockedBy` | Task IDs that block this task (appends to existing) |
+
 
 What's interesting here is that blocked tasks can only become unblocked by the related tasks being marked as completed.
 Note: addBlocks and addBlockedBy append to the arrays - they don't replace them.
