@@ -58,37 +58,6 @@ Parameters (from JSON schema):
 | `metadata` | No | object | Arbitrary metadata to attach to the task |
 
 
-### TaskGet
-
-> Use this tool to retrieve a task by its ID from the task list.
->
-> ## When to Use This Tool
->
-> - When you need the full description and context before starting work on a task
-> - To understand task dependencies (what it blocks, what blocks it)
-> - After being assigned a task, to get complete requirements
->
-> ## Output
->
-> Returns full task details:
-> - **subject**: Task title
-> - **description**: Detailed requirements and context
-> - **status**: 'pending', 'in_progress', or 'completed'
-> - **blocks**: Tasks waiting on this one to complete
-> - **blockedBy**: Tasks that must complete before this one can start
->
-> ## Tips
->
-> - After fetching a task, verify its blockedBy list is empty before beginning work.
-> - Use TaskList to see all tasks in summary form.
-
-Parameters (from JSON schema):
-
-| Parameter | Required | Type | Description |
-|---|---|---|---|
-| `taskId` | Yes | string | The ID of the task to retrieve |
-
-
 ### TaskUpdate
 
 > Use this tool to update a task in the task list.
@@ -179,6 +148,37 @@ Parameters (from JSON schema):
 | `metadata` | No | object | Metadata keys to merge into the task. Set a key to null to delete it. |
 | `addBlocks` | No | string[] | Task IDs that this task blocks |
 | `addBlockedBy` | No | string[] | Task IDs that block this task |
+
+
+### TaskGet
+
+> Use this tool to retrieve a task by its ID from the task list.
+>
+> ## When to Use This Tool
+>
+> - When you need the full description and context before starting work on a task
+> - To understand task dependencies (what it blocks, what blocks it)
+> - After being assigned a task, to get complete requirements
+>
+> ## Output
+>
+> Returns full task details:
+> - **subject**: Task title
+> - **description**: Detailed requirements and context
+> - **status**: 'pending', 'in_progress', or 'completed'
+> - **blocks**: Tasks waiting on this one to complete
+> - **blockedBy**: Tasks that must complete before this one can start
+>
+> ## Tips
+>
+> - After fetching a task, verify its blockedBy list is empty before beginning work.
+> - Use TaskList to see all tasks in summary form.
+
+Parameters (from JSON schema):
+
+| Parameter | Required | Type | Description |
+|---|---|---|---|
+| `taskId` | Yes | string | The ID of the task to retrieve |
 
 
 ### TaskList
