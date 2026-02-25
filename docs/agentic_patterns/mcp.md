@@ -84,7 +84,7 @@ All MCP servers in `agentic_patterns/mcp/` follow the same structure: a `server.
 
 ```
 agentic_patterns/mcp/todo/
-    server.py       # create_mcp_server("todo-server")
+    server.py       # create_mcp_server("todo")
     tools.py        # @mcp.tool() wrappers delegating to toolkits/todo/operations
 ```
 
@@ -175,7 +175,8 @@ The routing is a one-way ratchet: once private data is detected in a session, al
 | `MCPSettings` | Class | Container for loaded MCP configs with `get(name)` accessor |
 | `load_mcp_settings(config_path)` | Function | Load MCP settings from YAML |
 | `get_mcp_server(name, config_path)` | Function | Create a FastMCP server from config (loads from YAML) |
-| `create_process_tool_call(bearer_token)` | Function | Create callback that injects Bearer token into MCP request metadata |
+| `FATAL_PREFIX` | Constant | Prefix string (`[FATAL]`) used to identify fatal errors in tool responses |
+| `create_process_tool_call(get_token)` | Function | Create callback that injects Bearer token into MCP request metadata. `get_token` is a `Callable[[], str | None]` |
 
 
 ## Examples

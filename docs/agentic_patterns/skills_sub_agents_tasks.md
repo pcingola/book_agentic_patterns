@@ -127,12 +127,10 @@ instructions = get_skill_instructions(registry, "code-review")  # skill.body
 
 ### Skill tools
 
-`get_all_tools(registry)` returns an `activate_skill` function for use as a PydanticAI tool:
+`registry.get_all_tools(sandbox=...)` returns an `activate_skill` function for use as a PydanticAI tool:
 
 ```python
-from agentic_patterns.core.skills.tools import get_all_tools
-
-tools = get_all_tools(registry)
+tools = registry.get_all_tools(sandbox=sandbox)
 agent = get_agent(tools=tools, system_prompt=f"Available skills:\n{catalog}")
 ```
 
@@ -140,13 +138,13 @@ When called, `activate_skill(skill_name)` returns the full SKILL.md body. If the
 
 ### Skill sandbox
 
-`create_skill_sandbox_manager(registry)` creates a `SandboxManager` with read-only mounts for all discovered skill script directories. Use `run_skill_script()` to execute a skill's bundled scripts inside the container:
+`create_skill_sandbox_manager(registry)` creates a `SandboxManager` with read-only mounts for all discovered skill script directories. Use `run_skill_script_sandboxed()` to execute a skill's bundled scripts inside the container:
 
 ```python
-from agentic_patterns.core.skills.tools import create_skill_sandbox_manager, run_skill_script
+from agentic_patterns.core.skills.tools import create_skill_sandbox_manager, run_skill_script_sandboxed
 
 manager = create_skill_sandbox_manager(registry)
-exit_code, output = run_skill_script(
+exit_code, output = run_skill_script_sandboxed(
     manager, registry, user_id, session_id,
     skill_name="code-review", script_name="analyze.py", args="main.py"
 )
@@ -174,11 +172,14 @@ pending --> running --> completed
 from agentic_patterns.core.tasks.models import Task, TaskEvent, EventType
 
 task = Task(input="Analyze this dataset")
-# task.id: auto-generated UUID
+# task.id: auto-generated counter string ("1", "2", "3", ...)
 # task.state: TaskState.PENDING
 # task.result: None (set on completion)
 # task.error: None (set on failure)
+# task.depends_on: [] (task IDs this task depends on)
 # task.events: [] (state changes, progress, logs)
+# task.created_at: datetime (UTC)
+# task.updated_at: datetime (UTC)
 # task.metadata: {} (carries agent_name, system_prompt, config_name)
 ```
 
@@ -331,9 +332,9 @@ The `on_node` callback (or `verbose=True` for the built-in `_log_node` hook) obs
 | `SkillRegistry.list_all()` | Method | Return cached metadata list |
 | `list_available_skills(registry)` | Function | Compact catalog string for system prompts |
 | `get_skill_instructions(registry, name)` | Function | Return SKILL.md body for activation |
-| `get_all_tools(registry)` | Function | Return `[activate_skill]` tool list |
+| `SkillRegistry.get_all_tools(sandbox)` | Method | Return `[activate_skill]` tool list |
 | `create_skill_sandbox_manager(registry)` | Function | SandboxManager with read-only skill mounts |
-| `run_skill_script(manager, registry, ...)` | Function | Execute skill script in sandbox |
+| `run_skill_script_sandboxed(manager, registry, ...)` | Function | Execute skill script in sandbox |
 
 ### `agentic_patterns.core.tasks`
 
@@ -342,7 +343,7 @@ The `on_node` callback (or `verbose=True` for the built-in `_log_node` hook) obs
 | `TaskState` | Enum | PENDING, RUNNING, COMPLETED, FAILED, INPUT_REQUIRED, CANCELLED |
 | `TERMINAL_STATES` | Set | {COMPLETED, FAILED, CANCELLED} |
 | `EventType` | Enum | STATE_CHANGE, PROGRESS, LOG |
-| `Task` | Pydantic model | Work unit: id, state, input, result, error, events, metadata |
+| `Task` | Pydantic model | Work unit: id (counter string), state, input, result, error, depends_on, events, created_at, updated_at, metadata |
 | `TaskEvent` | Pydantic model | Event record: task_id, event_type, payload, timestamp |
 | `TaskStore` | ABC | Persistence interface: create, get, update_state, list_by_state, next_pending, add_event |
 | `TaskStoreMemory` | Class | In-memory implementation |

@@ -18,7 +18,7 @@ databases:
     sensitivity: confidential
 ```
 
-Each entry defines a `type` (`sqlite`; `postgres` reserved for future use), connection parameters (`host`, `port`, `dbname`, `user`, `password`, `schema`), and an optional `sensitivity` level (`public`, `internal`, `confidential`, `restricted`). Relative `dbname` paths are resolved relative to `dbs.yaml`'s directory.
+Each entry defines a `type` (`sqlite`; `postgres` reserved for future use), connection parameters (`host`, `port`, `dbname`, `user`, `password`, `schema`), and an optional `sensitivity` level (`public`, `internal`, `confidential`, `secret`). Relative `dbname` paths are resolved relative to `dbs.yaml`'s directory.
 
 `DbConnectionConfigs` is a singleton registry that auto-loads `dbs.yaml` on first access. `DbInfos` is the companion registry for extracted and annotated schema metadata. Both support `reset()` for notebook re-execution.
 

@@ -313,9 +313,11 @@ Helper functions in `agentic_patterns.core.a2a`:
 | `extract_question(task)` | Function | Extract question from input-required status |
 | `card_to_prompt(card)` | Function | Format agent card as prompt markdown |
 | `slugify(name)` | Function | Name to valid Python identifier |
-| `MockA2AServer` | Class | Mock A2A server for testing |
+| `MockA2AServer` | Class | Mock A2A server for testing (import from `agentic_patterns.core.a2a.mock`) |
 | `A2ASettings` | Pydantic model | Container for A2A client configs |
 | `load_a2a_settings(config_path)` | Function | Load A2A settings from YAML |
+| `get_client_config(name)` | Function | Get a named A2A client configuration |
+| `list_client_configs()` | Function | List available A2A client configuration names |
 
 
 ## Examples
@@ -326,4 +328,4 @@ See the files in `agentic_patterns/examples/a2a/`:
 - `example_a2a_server_1.py` -- A2A server with skills (arithmetic)
 - `example_a2a_server_2.py` -- A2A server with skills (area calculations)
 - `example_a2a_client.ipynb` -- basic client: discover, send task, poll, extract result
-- `example_a2a_coordinator.ipynb` -- coordinator agent routing to multiple specialists
+- `example_a2a_client_v2.ipynb` -- coordinator agent routing to multiple specialists

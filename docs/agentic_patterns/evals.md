@@ -315,17 +315,25 @@ The convenience functions `tool_doctor()`, `prompt_doctor()`, `mcp_doctor()`, `a
 | `Issue` | Model | level, category, message, suggestion |
 | `IssueLevel` | Enum | ERROR, WARNING, INFO |
 | `IssueCategory` | Enum | AMBIGUITY, ARGUMENTS, CLARITY, COMPLETENESS, ... |
+| `DoctorBase` | Class | Base class for all doctor implementations |
 | `Recommendation` | Model | Base: name, needs_improvement, issues |
 | `ToolRecommendation` | Model | + arguments, return_type_issues |
+| `ArgumentRecommendation` | Model | Per-argument analysis with issues |
 | `PromptRecommendation` | Model | + placeholders_found |
 | `A2ARecommendation` | Model | + capabilities, skills |
+| `SkillRecommendation` | Model | A2A skill recommendation |
 | `AgentSkillRecommendation` | Model | + frontmatter/body/structure/consistency issues, scripts |
+| `ScriptRecommendation` | Model | Per-script analysis for Agent Skills |
+| `tool_doctor(func)` | Function | One-shot tool analysis |
+| `prompt_doctor(prompt)` | Function | One-shot prompt analysis |
+| `mcp_doctor(url)` | Function | One-shot MCP server analysis |
+| `a2a_doctor(url)` | Function | One-shot A2A agent card analysis |
+| `skill_doctor(path)` | Function | One-shot skill analysis |
 
 
 ## Examples
 
 See the files in `agentic_patterns/examples/evals/`:
 
-- `eval_todo.py` -- eval file for the todo agent with custom evaluators
-- `eval_search.py` -- eval file for the search agent with tool call checks
+- `eval_capital.py` -- eval file for a capital city agent with custom evaluators
 - `skill-bad/` and `skill-good/` -- skill directories for doctor analysis comparison

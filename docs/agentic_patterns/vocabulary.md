@@ -6,7 +6,7 @@
 
 Three resolution strategies are selected based on vocabulary size:
 
-**StrategyEnum** (fewer than 100 terms) -- stores terms in memory with exact lookup and fuzzy matching via `difflib.get_close_matches`. No hierarchy support.
+**StrategyEnum** (fewer than 100 terms) -- stores terms in memory with exact lookup, substring matching, and fuzzy matching via `difflib.get_close_matches`. No hierarchy support.
 
 **StrategyTree** (fewer than 1,000 terms) -- stores terms in an adjacency list with parent-child relationships. Supports BFS traversal for hierarchical queries (ancestors, descendants, siblings, subtree), plus exact and substring search.
 
@@ -47,7 +47,7 @@ vocabularies:
       definition_field: name
 ```
 
-Each entry declares `strategy` (`enum`, `tree`, or `rag`), `source` (file path relative to the vocabulary data directory), and `source_format`. RAG vocabularies require a `collection` name for the vector database. For tabular formats (CSV, TSV, JSON), `parser_options` can override which fields map to id, label, and definition.
+Each entry declares `strategy` (`enum`, `tree`, or `rag`), `source` (file path relative to the vocabulary data directory), and `source_format`. RAG vocabularies require a `collection` name for the vector database. Optional `embedding_config` selects a named embedding configuration from config.yaml (defaults to `"default"`). For tabular formats (CSV, TSV, JSON), `parser_options` can override which fields map to id, label, and definition.
 
 Supported source formats: `obo`, `owl`, `rf2`, `json_flat`, `json_hierarchical`, `csv`, `tsv`, `mesh_xml`, `gmt`.
 

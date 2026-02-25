@@ -103,7 +103,7 @@ app = create_agui_app(
 )
 ```
 
-It accepts the same parameters as `get_agent()` (config name, instructions, tools, `state_type`) and wraps the resulting agent in PydanticAI's `AGUIApp`. For wrapping an existing agent, use `create_agui_app_from_agent(agent, state=None)`.
+It accepts the same parameters as `get_agent()` (config name, instructions, tools, `state_type`, `initial_state`) and wraps the resulting agent in PydanticAI's `AGUIApp`. Additional keyword arguments are forwarded to `get_agent()`. For wrapping an existing agent, use `create_agui_app_from_agent(agent, state=None)`.
 
 The returned `app` is an ASGI application. Run it with uvicorn:
 
@@ -211,10 +211,14 @@ from agentic_patterns.core.workspace import write_to_workspace_async
 from agentic_patterns.core.compliance.private_data import PrivateData, DataSensitivity
 from agentic_patterns.core.context.reader import read_file_as_string
 
+from agentic_patterns.core.workspace import workspace_to_host_path
+from pathlib import PurePosixPath
+
 async def handle_upload(filename: str, content: bytes) -> tuple[str, str]:
     workspace_path = f"/workspace/uploads/{filename}"
     await write_to_workspace_async(workspace_path, content)
     PrivateData().add_private_dataset(f"upload:{filename}", DataSensitivity.CONFIDENTIAL)
+    host_path = workspace_to_host_path(PurePosixPath(workspace_path))
     summary = read_file_as_string(host_path)
     return workspace_path, summary
 ```

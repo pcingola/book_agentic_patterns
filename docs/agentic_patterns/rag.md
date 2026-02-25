@@ -102,60 +102,35 @@ def get_vector_db(
     embedding_config: str | None = None,
     vectordb_config: str | None = None,
     config_path: Path | str | None = None,
-) -> chromadb.Collection
+) -> VectorDB
 ```
 
-`embedding_config` and `vectordb_config` select named entries from `config.yaml`. Both default to `"default"`.
+`embedding_config` and `vectordb_config` select named entries from `config.yaml`. Both default to `"default"`. Returns a `VectorDB` instance wrapping a Chroma collection.
 
 
 ### Adding documents
 
 ```python
-from agentic_patterns.core.vectordb import vdb_add
-
-vdb_add(vdb, text="The answer is 42.", doc_id="doc-1", meta={"source": "guide"})
+vdb.add(text="The answer is 42.", doc_id="doc-1", meta={"source": "guide"})
 ```
 
-`vdb_add` is idempotent by default -- if `doc_id` already exists, the call is a no-op and returns `None`. Pass `force=True` to overwrite. Metadata is optional but useful for filtering during retrieval.
+`add()` is idempotent by default -- if `doc_id` already exists, the call is a no-op and returns `None`. Pass `force=True` to overwrite. Metadata is optional but useful for filtering during retrieval.
 
-**Signature:**
-
-```python
-def vdb_add(
-    vdb: chromadb.Collection,
-    text: str,
-    doc_id: str,
-    meta: dict | None = None,
-    force: bool = False,
-) -> str | None
-```
+**Signature:** `vdb.add(text, doc_id, meta=None, force=False) -> str | None`
 
 
 ### Querying
 
 ```python
-from agentic_patterns.core.vectordb import vdb_query
+results = vdb.query(query="What is the answer?")
 
-results = vdb_query(vdb, query="What is the answer?")
-
-for doc, meta, score in results:
-    print(f"[{score:.3f}] {doc[:80]}...")
+for result in results:
+    print(f"[{result.score:.3f}] {result.text[:80]}...")
 ```
 
-Each result is a `(document_text, metadata, similarity_score)` tuple. Scores are similarity values (higher is better), converted from Chroma's distance metric via `1.0 - distance`.
+Each result is a `RetrievedDocument` with fields: `doc_id`, `text`, `score`, `level` (`ChunkLevel`), `parent_id`, `metadata`. Scores are similarity values (higher is better), converted from Chroma's distance metric via `1.0 - distance`.
 
-**Signature:**
-
-```python
-def vdb_query(
-    vdb: chromadb.Collection,
-    query: str,
-    filter: dict[str, str] | None = None,
-    where_document: dict[str, str] | None = None,
-    max_items: int = 10,
-    similarity_threshold: float | None = None,
-) -> list[tuple[str, dict, float]]
-```
+**Signature:** `vdb.query(query, filter=None, where_document=None, max_items=10, similarity_threshold=None) -> list[RetrievedDocument]`
 
 | Parameter | Description |
 |---|---|
@@ -165,14 +140,27 @@ def vdb_query(
 | `similarity_threshold` | Drop results below this score |
 
 
+### Higher-level retrieval
+
+`vdb.retrieve(query, max_results=10, filter=None, level=None)` queries with deduplication and optional chunk-level filtering. Use `level=ChunkLevel.SECTION` to restrict to a specific chunk granularity.
+
+`vdb.fetch_parent(doc)` fetches the parent chunk by following `parent_id` for context widening.
+
+### Ingestion
+
+`vdb.ingest(chunks, force=False)` stores a list of `Chunk` objects. Returns count of added chunks.
+
+`vdb.ingest_file(file, provenance, pipeline="standard", force=False)` loads a file (PDF, DOCX, PPTX, HTML, markdown), chunks it, and stores in the collection.
+
 ### Lookup and existence check
 
 ```python
-from agentic_patterns.core.vectordb import vdb_get_by_id, vdb_has_id
-
-exists = vdb_has_id(vdb, "doc-1")
-record = vdb_get_by_id(vdb, "doc-1")
+exists = vdb.has("doc-1")
+record = vdb.get_by_id("doc-1")
+count = vdb.count()
 ```
+
+`vdb.collection` provides direct access to the underlying Chroma collection as an escape hatch.
 
 
 ## The RAG Pattern
@@ -183,7 +171,7 @@ The typical workflow has two phases.
 
 ```python
 from pathlib import Path
-from agentic_patterns.core.vectordb import get_vector_db, vdb_add
+from agentic_patterns.core.vectordb import get_vector_db
 
 vdb = get_vector_db("books")
 
@@ -192,18 +180,17 @@ for txt_file in Path("data/docs").glob("*.txt"):
     for i, paragraph in enumerate(text.split("\n\n")):
         if len(paragraph.strip()) < 50:
             continue
-        vdb_add(vdb, text=paragraph, doc_id=f"{txt_file.stem}-{i}", meta={"source": txt_file.stem})
+        vdb.add(text=paragraph, doc_id=f"{txt_file.stem}-{i}", meta={"source": txt_file.stem})
 ```
 
 **Retrieval** (run on every query): embed the user's question, find similar chunks, and pass them as context to the agent.
 
 ```python
-from agentic_patterns.core.vectordb import vdb_query
 from agentic_patterns.core.agents import get_agent, run_agent
 
-results = vdb_query(vdb, query="Who is a man with two heads?")
+results = vdb.query(query="Who is a man with two heads?")
 
-docs_str = "\n\n".join(f"[{score:.3f}] {doc}" for doc, meta, score in results)
+docs_str = "\n\n".join(f"[{r.score:.3f}] {r.text}" for r in results)
 
 prompt = f"Given these documents, answer the question.\n\n{docs_str}\n\nQuestion: Who is a man with two heads?"
 agent = get_agent()
@@ -217,10 +204,10 @@ The library handles embedding and search. You control chunking strategy, prompt 
 
 The vector database module supports several techniques that improve retrieval quality beyond simple single-query search.
 
-**Metadata filtering.** Pass `filter` to `vdb_query()` to restrict results at the database level. This is more efficient than post-retrieval filtering and useful for access control, source restriction, or temporal constraints.
+**Metadata filtering.** Pass `filter` to `vdb.query()` to restrict results at the database level. This is more efficient than post-retrieval filtering and useful for access control, source restriction, or temporal constraints.
 
 ```python
-results = vdb_query(vdb, query="main character", filter={"source": "hhgttg"})
+results = vdb.query(query="main character", filter={"source": "hhgttg"})
 ```
 
 **Query expansion.** Generate multiple reformulations of the user's query using an LLM, then query the vector database with each reformulation. Combine and deduplicate the results. This increases recall when documents use different terminology than the query.
@@ -229,7 +216,11 @@ results = vdb_query(vdb, query="main character", filter={"source": "hhgttg"})
 
 **Re-ranking.** After retrieving a candidate set from multiple queries, sort by similarity score and limit to top-N results. For higher precision, use a cross-encoder model to re-score query-document pairs.
 
-These techniques compose naturally with the core `vdb_query()` function -- they operate on the inputs (query expansion) or outputs (deduplication, re-ranking) of the same API.
+These techniques compose naturally with `vdb.query()` and `vdb.retrieve()` -- they operate on the inputs (query expansion) or outputs (deduplication, re-ranking) of the same API.
+
+`MultiSourceRetriever` (`agentic_patterns.core.vectordb.multi_source`) queries multiple VectorDB collections in parallel and merges results.
+
+`cluster()` and `label_clusters()` (`agentic_patterns.core.vectordb.clustering`) group documents by embedding similarity using HDBSCAN or K-Means.
 
 
 ## API Reference
@@ -240,11 +231,22 @@ These techniques compose naturally with the core `vdb_query()` function -- they 
 |---|---|---|
 | `EmbeddingConfig` | Type alias | Union of all embedding config types (OpenAI, Ollama, SentenceTransformers, OpenRouter) |
 | `VectorDBConfig` | Type alias | Union of all vector DB config types (Chroma, PgVector) |
-| `get_vector_db(collection_name, ...)` | Function | Get or create a Chroma collection with singleton caching |
-| `vdb_add(vdb, text, doc_id, meta, force)` | Function | Add a document (idempotent by default) |
-| `vdb_query(vdb, query, filter, ...)` | Function | Similarity search returning `(doc, meta, score)` tuples |
-| `vdb_get_by_id(vdb, doc_id)` | Function | Retrieve a document by ID |
-| `vdb_has_id(vdb, doc_id)` | Function | Check if a document ID exists |
+| `VectorDB` | Class | Wraps a Chroma collection with add, query, retrieve, ingest operations |
+| `VectorDB.add(text, doc_id, meta, force)` | Method | Add a document (idempotent by default) |
+| `VectorDB.query(query, filter, ...)` | Method | Similarity search returning `list[RetrievedDocument]` |
+| `VectorDB.retrieve(query, max_results, filter, level)` | Method | Query with deduplication and chunk-level filtering |
+| `VectorDB.fetch_parent(doc)` | Method | Fetch parent chunk for context widening |
+| `VectorDB.ingest(chunks, force)` | Method | Store `Chunk` objects, returns count added |
+| `VectorDB.ingest_file(file, provenance, ...)` | Method | Load, chunk, and store a file |
+| `VectorDB.get_by_id(doc_id)` | Method | Retrieve a document by ID |
+| `VectorDB.has(doc_id)` | Method | Check if a document ID exists |
+| `VectorDB.count()` | Method | Return document count |
+| `VectorDB.collection` | Property | Direct access to underlying Chroma collection |
+| `RetrievedDocument` | Pydantic model | doc_id, text, score, level, parent_id, metadata |
+| `Chunk` | Pydantic model | doc_id, text, level, parent_id, metadata |
+| `ChunkLevel` | Enum | DOCUMENT, CHAPTER, SECTION, PARAGRAPH |
+| `ClusterResult` | Pydantic model | clusters: list[Cluster] |
+| `get_vector_db(collection_name, ...)` | Function | Get or create a VectorDB with singleton caching |
 | `get_embedder(config, config_path)` | Function | Get or create an embedder with singleton caching |
 | `embed_text(text, embedder)` | Async function | Embed a single text string |
 | `embed_texts(texts, embedder)` | Async function | Embed multiple text strings |
@@ -271,3 +273,5 @@ See the notebooks in `agentic_patterns/examples/rag/`:
 - `example_RAG_01_query.ipynb` -- basic similarity search and prompt augmentation
 - `example_RAG_02_load.ipynb` -- LLM-based semantic chunking with batch handling
 - `example_RAG_02_query.ipynb` -- query expansion, metadata filtering, deduplication, and re-ranking
+- `example_RAG_03_multi_source.ipynb` -- querying multiple collections via `MultiSourceRetriever`
+- `example_RAG_04_clustering.ipynb` -- semantic clustering with `cluster()` and `label_clusters()`

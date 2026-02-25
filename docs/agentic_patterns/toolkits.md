@@ -16,15 +16,15 @@ Operations (`todo_add`, `todo_add_many`, `todo_create_list`, `todo_delete`, `tod
 
 `agentic_patterns.toolkits.data_analysis` provides DataFrame operations via an operation registry pattern.
 
-`get_all_operations()` returns a dict mapping operation names to `OperationConfig` objects. 53 operations across six categories:
+`get_all_operations()` returns a dict mapping operation names to `OperationConfig` objects. 52 operations across six categories:
 
 | Category | Count | Examples |
 |---|---|---|
 | EDA | 17 | head, tail, shape, describe, info, dtypes, columns, unique, nunique, value_counts, correlation, missing_values, groupby_mean, groupby_count, groupby_sum, pivot_table, crosstab |
-| Transform | 11 | min_max_scale, standard_scale, select_columns, drop_columns, rename_columns, one_hot_encode, log_transform, sort_values, sample, filter_rows |
+| Transform | 10 | min_max_scale, standard_scale, select_columns, drop_columns, rename_columns, one_hot_encode, log_transform, sort_values, sample, filter_rows |
 | Statistics | 7 | t_test_one_sample, t_test_two_sample, chi_square_test, normality_test, correlation_test, anova_one_way, mann_whitney_u_test |
-| Classification | 6 | logistic_regression, random_forest, decision_tree, gradient_boosting, knn, svm |
-| Regression | 8 | linear, ridge, lasso, random_forest, decision_tree, gradient_boosting, knn, svr |
+| Classification | 6 | logistic_regression, random_forest_classification, decision_tree_classification, gradient_boosting_classification, knn_classification, svm_classification |
+| Regression | 8 | linear_regression, ridge_regression, lasso_regression, random_forest_regression, decision_tree_regression, gradient_boosting_regression, knn_regression, svr_regression |
 | Feature importance | 4 | gradient_boosting, linear, permutation, random_forest |
 
 `execute_operation(input_file, output_file, operation_name, parameters)` loads a DataFrame from the workspace, executes the named operation, saves results (CSV for DataFrames, pickle for models), and returns a formatted string summary. Supporting utilities: `load_df()` and `save_df()` handle workspace I/O, `list_dataframe_files()` discovers available files.
@@ -42,7 +42,13 @@ Operations (`todo_add`, `todo_add_many`, `todo_create_list`, `todo_delete`, `tod
 | Categorical | count_plot, pie_chart |
 | Matrix | heatmap, pair_plot |
 
-`execute_plot(input_file, output_file, plot_name, parameters)` loads a DataFrame, creates a matplotlib figure using the Agg backend, saves a PNG to the workspace, and returns the workspace path. Configuration defaults: DPI=150, figure size 10x6, seaborn "muted" palette.
+`execute_plot(input_file, output_file, plot_name, parameters)` loads a DataFrame, creates a matplotlib figure using the Agg backend, saves a PNG to the workspace, and returns the workspace path. Configuration defaults: DPI=150, figure size 10x6, "viridis" palette.
+
+## REPL Export
+
+`agentic_patterns.toolkits.repl` provides notebook export functionality.
+
+`export_notebook_as_ipynb(notebook, output_dir)` converts a `Notebook` object to Jupyter `.ipynb` format and saves it to the specified output directory.
 
 ## Format Conversion
 

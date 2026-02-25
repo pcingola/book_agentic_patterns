@@ -64,9 +64,9 @@ def get_agent(
     elif model_settings is None:
         model_settings = ModelSettings()
 
-    # If history_compactor provided and no history_processor in kwargs, create one
-    if history_compactor is not None and "history_processor" not in kwargs:
-        kwargs["history_processor"] = history_compactor.create_history_processor()
+    # If history_compactor provided and no history_processors in kwargs, create one
+    if history_compactor is not None and "history_processors" not in kwargs:
+        kwargs["history_processors"] = [history_compactor.create_history_processor()]
 
     agent = Agent(model=model, model_settings=model_settings, instrument=True, **kwargs)
     return agent

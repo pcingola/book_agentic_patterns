@@ -39,9 +39,9 @@ The annotation pipeline (`ApiSpecAnnotator`) generates an API description, categ
 
 `ApiInfo` -- API-level metadata: `api_id`, `title`, `version`, `description`, `base_url`, `endpoints: list[EndpointInfo]`, `example_use_cases`.
 
-`EndpointInfo` -- endpoint specification: `path`, `method`, `operation_id`, `summary`, `description`, `parameters: list[ParameterInfo]`, `request_body: RequestSchemaInfo | None`, `responses: list[ResponseSchemaInfo]`, `category`, `example_request`.
+`EndpointInfo` -- endpoint specification: `path`, `method`, `operation_id`, `summary`, `description`, `parameters: list[ParameterInfo]`, `request_body: RequestSchemaInfo | None`, `responses: list[ResponseSchemaInfo]`, `category`, `example_request`, `tags: list[str]`, `deprecated: bool`.
 
-`ParameterInfo` -- single parameter: `name`, `location` (query/header/path/cookie), `required`, `schema_type`, `description`, `enum_values`, `example`.
+`ParameterInfo` -- single parameter: `name`, `location` (query/header/path/cookie), `required`, `schema_type`, `description`, `enum_values`, `example`, `default`.
 
 ## Operations
 

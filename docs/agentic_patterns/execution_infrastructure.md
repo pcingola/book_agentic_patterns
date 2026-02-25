@@ -182,7 +182,7 @@ IPC uses plain dicts for the Docker path. The standalone executor writes `{"stat
 
 ### Persistence
 
-Notebooks are persisted as JSON at `WORKSPACE_DIR / user_id / session_id / mcp_repl / cells.json`. The notebook saves after every operation (add, execute, delete, clear). Export to Jupyter `.ipynb` format is handled by `toolkits/repl/export.py` (`export_notebook_as_ipynb`).
+Notebooks are persisted as JSON at `DATA_DIR / repl / user_id / session_id / cells.json`. The notebook saves after every operation (add, execute, delete, clear). Export to Jupyter `.ipynb` format is handled by `toolkits/repl/export.py` (`export_notebook_as_ipynb`).
 
 ### Tool Wrappers
 
@@ -193,10 +193,10 @@ from agentic_patterns.tools.repl import get_all_tools
 
 tools = get_all_tools()
 # repl_execute_cell, repl_rerun_cell, repl_show_notebook, repl_show_cell,
-# repl_delete_cell, repl_clear_notebook, repl_export_ipynb
+# repl_delete_cell, repl_clear_notebook, repl_export_ipynb, repl_create_notebook
 ```
 
-MCP server (`mcp/repl/`): same seven tools, converts `ValueError`/`IndexError` to `ToolRetryError`.
+MCP server (`mcp/repl/`): same eight tools without the `repl_` prefix (e.g., `execute_cell`, `create_notebook`). Converts `ValueError`/`IndexError` to `ToolRetryError`.
 
 ## MCP Server Isolation
 

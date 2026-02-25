@@ -28,6 +28,9 @@ book_agentic_patterns/
 │   │   ├── tools/     #   Tool utilities
 │   │   ├── evals/     #   Evaluation framework
 │   │   ├── ui/        #   UI implementations (Chainlit, AG-UI)
+│   │   ├── compliance/#   Data sensitivity, private data tagging, permission enforcement
+│   │   ├── doc_ingestion/#  Document parsing (PDF, DOCX, PPTX, HTML)
+│   │   ├── feedback/  #   User feedback persistence
 │   │   ├── doctors/   #   Code quality analysis
 │   │   └── vectordb/  #   Vector database utilities
 │   ├── toolkits/      # Business logic (pure Python, no framework dependency)

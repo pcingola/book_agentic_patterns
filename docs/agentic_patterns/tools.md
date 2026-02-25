@@ -130,7 +130,7 @@ def send_notification(email: str, amount: float) -> bool:
     return True
 ```
 
-A tool can require multiple permissions. CONNECT tools are automatically blocked when the session contains private data (see Compliance).
+A tool can require multiple permissions. CONNECT tools are automatically blocked when the session contains private data (see [Compliance](compliance.md)).
 
 ### Inspecting permissions
 
@@ -269,7 +269,7 @@ The library ships tool wrappers in `agentic_patterns.tools`. Each module exposes
 | `nl2sql` | `core.connectors.sql` | db_execute_sql_tool, db_get_row_by_id_tool (note: `get_all_tools(db_id: str)` requires a `db_id` argument to bind tools to a specific database) |
 | `openapi` | `core.connectors.openapi` | openapi_list_apis, openapi_list_endpoints, openapi_show_api_summary, openapi_show_endpoint_details, openapi_call_endpoint |
 | `todo` | `toolkits.todo` | todo_add, todo_add_many, todo_create_list, todo_delete, todo_show, todo_update_status |
-| `repl` | `core.repl` | repl_execute_cell, repl_rerun_cell, repl_show_notebook, repl_show_cell, repl_delete_cell, repl_clear_notebook, repl_export_ipynb |
+| `repl` | `core.repl` | repl_execute_cell, repl_rerun_cell, repl_show_notebook, repl_show_cell, repl_delete_cell, repl_clear_notebook, repl_export_ipynb, repl_create_notebook |
 | `sandbox` | `core.sandbox` | sandbox_execute |
 | `data_analysis` | `toolkits.data_analysis` | list_dataframes + dynamically generated operation tools |
 | `data_viz` | `toolkits.data_viz` | list_plots + dynamically generated plot tools |
