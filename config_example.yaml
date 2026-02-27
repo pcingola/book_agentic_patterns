@@ -134,6 +134,12 @@ sandbox:
   repl:
     image: agentic-patterns-repl:latest
 
+search:
+  perplexity:
+    api_key: your-perplexity-api-key
+    model: sonar
+    api_url: https://api.perplexity.ai
+
 vectordb:
   default:
     backend: chroma

@@ -122,6 +122,32 @@ class A2AClientExtended:
 
             await asyncio.sleep(self._config.poll_interval)
 
+    async def get_task(self, task_id: str) -> tuple[TaskStatus | None, dict | None]:
+        """Single non-blocking check of a remote task's current state.
+
+        Returns (None, task) if the task is still running (not in a terminal state).
+        """
+        response = await self._get_task_with_retry(task_id)
+        task = response["result"]
+        state = task["status"]["state"]
+        match state:
+            case "completed":
+                return (TaskStatus.COMPLETED, task)
+            case "failed" | "rejected":
+                return (TaskStatus.FAILED, task)
+            case "canceled":
+                return (TaskStatus.CANCELLED, task)
+            case "input-required":
+                return (TaskStatus.INPUT_REQUIRED, task)
+            case _:
+                return (None, task)
+
+    async def send_message_only(self, prompt: str) -> str:
+        """Send a message and return the remote task ID without polling."""
+        message = create_message(prompt)
+        response = await self._send_with_retry(message)
+        return response["result"]["id"]
+
     async def _send_with_retry(self, message, **kwargs):
         """Send message with exponential backoff retry."""
         for attempt in range(self._config.max_retries):

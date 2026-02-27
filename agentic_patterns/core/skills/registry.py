@@ -9,7 +9,12 @@ from typing import TYPE_CHECKING, Any
 import yaml
 
 from agentic_patterns.core.prompt import get_prompt
-from agentic_patterns.core.skills.models import Skill, SkillEvent, SkillEventType, SkillMetadata
+from agentic_patterns.core.skills.models import (
+    Skill,
+    SkillEvent,
+    SkillEventType,
+    SkillMetadata,
+)
 
 if TYPE_CHECKING:
     from agentic_patterns.core.sandbox.manager import SandboxManager
@@ -51,8 +56,13 @@ def _run_script_sandboxed(
     from agentic_patterns.core.user_session import get_session_id, get_user_id
 
     return run_skill_script_sandboxed(
-        sandbox, registry, get_user_id(), get_session_id(),
-        skill_name, script_name, args,
+        sandbox,
+        registry,
+        get_user_id(),
+        get_session_id(),
+        skill_name,
+        script_name,
+        args,
     )
 
 
@@ -157,7 +167,9 @@ class SkillRegistry:
             if skill is None:
                 return f"Skill '{skill_name}' not found. Use the skill catalog to see available skills."
             activated.add(skill_name)
-            registry._fire(SkillEvent(skill_name=skill_name, event_type=SkillEventType.ACTIVATE))
+            registry._fire(
+                SkillEvent(skill_name=skill_name, event_type=SkillEventType.ACTIVATE)
+            )
             parts = [f"[SKILL ACTIVATED] {skill_name}", "", skill.body]
             if skill.script_paths:
                 scripts = ", ".join(p.name for p in skill.script_paths)
@@ -192,10 +204,16 @@ class SkillRegistry:
                 return f"File '{file_name}' not found in {resource_type}s for '{skill_name}'. Available: {available}"
             try:
                 content = matching[0].read_text(encoding="utf-8")
-                registry._fire(SkillEvent(
-                    skill_name=skill_name, event_type=SkillEventType.READ,
-                    payload={"resource_type": resource_type, "file_name": file_name},
-                ))
+                registry._fire(
+                    SkillEvent(
+                        skill_name=skill_name,
+                        event_type=SkillEventType.READ,
+                        payload={
+                            "resource_type": resource_type,
+                            "file_name": file_name,
+                        },
+                    )
+                )
                 return content
             except UnicodeDecodeError:
                 return (
@@ -209,13 +227,20 @@ class SkillRegistry:
             if skill_name not in activated:
                 return f"Error: activate the '{skill_name}' skill first."
             if sandbox is not None:
-                exit_code, output = _run_script_sandboxed(sandbox, registry, skill_name, script_name, args)
+                exit_code, output = _run_script_sandboxed(
+                    sandbox, registry, skill_name, script_name, args
+                )
             else:
-                exit_code, output = _run_script_local(registry, skill_name, script_name, args)
-            registry._fire(SkillEvent(
-                skill_name=skill_name, event_type=SkillEventType.EXEC,
-                payload={"script": script_name, "exit_code": exit_code},
-            ))
+                exit_code, output = _run_script_local(
+                    registry, skill_name, script_name, args
+                )
+            registry._fire(
+                SkillEvent(
+                    skill_name=skill_name,
+                    event_type=SkillEventType.EXEC,
+                    payload={"script": script_name, "exit_code": exit_code},
+                )
+            )
             header = f"[EXECUTE] {skill_name}/{script_name}"
             return (
                 f"{header}\nExit code: {exit_code}\n{output}"

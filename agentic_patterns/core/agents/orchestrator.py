@@ -9,26 +9,22 @@ from typing import Any, Sequence
 import rich
 import yaml
 from pydantic import BaseModel, ConfigDict
-from pydantic_ai import Agent, RunContext
+from pydantic_ai import Agent
 from pydantic_ai._agent_graph import CallToolsNode, ModelRequestNode
 from pydantic_ai.agent import AgentRun, AgentRunResult
 from pydantic_ai.messages import ModelMessage, TextPart, ToolCallPart, ToolReturnPart
 from pydantic_ai.models import Model
 from pydantic_ai.mcp import MCPServerStreamableHTTP
-from pydantic_ai.usage import RunUsage, UsageLimits
+from pydantic_ai.usage import UsageLimits
 
 from agentic_patterns.core.a2a.client import A2AClientExtended, get_a2a_client
-from agentic_patterns.core.a2a.tool import build_coordinator_prompt, create_a2a_tool
+from agentic_patterns.core.agents.agent_status import AgentStatus
 from agentic_patterns.core.agents.agents import get_agent
 from agentic_patterns.core.agents.models import get_model
 from agentic_patterns.core.config.config import MAIN_PROJECT_DIR, PROMPTS_DIR
 from agentic_patterns.core.mcp import MCPClientConfig, load_mcp_settings
 from agentic_patterns.core.skills.models import Skill, SkillMetadata
 from agentic_patterns.core.skills.registry import SkillRegistry
-from agentic_patterns.core.tasks.models import EventType
-from agentic_patterns.core.tasks.state import TERMINAL_STATES, TaskState
-from agentic_patterns.core.tasks.store import TaskStoreMemory
-from agentic_patterns.core.tasks.tasks import Tasks
 
 NodeHook = Callable[[Any], None]
 
@@ -170,29 +166,23 @@ class AgentSpec(BaseModel):
 class OrchestratorAgent:
     """Composes and runs a PydanticAI agent from an AgentSpec.
 
-    Takes a declarative AgentSpec and wires up all six capabilities: tools, MCP
-    servers, A2A clients, skills, sub-agents, and tasks. Used as an async context
-    manager: __aenter__ connects MCP servers, fetches A2A agent cards, discovers
-    skills, creates the task broker, builds the system prompt from templates and
-    catalogs, and instantiates the underlying PydanticAI Agent. __aexit__ cancels
-    running tasks and tears down connections.
+    Takes a declarative AgentSpec and wires up all capabilities: tools, MCP
+    servers, skills, and agents (local sub-agents and remote A2A agents via
+    unified AgentRunner) with tasks (via TaskList). Used as an async context
+    manager.
 
     The run() method executes a single turn. Message history accumulates across
     calls, enabling multi-turn conversations. Between turns, completed background
-    tasks are automatically injected into the prompt.
-
-    Sub-agents and tasks share the same TaskBroker. When sub_agents are present,
-    the broker is created and three tools are added: delegate (submit + wait for
-    one task), submit_task (fire-and-forget), and wait (event-driven block until
-    background work completes). The system prompt controls which tools the agent
-    actually uses.
-
-    The context manager is re-entrant: infrastructure is rebuilt on each entry,
-    but message history persists across entries.
+    agents are automatically injected into the prompt.
     """
 
     def __init__(
-        self, spec: AgentSpec, *, verbose: bool = False, on_node: NodeHook | None = None
+        self,
+        spec: AgentSpec,
+        *,
+        verbose: bool = False,
+        on_node: NodeHook | None = None,
+        task_list: Any | None = None,
     ):
         self.spec = spec
         self._on_node = on_node or (_log_node if verbose else None)
@@ -201,12 +191,9 @@ class OrchestratorAgent:
         self._system_prompt: str = ""
         self._message_history: list[ModelMessage] = []
         self._runs: list[tuple[AgentRun, list]] = []
-        # Task broker (powers both delegate and submit_task/wait)
-        self._tasks = Tasks()
-        self._broker = None
-        self._activity = asyncio.Event()
-        self._submitted_task_ids: list[str] = []
-        self._reported_task_ids: set[str] = set()
+        self._agent_runner = None
+        self._task_list = task_list  # None = create new; provided = shared from parent
+        self._reported_agent_ids: set[str] = set()
 
     async def __aenter__(self) -> "OrchestratorAgent":
         self._exit_stack = AsyncExitStack()
@@ -214,12 +201,11 @@ class OrchestratorAgent:
 
         tools: list[Any] = list(self.spec.tools)
         mcp_toolsets = self._create_mcp_toolsets()
-        a2a_cards = await self._connect_a2a(tools)
         self._discover_skills()
         self._add_skill_tools(tools)
-        await self._add_task_tools(tools)
+        agents_catalog = await self._add_agent_tools(tools)
 
-        self._system_prompt = self._build_system_prompt(a2a_cards)
+        self._system_prompt = self._build_system_prompt(agents_catalog)
         agent_kwargs: dict[str, Any] = {}
         if mcp_toolsets:
             agent_kwargs["toolsets"] = mcp_toolsets
@@ -245,14 +231,54 @@ class OrchestratorAgent:
             )
         return toolsets
 
-    async def _connect_a2a(self, tools: list[Any]) -> list[dict]:
-        """Fetch A2A agent cards and create delegation tools. Returns A2A cards."""
-        a2a_cards: list[dict] = []
+    async def _add_agent_tools(self, tools: list[Any]) -> dict[str, str]:
+        """Create AgentRunner and add agent + task tools when agents are present.
+
+        Returns the agents catalog {name: description} for the system prompt.
+        """
+        has_agents = bool(self.spec.sub_agents or self.spec.a2a_clients)
+        if not has_agents:
+            return {}
+
+        from agentic_patterns.core.agents.agent_runner import AgentRunner
+        from agentic_patterns.core.agents.agent_runner_tools import (
+            get_agent_runner_tools,
+        )
+
+        # Build local agents map
+        local_agents = {s.name: s for s in self.spec.sub_agents}
+
+        # Build remote agents map: fetch agent cards
+        remote_agents: dict[str, tuple[A2AClientExtended, dict]] = {}
         for client in self.spec.a2a_clients:
             card = await client.get_agent_card()
-            a2a_cards.append(card)
-            tools.append(create_a2a_tool(client, card))
-        return a2a_cards
+            name = card.get("name", "remote")
+            remote_agents[name] = (client, card)
+
+        self._agent_runner = AgentRunner(local_agents, remote_agents)
+
+        # Create or reuse TaskList
+        if self._task_list is None:
+            import uuid
+            from agentic_patterns.core.config.config import WORKSPACE_DIR
+            from agentic_patterns.core.tasks import TaskList
+
+            list_id = str(uuid.uuid4())[:8]
+            base_dir = WORKSPACE_DIR / ".tasks" / list_id
+            self._task_list = TaskList(base_dir)
+
+        # Share TaskList with AgentRunner so child agents inherit it
+        self._agent_runner._task_list = self._task_list
+
+        # Add task management tools
+        from agentic_patterns.core.tasks import get_task_tools
+
+        tools.extend(get_task_tools(self._task_list))
+
+        # Add agent spawning tools
+        tools.extend(get_agent_runner_tools(self._agent_runner))
+
+        return self._agent_runner.catalog()
 
     def _discover_skills(self) -> None:
         """Auto-discover skills from SKILLS_DIR when none are provided explicitly."""
@@ -287,148 +313,26 @@ class OrchestratorAgent:
         ]
         return registry
 
-    async def _add_task_tools(self, tools: list[Any]) -> None:
-        """Create broker and add sub-agent (delegate) and task (submit_task, wait) tools."""
-        if not self.spec.sub_agents:
-            return
-
-        sub_map = {s.name: s for s in self.spec.sub_agents}
-        names = list(sub_map.keys())
-
-        from agentic_patterns.core.tasks.broker import TaskBroker
-
-        self._broker = TaskBroker(
-            store=TaskStoreMemory(self._tasks),
-            poll_interval=0.3,
-            activity=self._activity,
-        )
-        self._broker.register_agents(sub_map)
-        await self._exit_stack.enter_async_context(self._broker)
-
-        broker = self._broker
-        submitted = self._submitted_task_ids
-
-        tools.append(self._make_delegate_tool(broker, submitted, sub_map, names))
-        tools.append(self._make_submit_task_tool(broker, submitted, sub_map, names))
-        tools.append(self._make_wait_tool(broker, submitted))
-
-    @staticmethod
-    def _make_delegate_tool(
-        broker: Any,
-        submitted: list[str],
-        sub_map: dict[str, "AgentSpec"],
-        names: list[str],
-    ) -> Any:
-        async def delegate(ctx: RunContext, agent_name: str, prompt: str) -> str:
-            """Delegate a task to a sub-agent and wait for the result."""
-            if agent_name not in sub_map:
-                return f"Unknown agent '{agent_name}'. Available: {', '.join(names)}"
-            task_id = await broker.submit(prompt, agent_name=agent_name)
-            submitted.append(task_id)
-            task = await broker.wait(task_id)
-            if task is None:
-                return "Delegation failed: task not found"
-            if task.state == TaskState.COMPLETED:
-                for event in reversed(task.events):
-                    if (
-                        event.payload.get("state") == TaskState.COMPLETED.value
-                        and "usage" in event.payload
-                    ):
-                        u = event.payload["usage"]
-                        ctx.usage.incr(
-                            RunUsage(
-                                requests=u.get("requests", 0),
-                                input_tokens=u.get("input_tokens", 0),
-                                output_tokens=u.get("output_tokens", 0),
-                            )
-                        )
-                        break
-                return task.result or ""
-            return f"Delegation failed: {task.error or task.state.value}"
-
-        delegate.__doc__ = f"Delegate a task to a sub-agent and wait for the result. Available agents: {', '.join(names)}."
-        return delegate
-
-    @staticmethod
-    def _make_submit_task_tool(
-        broker: Any,
-        submitted: list[str],
-        sub_map: dict[str, "AgentSpec"],
-        names: list[str],
-    ) -> Any:
-        async def submit_task(
-            ctx: RunContext,
-            agent_name: str,
-            prompt: str,
-            depends_on: list[str] | None = None,
-        ) -> str:
-            """Submit a task to a sub-agent for background execution. Returns task_id. Use depends_on to list task_ids that must complete first."""
-            if agent_name not in sub_map:
-                return f"Unknown agent '{agent_name}'. Available: {', '.join(names)}"
-            task_id = await broker.submit(
-                prompt, depends_on=depends_on, agent_name=agent_name
-            )
-            submitted.append(task_id)
-            return f"Task submitted: {task_id}"
-
-        submit_task.__doc__ = f"Submit a task to a sub-agent for background execution. Returns task_id. Use depends_on to list task_ids that must complete first. Available agents: {', '.join(names)}."
-        return submit_task
-
-    def _make_wait_tool(self, broker: Any, submitted: list[str]) -> Any:
-        activity = self._activity
-        DEFAULT_TIMEOUT = 120
-
-        async def wait(ctx: RunContext, timeout: int = DEFAULT_TIMEOUT) -> str:
-            """Wait for background tasks to complete. Blocks until at least one finishes or timeout fires. Returns status and results for all submitted tasks."""
-            if not submitted:
-                return "No tasks submitted."
-
-            # Clear-then-check pattern: safe against races because the store
-            # is updated before the event is set.
-            activity.clear()
-
-            # Collect current state -- anything already terminal is returned immediately.
-            lines, all_terminal = await _collect_status(broker, submitted)
-            if all_terminal:
-                return "\n".join(lines)
-
-            # Check if any newly terminal tasks appeared since last call.
-            newly_terminal = any(
-                line
-                for line in lines
-                if "completed" in line or "failed" in line or "cancelled" in line
-            )
-            if newly_terminal:
-                return "\n".join(lines)
-
-            # Block until signaled or timeout.
-            try:
-                await asyncio.wait_for(activity.wait(), timeout=timeout)
-            except asyncio.TimeoutError:
-                pass
-
-            lines, _ = await _collect_status(broker, submitted)
-            return "\n".join(lines)
-
-        return wait
-
     async def __aexit__(self, exc_type, exc_val, exc_tb):
-        # Cancel all running tasks before tearing down
-        if self._broker:
-            await self._broker.cancel_all()
+        if self._agent_runner:
+            await self._agent_runner.cancel_all()
         if self._exit_stack:
             await self._exit_stack.__aexit__(exc_type, exc_val, exc_tb)
         self._agent = None
-        self._broker = None
+        self._agent_runner = None
+
+    @property
+    def agent_runner(self) -> Any:
+        return self._agent_runner
 
     @property
     def system_prompt(self) -> str:
-        """Final system prompt built from template, sub-agent catalog, skill catalog, and A2A cards."""
+        """Final system prompt built from template, agent catalog, and skill catalog."""
         return self._system_prompt
 
     @property
-    def tasks(self) -> Tasks:
-        return self._tasks
+    def task_list(self) -> Any:
+        return self._task_list
 
     @property
     def runs(self) -> list[tuple[AgentRun, list]]:
@@ -450,8 +354,7 @@ class OrchestratorAgent:
 
         from agentic_patterns.core.agents.utils import nodes_to_message_history
 
-        # Inject completed background tasks into the prompt
-        prompt = await self._inject_completed_tasks(prompt)
+        prompt = await self._inject_completed_agents(prompt)
 
         history = (
             message_history
@@ -472,55 +375,52 @@ class OrchestratorAgent:
         self._message_history.extend(nodes_to_message_history(nodes))
         return agent_run.result
 
-    async def _inject_completed_tasks(self, prompt: str) -> str:
-        """Prepend info about background tasks completed since last check."""
-        if not self._broker or not self._submitted_task_ids:
+    async def _inject_completed_agents(self, prompt: str) -> str:
+        """Prepend info about background agents completed since last check.
+
+        For local agents the asyncio.Task result is already available.
+        For remote agents, makes one get_task call per pending agent.
+        """
+        if not self._agent_runner:
             return prompt
 
+        # Check remote agents for completion
+        for agent_id, result in self._agent_runner._results.items():
+            if result.status == AgentStatus.RUNNING and result._remote_task_id:
+                await self._agent_runner.check_remote(agent_id)
+
         injections = []
-        for tid in self._submitted_task_ids:
-            if tid in self._reported_task_ids:
+        for agent_id, result in self._agent_runner._results.items():
+            if agent_id in self._reported_agent_ids:
                 continue
-            task = await self._broker.poll(tid)
-            if task is None or task.state not in TERMINAL_STATES:
+            if result.status == AgentStatus.RUNNING:
                 continue
-            self._reported_task_ids.add(tid)
-            agent_name = task.metadata.get("agent_name", "unknown")
-            if task.state == TaskState.COMPLETED and task.result:
+            self._reported_agent_ids.add(agent_id)
+            if result.status == AgentStatus.COMPLETED and result.output:
                 injections.append(
-                    f"[BACKGROUND TASK COMPLETED: {agent_name} (task_id={tid})]\n"
-                    f"Result: {task.result}"
+                    f"[BACKGROUND AGENT COMPLETED: {result.agent_name} (id={agent_id})]\n"
+                    f"Result: {result.output}"
                 )
-            elif task.state == TaskState.FAILED:
+            elif result.status == AgentStatus.FAILED:
                 injections.append(
-                    f"[BACKGROUND TASK FAILED: {agent_name} (task_id={tid})]\n"
-                    f"Error: {task.error or 'unknown'}"
+                    f"[BACKGROUND AGENT FAILED: {result.agent_name} (id={agent_id})]\n"
+                    f"Error: {result.error or 'unknown'}"
                 )
 
         if not injections:
             return prompt
-
         header = "\n\n".join(injections)
         return f"{header}\n\n{prompt}"
 
-    def _build_system_prompt(self, a2a_cards: list[dict]) -> str:
-        """Build combined system prompt from all sources.
-
-        When system_prompt_path is set, loads the template via load_prompt() and
-        substitutes {skills_catalog} and {sub_agents_catalog} variables from the
-        shared includes. Falls back to the literal system_prompt string otherwise.
-        """
+    def _build_system_prompt(self, agents_catalog: dict[str, str]) -> str:
+        """Build combined system prompt from all sources."""
         from agentic_patterns.core.prompt import load_prompt
 
-        # Build catalog values for template variables
         variables: dict[str, str] = {}
 
-        if self.spec.sub_agents:
-            lines = []
-            for sub in self.spec.sub_agents:
-                desc = sub.description or sub.name
-                lines.append(f"- {sub.name}: {desc}")
-            variables["sub_agents_catalog"] = "\n".join(lines)
+        if agents_catalog:
+            lines = [f"- {name}: {desc}" for name, desc in agents_catalog.items()]
+            variables["agents_catalog"] = "\n".join(lines)
 
         if self.spec.skills:
             variables["skills_catalog"] = self._make_skill_registry().catalog()
@@ -536,39 +436,10 @@ class OrchestratorAgent:
         else:
             prompt = "\n\n".join(variables.values())
 
-        if a2a_cards:
-            prompt = prompt + "\n\n" + build_coordinator_prompt(a2a_cards)
-
         return prompt
 
     def __str__(self) -> str:
         return f"OrchestratorAgent({self.spec.name})"
-
-
-async def _collect_status(broker: Any, submitted: list[str]) -> tuple[list[str], bool]:
-    """Return status lines for all submitted tasks and whether all are terminal."""
-    lines: list[str] = []
-    all_terminal = True
-    for tid in submitted:
-        task = await broker.poll(tid)
-        if task is None:
-            lines.append(f"- {tid}: not found")
-            continue
-        agent_name = task.metadata.get("agent_name", "unknown")
-        status = task.state.value
-        line = f"- {tid} ({agent_name}): {status}"
-        if task.state == TaskState.COMPLETED and task.result:
-            line += f"\n  Result: {task.result[:200]}"
-        elif task.state == TaskState.FAILED and task.error:
-            line += f"\n  Error: {task.error}"
-        elif task.state not in TERMINAL_STATES:
-            all_terminal = False
-            progress = [e for e in task.events if e.event_type == EventType.PROGRESS]
-            if progress:
-                last = progress[-1]
-                line += f"\n  Last: {last.payload.get('tool', '')} {last.payload.get('arg', '')}"
-        lines.append(line)
-    return lines, all_terminal
 
 
 def _load_agent_config(name: str, config_path: Path | None = None) -> dict:

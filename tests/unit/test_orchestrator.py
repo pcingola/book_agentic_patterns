@@ -83,10 +83,17 @@ class TestOrchestratorAgent(unittest.IsolatedAsyncioTestCase):
         await self.client._client.http_client.aclose()
 
     async def test_creates_a2a_delegation_tools(self):
-        """A2A clients should be converted to delegation tools."""
+        """A2A clients should produce agent runner tools (task_launch)."""
         model = ModelMock(
             responses=[
-                ToolCallPart(tool_name="researcher", args={"prompt": "Find info"}),
+                ToolCallPart(
+                    tool_name="task_launch",
+                    args={
+                        "description": "Research",
+                        "prompt": "Find info",
+                        "agent_name": "Researcher",
+                    },
+                ),
                 "Done.",
             ]
         )
@@ -117,7 +124,7 @@ class TestOrchestratorAgent(unittest.IsolatedAsyncioTestCase):
         spec = AgentSpec(name="skilled-agent", model=model, skills=[skill])
 
         async with OrchestratorAgent(spec) as agent:
-            system_prompt = agent._build_system_prompt([])
+            system_prompt = agent._build_system_prompt({})
 
         self.assertIn("code-review", system_prompt)
         self.assertIn("Reviews code", system_prompt)
@@ -141,7 +148,7 @@ class TestOrchestratorAgent(unittest.IsolatedAsyncioTestCase):
             self.assertIsNotNone(agent._agent)
 
         self.assertIsNone(agent._agent)
-        self.assertIsNone(agent._broker)
+        self.assertIsNone(agent._agent_runner)
 
 
 if __name__ == "__main__":

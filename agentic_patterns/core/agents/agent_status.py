@@ -1,13 +1,12 @@
+"""Status enum for agent executions."""
+
 from enum import Enum
 
 
-class TaskState(str, Enum):
-    PENDING = "pending"
+class AgentStatus(str, Enum):
     RUNNING = "running"
     COMPLETED = "completed"
     FAILED = "failed"
     INPUT_REQUIRED = "input_required"
     CANCELLED = "cancelled"
-
-
-TERMINAL_STATES = {TaskState.COMPLETED, TaskState.FAILED, TaskState.CANCELLED}
+    TIMEOUT = "timeout"

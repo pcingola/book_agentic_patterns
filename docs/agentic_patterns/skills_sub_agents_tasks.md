@@ -1,8 +1,8 @@
 # Skills, Sub-Agents & Tasks
 
-Sub-agents decompose work within a single process by giving each child its own context, prompt, and tools. Skills package reusable agent capabilities as discoverable artifacts with progressive disclosure. Tasks wrap sub-agent execution with durable state, observation, and lifecycle control. These three patterns work together: `OrchestratorAgent` composes them declaratively via `AgentSpec`.
+Sub-agents decompose work within a single process by giving each child its own context, prompt, and tools. Skills package reusable agent capabilities as discoverable artifacts with progressive disclosure. Tasks provide dependency-aware work tracking that agents use to coordinate multi-step work. These three patterns work together: `OrchestratorAgent` composes them declaratively via `AgentSpec`.
 
-All infrastructure lives in `agentic_patterns.core.agents.orchestrator` (AgentSpec, OrchestratorAgent), `agentic_patterns.core.skills` (registry, models, tools), and `agentic_patterns.core.tasks` (broker, worker, store, models).
+All infrastructure lives in `agentic_patterns.core.agents.orchestrator` (AgentSpec, OrchestratorAgent), `agentic_patterns.core.agents.agent_runner` (AgentRunner, AgentResult), `agentic_patterns.core.agents.agent_status` (AgentStatus), `agentic_patterns.core.skills` (registry, models, tools), and `agentic_patterns.core.tasks` (Task, TaskList, task tools).
 
 
 ## Sub-Agents
@@ -153,82 +153,88 @@ exit_code, output = run_skill_script_sandboxed(
 
 ## Tasks
 
-The task system wraps sub-agent execution with durable state, background dispatch, and observation channels. It enables fire-and-forget delegation where the coordinator continues reasoning while sub-agents work in the background.
+The task system provides dependency-aware work tracking. It has two distinct layers: **task management** (structured storage, status tracking, dependency enforcement via four tools) and **agent spawning** (launching agents to do work, getting results, stopping agents via three tools). See [docs/tasks.md](../tasks.md) for the full specification.
 
 ### State machine
 
 ```
-pending --> running --> completed
-               |-----> failed
-               |-----> cancelled
-         |---> cancelled
+pending  -->  in_progress  -->  completed
 ```
 
-`TaskState` enum values: `PENDING`, `RUNNING`, `COMPLETED`, `FAILED`, `INPUT_REQUIRED`, `CANCELLED`. Terminal states: `COMPLETED`, `FAILED`, `CANCELLED`.
+`TaskStatus` enum values: `PENDING`, `IN_PROGRESS`, `COMPLETED`, `DELETED`. A blocked task (one with non-empty `blockedBy` where at least one blocker is not completed) cannot transition to `in_progress`.
 
 ### Task model
 
 ```python
-from agentic_patterns.core.tasks.models import Task, TaskEvent, EventType
+from agentic_patterns.core.tasks import Task, TaskStatus
 
-task = Task(input="Analyze this dataset")
-# task.id: auto-generated counter string ("1", "2", "3", ...)
-# task.state: TaskState.PENDING
-# task.result: None (set on completion)
-# task.error: None (set on failure)
-# task.depends_on: [] (task IDs this task depends on)
-# task.events: [] (state changes, progress, logs)
-# task.created_at: datetime (UTC)
-# task.updated_at: datetime (UTC)
-# task.metadata: {} (carries agent_name, system_prompt, config_name)
+task = Task(id="1", subject="Set up database", description="Configure connection pool")
+# task.status: TaskStatus.PENDING
+# task.active_form: None (present-continuous label for UI, e.g. "Setting up database")
+# task.owner: None (agent name for filtering)
+# task.blocks: [] (task IDs that cannot start until this completes)
+# task.blocked_by: [] (task IDs that must complete before this can start)
+# task.metadata: {} (arbitrary key/value data)
 ```
 
-`TaskEvent` records state transitions and progress. `EventType` values: `STATE_CHANGE`, `PROGRESS`, `LOG`.
+JSON serialization uses camelCase (`activeForm`, `blockedBy`) to match the specification. The `blocks` and `blockedBy` fields are kept in sync bidirectionally.
 
-### Task storage
+### TaskList
 
-`TaskStore` is the abstract persistence interface with two implementations:
-
-`TaskStoreMemory` -- in-memory dict-backed, no filesystem access. Ideal for notebooks and tests.
-
-`TaskStoreJson` -- one JSON file per task in `DATA_DIR/tasks/`. Survives process restarts.
-
-Both implement: `create()`, `get()`, `update_state()`, `list_by_state()`, `next_pending()`, `add_event()`.
-
-### TaskBroker
-
-`TaskBroker` coordinates task submission, dispatch, and observation. It runs a background dispatch loop that picks pending tasks and hands them to a `Worker` for execution.
+`TaskList` manages tasks persisted as individual JSON files in a directory. Each task is a separate `{id}.json` file.
 
 ```python
-from agentic_patterns.core.tasks.broker import TaskBroker
-from agentic_patterns.core.tasks.store import TaskStoreMemory
+from pathlib import Path
+from agentic_patterns.core.tasks import TaskList
 
-async with TaskBroker(store=TaskStoreMemory()) as broker:
-    task_id = await broker.submit("Analyze revenue trends", agent_name="analyst")
+task_list = TaskList(Path("data/workspaces/.tasks/my-list"))
 
-    # Observation methods
-    task = await broker.poll(task_id)         # Get current state
-    task = await broker.wait(task_id)         # Block until terminal
-    async for event in broker.stream(task_id): # Yield events as they arrive
-        print(event.event_type, event.payload)
-
-    await broker.cancel(task_id)              # Cancel a task
-    await broker.cancel_all()                 # Cancel all non-terminal tasks
-
-    # Callbacks
-    await broker.notify(task_id, {TaskState.COMPLETED}, my_callback)
+task = await task_list.create("Build feature", "Implement the widget", active_form="Building feature")
+task = await task_list.get("1")
+all_tasks = await task_list.list_all()  # Returns summaries (no metadata)
+task = await task_list.update("1", status=TaskStatus.IN_PROGRESS)
+task = await task_list.update("2", add_blocked_by=["1"])  # Bidirectional sync
+task = await task_list.update("1", metadata={"priority": None})  # Delete key
+next_task = await task_list.next_available()  # First pending + unblocked, lowest ID
+next_task = await task_list.next_available(owner="backend")  # Filter by owner
 ```
 
-`register_agents(specs)` binds `AgentSpec` instances so the worker can resolve sub-agents by name. When `agent_name` is present in task metadata, the worker uses `OrchestratorAgent` with the registered spec. Otherwise it falls back to `get_agent()` with `system_prompt` and `config_name` from metadata.
+Dependencies are bidirectional: adding task 1 to task 3's `blockedBy` also adds task 3 to task 1's `blocks`. A blocked task raises `ValueError` if you try to set it to `in_progress`. `next_available()` returns the first task that is pending and unblocked (lowest ID first), optionally filtered by owner.
 
-### Worker
+### Task tools
 
-`Worker` executes tasks by running sub-agents. It transitions the task through `RUNNING` to `COMPLETED` or `FAILED`, emitting `STATE_CHANGE` events at each transition. During execution with an `AgentSpec`, it creates a node hook that emits `PROGRESS` events (tool calls) and `LOG` events (model reasoning) to the task's event stream.
+`get_task_tools(task_list)` returns four PydanticAI tool functions bound to a `TaskList`: `task_create`, `task_get`, `task_list_all`, `task_update`. These are thin wrappers that return formatted strings for agent consumption.
+
+### AgentRunner
+
+`AgentRunner` is the unified launcher for both local sub-agents and remote A2A agents. It replaces the old `SubAgentRunner` by handling both agent types through one interface.
+
+```python
+from agentic_patterns.core.agents.agent_runner import AgentRunner
+
+# Local agents are AgentSpec instances; remote agents are (A2AClientExtended, card) tuples
+runner = AgentRunner(
+    local_agents={"analyst": analyst_spec, "writer": writer_spec},
+    remote_agents={"researcher": (a2a_client, agent_card)},
+)
+
+result = await runner.launch("analyst", "Analyze Q4 data")  # Foreground
+result = await runner.launch("researcher", "Find papers", run_in_background=True)  # Background
+output = runner.get_output(result.agent_id)
+runner.stop(result.agent_id)
+await runner.cancel_all()
+```
+
+`AgentStatus` enum: `RUNNING`, `COMPLETED`, `FAILED`, `INPUT_REQUIRED`, `CANCELLED`, `TIMEOUT`.
+
+For local agents, `AgentRunner` wraps `OrchestratorAgent(spec).run(prompt)` in an `asyncio.Task`. For remote agents, it calls `client.send_message_only(prompt)` and stores the remote task ID for later polling. The parent's `TaskList` is automatically shared with child agents via the `task_list` parameter on `OrchestratorAgent`.
+
+`get_agent_runner_tools(runner)` returns three PydanticAI tools: `task_launch`, `task_output`, `task_stop`.
 
 
 ## OrchestratorAgent
 
-`OrchestratorAgent` composes all six capabilities into a single agent: direct tools, MCP servers, A2A clients, skills, sub-agents, and tasks. It takes an `AgentSpec` and wires everything up as an async context manager.
+`OrchestratorAgent` composes all capabilities into a single agent: direct tools, MCP servers, skills, and agents (local sub-agents and remote A2A agents via unified `AgentRunner`) with tasks (via `TaskList`). It takes an `AgentSpec` and wires everything up as an async context manager.
 
 ### AgentSpec
 
@@ -249,7 +255,7 @@ spec = AgentSpec(
 )
 ```
 
-Fields: `name` (required), `description`, `model` (defaults to config.yaml default), `system_prompt` or `system_prompt_path` (template with `{sub_agents_catalog}` and `{skills_catalog}` variables), `tools`, `mcp_servers` (list of `MCPClientConfig`), `a2a_clients` (list of `A2AClientExtended`), `skills` (list of `Skill`), `sub_agents` (list of `AgentSpec`).
+Fields: `name` (required), `description`, `model` (defaults to config.yaml default), `system_prompt` or `system_prompt_path` (template with `{agents_catalog}` and `{skills_catalog}` variables), `tools`, `mcp_servers` (list of `MCPClientConfig`), `a2a_clients` (list of `A2AClientExtended`), `skills` (list of `Skill`), `sub_agents` (list of `AgentSpec`).
 
 ### Loading from config.yaml
 
@@ -283,23 +289,25 @@ async with OrchestratorAgent(spec, verbose=True) as orchestrator:
     result = await orchestrator.run("Now compare with Q3")
 ```
 
-On entry, `OrchestratorAgent` connects MCP servers, fetches A2A agent cards, discovers skills, creates the task broker (if sub-agents are present), builds the system prompt from templates and catalogs, and creates the underlying PydanticAI `Agent`.
+On entry, `OrchestratorAgent` connects MCP servers, discovers skills, creates an `AgentRunner` (if sub-agents or A2A clients are present) that fetches A2A agent cards and builds a unified catalog, creates a shared `TaskList`, builds the system prompt from templates and catalogs, and creates the underlying PydanticAI `Agent`.
 
 ### Auto-injected tools
 
-When `sub_agents` are present in the spec, three tools are automatically added:
+When `sub_agents` or `a2a_clients` are present in the spec, seven tools are automatically added:
 
-`delegate(agent_name, prompt)` -- submit a task to a sub-agent and block until it completes. Returns the result string or an error message. Propagates token usage to the coordinator.
+**Task management tools** (from `get_task_tools`): `task_create`, `task_get`, `task_list_all`, `task_update` -- for creating, reading, listing, and updating tasks with dependency tracking.
 
-`submit_task(agent_name, prompt)` -- submit a task for background execution. Returns immediately with the task ID.
+**Agent spawning tools** (from `get_agent_runner_tools`): `task_launch` (launch a local or remote agent, foreground or background), `task_output` (retrieve results from a background agent), `task_stop` (cancel a running agent).
 
-`wait(timeout=120)` -- block until at least one background task finishes or the timeout fires. Returns status and results for all submitted tasks.
+The agent decides how to use these tools based on its system prompt. Both local sub-agents and remote A2A agents are accessed through the same `task_launch` tool -- the `AgentRunner` routes to the correct backend based on the agent name.
 
-The coordinator decides which pattern to use based on its system prompt: `delegate` for synchronous delegation, `submit_task` + `wait` for parallel background work.
+### Background agent injection
 
-### Background task injection
+Between `run()` calls, `OrchestratorAgent` checks for completed background agents (local via asyncio.Task, remote via one `get_task` call per pending agent) and prepends their results to the next prompt. This happens automatically -- the coordinator sees results from agents it launched earlier without explicitly polling.
 
-Between `run()` calls, `OrchestratorAgent` checks for completed background tasks and prepends their results to the next prompt. This happens automatically -- the coordinator sees results from tasks it submitted earlier without explicitly polling.
+### Shared TaskList
+
+When `OrchestratorAgent` creates a child agent via `AgentRunner`, the parent's `TaskList` is passed to the child. This means all agents in the hierarchy share the same task state, enabling coordinated work tracking across delegation boundaries. A parent can also receive an external `TaskList` via the `task_list` constructor parameter.
 
 ### Node hooks
 
@@ -314,10 +322,12 @@ The `on_node` callback (or `verbose=True` for the built-in `_log_node` hook) obs
 |---|---|---|
 | `AgentSpec` | Pydantic model | Declarative agent spec (name, model, prompt, tools, mcp, a2a, skills, sub_agents) |
 | `AgentSpec.from_config(name, ...)` | Class method | Load and resolve all components from config.yaml |
-| `OrchestratorAgent(spec, verbose, on_node)` | Class | Async context manager that composes and runs the agent |
+| `OrchestratorAgent(spec, verbose, on_node, task_list)` | Class | Async context manager that composes and runs the agent |
 | `OrchestratorAgent.run(prompt, ...)` | Method | Execute a turn, returns `AgentRunResult` |
 | `OrchestratorAgent.runs` | Property | History of all (AgentRun, nodes) pairs |
 | `OrchestratorAgent.system_prompt` | Property | Final composed system prompt |
+| `OrchestratorAgent.agent_runner` | Property | The `AgentRunner` instance (or None) |
+| `OrchestratorAgent.task_list` | Property | The `TaskList` instance (or None) |
 | `NodeHook` | Type alias | `Callable[[Any], None]` for node observation |
 
 ### `agentic_patterns.core.skills`
@@ -340,24 +350,30 @@ The `on_node` callback (or `verbose=True` for the built-in `_log_node` hook) obs
 
 | Name | Kind | Description |
 |---|---|---|
-| `TaskState` | Enum | PENDING, RUNNING, COMPLETED, FAILED, INPUT_REQUIRED, CANCELLED |
-| `TERMINAL_STATES` | Set | {COMPLETED, FAILED, CANCELLED} |
-| `EventType` | Enum | STATE_CHANGE, PROGRESS, LOG |
-| `Task` | Pydantic model | Work unit: id (counter string), state, input, result, error, depends_on, events, created_at, updated_at, metadata |
-| `TaskEvent` | Pydantic model | Event record: task_id, event_type, payload, timestamp |
-| `TaskStore` | ABC | Persistence interface: create, get, update_state, list_by_state, next_pending, add_event |
-| `TaskStoreMemory` | Class | In-memory implementation |
-| `TaskStoreJson` | Class | JSON file-per-task implementation |
-| `TaskBroker` | Class | Async context manager for task coordination and dispatch |
-| `TaskBroker.submit(input, **metadata)` | Method | Create task, return task_id |
-| `TaskBroker.poll(task_id)` | Method | Get current task state |
-| `TaskBroker.wait(task_id)` | Method | Block until terminal state |
-| `TaskBroker.stream(task_id)` | Method | Async iterator of TaskEvent |
-| `TaskBroker.cancel(task_id)` | Method | Cancel a task |
-| `TaskBroker.cancel_all()` | Method | Cancel all non-terminal tasks |
-| `TaskBroker.notify(task_id, states, callback)` | Method | Register callback for state changes |
-| `TaskBroker.register_agents(specs)` | Method | Bind AgentSpec dict for sub-agent resolution |
-| `Worker` | Class | Executes tasks by running sub-agents |
+| `TaskStatus` | Enum | PENDING, IN_PROGRESS, COMPLETED, DELETED |
+| `Task` | Pydantic model | Work unit: id, subject, description, status, active_form, owner, blocks, blocked_by, metadata |
+| `TaskList(base_dir)` | Class | File-backed task storage with dependency management |
+| `TaskList.create(subject, description, ...)` | Method | Create task, assign next ID, return Task |
+| `TaskList.get(task_id)` | Method | Read single task by ID |
+| `TaskList.list_all()` | Method | List all tasks (summaries, no metadata) |
+| `TaskList.update(task_id, ...)` | Method | Update task fields, handle bidirectional deps |
+| `TaskList.next_available(owner=None)` | Method | First pending + unblocked task (lowest ID), optional owner filter |
+| `get_task_tools(task_list)` | Function | Return four PydanticAI tool functions bound to a TaskList |
+
+### `agentic_patterns.core.agents.agent_runner`
+
+| Name | Kind | Description |
+|---|---|---|
+| `AgentStatus` | Enum | RUNNING, COMPLETED, FAILED, INPUT_REQUIRED, CANCELLED, TIMEOUT |
+| `AgentResult` | Dataclass | Result holder: agent_id, agent_name, status, output, error, usage |
+| `AgentRunner(local_agents, remote_agents)` | Class | Unified launcher for local and remote agents |
+| `AgentRunner.launch(name, prompt, ...)` | Method | Launch agent (foreground or background) |
+| `AgentRunner.get_output(agent_id)` | Method | Get result of a running/completed agent |
+| `AgentRunner.stop(agent_id)` | Method | Cancel a running agent |
+| `AgentRunner.cancel_all()` | Method | Cancel all running agents |
+| `AgentRunner.catalog()` | Method | Return `{name: description}` for all agents |
+| `AgentRunner.check_remote(agent_id)` | Method | Poll a remote agent once and update result |
+| `get_agent_runner_tools(runner)` | Function | Return three PydanticAI tools: task_launch, task_output, task_stop |
 
 
 ## Examples
@@ -366,5 +382,5 @@ See the files in `agentic_patterns/examples/sub_agents/` and `agentic_patterns/e
 
 - `example_sub_agents_fixed.ipynb` -- fixed sub-agents with structured outputs and usage propagation
 - `example_sub_agents_dynamic.ipynb` -- dynamic sub-agent creation at runtime
-- `example_tasks.ipynb` -- task broker, background submission, streaming, cancellation
+- `example_tasks.ipynb` -- task management, dependency tracking, agent coordination
 - `example_skills.ipynb` -- skill discovery, activation, progressive disclosure

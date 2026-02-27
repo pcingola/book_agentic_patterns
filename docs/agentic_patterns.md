@@ -36,6 +36,12 @@ Documentation for the `agentic_patterns` library -- a Python library for buildin
 
 [Skills, Sub-Agents & Tasks](agentic_patterns/skills_sub_agents_tasks.md) -- Sub-agent delegation (fixed and dynamic), skill registry with progressive disclosure, task broker for background execution, OrchestratorAgent, and AgentSpec.
 
+[Adversarial & Debate Agents](agentic_patterns/adversarial_debate.md) -- Red-team analysis agent and structured debate orchestrator (advocate vs. critic with arbiter verdicts).
+
+[Deep Research Agent](agentic_patterns/deep_research.md) -- Iterative research loop with pluggable search sources (Perplexity Sonar, VectorDB), gap detection, conflict resolution, and synthesized markdown reports with inline citations.
+
+[Rubric Agent](agentic_patterns/rubric.md) -- Evidence-backed evaluation pipeline: build rubrics from policy (Stage 1), refine with historical concerns (Stage 2), and assess with traceable PASS/RISK/FAIL verdicts (Stage 3).
+
 [Domain Agents](agentic_patterns/domain_agents.md) -- Pre-configured agents: db_catalog, data_analysis, sql, openapi, and coordinator.
 
 ## Quality & Testing
