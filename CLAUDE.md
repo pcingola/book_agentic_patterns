@@ -15,9 +15,10 @@ book_agentic_patterns/
 ├── chapters/          # Book chapters (markdown files)
 ├── agentic_patterns/  # Python code examples and core library
 │   ├── core/          # Reusable infrastructure
-│   │   ├── agents/    #   Agent creation, sub-agent orchestration (OrchestratorAgent, AgentSpec)
-│   │   ├── skills/    #   Skill registry and activation (AgentSkills format, SKILL.md)
-│   │   ├── tasks/     #   Task state machine, broker, storage, workers
+│   │   ├── agents/    #   Agent creation; orchestrator/ subdir has OrchestratorAgent, AgentSpec, AgentRunner
+│   │   ├── skills/    #   Skill registry and activation (SKILL.md format)
+│   │   ├── tasks/     #   Task state machine, dependency tracking, task tools (TaskList, Task, TaskStatus)
+│   │   ├── rubric/    #   Evidence-backed evaluation pipeline (build, refine, assess)
 │   │   ├── a2a/       #   A2A client and server utilities
 │   │   ├── mcp/       #   MCP configuration and server management
 │   │   ├── connectors/#   Data source access (OpenAPI, SQL, vocabulary, etc.)

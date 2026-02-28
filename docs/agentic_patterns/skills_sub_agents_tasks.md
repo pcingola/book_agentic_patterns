@@ -2,7 +2,7 @@
 
 Sub-agents decompose work within a single process by giving each child its own context, prompt, and tools. Skills package reusable agent capabilities as discoverable artifacts with progressive disclosure. Tasks provide dependency-aware work tracking that agents use to coordinate multi-step work. These three patterns work together: `OrchestratorAgent` composes them declaratively via `AgentSpec`.
 
-All infrastructure lives in `agentic_patterns.core.agents.orchestrator` (AgentSpec, OrchestratorAgent), `agentic_patterns.core.agents.agent_runner` (AgentRunner, AgentResult), `agentic_patterns.core.agents.agent_status` (AgentStatus), `agentic_patterns.core.skills` (registry, models, tools), and `agentic_patterns.core.tasks` (Task, TaskList, task tools).
+All infrastructure lives in `agentic_patterns.core.agents.orchestrator` (AgentSpec, OrchestratorAgent, AgentRunner, AgentResult, AgentStatus), `agentic_patterns.core.skills` (registry, models, tools), and `agentic_patterns.core.tasks` (Task, TaskList, task tools).
 
 
 ## Sub-Agents
@@ -207,7 +207,7 @@ Dependencies are bidirectional: adding task 1 to task 3's `blockedBy` also adds 
 
 ### AgentRunner
 
-`AgentRunner` is the unified launcher for both local sub-agents and remote A2A agents. It replaces the old `SubAgentRunner` by handling both agent types through one interface.
+`AgentRunner` is the unified launcher for both local sub-agents and remote A2A agents, handling both through one interface.
 
 ```python
 from agentic_patterns.core.agents.orchestrator import AgentRunner
@@ -360,7 +360,7 @@ The `on_node` callback (or `verbose=True` for the built-in `_log_node` hook) obs
 | `TaskList.next_available(owner=None)` | Method | First pending + unblocked task (lowest ID), optional owner filter |
 | `get_task_tools(task_list)` | Function | Return four PydanticAI tool functions bound to a TaskList |
 
-### `agentic_patterns.core.agents.agent_runner`
+### `agentic_patterns.core.agents.orchestrator` (runner)
 
 | Name | Kind | Description |
 |---|---|---|

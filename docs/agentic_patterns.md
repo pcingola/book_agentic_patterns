@@ -34,7 +34,7 @@ Documentation for the `agentic_patterns` library -- a Python library for buildin
 
 ## Composition
 
-[Skills, Sub-Agents & Tasks](agentic_patterns/skills_sub_agents_tasks.md) -- Sub-agent delegation (fixed and dynamic), skill registry with progressive disclosure, task broker for background execution, OrchestratorAgent, and AgentSpec.
+[Skills, Sub-Agents & Tasks](agentic_patterns/skills_sub_agents_tasks.md) -- Sub-agent delegation (fixed and dynamic), skill registry with progressive disclosure, task management with dependency tracking, AgentRunner for local and remote agent spawning, OrchestratorAgent, and AgentSpec.
 
 [Adversarial & Debate Agents](agentic_patterns/adversarial_debate.md) -- Red-team analysis agent and structured debate orchestrator (advocate vs. critic with arbiter verdicts).
 
