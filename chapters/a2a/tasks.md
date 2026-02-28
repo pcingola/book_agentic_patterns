@@ -37,15 +37,17 @@ These are protocol-level guarantees, not optional features. The [details section
 
 #### Execution Architecture
 
-A2A servers typically decompose into three layers that separate protocol handling from task execution.
+A2A servers are built using PydanticAI's `agent.to_a2a()`, which creates a complete ASGI application that handles protocol ingress, task state management, agent execution, and result delivery. The server-side lifecycle -- receiving requests, running the agent, tracking state transitions, and emitting streaming updates -- is handled internally by the framework.
 
-**Storage** persists task state, artifacts, and history so that tasks survive process restarts and can be re-queried or re-streamed. The core library's `core/tasks/` module defines `TaskStore` as an abstract interface with two implementations: `TaskStoreJson` persists one JSON file per task in `DATA_DIR/tasks/` for single-node deployments, while `TaskStoreMemory` uses an in-memory dictionary for notebooks and tests.
+```python
+from agentic_patterns.agents.vocabulary import get_agent
+agent = get_agent()
+app = agent.to_a2a(name="vocabulary", description="Resolves vocabulary terms", ...)
+```
 
-**Workers** are stateless executors that pick up tasks, run the agent logic, and emit progress updates. The core library's `Worker` class executes tasks by running agents via `OrchestratorAgent`, emits `PROGRESS` and `LOG` events for background tracking, and handles `CancelledError` for cooperative cancellation. Because all durable state lives in the store, workers can scale horizontally and restart safely.
+On the client side, the `AgentRunner` in `core/agents/orchestrator/` provides a unified interface for launching both local sub-agents and remote A2A agents. When an `OrchestratorAgent` delegates to a remote agent, the runner uses `A2AClientExtended` to send the request, poll for results, and map A2A protocol states to `AgentStatus` values (`RUNNING`, `COMPLETED`, `FAILED`, `INPUT_REQUIRED`, `CANCELLED`, `TIMEOUT`). From the orchestrator's perspective, local and remote agents look identical -- the same `task_launch`, `task_output`, and `task_stop` tools work for both.
 
-**The broker** coordinates between task producers and workers. `TaskBroker` manages submission, observation (poll, stream, wait, cancel), and dispatch. It accepts an optional `asyncio.Event` for event-driven signaling when tasks reach terminal states, replacing polling-based coordination. An event-driven wait pattern using a clear-then-check sequence prevents race conditions between task completion and the coordinator checking for results.
-
-This architecture mirrors established distributed systems patterns. The PydanticAI ecosystem reflects this directly: `agent.to_a2a()` creates the HTTP ingress layer, while the broker and worker handle scheduling and execution internally.
+For local task coordination (planning, dependency tracking, work assignment), the `core/tasks/` module provides `TaskList` -- a lightweight, file-backed storage layer. `TaskList` is separate from A2A's protocol-level task management; it handles the "what needs to be done and in what order" coordination within a single agent hierarchy, while A2A handles the "how agents communicate across network boundaries" concern.
 
 
 #### Client-Side Resilience
@@ -72,4 +74,4 @@ Client configuration is loaded from YAML (`config.yaml` under `a2a.clients`) wit
 
 #### Putting It All Together
 
-Tasks, observation mechanisms, storage, workers, and brokers form a coherent execution model. Tasks are created once, stored durably, executed by interchangeable workers, coordinated by a broker, and observed through streaming, polling, or push notifications. On the client side, `A2AClientExtended` encapsulates the retry, timeout, and cancellation logic needed for reliable communication. This layered design supports long-running workflows and enterprise-grade reliability while keeping each component independently testable and replaceable.
+Tasks, observation mechanisms, and the `to_a2a()` execution layer form a coherent model. Tasks are created once, managed by the A2A server, and observed through streaming, polling, or push notifications. On the client side, `A2AClientExtended` encapsulates the retry, timeout, and cancellation logic needed for reliable communication. The `AgentRunner` unifies local and remote delegation behind the same tool interface. This layered design supports long-running workflows and enterprise-grade reliability while keeping each component independently testable and replaceable.

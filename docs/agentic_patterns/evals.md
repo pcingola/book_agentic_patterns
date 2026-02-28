@@ -331,6 +331,15 @@ The convenience functions `tool_doctor()`, `prompt_doctor()`, `mcp_doctor()`, `a
 | `skill_doctor(path)` | Function | One-shot skill analysis |
 
 
+## Notebook Smoke Tests
+
+`tests/notebooks/test_notebooks.py` executes Jupyter notebooks end-to-end via `nbconvert.preprocessors.ExecutePreprocessor` to verify they run without errors. Notebooks requiring external servers (MCP, A2A) are excluded via the `REQUIRES_SERVER` set. These tests make real LLM calls so they run on-demand via `scripts/test_notebooks.sh`, not as part of the regular test suite.
+
+Run all standalone notebooks: `./scripts/test_notebooks.sh`
+
+Run a specific notebook: `./scripts/test_notebooks.sh foundations/example_translate_basic.ipynb`
+
+
 ## Examples
 
 See the files in `agentic_patterns/examples/evals/`:

@@ -1,6 +1,13 @@
 # To do
 
-- Check RAG chapter: New examples
+- [ ] Check RAG chapter: New examples
+  - [ ] agentic_patterns/examples/rag/example_RAG_03_multi_source.ipynb
+  - [ ] agentic_patterns/examples/rag/example_RAG_04_clustering.ipynb
+- [.] Check Tasks / SubAgents chapter: New examples
+- [ ] Check Complete Agent: New examples
+- [ ] Check Advanced agents
+
+
 - Chapter UI: Add A2UI
 - Chapter: Long Running agents / Swarms / OpenClaw
 

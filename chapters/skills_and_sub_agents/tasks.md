@@ -1,62 +1,68 @@
 ## Tasks
 
-Sub-agents are fire-and-forget: the coordinator calls, awaits, and moves on. This works for short tasks but breaks down when work is long-running, needs mid-flight observation, or should survive process restarts. The task lifecycle wraps sub-agent execution with durable state, observation channels, and explicit control.
+Sub-agents are fire-and-forget: the coordinator calls, awaits, and moves on. This works for short tasks but breaks down when work is long-running, involves multiple agents with dependencies, or needs structured tracking. The task system provides a lightweight coordination layer: durable state, dependency management, and structured progress tracking for multi-step agent work.
 
 #### State Machine
 
-A task moves through a small set of states: pending, running, completed, failed, input_required, cancelled. Terminal states (completed, failed, cancelled) end the lifecycle. No transitions out of a terminal state are allowed. The `input_required` state is non-terminal -- it signals that the worker needs external input before it can continue, and the task resumes once that input is provided.
+A task moves through a small set of states: `pending`, `in_progress`, `completed`, `deleted`. Tasks are created as `pending`. When an agent starts working on a task, it transitions to `in_progress`. When the work is done, the task moves to `completed`. The `deleted` status permanently removes a task that is no longer relevant.
 
 ```
-pending --> running --> completed
-                   \-> failed
-                   \-> input_required --> running
-         \-> cancelled
+pending --> in_progress --> completed
+                       \-> deleted
+        \-> deleted
 ```
 
-The state machine is the contract between submission and execution. The submitter does not need to know how work happens internally -- it only needs to observe which state the task is in. This decoupling is what makes the pattern useful: any consumer that understands the state machine can interact with the lifecycle, regardless of what the worker does internally.
+The state machine enforces one key constraint: a task with unresolved dependencies (non-empty `blocked_by` where at least one blocker is incomplete) cannot transition to `in_progress`. This prevents agents from starting work whose prerequisites are not yet met.
 
-#### Submission and Execution
+#### Task Model
 
-The key design decision is decoupling who submits work from who executes it. A broker receives tasks and places them in a queue. A worker picks tasks from the queue and runs them. This separation means the submitter does not need a reference to the executor, and the executor does not need to know who submitted the work.
+A `Task` carries the information agents need to coordinate work:
 
-The worker is a sub-agent executor: it reads task metadata (system prompt, model configuration), creates a sub-agent, runs it, and writes the result back to storage. The worker itself is stateless -- all durable state lives in external storage. If the worker crashes, a new one can pick up where the old one left off because the task's state is persisted.
-
+```python
+class Task(BaseModel):
+    id: str                              # Auto-assigned ("1", "2", ...)
+    subject: str                         # Brief imperative title
+    description: str                     # Detailed requirements and context
+    status: TaskStatus = TaskStatus.PENDING
+    active_form: str | None = None       # Present-continuous label (e.g., "Running tests")
+    owner: str | None = None             # Agent assigned to this task
+    blocks: list[str] = []               # Task IDs that cannot start until this completes
+    blocked_by: list[str] = []           # Task IDs that must complete before this can start
+    metadata: dict = {}                  # Arbitrary key/value data
 ```
-submitter -> broker -> store -> worker -> sub-agent
-                 ^                  |
-                 |------ result ----|
+
+Dependencies are bidirectional: adding task B to task A's `blocked_by` automatically adds A to task B's `blocks`. This keeps the dependency graph consistent without requiring agents to maintain both sides manually.
+
+#### TaskList
+
+`TaskList` is the storage and coordination layer. It persists each task as an individual JSON file, using file-level locking for concurrency safety. The interface is small:
+
+```python
+class TaskList:
+    async def create(subject, description, *, active_form=None, metadata=None) -> Task
+    async def get(task_id) -> Task | None
+    async def list_all() -> list[Task]          # Summary view, metadata stripped
+    async def update(task_id, *, status=None, subject=None, owner=None,
+                     add_blocks=None, add_blocked_by=None, ...) -> Task | None
+    async def next_available(*, owner=None) -> Task | None  # First pending, unblocked task
 ```
 
-#### Observation
+`next_available()` is dependency-aware: it returns the first pending task (lowest ID) whose every `blocked_by` entry has reached `completed`. If an owner is specified, it filters for tasks assigned to that agent. This enables multiple agents to pull work from the same list without conflicts.
 
-Once a task is submitted, the submitter needs to know what happens to it. Three complementary mechanisms serve different use cases.
+#### Agent-Facing Tools
 
-**Polling** is the simplest: ask for the current state at any time. It requires no infrastructure beyond the storage layer. The consumer decides when to check and how often. Polling is robust and works across process boundaries, but introduces latency proportional to the polling interval.
+Four tools expose the `TaskList` to agents:
 
-**Streaming** subscribes to events as they happen. The consumer iterates over an event stream and receives state changes, progress updates, and log messages as the worker produces them. Streaming provides low latency but requires the consumer to maintain a connection for the duration of the task.
+`task_create(subject, description, *, active_form, metadata)` creates a new task and returns its ID. `task_get(task_id)` retrieves full details including dependencies. `task_list_all()` returns a summary of all tasks with status, owner, and blocked-by info. `task_update(task_id, *, status, subject, owner, add_blocks, add_blocked_by, metadata, ...)` modifies any aspect of a task -- status transitions, dependency additions, metadata merges. Setting a metadata key to `null` deletes it.
 
-**Notification** registers callbacks for specific state changes. The consumer says "call me when this task completes or fails" and the broker fires the callback when the condition is met. Push-based observation is useful when the consumer has other work to do and does not want to poll or hold a stream open.
+#### Dependencies and Parallel Execution
 
-These are not alternatives -- they serve different use cases and can coexist within the same system. A UI might stream events for real-time display, while a monitoring system polls periodically for health checks, and an alerting system uses notifications for failures.
+Tasks declare dependencies via `blocked_by`, a list of task IDs that must reach `completed` before the task can start. Independent tasks (no blockers, or all blockers completed) can run in parallel. Tasks whose dependencies are not yet met remain `pending` -- the system prevents them from transitioning to `in_progress`.
 
-#### Storage and Persistence
-
-Task state must outlive the process that created it. If the broker restarts, it should find all pending and running tasks and resume dispatch. If a worker crashes mid-execution, the task should be recoverable.
-
-A storage abstraction decouples the lifecycle from any specific backend. The contract is small: create a task, read a task, update its state, list tasks by state, and append events. A JSON file implementation works for development and single-machine scenarios. A database-backed implementation works for production with multiple workers.
-
-Persistence enables three things beyond basic durability. Recovery after failure: a restarted broker can scan for tasks stuck in `running` state and re-dispatch them. Replay for auditing: the full event history of a task is preserved and can be inspected after the fact. Coordination across workers: multiple workers can compete for pending tasks through the storage layer without direct communication.
+A research task must complete before the writing task that uses its findings. Two independent research tasks can run in parallel, but the summary that combines them must wait for both. These relationships form a directed acyclic graph (DAG) that the `TaskList` enforces through its blocking logic.
 
 #### Connection to Sub-Agents and A2A
 
-The worker IS a sub-agent executor with lifecycle management around it. It reads metadata, calls `get_agent()` and `run_agent()`, and writes results back -- exactly the dynamic sub-agent pattern from the previous section, wrapped in state tracking and persistence.
+Tasks and sub-agents are orthogonal systems that work together. Tasks track what needs to be done and in what order. Sub-agents (via `AgentRunner`) handle execution. The `OrchestratorAgent` wires both into the same agent: task tools for planning and tracking, agent runner tools (`task_launch`, `task_output`, `task_stop`) for delegation.
 
-The same concepts appear in A2A as protocol-level guarantees. A2A defines task states, streaming via Server-Sent Events, push notifications via webhooks, and task storage as protocol requirements. The `core/tasks/` module is the local implementation of those ideas -- the same architecture applied within a single process instead of across a network.
-
-#### Dependencies and DAG Execution
-
-Tasks rarely exist in isolation. A research task must complete before the writing task that uses its findings. Two independent research tasks can run in parallel, but the summary that combines them must wait for both. These relationships form a directed acyclic graph (DAG).
-
-Each task declares its dependencies via `depends_on`, a list of task IDs that must reach COMPLETED state before the broker will dispatch it. The broker checks readiness on every dispatch cycle: a pending task with no dependencies (or all dependencies completed) is dispatched immediately. Independent tasks run in parallel. Tasks whose dependencies are not yet met remain pending.
-
-When a task fails, the broker cascades the failure transitively to all dependents. If task A fails and task B depends on A, B is marked FAILED with an error indicating the upstream failure. If task C depends on B, it is also marked FAILED. This prevents wasted work: there is no point running a summary task if the research it needs has failed.
+The same coordination concepts appear in A2A as protocol-level guarantees. A2A defines task states, streaming via Server-Sent Events, push notifications via webhooks, and task storage as protocol requirements. The `core/tasks/` module is the local implementation of those ideas -- lightweight coordination within a single process rather than across a network.

@@ -23,22 +23,33 @@ from agentic_patterns.core.skills.registry import SkillRegistry
 NodeHook = Callable[[Any], None]
 
 
-def _log_node(node) -> None:
-    """Default node hook: print model reasoning, tool calls, and tool results."""
-    if isinstance(node, CallToolsNode):
-        for part in node.model_response.parts:
-            if isinstance(part, TextPart) and part.content.strip():
-                line = part.content.strip().replace("\n", " ")[:120]
-                rich.print(f"  [dim]> {line}[/dim]")
-            elif isinstance(part, ToolCallPart):
-                args = part.args_as_dict() or {}
-                params = " ".join(f"{k}={v}" for k, v in args.items())
-                rich.print(f"  [green]{part.tool_name}[/green] {params[:100]}")
-    elif isinstance(node, ModelRequestNode):
-        for part in node.request.parts:
-            if isinstance(part, ToolReturnPart):
-                content = str(part.content).replace("\n", " ")[:120]
-                rich.print(f"  [dim]  <- {part.tool_name}: {content}[/dim]")
+def _make_log_node(task_list: Any = None) -> "NodeHook":
+    """Create a node hook that logs activity and optionally shows task state changes."""
+    prev_snapshot = [""]
+
+    def hook(node) -> None:
+        if isinstance(node, CallToolsNode):
+            for part in node.model_response.parts:
+                if isinstance(part, TextPart) and part.content.strip():
+                    line = part.content.strip().replace("\n", " ")[:120]
+                    rich.print(f"  [dim]> {line}[/dim]")
+                elif isinstance(part, ToolCallPart):
+                    args = part.args_as_dict() or {}
+                    params = " ".join(f"{k}={v}" for k, v in args.items())
+                    rich.print(f"  [green]{part.tool_name}[/green] {params[:100]}")
+        elif isinstance(node, ModelRequestNode):
+            for part in node.request.parts:
+                if isinstance(part, ToolReturnPart):
+                    content = str(part.content).replace("\n", " ")[:120]
+                    rich.print(f"  [dim]  <- {part.tool_name}: {content}[/dim]")
+
+        if task_list is not None:
+            current = str(task_list)
+            if current != prev_snapshot[0] and current != "(empty task list)":
+                prev_snapshot[0] = current
+                rich.print(f"\n{current}\n")
+
+    return hook
 
 
 class OrchestratorAgent:
@@ -63,7 +74,8 @@ class OrchestratorAgent:
         task_list: Any | None = None,
     ):
         self.spec = spec
-        self._on_node = on_node or (_log_node if verbose else None)
+        self._verbose = verbose
+        self._on_node = on_node
         self._agent: Agent | None = None
         self._exit_stack: AsyncExitStack | None = None
         self._system_prompt: str = ""
@@ -96,6 +108,10 @@ class OrchestratorAgent:
         )
         if mcp_toolsets:
             await self._exit_stack.enter_async_context(self._agent)
+
+        if self._on_node is None and self._verbose:
+            self._on_node = _make_log_node(self._task_list)
+
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):

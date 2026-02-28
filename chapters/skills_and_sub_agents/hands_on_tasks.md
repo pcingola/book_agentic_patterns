@@ -1,108 +1,92 @@
 ## Hands-On: Tasks
 
-This hands-on explores `example_tasks.ipynb` and the `core/tasks/` module, which implements the task lifecycle concepts from the previous section. The module has five files: `state.py` (the state enum), `models.py` (data models), `store.py` (persistence), `worker.py` (sub-agent execution), and `broker.py` (coordination).
+This hands-on explores `example_tasks.ipynb` and the `core/tasks/` module, which implements the task coordination concepts from the previous section. The module has four files: `task_status.py` (the status enum), `task.py` (data model), `task_list.py` (persistence and dependency management), and `task_tools.py` (agent-facing tools).
 
-#### State and Models
+#### Status and Model
 
-The state machine is an enum with a set of terminal states:
+The status enum has four values:
 
 ```python
-class TaskState(str, Enum):
+class TaskStatus(str, Enum):
     PENDING = "pending"
-    RUNNING = "running"
+    IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
-    FAILED = "failed"
-    INPUT_REQUIRED = "input_required"
-    CANCELLED = "cancelled"
-
-TERMINAL_STATES = {TaskState.COMPLETED, TaskState.FAILED, TaskState.CANCELLED}
+    DELETED = "deleted"
 ```
 
-A `Task` carries the input, result, error, events, and metadata. The metadata dictionary is the bridge to sub-agents -- it carries `system_prompt` and `config_name` so the worker knows how to configure the sub-agent:
+A `Task` carries the subject, description, ownership, and dependency information. Dependencies use bidirectional `blocks` / `blocked_by` fields:
 
 ```python
 class Task(BaseModel):
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    state: TaskState = TaskState.PENDING
-    input: str
-    result: str | None = None
-    error: str | None = None
-    depends_on: list[str] = Field(default_factory=list)
-    events: list[TaskEvent] = Field(default_factory=list)
-    metadata: dict = Field(default_factory=dict)
+    id: str = ""
+    subject: str
+    description: str
+    status: TaskStatus = TaskStatus.PENDING
+    active_form: str | None = None    # Present-continuous label shown during work
+    owner: str | None = None
+    blocks: list[str] = []            # Tasks that cannot start until this completes
+    blocked_by: list[str] = []        # Tasks that must complete before this can start
+    metadata: dict = {}
 ```
 
-`TaskEvent` records state transitions and progress for the observation layer:
+Task IDs are auto-assigned as incrementing integers ("1", "2", "3"). The `active_form` field provides a human-readable label for progress display (e.g., "Analyzing dataset" while status is `in_progress`).
+
+#### TaskList
+
+`TaskList` is the storage and coordination layer, persisting each task as an individual JSON file with file-level locking (`fcntl`) for concurrency safety:
 
 ```python
-class TaskEvent(BaseModel):
-    task_id: str
-    event_type: EventType  # STATE_CHANGE, PROGRESS, LOG
-    payload: dict = Field(default_factory=dict)
-    timestamp: datetime
+class TaskList:
+    async def create(subject, description, *, active_form=None, metadata=None) -> Task
+    async def get(task_id) -> Task | None
+    async def list_all() -> list[Task]
+    async def update(task_id, *, status=None, subject=None, owner=None,
+                     add_blocks=None, add_blocked_by=None, ...) -> Task | None
+    async def next_available(*, owner=None) -> Task | None
 ```
 
-#### Storage
+`next_available()` is dependency-aware: it returns the first pending task (sorted by ID) whose every `blocked_by` entry has reached `completed`. The `update()` method enforces that blocked tasks cannot transition to `in_progress` -- it raises a `ValueError` if attempted. Dependency additions via `add_blocks` and `add_blocked_by` are append-only and automatically synchronized bidirectionally: adding task B to A's `blocked_by` adds A to B's `blocks`.
 
-`TaskStore` is the abstract interface. The contract is small -- six methods:
+The `list_all()` method returns a summary view with metadata stripped, keeping responses compact when agents just need to see what work exists.
+
+#### Agent Tools
+
+Four async tools are exposed via `get_task_tools(task_list)`:
 
 ```python
-class TaskStore(ABC):
-    async def create(self, task: Task) -> Task: ...
-    async def get(self, task_id: str) -> Task | None: ...
-    async def update_state(self, task_id: str, state: TaskState, ...) -> Task | None: ...
-    async def list_by_state(self, state: TaskState) -> list[Task]: ...
-    async def next_pending(self) -> Task | None: ...
-    async def add_event(self, task_id: str, event: TaskEvent) -> None: ...
+async def task_create(ctx, subject, description, *, active_form=None, metadata=None) -> str
+async def task_get(ctx, task_id) -> str
+async def task_list_all(ctx) -> str
+async def task_update(ctx, task_id, *, status=None, subject=None, owner=None,
+                      add_blocks=None, add_blocked_by=None, metadata=None, ...) -> str
 ```
 
-`TaskStoreJson` implements this with one JSON file per task, using `pathlib.Path` for file operations and `asyncio.Lock` for concurrency safety. The `next_pending()` method is dependency-aware: it only returns tasks whose `depends_on` list is empty or whose every dependency has reached COMPLETED state. An optional `exclude` parameter lets the broker skip tasks already being dispatched. The `dependents()` method returns all tasks that depend on a given task ID, used for failure cascading. The implementation is intentionally simple -- production use would swap in a database-backed store without changing any other code.
+All return formatted strings. `task_update` accepts a status string ("pending", "in_progress", "completed", "deleted") that gets parsed into the enum. Metadata merge semantics: keys with non-null values are added or updated; keys with `null` values are deleted.
 
-#### Worker
+#### Agent Workflow
 
-The worker is where sub-agents meet the task lifecycle. `Worker.execute()` maps directly to the dynamic sub-agent pattern:
+The typical agent workflow using tasks:
 
-```python
-async def execute(self, task_id: str) -> None:
-    task = await self._store.get(task_id)
-    await self._store.update_state(task_id, TaskState.RUNNING)
+1. Call `task_list_all()` to see available work
+2. Find a pending, unblocked task
+3. Call `task_update(task_id, status="in_progress")` to claim it
+4. Do the work
+5. Call `task_update(task_id, status="completed")` when done
+6. Repeat until no tasks remain
 
-    system_prompt = task.metadata.get("system_prompt", "You are a helpful assistant.")
-    config_name = task.metadata.get("config_name", "default")
-    agent = get_agent(model=self._model, config_name=config_name, system_prompt=system_prompt)
-    agent_run, _ = await run_agent(agent, task.input)
-
-    result = str(agent_run.result.output)
-    await self._store.update_state(task_id, TaskState.COMPLETED, result=result)
-```
-
-Read the metadata, create an agent, run it, write the result. If the agent raises an exception, the worker catches it and transitions the task to `FAILED` with the error message. The worker itself is stateless -- it holds a reference to the store but maintains no task-specific data. The actual implementation also supports `AgentSpec`-based execution for composition with `OrchestratorAgent`, and emits progress and log events via a node hook so that observers can track what the sub-agent is doing in real time.
-
-#### Broker
-
-`TaskBroker` ties everything together as an async context manager. On entry it starts a background dispatch loop; on exit it cancels it:
-
-```python
-async with TaskBroker() as broker:
-    task_id = await broker.submit("Explain quantum entanglement", system_prompt="You are a physicist.")
-    task = await broker.wait(task_id)
-    print(task.result)
-```
-
-The dispatch loop polls for ready tasks each cycle, dispatching all of them concurrently (not just one). A task is ready when it is PENDING and all its `depends_on` IDs have reached COMPLETED state. `submit()` accepts an optional `depends_on` parameter to declare dependencies. When a task fails, the broker cascades the failure transitively to all dependents via BFS, marking them FAILED with a descriptive error. The broker exposes five observation methods: `poll()` returns current state, `wait()` blocks until terminal, `stream()` yields events, `cancel()` stops execution, and `notify()` registers callbacks for specific state changes.
+If the agent encounters errors, it keeps the task as `in_progress` and can create a new blocking task describing what needs to be resolved.
 
 #### Sub-Agent to Task Mapping
 
-The following table shows how sub-agent concepts map to the task lifecycle:
+The following table shows how sub-agent concepts map to the task system:
 
 | Sub-agent concept | Task equivalent |
 |-------------------|-----------------|
-| `get_agent(system_prompt=...)` | `task.metadata["system_prompt"]` |
-| `run_agent(agent, input)` | `worker.execute(task_id)` |
-| `result.output` | `task.result` |
-| Exception handling | `task.state = FAILED`, `task.error` |
-| Fire-and-forget call | `broker.submit()` + `broker.wait()` |
-| No observation | `broker.poll()`, `broker.stream()`, `broker.notify()` |
-| No persistence | `TaskStore` with durable backend |
-| No cancellation | `broker.cancel()` |
-| No dependency ordering | `depends_on` + DAG-aware dispatch |
+| `get_agent(system_prompt=...)` | `task_create(subject=..., description=...)` |
+| `run_agent(agent, input)` | `task_update(task_id, status="in_progress")` + do work |
+| `result.output` | `task_update(task_id, status="completed")` |
+| Exception handling | Keep task `in_progress`, create blocker task |
+| Fire-and-forget call | `task_launch(agent_name, prompt, run_in_background=True)` |
+| No observation | `task_list_all()`, `task_get(task_id)` |
+| No persistence | `TaskList` with file-backed storage |
+| No dependency ordering | `blocked_by` / `blocks` with DAG-aware dispatch |

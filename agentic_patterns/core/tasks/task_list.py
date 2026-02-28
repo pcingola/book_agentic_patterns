@@ -2,6 +2,7 @@
 
 import asyncio
 import fcntl
+from collections.abc import Callable
 from pathlib import Path
 
 from agentic_patterns.core.tasks.task import Task
@@ -18,6 +19,7 @@ class TaskList:
         self._base_dir = base_dir
         self._base_dir.mkdir(parents=True, exist_ok=True)
         self._lock = asyncio.Lock()
+        self.on_change: Callable[[], None] | None = None
 
     @property
     def base_dir(self) -> Path:
@@ -41,6 +43,7 @@ class TaskList:
                 metadata=metadata or {},
             )
             self._write_task(task)
+            self._notify()
             return task
 
     async def get(self, task_id: str) -> Task | None:
@@ -83,6 +86,7 @@ class TaskList:
             if status == TaskStatus.DELETED:
                 self._delete_task(task_id)
                 task.status = TaskStatus.DELETED
+                self._notify()
                 return task
 
             # Block transition to in_progress if task is blocked
@@ -124,6 +128,7 @@ class TaskList:
                     self._sync_dependency(target_id, task_id, "blocks")
 
             self._write_task(task)
+            self._notify()
             return task
 
     async def next_available(self, *, owner: str | None = None) -> Task | None:
@@ -142,6 +147,10 @@ class TaskList:
             return None
 
     # -- Internal helpers --
+
+    def _notify(self) -> None:
+        if self.on_change:
+            self.on_change()
 
     def _is_blocked(self, task: Task) -> bool:
         """Check if any task in blocked_by is not completed."""

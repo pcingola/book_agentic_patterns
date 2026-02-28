@@ -1,6 +1,6 @@
 ## Infrastructure: The Distributed Agent
 
-The Full Agent runs everything in a single process. Tools are Python functions imported directly, sub-agents are instantiated from `AgentSpec` objects and executed by the `TaskBroker` in the same event loop. This is convenient for development, but it means every capability must live in the same Python environment and share the same process lifetime.
+The Full Agent runs everything in a single process. Tools are Python functions imported directly, sub-agents are instantiated from `AgentSpec` objects and executed by the `AgentRunner` in the same event loop. This is convenient for development, but it means every capability must live in the same Python environment and share the same process lifetime.
 
 The Infrastructure Agent keeps the same agent architecture -- `AgentSpec`, `OrchestratorAgent`, prompt templates, skills -- but replaces the tool source and delegation target. Direct Python tool imports become MCP server connections. In-process sub-agents become remote A2A servers. The agent itself does not change; the `AgentSpec` fields do.
 
@@ -8,7 +8,7 @@ The Infrastructure Agent keeps the same agent architecture -- `AgentSpec`, `Orch
 
 The monolithic agent imports tools as Python functions and passes them via the `tools` field of `AgentSpec`. The infrastructure agent declares `mcp_servers` instead, each pointing to a running FastMCP server. When the `OrchestratorAgent` enters its async context, it creates `MCPServerStreamableHTTP` toolset objects and passes them to `get_agent(toolsets=[...])`. The PydanticAI `Agent` then discovers available tools by connecting to each MCP server at startup.
 
-Similarly, the monolithic agent declares `sub_agents` -- a list of `AgentSpec` objects that the `TaskBroker` instantiates on demand. The infrastructure agent declares `a2a_clients` instead, each pointing to a running A2A server. The `OrchestratorAgent` fetches each server's agent card, generates a delegation tool per card via `create_a2a_tool()`, and appends the agent descriptions to the system prompt.
+Similarly, the monolithic agent declares `sub_agents` -- a list of `AgentSpec` objects that the `AgentRunner` instantiates on demand. The infrastructure agent declares `a2a_clients` instead, each pointing to a running A2A server. The `OrchestratorAgent` fetches each server's agent card, builds an `AgentRunner` that handles both local and remote agents, and appends the agent descriptions to the system prompt.
 
 The resulting config has no `tools` and no `sub_agents`:
 

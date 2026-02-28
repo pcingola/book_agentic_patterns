@@ -42,7 +42,7 @@ book_agentic_patterns/
 │   ├── examples/      # Code examples by chapter
 │   └── testing/       # Testing utilities for agents
 ├── scripts/            # Build, validation, lint scripts
-├── tests/              # Tests (unit/ and integration/ subdirectories)
+├── tests/              # Tests (unit/, integration/, notebooks/ subdirectories)
 ├── prompts/            # Prompt templates (markdown files)
 ├── data/               # Runtime data (db/, workspaces/, skills/)
 ├── docs/               # Design and reference documents
@@ -90,6 +90,7 @@ All scripts source `config.sh` (sets PROJECT_DIR, loads .env, activates .venv, s
 
 - `make.sh` -- compile book to output/
 - `test.sh` / `test_unit.sh` / `test_integration.sh` -- run tests
+- `test_notebooks.sh` -- execute Jupyter notebooks as smoke tests (on-demand, not part of regular suite); optional arg for specific notebook relative path
 - `evals.sh` -- run agent evaluations
 - `lint.sh` -- run ruff linter
 - `llms_txt.sh` -- generate `llms.txt` and `llms-full.txt` from `docs/agentic_patterns*`
