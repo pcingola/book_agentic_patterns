@@ -8,7 +8,7 @@ from typing import Any
 
 from pydantic_ai.usage import RunUsage
 
-from agentic_patterns.core.agents.agent_status import AgentStatus
+from agentic_patterns.core.agents.orchestrator.status import AgentStatus
 
 logger = logging.getLogger(__name__)
 
@@ -147,7 +147,7 @@ class AgentRunner:
         return self._results[agent_id]
 
     async def _run_local(self, agent_id: str, agent_name: str, prompt: str) -> None:
-        from agentic_patterns.core.agents.orchestrator import OrchestratorAgent
+        from agentic_patterns.core.agents.orchestrator.agent import OrchestratorAgent
 
         spec = self._local_specs[agent_name]
         result = self._results[agent_id]

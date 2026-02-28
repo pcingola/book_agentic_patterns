@@ -210,7 +210,7 @@ Dependencies are bidirectional: adding task 1 to task 3's `blockedBy` also adds 
 `AgentRunner` is the unified launcher for both local sub-agents and remote A2A agents. It replaces the old `SubAgentRunner` by handling both agent types through one interface.
 
 ```python
-from agentic_patterns.core.agents.agent_runner import AgentRunner
+from agentic_patterns.core.agents.orchestrator import AgentRunner
 
 # Local agents are AgentSpec instances; remote agents are (A2AClientExtended, card) tuples
 runner = AgentRunner(
@@ -241,7 +241,7 @@ For local agents, `AgentRunner` wraps `OrchestratorAgent(spec).run(prompt)` in a
 `AgentSpec` is the declarative specification for an orchestrator agent:
 
 ```python
-from agentic_patterns.core.agents.orchestrator import AgentSpec
+from agentic_patterns.core.agents.orchestrator import AgentSpec  # or from ...agents import AgentSpec
 
 spec = AgentSpec(
     name="coordinator",
@@ -279,7 +279,7 @@ If an `agents` section in `config.yaml` contains an entry matching the name, its
 ### Running the orchestrator
 
 ```python
-from agentic_patterns.core.agents.orchestrator import OrchestratorAgent
+from agentic_patterns.core.agents.orchestrator import OrchestratorAgent  # or from ...agents import OrchestratorAgent
 
 async with OrchestratorAgent(spec, verbose=True) as orchestrator:
     result = await orchestrator.run("Analyze Q4 revenue data")

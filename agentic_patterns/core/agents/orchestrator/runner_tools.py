@@ -5,8 +5,8 @@ from collections.abc import Callable
 
 from pydantic_ai import RunContext
 
-from agentic_patterns.core.agents.agent_runner import AgentRunner
-from agentic_patterns.core.agents.agent_status import AgentStatus
+from agentic_patterns.core.agents.orchestrator.runner import AgentRunner
+from agentic_patterns.core.agents.orchestrator.status import AgentStatus
 
 
 def get_agent_runner_tools(runner: AgentRunner) -> list[Callable]:

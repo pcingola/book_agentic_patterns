@@ -1,5 +1,3 @@
-from agentic_patterns.core.agents.agent_runner import AgentResult, AgentRunner
-from agentic_patterns.core.agents.agent_status import AgentStatus
 from agentic_patterns.core.agents.agents import AgentNode, get_agent, run_agent
 from agentic_patterns.core.agents.debate import (
     Argument,
@@ -9,7 +7,13 @@ from agentic_patterns.core.agents.debate import (
     DebateTurn,
     Verdict,
 )
-from agentic_patterns.core.agents.orchestrator import AgentSpec, OrchestratorAgent
+from agentic_patterns.core.agents.orchestrator import (
+    AgentResult,
+    AgentRunner,
+    AgentSpec,
+    AgentStatus,
+    OrchestratorAgent,
+)
 from agentic_patterns.core.agents.red_team import Challenge, RedTeamAgent, RedTeamResult
 from agentic_patterns.core.agents.research import (
     DeepResearchAgent,
