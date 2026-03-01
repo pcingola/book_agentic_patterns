@@ -17,9 +17,17 @@ class _ClusterLabel(BaseModel):
 
 
 async def label_clusters(
-    result: ClusterResult, agent: Agent | None = None
+    result: ClusterResult, agent: Agent | None = None, max_items_per_cluster: int = 20
 ) -> ClusterResult:
-    """Prompt the LLM to assign a label and summary to each cluster."""
+    """Prompt the LLM to assign a label and summary to each cluster.
+
+    Only `max_items_per_cluster` items are sampled per cluster to keep prompts within
+    context limits. For large clusters this means the label is based on a representative
+    sample, not the full contents.
+
+    Note: clusters are labeled sequentially (one LLM call per cluster). For large numbers
+    of clusters this becomes a bottleneck; parallelization is left as a future improvement.
+    """
     if agent is None:
         agent = get_agent(output_type=_ClusterLabel)
 
@@ -27,10 +35,11 @@ async def label_clusters(
     labeled_clusters = []
 
     for cluster in result.clusters:
+        sample = cluster.items[:max_items_per_cluster]
         items_text = json.dumps(
             [
                 {"doc_id": item.doc_id, "text": item.text[:500]}
-                for item in cluster.items
+                for item in sample
             ],
             indent=2,
         )

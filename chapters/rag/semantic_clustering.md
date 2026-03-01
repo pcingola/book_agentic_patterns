@@ -65,6 +65,8 @@ Passages:
 
 The returned label and summary transform the cluster from an opaque set of embeddings into a named, interpretable category. In practice, cluster labels serve as the building blocks for higher-level corpus navigation.
 
+Two scaling limitations apply. First, sending all items in a large cluster to the LLM in a single prompt fills the context window. The practical fix is to sample a representative subset — typically 10 to 20 items — which is sufficient for labeling since cluster members are semantically similar by construction. Second, labeling is performed sequentially, one LLM call per cluster. For corpora with hundreds of clusters this becomes a bottleneck; the calls are independent and can be parallelized with `asyncio.gather`.
+
 #### Applications in RAG systems
 
 Semantic clustering serves several distinct roles in RAG architectures.

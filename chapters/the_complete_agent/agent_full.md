@@ -1,14 +1,14 @@
 ## Agent V5: The Full Agent
 
-The Coordinator delegates work but always waits for the result before continuing. When two sub-agent tasks are independent -- say, querying a database and generating a chart -- running them sequentially wastes time. The Full Agent adds asynchronous delegation, allowing the coordinator to fire off multiple agents in parallel and collect results when they complete.
+The Coordinator can delegate work both synchronously and asynchronously, but its prompt treats background delegation as one workflow step among many. When two sub-agent tasks are independent -- say, querying a database and generating a chart -- running them sequentially wastes time. The Full Agent elevates asynchronous delegation to a first-class concept, with a dedicated prompt section explaining when to use each mode and how to manage concurrent agents.
 
 #### Foreground and Background Delegation
 
 The Full Agent uses the same three delegation tools as V4 (`task_launch`, `task_output`, `task_stop`), but its prompt instructs the agent to use both foreground and background modes.
 
-Foreground delegation via `task_launch(agent_name, prompt, description)` works exactly as in V4: launch the agent, wait for the result, return it as a string. This is the right choice when each step depends on the previous result.
+Foreground delegation via `task_launch(description, prompt, agent_name)` works exactly as in V4: launch the agent, wait for the result, return it as a string. This is the right choice when each step depends on the previous result.
 
-Background delegation via `task_launch(agent_name, prompt, description, run_in_background=True)` returns immediately with an agent ID. The agent can launch multiple background agents, continue with other work, and then call `task_output(agent_id)` to retrieve results. By default `task_output` blocks until the agent completes, but it accepts `block=False` for non-blocking checks and a configurable `timeout`. The `task_stop(agent_id)` tool cancels a running background agent.
+Background delegation via `task_launch(description, prompt, agent_name, run_in_background=True)` returns immediately with an agent ID. The agent can launch multiple background agents, continue with other work, and then call `task_output(agent_id)` to retrieve results. By default `task_output` blocks until the agent completes, but it accepts `block=False` for non-blocking checks and a configurable `timeout`. The `task_stop(agent_id)` tool cancels a running background agent.
 
 Between turns, the `OrchestratorAgent` automatically checks for completed background agents and prepends their results to the next prompt. The agent sees these as `[BACKGROUND AGENT COMPLETED: agent_name (id=...)]` messages, allowing it to reason about results even if it did not explicitly call `task_output`.
 
@@ -31,7 +31,7 @@ agents:
       - agentic_patterns.agents.vocabulary:get_spec
 ```
 
-The `OrchestratorAgent` generates `task_launch`, `task_output`, and `task_stop` tools whenever sub-agents are present -- the same tools as V4. The difference is that the Full Agent's prompt instructs the agent when to use background mode, while the Coordinator's prompt only mentions foreground delegation. The capability was always there; the prompt unlocks it.
+The `OrchestratorAgent` generates `task_launch`, `task_output`, and `task_stop` tools whenever sub-agents are present -- the same tools as V4. Both prompts mention background delegation in their workflow, but the Full Agent adds a dedicated "Background tasks" section that explains when to use synchronous versus asynchronous delegation. The Coordinator's prompt mentions `run_in_background=True` as a workflow step; the Full Agent's prompt makes the distinction between the two modes a first-class concept with explicit guidance on when to choose each.
 
 #### Execution
 

@@ -16,6 +16,7 @@ from agentic_patterns.core.vectordb.models import (
     ClusterResult,
     RetrievedDocument,
 )
+from agentic_patterns.core.vectordb.multi_source import MultiSourceRetriever
 from agentic_patterns.core.vectordb.vectordb import VectorDB, get_vector_db
 
 __all__ = [
@@ -25,6 +26,7 @@ __all__ = [
     "ClusterItem",
     "ClusterResult",
     "EmbeddingConfig",
+    "MultiSourceRetriever",
     "RetrievedDocument",
     "VectorDB",
     "VectorDBConfig",

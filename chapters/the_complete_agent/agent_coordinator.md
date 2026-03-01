@@ -29,7 +29,7 @@ agents:
 
 Each `sub_agents` entry points to a `get_spec()` factory that returns an `AgentSpec` with its own name, description, system prompt, and tool list. The notebook loads everything with `AgentSpec.from_config("coordinator")`.
 
-When `sub_agents` is non-empty, the `OrchestratorAgent` creates an `AgentRunner` internally and auto-generates three delegation tools: `task_launch`, `task_output`, and `task_stop`. It also adds task management tools (`task_create`, `task_get`, `task_list_all`, `task_update`) for tracking work. A sub-agent catalog is injected into the system prompt via `{% include 'shared/sub_agents.md' %}`, listing each sub-agent's name and description so the agent knows who to call.
+When `sub_agents` is non-empty, the `OrchestratorAgent` creates an `AgentRunner` internally and auto-generates three delegation tools: `task_launch`, `task_output`, and `task_stop`. It also adds task management tools (`task_create`, `task_get`, `task_list_all`, `task_update`) for tracking work. These replace the simple todo tools from V2 and V3 with a dependency-aware task system: tasks can declare `blocked_by` relationships, forming a DAG that the agent uses to order its work. The system prompt includes `{% include 'shared/tasks.md' %}` for task management instructions and `{% include 'shared/sub_agents.md' %}` for the sub-agent catalog with delegation tool usage.
 
 The coordinator's direct tools handle file I/O, sandbox execution, task management, skills, and format conversion (`convert_document` for transforming documents between PDF, DOCX, MD, CSV, and other formats). Domain-specific work routes through delegation. The coordinator has far more capabilities than the Skilled agent but fewer tools than it would need if every capability were a direct tool.
 
@@ -37,7 +37,7 @@ The coordinator's direct tools handle file I/O, sandbox execution, task manageme
 
 The notebook demonstrates two turns against a bookstore database. Turn 1 asks the coordinator to query genre statistics and save results to CSV. The coordinator calls `task_launch(agent_name="sql_analyst", prompt=..., description=...)` in foreground mode (the default). The `AgentRunner` creates a fresh `OrchestratorAgent` from the SQL spec, runs it with SQL tools and schema context, and returns the result as a string. The coordinator then uses its own file tools to save the CSV.
 
-Turn 2 asks for a markdown report with a bar chart, converted to PDF. This mixes delegation and direct work: the coordinator delegates chart generation to the data analyst sub-agent (which has visualization tools), writes the report itself (file tools), and converts it to PDF (format conversion tool). The planning pattern from V2 still applies -- the agent creates a todo list, tracks each step, and reports the final state.
+Turn 2 asks for a markdown report with a bar chart, converted to PDF. This mixes delegation and direct work: the coordinator delegates chart generation to the data analyst sub-agent (which has visualization tools), writes the report itself (file tools), and converts it to PDF (format conversion tool). The planning pattern from V2 still applies -- the agent creates tasks with `task_create`, sets dependencies with `task_update`, tracks progress, and marks each step completed.
 
 #### How Delegation Works
 

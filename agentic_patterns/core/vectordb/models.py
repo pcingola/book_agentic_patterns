@@ -5,6 +5,18 @@ from enum import Enum
 from pydantic import BaseModel
 
 
+class ClusterAlgorithm(str, Enum):
+    AGGLOMERATIVE = "agglomerative"
+    HDBSCAN = "hdbscan"
+    KMEANS = "kmeans"
+    SPHERICAL_KMEANS = "spherical_kmeans"
+
+
+class DimReducer(str, Enum):
+    PACMAP = "pacmap"
+    UMAP = "umap"
+
+
 class ChunkLevel(str, Enum):
     DOCUMENT = "DOCUMENT"
     CHAPTER = "CHAPTER"

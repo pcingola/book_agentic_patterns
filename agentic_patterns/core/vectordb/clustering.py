@@ -13,24 +13,29 @@ if TYPE_CHECKING:
 from agentic_patterns.core.vectordb.models import (
     Chunk,
     Cluster,
+    ClusterAlgorithm,
     ClusterItem,
     ClusterResult,
+    DimReducer,
 )
 
 
 def cluster(
     input: "list[Chunk] | VectorDB",
     n_clusters: int | None = None,
-    algorithm: str = "hdbscan",
+    algorithm: ClusterAlgorithm = ClusterAlgorithm.AGGLOMERATIVE,
+    reduce_dim: DimReducer | None = None,
+    n_components: int = 50,
+    distance_threshold: float = 0.3,
+    min_cluster_size: int = 10,
     embedder=None,
 ) -> ClusterResult:
     """Cluster chunks or a VectorDB collection by embedding similarity.
 
     When input is a VectorDB, stored embeddings are fetched directly (no re-embedding).
-    algorithm='kmeans' requires n_clusters; algorithm='hdbscan' auto-discovers k.
-    Returns ClusterResult with label=None and summary=None on each cluster.
+    Use reduce_dim to apply dimensionality reduction before clustering.
+    For agglomerative without n_clusters, distance_threshold controls auto-k discovery.
     """
-
     if isinstance(input, list):
         ids, texts, metadatas, embeddings = _embed_chunks(input, embedder)
     else:
@@ -39,8 +44,53 @@ def cluster(
     if not ids:
         return ClusterResult(clusters=[])
 
-    labels = _run_algorithm(embeddings, algorithm, n_clusters)
+    X = np.array(embeddings)
+    if reduce_dim is not None:
+        X = _reduce(X, reduce_dim, n_components)
+
+    labels = _run_algorithm(X, algorithm, n_clusters, distance_threshold)
     return _build_result(ids, texts, metadatas, labels)
+
+
+def _reduce(X: np.ndarray, reducer: DimReducer, n_components: int) -> np.ndarray:
+    match reducer:
+        case DimReducer.UMAP:
+            import umap
+            return umap.UMAP(n_components=n_components).fit_transform(X)
+        case DimReducer.PACMAP:
+            import pacmap
+            return pacmap.PaCMAP(n_components=n_components).fit_transform(X)
+
+
+def _run_algorithm(
+    X: np.ndarray,
+    algorithm: ClusterAlgorithm,
+    n_clusters: int | None,
+    distance_threshold: float,
+) -> list[int]:
+    match algorithm:
+        case ClusterAlgorithm.AGGLOMERATIVE:
+            from sklearn.cluster import AgglomerativeClustering
+            if n_clusters is not None:
+                model = AgglomerativeClustering(n_clusters=n_clusters, metric="cosine", linkage="average")
+            else:
+                model = AgglomerativeClustering(metric="cosine", linkage="average", distance_threshold=distance_threshold, n_clusters=None)
+            return list(model.fit_predict(X))
+        case ClusterAlgorithm.HDBSCAN:
+            import hdbscan
+            return list(hdbscan.HDBSCAN(min_cluster_size=2).fit_predict(X))
+        case ClusterAlgorithm.KMEANS:
+            from sklearn.cluster import KMeans
+            if n_clusters is None:
+                raise ValueError("n_clusters is required for kmeans")
+            return list(KMeans(n_clusters=n_clusters, n_init="auto").fit_predict(X))
+        case ClusterAlgorithm.SPHERICAL_KMEANS:
+            from sklearn.cluster import KMeans
+            if n_clusters is None:
+                raise ValueError("n_clusters is required for spherical_kmeans")
+            norms = np.linalg.norm(X, axis=1, keepdims=True)
+            X_norm = X / np.where(norms == 0, 1, norms)
+            return list(KMeans(n_clusters=n_clusters, n_init="auto").fit_predict(X_norm))
 
 
 def _embed_chunks(chunks: list[Chunk], embedder) -> tuple[list, list, list, list]:
@@ -56,7 +106,6 @@ def _embed_chunks(chunks: list[Chunk], embedder) -> tuple[list, list, list, list
     loop = asyncio.get_event_loop()
     if loop.is_running():
         import nest_asyncio
-
         nest_asyncio.apply()
     embeddings = loop.run_until_complete(embed_texts(texts, embedder))
     return ids, texts, metadatas, embeddings
@@ -69,25 +118,6 @@ def _fetch_collection(vdb: "VectorDB") -> tuple[list, list, list, list]:
     metadatas = result.get("metadatas", []) or [{}] * len(ids)
     embeddings = result.get("embeddings", [])
     return ids, texts, metadatas, embeddings
-
-
-def _run_algorithm(
-    embeddings: list, algorithm: str, n_clusters: int | None
-) -> list[int]:
-    X = np.array(embeddings)
-    match algorithm:
-        case "hdbscan":
-            import hdbscan
-
-            return list(hdbscan.HDBSCAN(min_cluster_size=2).fit_predict(X))
-        case "kmeans":
-            if n_clusters is None:
-                raise ValueError("n_clusters is required for kmeans algorithm")
-            from sklearn.cluster import KMeans
-
-            return list(KMeans(n_clusters=n_clusters, n_init="auto").fit_predict(X))
-        case _:
-            raise ValueError(f"Unsupported clustering algorithm: {algorithm!r}")
 
 
 def _build_result(

@@ -215,10 +215,9 @@ class VectorDB:
         """Load a file, chunk it, and store in the collection."""
         from agentic_patterns.core.vectordb.chunking import chunk as _chunk
 
-        if file.suffix.lower() == ".md":
-            from agentic_patterns.core.doc_ingestion.loader import load_markdown
-
-            text = load_markdown(file, provenance)
+        suffix = file.suffix.lower()
+        if suffix in (".md", ".txt"):
+            text = file.read_text(encoding="utf-8")
         else:
             from agentic_patterns.core.doc_ingestion.loader import load_document
 

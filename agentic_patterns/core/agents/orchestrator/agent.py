@@ -23,33 +23,30 @@ from agentic_patterns.core.skills.registry import SkillRegistry
 NodeHook = Callable[[Any], None]
 
 
-def _make_log_node(task_list: Any = None) -> "NodeHook":
-    """Create a node hook that logs activity and optionally shows task state changes."""
-    prev_snapshot = [""]
+_AGENT_TOOLS = {"task_launch", "task_output"}
 
-    def hook(node) -> None:
-        if isinstance(node, CallToolsNode):
-            for part in node.model_response.parts:
-                if isinstance(part, TextPart) and part.content.strip():
-                    line = part.content.strip().replace("\n", " ")[:120]
-                    rich.print(f"  [dim]> {line}[/dim]")
-                elif isinstance(part, ToolCallPart):
-                    args = part.args_as_dict() or {}
-                    params = " ".join(f"{k}={v}" for k, v in args.items())
-                    rich.print(f"  [green]{part.tool_name}[/green] {params[:100]}")
-        elif isinstance(node, ModelRequestNode):
-            for part in node.request.parts:
-                if isinstance(part, ToolReturnPart):
-                    content = str(part.content).replace("\n", " ")[:120]
-                    rich.print(f"  [dim]  <- {part.tool_name}: {content}[/dim]")
 
-        if task_list is not None:
-            current = str(task_list)
-            if current != prev_snapshot[0] and current != "(empty task list)":
-                prev_snapshot[0] = current
-                rich.print(f"\n{current}\n")
+def _log_node(node) -> None:
+    """Default node hook: log tool calls and results.
 
-    return hook
+    Agent-related tool results (task_launch, task_output) get a longer summary
+    so the user can see what sub-agents and A2A agents returned.
+    """
+    if isinstance(node, CallToolsNode):
+        for part in node.model_response.parts:
+            if isinstance(part, TextPart) and part.content.strip():
+                line = part.content.strip().replace("\n", " ")[:120]
+                rich.print(f"  [dim]> {line}[/dim]")
+            elif isinstance(part, ToolCallPart):
+                args = part.args_as_dict() or {}
+                params = " ".join(f"{k}={v}" for k, v in args.items())
+                rich.print(f"  [green]{part.tool_name}[/green] {params[:100]}")
+    elif isinstance(node, ModelRequestNode):
+        for part in node.request.parts:
+            if isinstance(part, ToolReturnPart):
+                limit = 500 if part.tool_name in _AGENT_TOOLS else 120
+                content = str(part.content).replace("\n", " ")[:limit]
+                rich.print(f"  [dim]  <- {part.tool_name}: {content}[/dim]")
 
 
 class OrchestratorAgent:
@@ -90,6 +87,10 @@ class OrchestratorAgent:
         await self._exit_stack.__aenter__()
 
         tools: list[Any] = list(self.spec.tools)
+        if self.spec.file_tools:
+            self._add_file_tools(tools)
+        if self.spec.sandbox:
+            self._add_sandbox_tools(tools)
         mcp_toolsets = self._create_mcp_toolsets()
         self._discover_skills()
         self._add_skill_tools(tools)
@@ -110,7 +111,9 @@ class OrchestratorAgent:
             await self._exit_stack.enter_async_context(self._agent)
 
         if self._on_node is None and self._verbose:
-            self._on_node = _make_log_node(self._task_list)
+            self._on_node = _log_node
+        if self._verbose and self._task_list:
+            self._task_list.on_change = lambda: rich.print(f"\n{self._task_list}\n")
 
         return self
 
@@ -228,7 +231,13 @@ class OrchestratorAgent:
         return self._agent_runner.catalog()
 
     def _build_system_prompt(self, agents_catalog: dict[str, str]) -> str:
-        """Build combined system prompt from all sources."""
+        """Build combined system prompt from all sources.
+
+        When using a prompt file (system_prompt_path), the file controls what
+        shared blocks to include via {% include %}.  When using an inline
+        system_prompt, task and agent workflow instructions are appended
+        automatically so the agent knows how to use them.
+        """
         from agentic_patterns.core.prompt import load_prompt
 
         variables: dict[str, str] = {}
@@ -249,7 +258,41 @@ class OrchestratorAgent:
                 else self.spec.system_prompt
             )
         else:
-            prompt = "\n\n".join(variables.values())
+            raise ValueError(
+                f"AgentSpec '{self.spec.name}' has no system_prompt or system_prompt_path"
+            )
+
+        # For inline prompts, auto-append shared prompt blocks based on
+        # available capabilities.  Prompt files handle this via {% include %}.
+        if not self.spec.system_prompt_path:
+            prompt = self._append_shared_blocks(prompt, variables, agents_catalog)
+
+        return prompt
+
+    def _append_shared_blocks(
+        self,
+        prompt: str,
+        variables: dict[str, str],
+        agents_catalog: dict[str, str],
+    ) -> str:
+        """Append shared prompt blocks for capabilities the agent actually has."""
+        from agentic_patterns.core.config.config import PROMPTS_DIR
+        from agentic_patterns.core.prompt import load_prompt
+
+        shared = PROMPTS_DIR / "shared"
+        # (condition, filename, variables needed by that file)
+        blocks: list[tuple[bool, str, dict[str, str]]] = [
+            (True, "workspace.md", {}),
+            (self.spec.file_tools, "file_tools.md", {}),
+            (self.spec.sandbox, "sandbox.md", {}),
+            (bool(self._task_list), "tasks.md", {}),
+            (bool(self.spec.skills), "skills.md", {"skills_catalog": variables.get("skills_catalog", "")}),
+            (bool(agents_catalog), "sub_agents.md", {"agents_catalog": variables.get("agents_catalog", "")}),
+        ]
+        for condition, filename, file_vars in blocks:
+            path = shared / filename
+            if condition and path.exists():
+                prompt += "\n\n" + load_prompt(path, **file_vars)
 
         return prompt
 
@@ -314,6 +357,22 @@ class OrchestratorAgent:
             return prompt
         header = "\n\n".join(injections)
         return f"{header}\n\n{prompt}"
+
+    def _add_file_tools(self, tools: list[Any]) -> None:
+        """Add file, CSV, and JSON tools when file_tools is enabled."""
+        from agentic_patterns.tools.file import get_all_tools as get_file_tools
+        from agentic_patterns.tools.csv import get_all_tools as get_csv_tools
+        from agentic_patterns.tools.json import get_all_tools as get_json_tools
+
+        tools.extend(get_file_tools())
+        tools.extend(get_csv_tools())
+        tools.extend(get_json_tools())
+
+    def _add_sandbox_tools(self, tools: list[Any]) -> None:
+        """Add sandbox_execute tool when sandbox is enabled."""
+        from agentic_patterns.tools.sandbox import get_all_tools
+
+        tools.extend(get_all_tools())
 
     def _add_skill_tools(self, tools: list[Any]) -> None:
         """Add activate_skill and run_skill_script tools when skills are present."""

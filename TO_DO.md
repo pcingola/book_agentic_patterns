@@ -3,8 +3,8 @@
 - [ ] Check RAG chapter: New examples
   - [ ] agentic_patterns/examples/rag/example_RAG_03_multi_source.ipynb
   - [ ] agentic_patterns/examples/rag/example_RAG_04_clustering.ipynb
-- [.] Check Tasks / SubAgents chapter: New examples
-- [ ] Check Complete Agent: New examples
+- [x] Check Tasks / SubAgents chapter: New examples
+- [x] Check Complete Agent: New examples
 - [ ] Check Advanced agents
 
 

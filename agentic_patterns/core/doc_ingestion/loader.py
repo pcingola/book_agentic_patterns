@@ -31,8 +31,3 @@ def load_document(
 
     result = converter.convert(str(file))
     return result.document.export_to_markdown()
-
-
-def load_markdown(file: Path, provenance: DocumentProvenance) -> str:
-    """Read an already-converted markdown file directly."""
-    return file.read_text(encoding="utf-8")

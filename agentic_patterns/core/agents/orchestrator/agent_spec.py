@@ -28,6 +28,8 @@ class AgentSpec(BaseModel):
     tools: list[Any] = []  # Tool | Callable - Pydantic can't validate these types
     mcp_servers: list[MCPClientConfig] = []
     a2a_clients: list[A2AClientExtended] = []
+    file_tools: bool = False
+    sandbox: bool = False
     skills: list[Skill] = []
     sub_agents: list["AgentSpec"] = []
 
@@ -105,6 +107,8 @@ class AgentSpec(BaseModel):
             tools=tools,
             mcp_servers=mcp_servers,
             a2a_clients=a2a_clients,
+            file_tools=cfg.get("file_tools", False),
+            sandbox=cfg.get("sandbox", False),
             skills=skills,
             sub_agents=sub_agents,
         )
@@ -126,6 +130,10 @@ class AgentSpec(BaseModel):
         if self.skills:
             names = [s.name for s in self.skills]
             lines.append(f"  skills: {', '.join(names)}")
+        if self.file_tools:
+            lines.append("  file_tools: enabled")
+        if self.sandbox:
+            lines.append("  sandbox: enabled")
         if self.system_prompt_path:
             lines.append(f"  prompt: {self.system_prompt_path.name}")
         return "\n".join(lines)
