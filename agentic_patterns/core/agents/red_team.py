@@ -1,7 +1,5 @@
 """Red-team analysis agent for generating structured challenges against a result."""
 
-from collections.abc import Callable
-
 from pydantic import BaseModel
 
 from agentic_patterns.core.agents.agents import get_agent
@@ -25,6 +23,28 @@ class RedTeamResult(BaseModel):
     summary: str
 
 
+class RedTeamListener:
+    """Hooks called before and after red-team analysis. Override to customise behaviour."""
+
+    def on_start(self) -> None:
+        pass
+
+    def on_done(self, result: RedTeamResult) -> None:
+        pass
+
+
+class PrintRedTeamListener(RedTeamListener):
+    """Prints progress and a summary of challenges to stdout."""
+
+    def on_start(self) -> None:
+        print("Red-teaming...")
+
+    def on_done(self, result: RedTeamResult) -> None:
+        print(f"Summary: {result.summary}")
+        for ch in result.challenges:
+            print(f"  [{ch.severity}] {ch.claim}")
+
+
 class RedTeamAgent:
     """Generates adversarial challenges against a result, guided by a threat model."""
 
@@ -33,23 +53,25 @@ class RedTeamAgent:
         threat_model: str,
         *,
         config_name: str = "default",
-        on_start: Callable[[], None] | None = None,
+        listener: RedTeamListener | None = None,
     ):
         self._threat_model = threat_model
-        self._on_start = on_start
+        self._listener = listener
         self._agent = get_agent(config_name=config_name, output_type=RedTeamResult)
 
     async def analyze(self, result: str, context: str = "") -> RedTeamResult:
-        if self._on_start:
-            self._on_start()
+        if self._listener:
+            self._listener.on_start()
         prompt = load_prompt(
             PROMPTS_DIR / "adversarial" / "red_team.md",
             threat_model=self._threat_model,
             result=result,
             context=context,
         )
-        run = await self._agent.run(prompt)
-        return run.output
+        rt_result = (await self._agent.run(prompt)).output
+        if self._listener:
+            self._listener.on_done(rt_result)
+        return rt_result
 
     def __str__(self) -> str:
         return f"RedTeamAgent(threat_model={self._threat_model!r})"

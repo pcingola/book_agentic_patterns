@@ -1,6 +1,7 @@
 """Search source protocol and implementations for the deep research agent."""
 
 import logging
+import ssl
 from typing import Protocol, runtime_checkable
 
 import httpx
@@ -52,7 +53,7 @@ class SearchSourcePerplexity:
             "model": self._model,
             "messages": [{"role": "user", "content": query}],
         }
-        async with httpx.AsyncClient(timeout=60) as client:
+        async with httpx.AsyncClient(timeout=60, verify=ssl.create_default_context()) as client:
             resp = await client.post(
                 f"{self._api_url}/chat/completions", headers=headers, json=payload
             )
