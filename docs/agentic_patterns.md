@@ -42,7 +42,7 @@ Documentation for the `agentic_patterns` library -- a Python library for buildin
 
 [Rubric Agent](agentic_patterns/rubric.md) -- Evidence-backed evaluation pipeline: build rubrics from policy (Stage 1), refine with historical concerns (Stage 2), and assess with traceable PASS/RISK/FAIL verdicts (Stage 3).
 
-[Domain Agents](agentic_patterns/domain_agents.md) -- Pre-configured agents: db_catalog, data_analysis, sql, openapi, and coordinator.
+[Domain Agents](agentic_patterns/domain_agents.md) -- Pre-configured agents: db_catalog, data_analysis, sql, openapi, coordinator, and LLM-powered RAG utilities (agents.rag).
 
 ## Quality & Testing
 

@@ -37,3 +37,11 @@ Domain agents (`agentic_patterns.agents`) are pre-configured agents for specific
 ## coordinator
 
 `create_agent(tools=None)` returns an `OrchestratorAgent` that delegates work to sub-agents (data_analysis, sql, vocabulary). It uses `AgentSpec` with `name="coordinator"`, a system prompt loaded from a template, optional direct tools, and sub-agent specs registered for delegation via `TaskBroker`.
+
+## rag
+
+`agentic_patterns.agents.rag` provides LLM-powered helpers for RAG pipelines. These are not agents in the PydanticAI sense but utility functions that use `get_agent()` internally:
+
+- `chunking.chunk_with_llm` -- semantic chunking via LLM (see `rag.md`)
+- `retrieval.expand_query` -- query expansion via LLM
+- `clustering.label_clusters` -- LLM-generated labels and summaries for `ClusterResult` clusters

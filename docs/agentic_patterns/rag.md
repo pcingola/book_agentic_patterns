@@ -220,7 +220,13 @@ These techniques compose naturally with `vdb.query()` and `vdb.retrieve()` -- th
 
 `MultiSourceRetriever` (`agentic_patterns.core.vectordb.multi_source`) queries multiple VectorDB collections in parallel and merges results.
 
-`cluster()` and `label_clusters()` (`agentic_patterns.core.vectordb.clustering`) group documents by embedding similarity using HDBSCAN or K-Means.
+`cluster()` (`agentic_patterns.core.vectordb.clustering`) groups documents by embedding similarity using HDBSCAN or K-Means.
+
+The LLM-powered enhancements live in `agentic_patterns.agents.rag`:
+
+- `chunk_with_llm(text, provenance, agent, batch_size)` -- semantic chunking via LLM; splits text into paragraph batches, carries last chunk across batch boundaries for continuity, returns `list[Chunk]` at `ChunkLevel.SECTION`.
+- `expand_query(query, agent)` -- reformulates a query into multiple variants for broader retrieval recall; returns `list[str]`.
+- `label_clusters(result, agent, max_items_per_cluster)` -- prompts the LLM to assign a label and summary to each cluster in a `ClusterResult`; samples up to `max_items_per_cluster` items per cluster to stay within context limits.
 
 
 ## API Reference
@@ -251,6 +257,14 @@ These techniques compose naturally with `vdb.query()` and `vdb.retrieve()` -- th
 | `embed_text(text, embedder)` | Async function | Embed a single text string |
 | `embed_texts(texts, embedder)` | Async function | Embed multiple text strings |
 | `load_vectordb_settings(config_path)` | Function | Load settings from YAML (`config_path` is required, no default) |
+
+### `agentic_patterns.agents.rag`
+
+| Name | Kind | Description |
+|---|---|---|
+| `chunk_with_llm(text, provenance, agent, batch_size)` | Async function | LLM-based semantic chunking; batches at paragraph boundaries with leftover carry-across; returns `list[Chunk]` at `ChunkLevel.SECTION` |
+| `expand_query(query, agent)` | Async function | Reformulates query into multiple variants; returns `list[str]` |
+| `label_clusters(result, agent, max_items_per_cluster)` | Async function | Assigns LLM-generated label and summary to each cluster in a `ClusterResult` |
 
 ### Configuration models (`agentic_patterns.core.vectordb.config`)
 

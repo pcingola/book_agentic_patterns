@@ -36,8 +36,8 @@ book_agentic_patterns/
 │   │   └── vectordb/  #   Vector database utilities
 │   ├── toolkits/      # Business logic (pure Python, no framework dependency)
 │   ├── tools/         # PydanticAI tool wrappers (each file exposes get_all_tools())
-│   ├── mcp/           # MCP servers (each subdir: tools.py + server.py)
-│   ├── agents/        # Domain-specific agents (db_catalog, vocabulary, nl2sql, openapi, debate/, research/, red_team)
+│   ├── mcp/           # MCP servers (each subdir: tools.py + server.py); servers: data_analysis, data_viz, file_ops, format_conversion, openapi, repl, sandbox, sql, template, todo, vocabulary
+│   ├── agents/        # Domain-specific agents (coordinator, data_analysis, db_catalog, openapi, red_team, sql, vocabulary, debate/, nl2sql/, rag/, research/)
 │   ├── a2a/           # A2A servers (wrap agents for inter-agent communication)
 │   ├── examples/      # Code examples by chapter
 │   └── testing/       # Testing utilities for agents
@@ -46,6 +46,7 @@ book_agentic_patterns/
 ├── prompts/            # Prompt templates (markdown files)
 ├── data/               # Runtime data (db/, workspaces/, skills/)
 ├── docs/               # Design and reference documents
+├── plans/              # Planning artifacts (rubric plans, etc.)
 └── output/             # Generated book output (book.md, PDF)
 ```
 
@@ -69,7 +70,7 @@ How the code fits together
 - `toolkits/`: These are "tool" implementations that contain the actual business logic -- plain Python, no framework. They can be re-used as both direct agent tools and as MCP tools.
 - `tools/` and `mcp/` are thin wrappers that make toolkit functions available to PydanticAI agents and MCP servers respectively. 
 - `connectors/` are reusable data access layers (e.g. OpenAPI, SQL, vocabulary) that can be used by toolkits or directly by agents.
-- `agents/` are the agents themselves; they use those tools. An agent can delegate work to other agents as sub-agents
+- `agents/` are the agents themselves; they use those tools. An agent can delegate work to other agents as sub-agents. `coordinator.py` is the top-level multi-agent coordinator. `rag/` handles retrieval-augmented generation (chunking, clustering, retrieval).
 - `a2a/` exposes agents over the network so external agents can call them.
 - Skills are defined in `data/skills/`, each as a directory with a `SKILL.md` file (YAML frontmatter + markdown instructions). The registry in `core/skills/` discovers and loads them. See `docs/skills_specification.md` for the specification.
 - Prompts: Store in `prompts/` directory (root dir) as markdown files. Load via `load_prompt()` from `core/prompt.py` (supports `{% include %}` and `{variable}` substitution). Reusable blocks in `prompts/shared/`.
