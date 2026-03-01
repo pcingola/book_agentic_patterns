@@ -58,15 +58,10 @@ class DeepResearchAgent:
         tasks = [source.search(query) for source in self._sources]
         results_lists = await asyncio.gather(*tasks, return_exceptions=True)
         merged = []
-        errors = []
         for result in results_lists:
             if isinstance(result, Exception):
-                logger.warning("Search source error: %s", result)
-                errors.append(result)
-            else:
-                merged.extend(result)
-        if not merged and errors:
-            raise errors[0]
+                raise result
+            merged.extend(result)
         return merged
 
     async def run(self, question: str) -> ResearchReport:

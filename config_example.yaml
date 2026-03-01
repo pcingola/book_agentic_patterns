@@ -1,14 +1,16 @@
 models:
   default:
-    model_family: openai
-    model_name: gpt-4o
-    api_key: your-openai-api-key-here
+    model_family: openrouter
+    model_name: anthropic/claude-sonnet-4.5
+    api_key: your-openrouter-api-key-here
+    api_url: https://openrouter.ai/api/v1
     timeout: 120
 
   fast:
-    model_family: openai
-    model_name: gpt-4o-mini
-    api_key: your-openai-api-key-here
+    model_family: openrouter
+    model_name: anthropic/claude-3.5-sonnet
+    api_key: your-openrouter-api-key-here
+    api_url: https://openrouter.ai/api/v1
     timeout: 60
 
   azure_gpt4:
@@ -57,16 +59,15 @@ models:
 
 embeddings:
   default:
+    provider: ollama
+    model_name: nomic-embed-text
+    url: http://localhost:11434/v1
+
+  openrouter:
     provider: openrouter
     model_name: openai/text-embedding-3-small
     api_key: your-openrouter-api-key-here
     api_url: https://openrouter.ai/api/v1
-    dimensions: 1536
-
-  openai:
-    provider: openai
-    model_name: text-embedding-3-small
-    api_key: your-openai-api-key-here
     dimensions: 1536
 
   openai_large:
@@ -84,6 +85,21 @@ embeddings:
     provider: sentence_transformers
     model_name: all-MiniLM-L6-v2
     device: cpu
+
+search:
+  perplexity:
+    api_key: your-perplexity-api-key
+    model: sonar
+    api_url: https://api.perplexity.ai
+
+vectordb:
+  default:
+    backend: chroma
+    persist_directory: data/db/chroma
+
+  postgres:
+    backend: pgvector
+    connection_string: postgresql://user:password@localhost:5432/vectordb
 
 # context:
 #   truncation:
@@ -133,21 +149,6 @@ sandbox:
     container_prefix: sandbox
   repl:
     image: agentic-patterns-repl:latest
-
-search:
-  perplexity:
-    api_key: your-perplexity-api-key
-    model: sonar
-    api_url: https://api.perplexity.ai
-
-vectordb:
-  default:
-    backend: chroma
-    persist_directory: data/db/chroma
-
-  postgres:
-    backend: pgvector
-    connection_string: postgresql://user:password@localhost:5432/vectordb
 
 openapi:
   request_timeout: 30

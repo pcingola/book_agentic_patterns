@@ -57,6 +57,8 @@ class SearchSourcePerplexity:
             resp = await client.post(
                 f"{self._api_url}/chat/completions", headers=headers, json=payload
             )
+            if resp.status_code == 401:
+                raise PermissionError("Perplexity API key is missing or invalid. Check 'search.perplexity.api_key' in config.yaml.")
             resp.raise_for_status()
             data = resp.json()
 
