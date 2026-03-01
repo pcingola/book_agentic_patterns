@@ -1,5 +1,6 @@
 """Evidence-backed rubric assessment (Stage 3)."""
 
+import asyncio
 import logging
 
 from pydantic import BaseModel

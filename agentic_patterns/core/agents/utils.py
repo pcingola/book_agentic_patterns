@@ -2,9 +2,24 @@
 Utility functions for agent operations.
 """
 
-from typing import Sequence
+import asyncio
+from collections.abc import Coroutine
+from typing import Any, Sequence
 
 from pydantic_ai import ModelMessage, ToolCallPart
+
+
+async def run_parallel(coros: list[Coroutine[Any, Any, Any]], *, concurrency: int | None = None) -> list:
+    """Run coroutines in parallel with an optional concurrency cap."""
+    if concurrency is None:
+        return list(await asyncio.gather(*coros))
+    sem = asyncio.Semaphore(concurrency)
+
+    async def _bounded(coro: Coroutine) -> Any:
+        async with sem:
+            return await coro
+
+    return list(await asyncio.gather(*[_bounded(c) for c in coros]))
 
 
 def get_usage(node):

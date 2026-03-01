@@ -1,20 +1,6 @@
 # To do
 
-- [x] Check RAG chapter: New examples
-- [x] Check Tasks / SubAgents chapter: New examples
-- [x] Check Complete Agent: New examples
 - [x] Check Advanced agents
-
-- [ ] Warnings: /agentic_patterns/examples/the_complete_agent/example_agent_full.ipynb
-```
-<frozen importlib._bootstrap>:488: DeprecationWarning: builtin type SwigPyPacked has no __module__ attribute
-<frozen importlib._bootstrap>:488: DeprecationWarning: builtin type SwigPyObject has no __module__ attribute
-<frozen importlib._bootstrap>:488: DeprecationWarning: builtin type swigvarlink has no __module__ attribute
-AgentSpec(full_agent)
-  tools: file_read, file_head, file_tail, file_find, file_list, file_write, file_append, file_edit, file_delete, sandbox_execute, todo_add, todo_add_many, todo_create_list, todo_delete, todo_show, todo_update_status, convert_document
-  sub_agents: data_analyst, sql_analyst, vocabulary_expert, api_specialist
-  prompt: agent_full.md
-```
 
 - Chapter UI: Add A2UI
 - Chapter: Long Running agents / Swarms / OpenClaw
