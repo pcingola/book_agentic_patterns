@@ -12,7 +12,7 @@
 
 [Comparison: Sub-agents, Skills, MCP, and A2A](./comparison.md)
 
-[Agents.md](./agents.md)
+[AGENTS.md](./agents.md)
 
 [Tasks](./tasks.md)
 

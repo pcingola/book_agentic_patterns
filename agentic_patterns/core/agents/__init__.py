@@ -1,10 +1,12 @@
 from agentic_patterns.core.agents.agents import AgentNode, get_agent, run_agent
 from agentic_patterns.core.agents.debate import (
     Argument,
+    DebateListener,
     DebateOrchestrator,
     DebateResult,
     DebateRound,
     DebateTurn,
+    PrintDebateListener,
     Verdict,
 )
 from agentic_patterns.core.agents.orchestrator import (
@@ -29,10 +31,12 @@ __all__ = [
     "AgentStatus",
     "Argument",
     "Challenge",
+    "DebateListener",
     "DebateOrchestrator",
     "DebateResult",
     "DebateRound",
     "DebateTurn",
+    "PrintDebateListener",
     "DeepResearchAgent",
     "OrchestratorAgent",
     "RedTeamAgent",

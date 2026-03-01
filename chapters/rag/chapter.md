@@ -26,8 +26,6 @@
 
 [Hands-On: Advanced Document Ingestion and Retrieval](./hands_on_advanced_rag.md)
 
-[Hands-On: Multi-Source RAG](./hands_on_multi_source_rag.md)
-
 [Hands-On: Semantic Clustering](./hands_on_semantic_clustering.md)
 
 [References](./references.md)

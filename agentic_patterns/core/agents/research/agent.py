@@ -11,7 +11,7 @@ from agentic_patterns.core.agents.research.models import (
     _SubQuestions,
     _SynthesisOutput,
 )
-from agentic_patterns.core.agents.research.source import SearchResult, SearchSource
+from agentic_patterns.core.agents.research.source import SearchResult, SearchSource, SearchSourcePerplexity
 from agentic_patterns.core.config.config import PROMPTS_DIR
 from agentic_patterns.core.prompt import load_prompt
 
@@ -44,12 +44,12 @@ class DeepResearchAgent:
 
     def __init__(
         self,
-        sources: list[SearchSource],
+        sources: list[SearchSource] | None = None,
         *,
         config_name: str = "default",
         max_iterations: int = 2,
     ):
-        self._sources = sources
+        self._sources = sources if sources is not None else [SearchSourcePerplexity.from_config()]
         self._config_name = config_name
         self._max_iterations = max_iterations
 
@@ -58,11 +58,15 @@ class DeepResearchAgent:
         tasks = [source.search(query) for source in self._sources]
         results_lists = await asyncio.gather(*tasks, return_exceptions=True)
         merged = []
+        errors = []
         for result in results_lists:
             if isinstance(result, Exception):
                 logger.warning("Search source error: %s", result)
-                continue
-            merged.extend(result)
+                errors.append(result)
+            else:
+                merged.extend(result)
+        if not merged and errors:
+            raise errors[0]
         return merged
 
     async def run(self, question: str) -> ResearchReport:

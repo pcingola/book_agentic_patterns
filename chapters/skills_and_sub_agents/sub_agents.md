@@ -10,12 +10,13 @@ A minimal example illustrates the shape of the interaction:
 
 ```python
 # Parent agent delegates to a specialized sub-agent
-result = research_agent.run(
-    query="Summarize recent approaches to retrieval-augmented generation"
+agent_run, _ = await run_agent(
+    research_agent,
+    "Summarize recent approaches to retrieval-augmented generation",
 )
 
 # Parent agent integrates the result into its own reasoning
-analysis = f"Based on research findings: {result.summary}"
+analysis = f"Based on research findings: {agent_run.result.output}"
 ```
 
 The important property is not the syntax, but the boundary: the sub-agent owns its internal reasoning and context, and only its output crosses back to the parent.

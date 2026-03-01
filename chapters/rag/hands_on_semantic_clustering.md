@@ -1,6 +1,6 @@
 ## Hands-On: Semantic Clustering
 
-This hands-on demonstrates how to cluster an existing vector database collection by embedding similarity, label the resulting clusters with an LLM, and use the cluster structure to understand what a corpus contains. The example uses `example_RAG_04_clustering.ipynb`.
+This hands-on demonstrates how to cluster an existing vector database collection by embedding similarity, label the resulting clusters with an LLM, and use the cluster structure to understand what a corpus contains. The example uses `example_RAG_clustering.ipynb`.
 
 ### What Clustering Reveals
 
@@ -15,9 +15,10 @@ After running the ingestion notebooks, the `books` collection already contains e
 ```python
 from agentic_patterns.core.vectordb import get_vector_db
 from agentic_patterns.core.vectordb.clustering import cluster
+from agentic_patterns.core.vectordb.models import ClusterAlgorithm, DimReducer
 
 vdb = get_vector_db("books")
-result = cluster(vdb, algorithm="hdbscan")
+result = cluster(vdb, algorithm=ClusterAlgorithm.HDBSCAN, reduce_dim=DimReducer.UMAP, n_components=10)
 
 print(f"Found {len(result.clusters)} clusters")
 for c in result.clusters:
@@ -26,7 +27,7 @@ for c in result.clusters:
 
 When the input is a `VectorDB`, `cluster` fetches stored embeddings directly via the underlying collection and works on them without any additional embedding calls. This makes clustering an existing collection fast and free of API cost.
 
-HDBSCAN does not require specifying the number of clusters. It finds dense regions in the embedding space and labels outlier points with cluster id `-1`. These noise points are intentional: some chunks are peripheral or transitional and should not be forced into a coherent theme. Forcing them in would dilute the coherent clusters.
+HDBSCAN does not require specifying the number of clusters. It finds dense regions in the embedding space and labels outlier points with cluster id `-1`. These noise points are intentional: some chunks are peripheral or transitional and should not be forced into a coherent theme. Forcing them in would dilute the coherent clusters. The `reduce_dim=DimReducer.UMAP` argument applies UMAP dimensionality reduction before clustering: HDBSCAN is sensitive to the curse of dimensionality, and compressing embeddings to a lower-dimensional space (here, 10 components) makes density contrasts more pronounced and results more reliable.
 
 ### Labeling Clusters with an LLM
 
@@ -59,16 +60,16 @@ A typical run over the book corpus reveals clusters such as:
 
 This distribution reveals something about the corpus structure that a query-based approach would never show: the corpus is narrative-heavy with relatively few technical segments. A RAG system built on this corpus will be strong for character and plot queries but weak for factual lookups, because the factual content represents a small fraction of the chunks.
 
-### Using K-Means When the Number of Clusters Is Known
+### Using Spherical K-Means When the Number of Clusters Is Known
 
-For corpora where the expected number of topics is approximately known — for example, ten product categories in a support ticket corpus — k-means produces more balanced clusters:
+For corpora where the expected number of topics is approximately known — for example, ten product categories in a support ticket corpus — k-means produces more balanced clusters. Because embeddings are compared via cosine similarity, **spherical k-means** is preferred: it normalizes vectors to the unit sphere before clustering, making it equivalent to minimizing cosine distance and aligning the clustering metric with retrieval:
 
 ```python
-result_km = cluster(vdb, algorithm="kmeans", n_clusters=10)
-labeled_km = await label_clusters(result_km)
+result_skm = cluster(vdb, algorithm=ClusterAlgorithm.SPHERICAL_KMEANS, n_clusters=10)
+labeled_skm = await label_clusters(result_skm)
 ```
 
-K-means forces every document into a cluster, which is useful when the goal is complete coverage rather than noise rejection. The trade-off is that some clusters may be conceptually forced: groups that happen to be near each other in embedding space but do not represent a coherent theme. HDBSCAN's noise class provides an honest signal that k-means cannot.
+Spherical k-means forces every document into a cluster, which is useful when the goal is complete coverage rather than noise rejection. The trade-off is that some clusters may be conceptually forced: groups that happen to be near each other in embedding space but do not represent a coherent theme. HDBSCAN's noise class provides an honest signal that spherical k-means cannot.
 
 ### Mapping Clusters to Structured Items
 

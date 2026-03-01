@@ -10,11 +10,11 @@
 
 [Code Indexing and Search Agent](./code_indexing.md)
 
-[Hands-on: Introduction]()
+[Hands-on: Introduction](./hands_on_intro.md)
 
-[Hands-on: Debate Agent]()
+[Hands-on: Debate Agent](./hands_on_debate.md)
 
-[Hands-on: Deep Research Agent]()
+[Hands-on: Deep Research Agent](./hands_on_deep_research.md)
 
 [Hands-on: Rubric Agent]()
 

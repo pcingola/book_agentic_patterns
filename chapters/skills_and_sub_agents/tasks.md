@@ -2,7 +2,7 @@
 
 Sub-agents are fire-and-forget: the coordinator calls, awaits, and moves on. This works for short tasks but breaks down when work is long-running, involves multiple agents with dependencies, or needs structured tracking. The task system provides a lightweight coordination layer: durable state, dependency management, and structured progress tracking for multi-step agent work.
 
-#### State Machine
+### State Machine
 
 A task moves through a small set of states: `pending`, `in_progress`, `completed`, `deleted`. Tasks are created as `pending`. When an agent starts working on a task, it transitions to `in_progress`. When the work is done, the task moves to `completed`. The `deleted` status permanently removes a task that is no longer relevant.
 
@@ -14,7 +14,7 @@ pending --> in_progress --> completed
 
 The state machine enforces one key constraint: a task with unresolved dependencies (non-empty `blocked_by` where at least one blocker is incomplete) cannot transition to `in_progress`. This prevents agents from starting work whose prerequisites are not yet met.
 
-#### Task Model
+### Task Model
 
 A `Task` carries the information agents need to coordinate work:
 
@@ -33,7 +33,7 @@ class Task(BaseModel):
 
 Dependencies are bidirectional: adding task B to task A's `blocked_by` automatically adds A to task B's `blocks`. This keeps the dependency graph consistent without requiring agents to maintain both sides manually.
 
-#### TaskList
+### TaskList
 
 `TaskList` is the storage and coordination layer. It persists each task as an individual JSON file, using file-level locking for concurrency safety. The interface is small:
 
@@ -49,19 +49,19 @@ class TaskList:
 
 `next_available()` is dependency-aware: it returns the first pending task (lowest ID) whose every `blocked_by` entry has reached `completed`. If an owner is specified, it filters for tasks assigned to that agent. This enables multiple agents to pull work from the same list without conflicts.
 
-#### Agent-Facing Tools
+### Agent-Facing Tools
 
 Four tools expose the `TaskList` to agents:
 
 `task_create(subject, description, *, active_form, metadata)` creates a new task and returns its ID. `task_get(task_id)` retrieves full details including dependencies. `task_list_all()` returns a summary of all tasks with status, owner, and blocked-by info. `task_update(task_id, *, status, subject, owner, add_blocks, add_blocked_by, metadata, ...)` modifies any aspect of a task -- status transitions, dependency additions, metadata merges. Setting a metadata key to `null` deletes it.
 
-#### Dependencies and Parallel Execution
+### Dependencies and Parallel Execution
 
 Tasks declare dependencies via `blocked_by`, a list of task IDs that must reach `completed` before the task can start. Independent tasks (no blockers, or all blockers completed) can run in parallel. Tasks whose dependencies are not yet met remain `pending` -- the system prevents them from transitioning to `in_progress`.
 
 A research task must complete before the writing task that uses its findings. Two independent research tasks can run in parallel, but the summary that combines them must wait for both. These relationships form a directed acyclic graph (DAG) that the `TaskList` enforces through its blocking logic.
 
-#### Connection to Sub-Agents and A2A
+### Connection to Sub-Agents and A2A
 
 Tasks and sub-agents are orthogonal systems that work together. Tasks track what needs to be done and in what order. Sub-agents (via `AgentRunner`) handle execution. The `OrchestratorAgent` wires both into the same agent: task tools for planning and tracking, agent runner tools (`task_launch`, `task_output`, `task_stop`) for delegation.
 

@@ -1,5 +1,7 @@
 """Red-team analysis agent for generating structured challenges against a result."""
 
+from collections.abc import Callable
+
 from pydantic import BaseModel
 
 from agentic_patterns.core.agents.agents import get_agent
@@ -26,11 +28,20 @@ class RedTeamResult(BaseModel):
 class RedTeamAgent:
     """Generates adversarial challenges against a result, guided by a threat model."""
 
-    def __init__(self, threat_model: str, *, config_name: str = "default"):
+    def __init__(
+        self,
+        threat_model: str,
+        *,
+        config_name: str = "default",
+        on_start: Callable[[], None] | None = None,
+    ):
         self._threat_model = threat_model
+        self._on_start = on_start
         self._agent = get_agent(config_name=config_name, output_type=RedTeamResult)
 
     async def analyze(self, result: str, context: str = "") -> RedTeamResult:
+        if self._on_start:
+            self._on_start()
         prompt = load_prompt(
             PROMPTS_DIR / "adversarial" / "red_team.md",
             threat_model=self._threat_model,

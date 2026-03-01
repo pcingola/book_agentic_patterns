@@ -1,33 +1,10 @@
 ## Hands-On: Skills and Progressive Disclosure
 
-This hands-on explores skills through `example_skills.ipynb`, demonstrating how an agent discovers available skills, activates one based on the task, and uses its tools.
+This hands-on explores `example_skills.ipynb`, which demonstrates the three tiers of progressive disclosure using the core skills library. An agent discovers a `checksum` skill from a local directory, activates it to receive instructions, and then runs a bundled script to compute a SHA-256 hash — a result the model cannot produce reliably on its own.
 
-### Skill Structure
+### Setup: Discovering Skills
 
-A skill is a directory containing a `SKILL.md` file with YAML frontmatter and markdown body:
-
-```
-code-review/
-  SKILL.md
-  references/
-    REFERENCE.md
-```
-
-The frontmatter provides machine-readable metadata:
-
-```yaml
----
-name: code-review
-description: Review code for quality, bugs, and security issues.
-compatibility: Works with Python, JavaScript, and TypeScript files.
----
-```
-
-The body contains instructions the agent follows when the skill is activated. This separation is the foundation of progressive disclosure: frontmatter is cheap to load for all skills, while the body is loaded only on demand.
-
-### Discovery: The Cheap Operation
-
-The `SkillRegistry` scans skill directories and extracts only frontmatter:
+The `SkillRegistry` scans skill directories and loads only frontmatter at startup:
 
 ```python
 skills_root = Path("skills-demo")
@@ -35,66 +12,72 @@ registry = SkillRegistry()
 registry.discover([skills_root])
 ```
 
-After discovery, the registry holds metadata for all skills but has not loaded any instruction bodies. This is the first tier of progressive disclosure. The agent can see what capabilities exist without paying the token cost for instructions it may never use.
+After discovery, the registry holds metadata (name and description) for all skills but has not loaded any instruction bodies. This is Tier 1: cheap enough to advertise all skills in the system prompt without bloating context.
 
-The `list_available_skills` function formats this metadata for injection into a system prompt:
+### Tools from the Core Library
 
-```python
-skill_catalog = list_available_skills(registry)
-```
-
-This produces a compact one-liner per skill, suitable for the agent's initial context.
-
-### Activation: The Expensive Operation
-
-When the agent needs a skill, it calls `activate_skill`:
+`registry.get_all_tools(allow_local=True)` returns the three tools that implement progressive disclosure:
 
 ```python
-def activate_skill(skill_name: str) -> str:
-    instructions = get_skill_instructions(registry, skill_name)
-    if instructions is None:
-        return f"Skill '{skill_name}' not found."
-    activated_skills.add(skill_name)
-    print(f"[SKILL ACTIVATED: {skill_name}]")
-    return instructions
+skill_tools = registry.get_all_tools(allow_local=True)
 ```
 
-This loads the full `SKILL.md` body and returns it to the agent. The `[SKILL ACTIVATED]` marker makes this transition visible in the output. Activation is the second tier: the agent now has detailed instructions for this specific capability.
+- `activate_skill` loads the full `SKILL.md` body into the agent's context (Tier 2)
+- `run_skill_script` executes a script bundled with an activated skill (Tier 3)
+- `read_skill_resource` reads a reference or asset file from an activated skill (Tier 3)
 
-### Gated Tools
+No custom tool code is needed. The `allow_local=True` flag permits direct subprocess execution for notebooks and demos; in production, a `SandboxManager` is passed instead.
 
-Skills can provide tools that only work after activation. In the example, `analyze_code` checks whether the code-review skill is active:
+### Observability with SkillEvent
+
+The registry exposes an `on_event` hook for monitoring skill lifecycle events:
 
 ```python
-def analyze_code(code: str) -> str:
-    if "code-review" not in activated_skills:
-        return "Error: You must activate the 'code-review' skill first."
-    print(f"[SKILL TOOL CALLED: analyze_code]")
-    # ... analysis logic
+def on_skill_event(event: SkillEvent) -> None:
+    print(f"  [SKILL {event.event_type.value.upper()}] {event.skill_name}", end="")
+    if event.payload:
+        details = ", ".join(f"{k}={v}" for k, v in event.payload.items())
+        print(f" ({details})")
+    else:
+        print()
+
+registry.on_event = on_skill_event
 ```
 
-This gating enforces the progressive disclosure pattern at runtime. The agent cannot skip activation and jump directly to using tools. The `[SKILL TOOL CALLED]` marker shows when the skill's capability is actually exercised.
+This makes skill activation, script execution, and resource reads visible in the output, which is essential for debugging and for demonstrating the boundary between tiers.
 
-### The Agent Flow
+### The Agent
 
-The system prompt tells the agent about skills and how to use them:
+`registry.system_prompt()` returns the skill catalog formatted and ready to inject into a system prompt:
 
 ```python
 system_prompt = f"""You are an assistant with access to skills.
 
-Available skills:
-{skill_catalog}
+{registry.system_prompt()}"""
 
-To use a skill:
-1. Call activate_skill(skill_name) to load its instructions
-2. Read the instructions to understand what tools are available
-3. Use the skill's tools (e.g., analyze_code for code-review)
-
-You must activate a skill before using its tools."""
+agent = get_agent(system_prompt=system_prompt, tools=skill_tools)
 ```
 
-When the agent receives a code review task, it recognizes the match with the code-review skill, activates it to get instructions, then uses `analyze_code` to perform the actual analysis. The output shows this sequence clearly through the activation and tool call markers.
+The agent's initial context contains only Tier 1 metadata — names and descriptions — for all discovered skills. Full instructions are not loaded until the agent calls `activate_skill`.
 
-### Key Takeaways
+### Running the Agent
 
-Gating tools behind activation enforces the progressive disclosure pattern at runtime and makes skill usage visible in the execution trace. The `[SKILL ACTIVATED]` and `[SKILL TOOL CALLED]` markers demonstrate the clear boundary between discovery, activation, and execution.
+The agent is asked to compute a SHA-256 checksum and verify it against known test vectors:
+
+```python
+prompt = "Compute the SHA-256 checksum of 'hello world' and verify it against the known test vectors."
+
+agent_run, nodes = await run_agent(agent, prompt, verbose=True)
+```
+
+The agent cannot produce a SHA-256 hash from its parameters alone, so it must use the skill. Watch the output for `[SKILL ACTIVATE]`, `[SKILL EXEC]`, and `[SKILL READ]` events printed by the `on_event` hook.
+
+### Three Tiers in Action
+
+1. **Tier 1 — Discovery**: The catalog in the system prompt tells the agent that a `checksum` skill exists and what it does. No instruction body has been loaded.
+
+2. **Tier 2 — Activation**: The agent calls `activate_skill("checksum")`, which loads the full `SKILL.md` body. The agent now knows what scripts and references are available.
+
+3. **Tier 3 — Execution**: The agent calls `run_skill_script("checksum", "checksum.py", "hello world")` to compute the hash, then `read_skill_resource("checksum", "reference", "test_vectors.md")` to load the known test values. It compares the computed hash against the reference and reports the result.
+
+Context is loaded exactly when needed and not before — the progressive disclosure contract enforced at runtime by the core library rather than by custom application code.

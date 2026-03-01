@@ -4,7 +4,10 @@ import logging
 from typing import Protocol, runtime_checkable
 
 import httpx
+import yaml
 from pydantic import BaseModel
+
+from agentic_patterns.core.config.config import MAIN_PROJECT_DIR
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +77,14 @@ class SearchSourcePerplexity:
                 )
             )
         return results
+
+    @classmethod
+    def from_config(cls) -> "SearchSourcePerplexity":
+        """Load configuration from config.yaml (section search.perplexity)."""
+        with open(MAIN_PROJECT_DIR / "config.yaml") as f:
+            cfg = yaml.safe_load(f)
+        p = cfg["search"]["perplexity"]
+        return cls(api_key=p["api_key"], model=p.get("model", "sonar"), api_url=p.get("api_url", "https://api.perplexity.ai"))
 
     def __str__(self) -> str:
         return f"SearchSourcePerplexity(model={self._model!r})"

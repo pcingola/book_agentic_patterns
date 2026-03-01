@@ -3,7 +3,7 @@
 - [x] Check RAG chapter: New examples
 - [x] Check Tasks / SubAgents chapter: New examples
 - [x] Check Complete Agent: New examples
-- [ ] Check Advanced agents
+- [x] Check Advanced agents
 
 - [ ] Warnings: /agentic_patterns/examples/the_complete_agent/example_agent_full.ipynb
 ```

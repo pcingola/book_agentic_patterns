@@ -2,7 +2,7 @@
 
 Retrieval-augmented systems are built on the assumption that a query can identify the relevant subset of a corpus. This assumption holds when users know what they are looking for. But many RAG applications involve tasks where the structure of the corpus itself is unknown: a new domain corpus has just been ingested, a collection of customer concerns needs to be organized into themes, or a research assistant must identify recurring patterns across hundreds of documents. Semantic clustering addresses these tasks by grouping documents by embedding similarity rather than by query relevance.
 
-#### Clustering in embedding space
+###Clustering in embedding space
 
 Semantic clustering treats each chunk or document as a point in a high-dimensional embedding space and applies a clustering algorithm to partition or densely group those points. The key property of clustering in embedding space is that geometric proximity reflects semantic similarity: chunks about the same topic will cluster together, even if they use different terminology.
 
@@ -19,21 +19,35 @@ km = KMeans(n_clusters=k, n_init="auto")
 labels = km.fit_predict(X)
 ```
 
-Density-based clustering, most commonly HDBSCAN (Hierarchical Density-Based Spatial Clustering of Applications with Noise), automatically discovers the number of clusters by finding dense regions in embedding space. Points in sparse regions are labeled as noise (cluster label -1) rather than forced into a cluster. This is important in RAG: not every document belongs to a coherent theme, and forcing noisy or peripheral documents into clusters distorts the structure. HDBSCAN is more computationally intensive than k-means but produces more interpretable results on heterogeneous corpora.
+Because embeddings are designed to be compared via cosine similarity, **spherical k-means** is generally more appropriate than standard k-means for document corpora. Spherical k-means normalizes all vectors to the unit sphere before clustering, making it equivalent to minimizing cosine distance. This aligns the clustering metric with the similarity metric used during retrieval:
 
 ```python
+from sklearn.preprocessing import normalize
+
+X_norm = normalize(np.array(embeddings))  # project onto unit sphere
+km = KMeans(n_clusters=k, n_init="auto")
+labels = km.fit_predict(X_norm)
+```
+
+Density-based clustering, most commonly HDBSCAN (Hierarchical Density-Based Spatial Clustering of Applications with Noise), automatically discovers the number of clusters by finding dense regions in embedding space. Points in sparse regions are labeled as noise (cluster label -1) rather than forced into a cluster. This is important in RAG: not every document belongs to a coherent theme, and forcing noisy or peripheral documents into clusters distorts the structure. HDBSCAN is more computationally intensive than k-means but produces more interpretable results on heterogeneous corpora.
+
+A practical consideration is that HDBSCAN is sensitive to the curse of dimensionality: in high-dimensional spaces, distances between points become increasingly uniform, which makes density contrasts harder to detect. The standard remedy is to apply **dimensionality reduction** before clustering. UMAP, configured to preserve local neighborhood structure, compresses embeddings to a lower-dimensional space (typically 10–50 components) where density differences are more pronounced. Applying HDBSCAN to UMAP-reduced embeddings consistently produces more reliable clusters than applying it to raw embeddings.
+
+```python
+import umap
 import hdbscan
 import numpy as np
 
 X = np.array(embeddings)
+X_reduced = umap.UMAP(n_components=10, metric="cosine").fit_transform(X)
 clusterer = hdbscan.HDBSCAN(min_cluster_size=5)
-labels = clusterer.fit_predict(X)
+labels = clusterer.fit_predict(X_reduced)
 # labels == -1 indicates noise points
 ```
 
 The `min_cluster_size` parameter controls the minimum number of points required to form a cluster. Setting it too low produces many small, specific clusters; setting it too high merges distinct themes. The appropriate value depends on corpus size and the expected granularity of topics.
 
-#### Fetching stored embeddings
+###Fetching stored embeddings
 
 A practical advantage of clustering collections that have been ingested into a vector database is that embeddings are already computed and stored. Re-embedding is expensive; fetching stored vectors is cheap. Chroma's collection API supports direct embedding retrieval:
 
@@ -46,7 +60,7 @@ ids = result["ids"]
 
 This avoids re-running embedding inference and ensures that clustering is performed in exactly the same space as retrieval, which is important for consistency.
 
-#### LLM-based cluster labeling
+###LLM-based cluster labeling
 
 Clustering produces groups of documents, not interpretations. Each cluster is initially identified only by its constituent documents. To make clusters actionable, they must be labeled: given the items in a cluster, what topic or theme does it represent?
 
@@ -67,7 +81,7 @@ The returned label and summary transform the cluster from an opaque set of embed
 
 Two scaling limitations apply. First, sending all items in a large cluster to the LLM in a single prompt fills the context window. The practical fix is to sample a representative subset — typically 10 to 20 items — which is sufficient for labeling since cluster members are semantically similar by construction. Second, labeling is performed sequentially, one LLM call per cluster. For corpora with hundreds of clusters this becomes a bottleneck; the calls are independent and can be parallelized with `asyncio.gather`.
 
-#### Applications in RAG systems
+###Applications in RAG systems
 
 Semantic clustering serves several distinct roles in RAG architectures.
 
@@ -79,7 +93,7 @@ Semantic clustering serves several distinct roles in RAG architectures.
 
 **Theme extraction from unstructured feedback.** Customer support tickets, survey responses, and meeting minutes often contain recurring concerns that are not labeled explicitly. Clustering these texts groups related concerns together, and LLM labeling names the themes. The resulting cluster structure is a lightweight taxonomy derived from actual data rather than manually designed.
 
-#### Hierarchical and multi-level clustering
+###Hierarchical and multi-level clustering
 
 Single-level clustering treats all documents at the same granularity. For large or heterogeneous corpora, a hierarchical approach is often more useful. A coarse first pass identifies broad themes; a second pass clusters within each theme to produce subtopics. This two-level structure mirrors the hierarchical organization of knowledge in many domains: a top level of "product areas" and a second level of "feature categories" within each area.
 
@@ -87,6 +101,6 @@ HDBSCAN supports hierarchical clustering natively through its condensed tree rep
 
 The output of multi-level clustering is a cluster tree, where each node is a named topic and leaf nodes contain the individual documents. This structure can serve as a navigational index for the corpus, allowing users to drill into topics of interest rather than relying entirely on query-based retrieval.
 
-#### Clustering as a complement to retrieval
+###Clustering as a complement to retrieval
 
 Retrieval and clustering are complementary strategies for accessing a corpus. Retrieval is query-driven and latency-sensitive; clustering is exploratory and batch-oriented. Together they support two modes of use: a user who knows what they are looking for uses retrieval; a user who wants to understand what is in the corpus uses clustering. In advanced RAG systems, the outputs of clustering—labels, summaries, and cluster assignments—are themselves indexed and made retrievable, blurring the boundary between the two modes.

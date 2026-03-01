@@ -15,90 +15,55 @@ A red-team agent is a specialized adversary whose output is not the final soluti
 A reliable red-team agent is constrained by a threat model. Without an explicit threat model, the red-team will either under-attack or over-attack. Modern red-teaming practice emphasizes matching tests to the system’s intended use, interfaces, and attacker capabilities. The red-team interaction is best structured as a two-stage contract: first generate attacks, then score whether each attack is answered with evidence. If evidence is missing, the system creates a concrete retrieval action or experiment rather than allowing debate to continue abstractly.
 
 ```python
-def red_team(answer_draft, context, threat_model):
-    attacks = Challenger(threat_model).generate_attacks(
-        claim_set=extract_claims(answer_draft),
-        context=context,
-    )
-    return attacks
-
-def respond_with_evidence(answer_draft, attacks, tools):
-    for attack in attacks:
-        evidence = retrieve_or_compute(attack.required_evidence, tools)
-        answer_draft = revise(answer_draft, attack, evidence)
-    return answer_draft
+red_team = RedTeamAgent(
+    threat_model="Data migration risks: data loss, downtime, performance regression."
+)
+result = await red_team.analyze(result=decision, context=reasoning)
+for ch in result.challenges:
+    print(f"[{ch.severity}] {ch.claim}")
+    print(f"  Attack: {ch.attack}")
+    print(f"  Required evidence: {ch.required_evidence}")
 ```
 
 ### Debate agents
 
 Debate agents extend red-teaming by running an explicit, turn-based argument protocol. The canonical form uses two opposing sub-agents and an arbiter. One agent defends a candidate answer or plan, the other attempts to falsify it, and the arbiter decides what survives based on evidence and internal consistency. This structure follows the intuition of debate-based oversight: when direct evaluation is hard, adversarial argumentation highlights the crux of disagreement.
 
-To make debate productive rather than verbose, three constraints matter. Arguments are anchored to a shared claim graph, so that claims, supports, and refutations are explicit and can be tied to tool results. The arbiter follows an evidence-first decision rule, accepting claims only when they are supported by retrieved or computed evidence and rejecting claims contradicted by evidence. The system enforces diversity across the debating agents, for example by varying prompts, personas, context slices, or even model families, to avoid convergence by collusion.
+To make debate productive rather than verbose, three constraints matter. Arguments are anchored to explicit claims with supporting evidence and rebuttals. The arbiter follows an evidence-first decision rule, accepting claims only when supported and rejecting claims contradicted by evidence. The system enforces diversity across debating agents, for example by varying prompts or personas, to avoid convergence by collusion.
 
 ```python
-def debate(question, tools, max_rounds=3):
-    pro = Advocate(role="pro", objective="defend the best current answer with evidence")
-    con = Skeptic(role="con", objective="find failure modes and counterexamples")
-    judge = Arbiter(rule="evidence-first", output="decision + required followups")
+debate = DebateOrchestrator(max_rounds=3)
+result = await debate.run(proposal)
 
-    state = DebateState(question=question, claims=[])
-    for _ in range(max_rounds):
-        state = state.apply(pro.turn(state))
-        state = state.apply(con.turn(state))
-        contested = state.contested_claims()
-        state = state.attach_evidence(run_tools_for(contested, tools))
-        decision = judge.decide(state)
-        state = state.apply(decision)
-        if decision.is_sufficient():
-            break
+for i, rnd in enumerate(result.rounds):
+    print(f"Round {i + 1}:")
+    print(f"  Advocate: {rnd.advocate.position}")
+    print(f"  Critic:   {rnd.critic.position}")
 
-    return judge.final_answer(state)
+print(f"Decision: {result.verdict.decision}")
+print(f"Open questions: {result.verdict.open_questions}")
 ```
+
+Each round, the arbiter checks whether the debate has converged. If `verdict.is_sufficient` is true, no further rounds are needed; otherwise the next round opens with the full prior transcript so each side can address what was contested.
 
 ### Persona simulation as controlled adversarial diversity
 
-Persona simulation operationalizes diversity of critique by encoding viewpoints as durable, inspectable artifacts rather than ad hoc prompt styles. Each persona represents a stable role in the target domain, with explicit objectives, acceptance criteria for evidence, and required challenges it must raise. The intent is not to imitate individuals, but to encode the constraints an expert in that role would apply.
+Persona simulation operationalizes diversity of critique by encoding viewpoints as role descriptions rather than ad hoc prompt styles. Each persona represents a stable role in the target domain, capturing the constraints an expert in that role would actually apply. The intent is not to imitate individuals but to encode the lens through which a given role evaluates evidence.
 
-Personas are derived from authoritative sources for the role being simulated, such as standards documents, review guidelines, incident postmortems, or domain-specific best practices. This research phase grounds personas in real evaluation criteria rather than stylistic role-play. For example, a security reviewer persona can be derived from threat modeling frameworks and vulnerability disclosure practices, while a clinical domain expert persona can be derived from regulatory review checklists and methodological standards in biomedical research.
-
-Each persona is stored as a versioned artifact in the repository, such as `personas/security_reviewer.md`, and loaded by the runtime as a constraint specification for a sub-agent. The persona file is a compact narrative specification of what the agent must optimize for, what it must challenge by default, and what constitutes acceptable evidence. This makes personas auditable and evolvable as the system’s scope changes.
+In practice, a persona is a short text description passed as `advocate_prompt` or `critic_prompt`. A startup CTO and a database reliability engineer will weigh the same proposal very differently:
 
 ```python
-class Persona:
-    def __init__(self, name, objectives, required_challenges, evidence_policy):
-        self.name = name
-        self.objectives = objectives
-        self.required_challenges = required_challenges
-        self.evidence_policy = evidence_policy
-
-def load_persona(path):
-    spec = parse_markdown(path)
-    return Persona(
-        name=spec.title,
-        objectives=spec.objectives,
-        required_challenges=spec.required_challenges,
-        evidence_policy=spec.evidence_policy,
-    )
-
-security_reviewer = load_persona("personas/security_reviewer.md")
-
-agent = CriticAgent(
-    persona=security_reviewer,
-    instruction="Review the current plan and surface security-relevant failure modes."
+debate = DebateOrchestrator(
+    advocate_prompt="You are a startup CTO who values developer velocity and schema flexibility above all else.",
+    critic_prompt="You are a database reliability engineer who has managed PostgreSQL clusters at scale for 10 years.",
+    max_rounds=2,
 )
+result = await debate.run(proposal)
 ```
 
-At runtime, persona constraints are enforced structurally. Each persona must produce at least one falsifiable challenge, must either attach evidence or open a retrieval task for any rejected claim, and must classify issues in a way that downstream orchestration can act on. This prevents personas from degenerating into generic critique and makes their output evaluable.
+For repeatability, persona descriptions can be stored as plain text files in a `personas/` directory and loaded at runtime. This makes them auditable and easy to evolve as the system’s scope changes.
 
-```python
-def persona_turn(agent, state):
-    critique = agent.generate(state)
-    assert critique.contains_falsifiable_claim()
-    assert critique.references_evidence() or critique.opens_retrieval_task()
-    return critique
-```
-
-Personas should evolve based on observed system failures. By clustering historical errors by root cause, you can refine persona constraints to cover blind spots that repeatedly escape critique. This connects persona simulation to rubric-based evaluation and error taxonomies introduced earlier in the book. Over time, the persona library becomes part of the system’s governance surface, encoding which viewpoints the system is designed to respect and which classes of failure it is systematically trained to surface.
+Personas should evolve based on observed system failures. By clustering historical errors by root cause, you can refine persona descriptions to cover blind spots that repeatedly escape critique. This connects persona simulation to rubric-based evaluation and error taxonomies introduced elsewhere in the book.
 
 ## References
 
