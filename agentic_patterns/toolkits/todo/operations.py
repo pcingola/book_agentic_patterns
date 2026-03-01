@@ -1,5 +1,7 @@
 """Business logic for todo management. No framework dependency."""
 
+from collections.abc import Callable
+
 from agentic_patterns.core.user_session import get_session_id, get_user_id
 from agentic_patterns.toolkits.todo.models import TodoList, TodoState
 
@@ -20,7 +22,8 @@ def _get_todo_list() -> TodoList:
 
 def _new_todo_list() -> TodoList:
     key = _cache_key()
-    todo_list = TodoList()
+    old = _cache.get(key)
+    todo_list = TodoList(on_change=old.on_change if old else None)
     todo_list.save()
     _cache[key] = todo_list
     return todo_list
@@ -84,6 +87,16 @@ def todo_show() -> str:
     """Show all todo items as a markdown checklist."""
     todo_list = _get_todo_list()
     return todo_list.to_markdown()
+
+
+def print_hook(todo_list: TodoList) -> None:
+    """Hook that prints the todo list on every change."""
+    print(todo_list.to_markdown())
+
+
+def register_hook(fn: Callable[[TodoList], None]) -> None:
+    """Register a hook called on every TodoList mutation for the current session."""
+    _get_todo_list().on_change = fn
 
 
 def todo_update_status(item_id: str, status: str) -> bool:

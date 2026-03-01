@@ -1,11 +1,12 @@
 """Data models for todo management."""
 
 import json
+from collections.abc import Callable
 from enum import Enum
 from pathlib import Path, PurePosixPath
 from typing import Self
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from agentic_patterns.core.workspace import workspace_to_host_path
 
@@ -122,12 +123,20 @@ class TodoItem(BaseModel):
 class TodoList(BaseModel):
     """Collection of todo items with persistence via workspace isolation."""
 
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     items: list[TodoItem] = Field(default_factory=list)
     parent_item: TodoItem | None = None
+    on_change: Callable[["TodoList"], None] | None = Field(default=None, exclude=True)
+
+    def _fire(self) -> None:
+        if self.on_change:
+            self.on_change(self)
 
     def add_item(self, description: str) -> TodoItem:
         item = TodoItem(description=description, parent=self)
         self.items.append(item)
+        self._fire()
         return item
 
     def delete(self, item_id: str) -> bool:
@@ -144,6 +153,7 @@ class TodoList(BaseModel):
             index = int(id_parts[0]) - 1
             if 0 <= index < len(self.items):
                 self.items.pop(index)
+                self._fire()
                 return True
             return False
         except (ValueError, IndexError):
@@ -213,6 +223,7 @@ class TodoList(BaseModel):
         item = self.get_item_by_id(item_id)
         if item:
             item.state = state
+            self._fire()
             return True
         return False
 
