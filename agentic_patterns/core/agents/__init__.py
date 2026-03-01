@@ -1,5 +1,6 @@
 from agentic_patterns.core.agents.agents import AgentNode, get_agent, run_agent
-from agentic_patterns.core.agents.debate import (
+from agentic_patterns.core.agents.utils import run_parallel
+from agentic_patterns.agents.debate import (
     Argument,
     DebateListener,
     DebateOrchestrator,
@@ -16,8 +17,8 @@ from agentic_patterns.core.agents.orchestrator import (
     AgentStatus,
     OrchestratorAgent,
 )
-from agentic_patterns.core.agents.red_team import Challenge, PrintRedTeamListener, RedTeamAgent, RedTeamListener, RedTeamResult
-from agentic_patterns.core.agents.research import (
+from agentic_patterns.agents.red_team import Challenge, PrintRedTeamListener, RedTeamAgent, RedTeamListener, RedTeamResult
+from agentic_patterns.agents.research import (
     DeepResearchAgent,
     Reference,
     ResearchReport,
@@ -48,4 +49,5 @@ __all__ = [
     "Verdict",
     "get_agent",
     "run_agent",
+    "run_parallel",
 ]

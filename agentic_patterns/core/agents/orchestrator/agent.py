@@ -1,11 +1,9 @@
 """OrchestratorAgent: Full agent with tools, MCP, A2A, skills, sub-agents, and tasks."""
 
 import asyncio
-from collections.abc import Callable
 from contextlib import AsyncExitStack
 from typing import Any, Sequence
 
-import rich
 from pydantic_ai import Agent
 from pydantic_ai._agent_graph import CallToolsNode, ModelRequestNode
 from pydantic_ai.agent import AgentRun, AgentRunResult
@@ -13,40 +11,18 @@ from pydantic_ai.messages import ModelMessage, TextPart, ToolCallPart, ToolRetur
 from pydantic_ai.mcp import MCPServerStreamableHTTP
 from pydantic_ai.usage import UsageLimits
 
+import rich
+
 from agentic_patterns.core.a2a.client import A2AClientExtended
 from agentic_patterns.core.agents.agents import get_agent
 from agentic_patterns.core.agents.orchestrator.agent_spec import AgentSpec
 from agentic_patterns.core.agents.orchestrator.status import AgentStatus
+from agentic_patterns.core.listeners import AgentListener, PrintAgentListener
 from agentic_patterns.core.skills.models import SkillMetadata
 from agentic_patterns.core.skills.registry import SkillRegistry
 
-NodeHook = Callable[[Any], None]
-
-
-_AGENT_TOOLS = {"task_launch", "task_output"}
-
-
-def _log_node(node) -> None:
-    """Default node hook: log tool calls and results.
-
-    Agent-related tool results (task_launch, task_output) get a longer summary
-    so the user can see what sub-agents and A2A agents returned.
-    """
-    if isinstance(node, CallToolsNode):
-        for part in node.model_response.parts:
-            if isinstance(part, TextPart) and part.content.strip():
-                line = part.content.strip().replace("\n", " ")[:120]
-                rich.print(f"  [dim]> {line}[/dim]")
-            elif isinstance(part, ToolCallPart):
-                args = part.args_as_dict() or {}
-                params = " ".join(f"{k}={v}" for k, v in args.items())
-                rich.print(f"  [green]{part.tool_name}[/green] {params[:100]}")
-    elif isinstance(node, ModelRequestNode):
-        for part in node.request.parts:
-            if isinstance(part, ToolReturnPart):
-                limit = 500 if part.tool_name in _AGENT_TOOLS else 120
-                content = str(part.content).replace("\n", " ")[:limit]
-                rich.print(f"  [dim]  <- {part.tool_name}: {content}[/dim]")
+_SKILL_TOOLS = {"activate_skill", "run_skill_script"}
+_AGENT_TOOLS = {"task_launch", "task_output", "task_stop"}
 
 
 class OrchestratorAgent:
@@ -67,12 +43,12 @@ class OrchestratorAgent:
         spec: AgentSpec,
         *,
         verbose: bool = False,
-        on_node: NodeHook | None = None,
+        listener: AgentListener | None = None,
         task_list: Any | None = None,
     ):
         self.spec = spec
         self._verbose = verbose
-        self._on_node = on_node
+        self._listener = listener
         self._agent: Agent | None = None
         self._exit_stack: AsyncExitStack | None = None
         self._system_prompt: str = ""
@@ -110,8 +86,8 @@ class OrchestratorAgent:
         if mcp_toolsets:
             await self._exit_stack.enter_async_context(self._agent)
 
-        if self._on_node is None and self._verbose:
-            self._on_node = _log_node
+        if self._listener is None and self._verbose:
+            self._listener = PrintAgentListener()
         if self._verbose and self._task_list:
             self._task_list.on_change = lambda: rich.print(f"\n{self._task_list}\n")
 
@@ -166,20 +142,49 @@ class OrchestratorAgent:
             else (self._message_history or None)
         )
 
+        if self._listener:
+            await self._listener.on_start()
+
         nodes = []
         async with self._agent.iter(
             prompt, usage_limits=usage_limits, message_history=history
         ) as agent_run:
             async for node in agent_run:
                 nodes.append(node)
-                if self._on_node:
-                    self._on_node(node)
+                if self._listener:
+                    await self._dispatch_node(node)
 
         self._runs.append((agent_run, nodes))
         self._message_history.extend(nodes_to_message_history(nodes))
+
+        if self._listener:
+            await self._listener.on_done(agent_run.result)
         return agent_run.result
 
     # -- Private helpers --
+
+    async def _dispatch_node(self, node: Any) -> None:
+        """Translate a PydanticAI node into AgentListener calls."""
+        if isinstance(node, CallToolsNode):
+            for part in node.model_response.parts:
+                if isinstance(part, TextPart) and part.content.strip():
+                    await self._listener.on_text(part.content.strip())
+                elif isinstance(part, ToolCallPart):
+                    args = part.args_as_dict() or {}
+                    if part.tool_name in _SKILL_TOOLS:
+                        await self._listener.on_skill_call(args.get("skill_name", part.tool_name))
+                    elif part.tool_name == "task_launch":
+                        await self._listener.on_agent_launch(args.get("agent_name", ""))
+                    elif part.tool_name not in _AGENT_TOOLS:
+                        await self._listener.on_tool_call(part.tool_name, args)
+        elif isinstance(node, ModelRequestNode):
+            for part in node.request.parts:
+                if isinstance(part, ToolReturnPart):
+                    content = str(part.content)
+                    if part.tool_name in {"task_launch", "task_output"}:
+                        await self._listener.on_agent_done(content)
+                    elif part.tool_name not in _AGENT_TOOLS:
+                        await self._listener.on_tool_result(part.tool_name, content)
 
     async def _add_agent_tools(self, tools: list[Any]) -> dict[str, str]:
         """Create AgentRunner and add agent + task tools when agents are present.

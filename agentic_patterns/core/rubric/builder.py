@@ -7,15 +7,13 @@ import json
 import logging
 from typing import TYPE_CHECKING
 
-import numpy as np
 from pydantic import BaseModel
 
 from agentic_patterns.core.agents.agents import get_agent
 from agentic_patterns.core.config.config import PROMPTS_DIR
 from agentic_patterns.core.prompt import load_prompt
+from agentic_patterns.core.rubric.listener import RubricBuilderListener, RubricRefinerListener
 from agentic_patterns.core.rubric.models import RequirementLevel, Rubric, RubricItem
-from agentic_patterns.core.vectordb.embeddings import embed_texts
-from agentic_patterns.core.vectordb.models import Chunk, ChunkLevel, ClusterResult
 
 if TYPE_CHECKING:
     from agentic_patterns.core.vectordb.vectordb import VectorDB
@@ -53,14 +51,33 @@ class _ExtractedConcerns(BaseModel):
     concerns: list[_ConcernSentence]
 
 
+class _MappedConcern(BaseModel):
+    concern_text: str
+    item_id: str
+
+
+class _NewConcern(BaseModel):
+    concern_text: str
+    title: str
+    requirement_level: RequirementLevel
+    requirement_text: str
+    evidence_required: list[str]
+
+
+class _ConcernMappingResult(BaseModel):
+    mapped: list[_MappedConcern]
+    new_concerns: list[_NewConcern]
+
+
 # -- Stage 1: Build from policy --
 
 
 class RubricBuilder:
     """Builds a rubric by extracting and canonicalizing requirements from a policy index."""
 
-    def __init__(self, *, config_name: str = "default") -> None:
+    def __init__(self, *, config_name: str = "default", listener: RubricBuilderListener | None = None) -> None:
         self._config_name = config_name
+        self._listener = listener
 
     async def build_from_policy(
         self, policy_index: VectorDB, rubric_name: str = "rubric"
@@ -74,9 +91,11 @@ class RubricBuilder:
                 items=[],
             )
 
+        if self._listener:
+            await self._listener.on_canonicalize_start(len(candidates))
         canonical = await self._canonicalize(candidates)
         items = self._assign_ids(canonical, salt=rubric_name)
-        return Rubric(
+        rubric = Rubric(
             rubric_id=f"{rubric_name}_v1",
             provenance={
                 "source": "policy_index",
@@ -85,6 +104,9 @@ class RubricBuilder:
             },
             items=items,
         )
+        if self._listener:
+            await self._listener.on_done(rubric)
+        return rubric
 
     async def _extract_all(self, policy_index: VectorDB) -> list[_CandidateRequirement]:
         result = policy_index.collection.get(include=["documents", "metadatas"])
@@ -95,14 +117,20 @@ class RubricBuilder:
         )
         all_candidates: list[_CandidateRequirement] = []
 
-        for doc_text in documents:
+        if self._listener:
+            await self._listener.on_extract_start(len(documents))
+
+        for i, doc_text in enumerate(documents, 1):
             if not doc_text:
                 continue
             prompt = load_prompt(
                 RUBRIC_PROMPTS / "extract_requirements.md", chunk_text=doc_text
             )
             run_result = await agent.run(prompt)
-            all_candidates.extend(run_result.output.requirements)
+            reqs = run_result.output.requirements
+            all_candidates.extend(reqs)
+            if self._listener:
+                await self._listener.on_chunk_extracted(i, len(documents), len(reqs))
 
         logger.info(
             "Extracted %d candidate requirements from %d chunks",
@@ -156,62 +184,59 @@ class RubricBuilder:
 async def refine_with_history(
     rubric: Rubric,
     history_index: VectorDB,
-    policy_index: VectorDB,
     *,
     config_name: str = "default",
-    promotion_threshold: int = 3,
-    sim_threshold: float = 0.7,
+    listener: RubricRefinerListener | None = None,
 ) -> Rubric:
-    """Refine a rubric using historical concerns (meeting minutes, audit findings, etc.)."""
-    from agentic_patterns.agents.rag.clustering import label_clusters
-    from agentic_patterns.core.vectordb.clustering import cluster
+    """Refine a rubric using historical audit findings.
 
+    Each concern is mapped by the LLM to an existing rubric item (weight bump)
+    or flagged as a genuinely new control gap (promoted to a new item).
+    """
     concerns = await _extract_concerns(history_index, config_name=config_name)
     if not concerns:
         return rubric
 
-    # Wrap concerns as Chunk objects for clustering
-    chunks = [
-        Chunk(
-            doc_id=f"concern_{i}",
-            text=c.text,
-            level=ChunkLevel.PARAGRAPH,
-            parent_id=None,
-            metadata={},
-        )
-        for i, c in enumerate(concerns)
-    ]
-    cluster_result = cluster(chunks)
-    cluster_result = await label_clusters(cluster_result)
+    if listener:
+        await listener.on_concerns_extracted(len(concerns))
 
-    matched, unmatched_ids = await _map_clusters_to_items(
-        cluster_result, rubric.items, sim_threshold
-    )
+    mapping = await _map_concerns(concerns, rubric.items, config_name=config_name)
 
-    # Bump weights for matched items
+    # Count how many concerns mapped to each item
+    match_counts: dict[str, int] = {}
+    for m in mapping.mapped:
+        match_counts[m.item_id] = match_counts.get(m.item_id, 0) + 1
+
     updated_items = []
     for item in rubric.items:
-        if item.item_id in matched:
-            n_matches = len(matched[item.item_id])
-            updated = item.model_copy(update={"weight": item.weight + 0.1 * n_matches})
+        if item.item_id in match_counts:
+            new_weight = round(item.weight + 0.1 * match_counts[item.item_id], 2)
+            updated = item.model_copy(update={"weight": new_weight})
+            if listener:
+                await listener.on_weight_bumped(item, item.weight, new_weight)
             updated_items.append(updated)
         else:
             updated_items.append(item)
 
-    # Promote large unmatched clusters anchored in policy
-    new_items = await _promote_unmatched(
-        cluster_result,
-        unmatched_ids,
-        policy_index,
-        promotion_threshold=promotion_threshold,
-        rubric_salt=rubric.rubric_id,
-        config_name=config_name,
-    )
+    # Promote genuinely new concerns
+    new_items = []
+    for nc in mapping.new_concerns:
+        hash_input = f"{rubric.rubric_id}:{nc.requirement_text}"
+        item_id = hashlib.sha256(hash_input.encode()).hexdigest()[:12]
+        new_item = RubricItem(
+            item_id=item_id,
+            title=nc.title,
+            requirement_level=nc.requirement_level,
+            requirement_text=nc.requirement_text,
+            evidence_required=nc.evidence_required,
+        )
+        new_items.append(new_item)
+        if listener:
+            await listener.on_item_promoted(new_item)
     updated_items.extend(new_items)
 
-    # Bump version
     old_version = rubric.provenance.get("version", 1)
-    return Rubric(
+    refined = Rubric(
         rubric_id=rubric.rubric_id.rsplit("_v", 1)[0] + f"_v{old_version + 1}",
         provenance={
             **rubric.provenance,
@@ -220,6 +245,9 @@ async def refine_with_history(
         },
         items=updated_items,
     )
+    if listener:
+        await listener.on_done(refined)
+    return refined
 
 
 async def _extract_concerns(
@@ -248,109 +276,28 @@ async def _extract_concerns(
     return all_concerns
 
 
-async def _map_clusters_to_items(
-    cluster_result: ClusterResult,
+async def _map_concerns(
+    concerns: list[_ConcernSentence],
     items: list[RubricItem],
-    sim_threshold: float = 0.7,
-) -> tuple[dict[str, list[int]], list[int]]:
-    """Map clusters to rubric items by cosine similarity. Returns (matched, unmatched_cluster_ids)."""
-    if not cluster_result.clusters or not items:
-        return {}, [c.cluster_id for c in cluster_result.clusters]
-
-    cluster_texts = [c.summary or c.label or "" for c in cluster_result.clusters]
-    item_texts = [item.requirement_text for item in items]
-
-    cluster_embeddings = np.array(await embed_texts(cluster_texts))
-    item_embeddings = np.array(await embed_texts(item_texts))
-
-    # Normalize for cosine similarity
-    cluster_norms = np.linalg.norm(cluster_embeddings, axis=1, keepdims=True)
-    item_norms = np.linalg.norm(item_embeddings, axis=1, keepdims=True)
-    cluster_embeddings = cluster_embeddings / np.where(
-        cluster_norms == 0, 1, cluster_norms
-    )
-    item_embeddings = item_embeddings / np.where(item_norms == 0, 1, item_norms)
-
-    # similarity_matrix[i][j] = cosine sim between cluster i and item j
-    similarity_matrix = cluster_embeddings @ item_embeddings.T
-
-    matched: dict[str, list[int]] = {}
-    unmatched_ids: list[int] = []
-
-    for ci, cluster in enumerate(cluster_result.clusters):
-        best_j = int(np.argmax(similarity_matrix[ci]))
-        best_sim = float(similarity_matrix[ci][best_j])
-        if best_sim >= sim_threshold:
-            item_id = items[best_j].item_id
-            matched.setdefault(item_id, []).append(cluster.cluster_id)
-        else:
-            unmatched_ids.append(cluster.cluster_id)
-
-    return matched, unmatched_ids
-
-
-async def _promote_unmatched(
-    cluster_result: ClusterResult,
-    unmatched_ids: list[int],
-    policy_index: VectorDB,
     *,
-    promotion_threshold: int,
-    rubric_salt: str,
     config_name: str,
-) -> list[RubricItem]:
-    """Promote unmatched clusters large enough and anchored in policy to new rubric items."""
-    clusters_by_id = {c.cluster_id: c for c in cluster_result.clusters}
-    new_items: list[RubricItem] = []
-
-    agent = get_agent(config_name=config_name, output_type=_CanonicalizedItems)
-
-    for cid in unmatched_ids:
-        cluster = clusters_by_id[cid]
-        if len(cluster.items) < promotion_threshold:
-            continue
-
-        # Check policy anchor
-        query = cluster.summary or cluster.label or cluster.items[0].text
-        anchors = policy_index.retrieve(query, max_results=3)
-        if not anchors:
-            continue
-
-        # Ask LLM to formulate a new rubric item from the cluster + policy anchors
-        anchor_text = "\n\n".join(f"[Policy] {a.text}" for a in anchors)
-        concern_text = "\n".join(f"- {item.text}" for item in cluster.items)
-        candidates_json = json.dumps(
-            [
-                {
-                    "title": cluster.label or "Untitled",
-                    "requirement_level": "SHOULD",
-                    "requirement_text": f"Based on recurring concerns: {concern_text}\n\nPolicy context: {anchor_text}",
-                    "evidence_required": [],
-                    "framework_mappings": {},
-                    "tags": [],
-                }
-            ],
-            indent=2,
-        )
-
-        prompt = load_prompt(
-            RUBRIC_PROMPTS / "canonicalize.md", candidates_json=candidates_json
-        )
-        run_result = await agent.run(prompt)
-
-        for c in run_result.output.items:
-            hash_input = f"{rubric_salt}:{c.requirement_text}"
-            item_id = hashlib.sha256(hash_input.encode()).hexdigest()[:12]
-            new_items.append(
-                RubricItem(
-                    item_id=item_id,
-                    title=c.title,
-                    requirement_level=c.requirement_level,
-                    requirement_text=c.requirement_text,
-                    evidence_required=c.evidence_required,
-                    framework_mappings=c.framework_mappings,
-                    tags=set(c.tags),
-                )
-            )
-
-    logger.info("Promoted %d new items from unmatched clusters", len(new_items))
-    return new_items
+) -> _ConcernMappingResult:
+    rubric_items_json = json.dumps(
+        [{"item_id": i.item_id, "title": i.title, "requirement_text": i.requirement_text} for i in items],
+        indent=2,
+    )
+    concerns_json = json.dumps([c.text for c in concerns], indent=2)
+    agent = get_agent(config_name=config_name, output_type=_ConcernMappingResult)
+    prompt = load_prompt(
+        RUBRIC_PROMPTS / "map_concerns.md",
+        rubric_items_json=rubric_items_json,
+        concerns_json=concerns_json,
+    )
+    result = await agent.run(prompt)
+    logger.info(
+        "Mapped %d concerns: %d matched, %d new",
+        len(concerns),
+        len(result.output.mapped),
+        len(result.output.new_concerns),
+    )
+    return result.output

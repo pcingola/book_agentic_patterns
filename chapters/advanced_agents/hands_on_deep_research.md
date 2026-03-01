@@ -19,7 +19,7 @@ search:
 `DeepResearchAgent` loads Perplexity from `config.yaml` automatically. Set `max_iterations` to control how many gap-filling rounds it performs before synthesis:
 
 ```python
-from agentic_patterns.core.agents.research import DeepResearchAgent
+from agentic_patterns.agents.research import DeepResearchAgent
 
 agent = DeepResearchAgent(max_iterations=2)
 
@@ -58,7 +58,7 @@ Pass explicit sources to combine Perplexity with a local vector database:
 
 ```python
 from agentic_patterns.core.vectordb.vectordb import get_vector_db
-from agentic_patterns.core.agents.research import SearchSourcePerplexity, SearchSourceVectorDB
+from agentic_patterns.agents.research import SearchSourcePerplexity, SearchSourceVectorDB
 
 vdb_source = SearchSourceVectorDB(get_vector_db("my_collection"))
 

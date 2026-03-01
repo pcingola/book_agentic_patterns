@@ -4,15 +4,15 @@ import asyncio
 import logging
 
 from agentic_patterns.core.agents.agents import get_agent
-from agentic_patterns.core.agents.research.listener import ResearchListener
-from agentic_patterns.core.agents.research.models import (
+from agentic_patterns.agents.research.listener import ResearchListener
+from agentic_patterns.agents.research.models import (
     ResearchReport,
     _ConflictReport,
     _GapAssessment,
     _SubQuestions,
     _SynthesisOutput,
 )
-from agentic_patterns.core.agents.research.source import SearchResult, SearchSource, SearchSourcePerplexity
+from agentic_patterns.agents.research.source import SearchResult, SearchSource, SearchSourcePerplexity
 from agentic_patterns.core.config.config import PROMPTS_DIR
 from agentic_patterns.core.prompt import load_prompt
 
@@ -70,11 +70,11 @@ class DeepResearchAgent:
     async def _search_queries(self, queries: list[str]) -> dict[str, list[SearchResult]]:
         """Run all queries in parallel and return a mapping of query -> results."""
         if self._listener:
-            self._listener.on_search_start(queries)
+            await self._listener.on_search_start(queries)
         tasks = {q: self._search_all(q) for q in queries}
         results = dict(zip(tasks.keys(), await asyncio.gather(*tasks.values())))
         if self._listener:
-            self._listener.on_search_done(sum(len(r) for r in results.values()))
+            await self._listener.on_search_done(sum(len(r) for r in results.values()))
         return results
 
     async def _decompose(self, question: str) -> list[str]:
@@ -84,35 +84,35 @@ class DeepResearchAgent:
         sub_questions = (await agent.run(prompt)).output.questions
         logger.info("Decomposed into %d sub-questions", len(sub_questions))
         if self._listener:
-            self._listener.on_decompose(sub_questions)
+            await self._listener.on_decompose(sub_questions)
         return sub_questions
 
     async def _assess_gaps(self, question: str, evidence: dict[str, list[SearchResult]], iteration: int) -> _GapAssessment:
         """Assess whether the current evidence is sufficient."""
         if self._listener:
-            self._listener.on_gap_start(iteration)
+            await self._listener.on_gap_start(iteration)
         agent = get_agent(config_name=self._config_name, output_type=_GapAssessment)
         prompt = load_prompt(RESEARCH_PROMPTS / "assess_gaps.md", question=question, evidence_summary=_build_evidence_summary(evidence))
         assessment = (await agent.run(prompt)).output
         if self._listener:
-            self._listener.on_gap_done(iteration, assessment.sufficient, assessment.gaps)
+            await self._listener.on_gap_done(iteration, assessment.sufficient, assessment.gaps)
         return assessment
 
     async def _detect_conflicts(self, question: str, evidence: dict[str, list[SearchResult]]) -> list[str]:
         """Detect conflicting claims across evidence."""
         if self._listener:
-            self._listener.on_conflict_start()
+            await self._listener.on_conflict_start()
         agent = get_agent(config_name=self._config_name, output_type=_ConflictReport)
         prompt = load_prompt(RESEARCH_PROMPTS / "detect_conflicts.md", question=question, evidence_summary=_build_evidence_summary(evidence))
         conflicts = (await agent.run(prompt)).output.conflicts
         if self._listener:
-            self._listener.on_conflict_done(conflicts)
+            await self._listener.on_conflict_done(conflicts)
         return conflicts
 
     async def _synthesize(self, question: str, evidence: dict[str, list[SearchResult]], conflicts: list[str]) -> ResearchReport:
         """Synthesize evidence into a final report."""
         if self._listener:
-            self._listener.on_synthesis_start()
+            await self._listener.on_synthesis_start()
         conflicts_text = "\n".join(f"- {c}" for c in conflicts) if conflicts else "No conflicts detected."
         agent = get_agent(config_name=self._config_name, output_type=_SynthesisOutput)
         prompt = load_prompt(RESEARCH_PROMPTS / "synthesize.md", question=question, evidence_summary=_build_evidence_summary(evidence), conflicts=conflicts_text)
@@ -120,6 +120,8 @@ class DeepResearchAgent:
         return ResearchReport(content=output.content, references=output.references)
 
     async def run(self, question: str) -> ResearchReport:
+        if self._listener:
+            await self._listener.on_start()
         sub_questions = await self._decompose(question)
 
         evidence = await self._search_queries(sub_questions)
@@ -136,7 +138,7 @@ class DeepResearchAgent:
         conflicts = await self._detect_conflicts(question, evidence)
         report = await self._synthesize(question, evidence, conflicts)
         if self._listener:
-            self._listener.on_done(report)
+            await self._listener.on_done(report)
         return report
 
     def __str__(self) -> str:

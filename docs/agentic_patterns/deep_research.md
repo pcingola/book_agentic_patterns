@@ -16,7 +16,7 @@ The agent queries pluggable search sources via a `SearchSource` protocol. Two im
 `SearchSourceVectorDB` wraps an existing `VectorDB` instance for local/private search. It calls `vdb.retrieve()` and maps `RetrievedDocument` objects to `SearchResult`.
 
 ```python
-from agentic_patterns.core.agents.research import (
+from agentic_patterns.agents.research import (
     SearchSourcePerplexity,
     SearchSourceVectorDB,
 )
@@ -39,7 +39,7 @@ The `DeepResearchAgent.run(question)` method executes:
 6. **Synthesize** -- LLM produces a markdown report with `[N]` citation markers and a structured reference list.
 
 ```python
-from agentic_patterns.core.agents.research import DeepResearchAgent
+from agentic_patterns.agents.research import DeepResearchAgent
 
 agent = DeepResearchAgent(sources=[web, vdb], max_iterations=2)
 report = await agent.run("What are the best practices for LLM evaluation?")
@@ -56,7 +56,7 @@ for ref in report.references:
 
 ## API Reference
 
-### `agentic_patterns.core.agents.research.source`
+### `agentic_patterns.agents.research.source`
 
 | Name | Kind | Description |
 |---|---|---|
@@ -65,14 +65,14 @@ for ref in report.references:
 | `SearchSourcePerplexity(api_key, model, api_url)` | Class | Perplexity Sonar web search |
 | `SearchSourceVectorDB(vdb)` | Class | Local VectorDB search |
 
-### `agentic_patterns.core.agents.research.models`
+### `agentic_patterns.agents.research.models`
 
 | Name | Kind | Description |
 |---|---|---|
 | `Reference` | Pydantic model | url, title, snippet, source_type |
 | `ResearchReport` | Pydantic model | content (markdown), references: list[Reference] |
 
-### `agentic_patterns.core.agents.research.agent`
+### `agentic_patterns.agents.research.agent`
 
 | Name | Kind | Description |
 |---|---|---|

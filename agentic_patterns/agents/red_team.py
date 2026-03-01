@@ -4,6 +4,7 @@ from pydantic import BaseModel
 
 from agentic_patterns.core.agents.agents import get_agent
 from agentic_patterns.core.config.config import PROMPTS_DIR
+from agentic_patterns.core.listeners import AgentListener
 from agentic_patterns.core.prompt import load_prompt
 
 
@@ -23,23 +24,17 @@ class RedTeamResult(BaseModel):
     summary: str
 
 
-class RedTeamListener:
+class RedTeamListener(AgentListener[RedTeamResult]):
     """Hooks called before and after red-team analysis. Override to customise behaviour."""
-
-    def on_start(self) -> None:
-        pass
-
-    def on_done(self, result: RedTeamResult) -> None:
-        pass
 
 
 class PrintRedTeamListener(RedTeamListener):
     """Prints progress and a summary of challenges to stdout."""
 
-    def on_start(self) -> None:
+    async def on_start(self) -> None:
         print("Red-teaming...")
 
-    def on_done(self, result: RedTeamResult) -> None:
+    async def on_done(self, result: RedTeamResult) -> None:
         print(f"Summary: {result.summary}")
         for ch in result.challenges:
             print(f"  [{ch.severity}] {ch.claim}")
@@ -61,7 +56,7 @@ class RedTeamAgent:
 
     async def analyze(self, result: str, context: str = "") -> RedTeamResult:
         if self._listener:
-            self._listener.on_start()
+            await self._listener.on_start()
         prompt = load_prompt(
             PROMPTS_DIR / "adversarial" / "red_team.md",
             threat_model=self._threat_model,
@@ -70,7 +65,7 @@ class RedTeamAgent:
         )
         rt_result = (await self._agent.run(prompt)).output
         if self._listener:
-            self._listener.on_done(rt_result)
+            await self._listener.on_done(rt_result)
         return rt_result
 
     def __str__(self) -> str:

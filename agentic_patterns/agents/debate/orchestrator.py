@@ -1,6 +1,6 @@
 from agentic_patterns.core.agents.agents import get_agent
-from agentic_patterns.core.agents.debate.listener import DebateListener
-from agentic_patterns.core.agents.debate.models import DebateResult, DebateRound, DebateTurn, Verdict
+from agentic_patterns.agents.debate.listener import DebateListener
+from agentic_patterns.agents.debate.models import DebateResult, DebateRound, DebateTurn, Verdict
 from agentic_patterns.core.config.config import PROMPTS_DIR
 from agentic_patterns.core.prompt import load_prompt
 
@@ -45,7 +45,7 @@ class DebateOrchestrator:
 
     async def _advocate_turn(self, proposal: str, transcript: str, round_num: int) -> DebateTurn:
         if self._listener:
-            self._listener.on_advocate_start(round_num, self._max_rounds)
+            await self._listener.on_advocate_start(round_num, self._max_rounds)
         prompt = load_prompt(
             PROMPTS_DIR / "adversarial" / "advocate_turn.md",
             proposal=proposal,
@@ -54,12 +54,12 @@ class DebateOrchestrator:
         )
         turn = (await self._advocate.run(prompt)).output
         if self._listener:
-            self._listener.on_advocate(round_num, self._max_rounds, turn)
+            await self._listener.on_advocate(round_num, self._max_rounds, turn)
         return turn
 
     async def _critic_turn(self, proposal: str, transcript: str, adv_turn: DebateTurn, round_num: int) -> DebateTurn:
         if self._listener:
-            self._listener.on_critic_start(round_num, self._max_rounds)
+            await self._listener.on_critic_start(round_num, self._max_rounds)
         prompt = load_prompt(
             PROMPTS_DIR / "adversarial" / "critic_turn.md",
             proposal=proposal,
@@ -69,12 +69,12 @@ class DebateOrchestrator:
         )
         turn = (await self._critic.run(prompt)).output
         if self._listener:
-            self._listener.on_critic(round_num, self._max_rounds, turn)
+            await self._listener.on_critic(round_num, self._max_rounds, turn)
         return turn
 
     async def _arbiter_verdict(self, proposal: str, transcript: str, round_num: int) -> Verdict:
         if self._listener:
-            self._listener.on_verdict_start(round_num, self._max_rounds)
+            await self._listener.on_verdict_start(round_num, self._max_rounds)
         prompt = load_prompt(
             PROMPTS_DIR / "adversarial" / "arbiter_verdict.md",
             proposal=proposal,
@@ -82,10 +82,12 @@ class DebateOrchestrator:
         )
         verdict = (await self._arbiter.run(prompt)).output
         if self._listener:
-            self._listener.on_verdict(round_num, self._max_rounds, verdict)
+            await self._listener.on_verdict(round_num, self._max_rounds, verdict)
         return verdict
 
     async def run(self, proposal: str) -> DebateResult:
+        if self._listener:
+            await self._listener.on_start()
         rounds: list[DebateRound] = []
         transcript = "(no prior rounds)"
         verdict: Verdict | None = None
@@ -100,7 +102,10 @@ class DebateOrchestrator:
             if verdict.is_sufficient:
                 break
 
-        return DebateResult(proposal=proposal, rounds=rounds, verdict=verdict)
+        result = DebateResult(proposal=proposal, rounds=rounds, verdict=verdict)
+        if self._listener:
+            await self._listener.on_done(result)
+        return result
 
     def __str__(self) -> str:
         return f"DebateOrchestrator(max_rounds={self._max_rounds})"

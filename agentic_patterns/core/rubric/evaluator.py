@@ -1,15 +1,17 @@
 """Evidence-backed rubric assessment (Stage 3)."""
 
-import asyncio
 import logging
 
 from pydantic import BaseModel
 
 from agentic_patterns.core.agents.agents import get_agent
+from agentic_patterns.core.agents.utils import run_parallel
 from agentic_patterns.core.config.config import PROMPTS_DIR
 from agentic_patterns.core.prompt import load_prompt
+from agentic_patterns.core.listeners import AgentListener
 from agentic_patterns.core.rubric.models import (
     Rubric,
+    RubricItem,
     RubricVerdict,
     SpanRef,
     VerdictStatus,
@@ -31,24 +33,39 @@ class _ItemJudgment(BaseModel):
 class RubricEvaluator:
     """Evaluates each rubric item against evidence from multiple sources."""
 
-    def __init__(self, *, config_name: str = "default") -> None:
+    def __init__(
+        self,
+        *,
+        config_name: str = "default",
+        listener: AgentListener | None = None,
+    ) -> None:
         self._config_name = config_name
+        self._listener = listener
 
     async def evaluate(
-        self, rubric: Rubric, retriever: MultiSourceRetriever
+        self,
+        rubric: Rubric,
+        retriever: MultiSourceRetriever,
+        *,
+        max_results: int = 5,
+        concurrency: int | None = None,
     ) -> list[RubricVerdict]:
         agent = get_agent(config_name=self._config_name, output_type=_ItemJudgment)
-        verdicts: list[RubricVerdict] = []
+        total = len(rubric.items)
+        done_count = [0]
 
-        for item in rubric.items:
-            docs = retriever.retrieve_all(query=item.requirement_text, max_results=10)
-            evidence_lines = []
-            for doc in docs:
-                source = doc.metadata.get("source_collection", "unknown")
-                evidence_lines.append(f"[{source}:{doc.doc_id}] {doc.text}")
-            evidence_text = (
-                "\n\n".join(evidence_lines) if evidence_lines else "(no evidence found)"
-            )
+        if self._listener:
+            await self._listener.on_start()
+
+        async def _eval_item(item: RubricItem) -> RubricVerdict:
+            if self._listener:
+                await self._listener.on_item_start(item, total)
+            docs = await retriever.retrieve_all(query=item.requirement_text, max_results=max_results)
+            evidence_lines = [
+                f"[{doc.metadata.get('source_collection', 'unknown')}:{doc.doc_id}] {doc.text}"
+                for doc in docs
+            ]
+            evidence_text = "\n\n".join(evidence_lines) if evidence_lines else "(no evidence found)"
 
             prompt = load_prompt(
                 RUBRIC_PROMPTS / "assess_item.md",
@@ -59,8 +76,7 @@ class RubricEvaluator:
                 evidence_required=", ".join(item.evidence_required),
                 evidence=evidence_text,
             )
-            run_result = await agent.run(prompt)
-            judgment = run_result.output
+            judgment = (await agent.run(prompt)).output
 
             citations = []
             for c in judgment.citations:
@@ -76,15 +92,24 @@ class RubricEvaluator:
                 except (ValueError, TypeError):
                     continue
 
-            verdicts.append(
-                RubricVerdict(
-                    item_id=item.item_id,
-                    status=judgment.status,
-                    rationale=judgment.rationale,
-                    citations=citations,
-                    missing_evidence=judgment.missing_evidence,
-                )
+            verdict = RubricVerdict(
+                item_id=item.item_id,
+                status=judgment.status,
+                rationale=judgment.rationale,
+                citations=citations,
+                missing_evidence=judgment.missing_evidence,
             )
 
+            done_count[0] += 1
+            if self._listener:
+                await self._listener.on_item_done(item, verdict, done_count[0], total)
+            return verdict
+
+        verdicts = await run_parallel(
+            [_eval_item(item) for item in rubric.items], concurrency=concurrency
+        )
+
         logger.info("Evaluated %d rubric items", len(verdicts))
+        if self._listener:
+            await self._listener.on_done(verdicts)
         return verdicts

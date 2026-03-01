@@ -1,6 +1,6 @@
 # Adversarial & Debate Agents
 
-Two reusable adversarial orchestration patterns in `agentic_patterns.core.agents`: red-team analysis and structured debate. Both use `get_agent()` with structured output types and `load_prompt()` for prompt templates. They do not use `OrchestratorAgent` -- these are fixed protocols, not LLM-driven orchestration.
+Two reusable adversarial orchestration patterns in `agentic_patterns.agents`: red-team analysis and structured debate. Both use `get_agent()` with structured output types and `load_prompt()` for prompt templates. They do not use `OrchestratorAgent` -- these are fixed protocols, not LLM-driven orchestration.
 
 Prompts live in `prompts/adversarial/`.
 
@@ -50,7 +50,7 @@ debate = DebateOrchestrator(
 
 ## API Reference
 
-### `agentic_patterns.core.agents.red_team`
+### `agentic_patterns.agents.red_team`
 
 | Name | Kind | Description |
 |---|---|---|
@@ -59,7 +59,7 @@ debate = DebateOrchestrator(
 | `RedTeamAgent(threat_model, config_name)` | Class | Red-team analysis agent |
 | `RedTeamAgent.analyze(result, context)` | Method | Returns RedTeamResult |
 
-### `agentic_patterns.core.agents.debate`
+### `agentic_patterns.agents.debate`
 
 | Name | Kind | Description |
 |---|---|---|

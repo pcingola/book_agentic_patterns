@@ -1,10 +1,13 @@
 """Vector database: VectorDB class wrapping a Chroma collection."""
 
+from __future__ import annotations
+
 import asyncio
 from pathlib import Path
 
 import chromadb
 from chromadb.api.types import Documents, Embeddings, EmbeddingFunction
+from pydantic_ai import Embedder
 
 from agentic_patterns.core.doc_ingestion.models import DocumentProvenance
 from agentic_patterns.core.vectordb.config import (
@@ -61,8 +64,17 @@ class PydanticAIEmbeddingFunction(EmbeddingFunction):
 class VectorDB:
     """Wraps a Chroma collection with add, query, retrieve, and ingest operations."""
 
-    def __init__(self, collection: chromadb.Collection) -> None:
+    def __init__(
+        self,
+        collection: chromadb.Collection,
+        embedder: Embedder | None = None,
+        client: chromadb.PersistentClient | None = None,
+        ef: "PydanticAIEmbeddingFunction | None" = None,
+    ) -> None:
         self._collection = collection
+        self._embedder = embedder
+        self._client = client
+        self._ef = ef
 
     def __str__(self) -> str:
         return f"VectorDB({self._collection.name}, count={self._collection.count()})"
@@ -90,29 +102,23 @@ class VectorDB:
     def count(self) -> int:
         return self._collection.count()
 
+    def reset(self) -> None:
+        """Drop and recreate this collection, leaving it empty."""
+        if self._client is None:
+            raise RuntimeError("VectorDB was not created via get_vector_db; cannot reset.")
+        name = self._collection.name
+        self._client.delete_collection(name)
+        self._collection = self._client.get_or_create_collection(name, embedding_function=self._ef)
+
     def get_by_id(self, doc_id: str) -> dict:
         return self._collection.get(ids=[doc_id])
 
     def has(self, doc_id: str) -> bool:
         return len(self.get_by_id(doc_id)["ids"]) > 0
 
-    def query(
-        self,
-        query: str,
-        filter: dict | None = None,
-        where_document: dict | None = None,
-        max_items: int = 10,
-        similarity_threshold: float | None = None,
+    def _parse_chroma_results(
+        self, results: dict, similarity_threshold: float | None = None
     ) -> list[RetrievedDocument]:
-        """Raw similarity search. Returns RetrievedDocument list sorted by score."""
-        results = self._collection.query(
-            query_texts=[query],
-            n_results=max_items,
-            where=filter,
-            where_document=where_document,
-            include=["documents", "metadatas", "distances"],
-        )
-
         ids = results.get("ids", [[]])[0]
         documents = results.get("documents", [[]])[0]
         metadatas = results.get("metadatas", [[]])[0]
@@ -139,6 +145,24 @@ class VectorDB:
                 )
         return items
 
+    def query(
+        self,
+        query: str,
+        filter: dict | None = None,
+        where_document: dict | None = None,
+        max_items: int = 10,
+        similarity_threshold: float | None = None,
+    ) -> list[RetrievedDocument]:
+        """Raw similarity search. Returns RetrievedDocument list sorted by score."""
+        results = self._collection.query(
+            query_texts=[query],
+            n_results=max_items,
+            where=filter,
+            where_document=where_document,
+            include=["documents", "metadatas", "distances"],
+        )
+        return self._parse_chroma_results(results, similarity_threshold)
+
     # ------------------------------------------------------------------
     # Higher-level retrieval
     # ------------------------------------------------------------------
@@ -161,6 +185,41 @@ class VectorDB:
             )
 
         docs = self.query(query, filter=effective_filter, max_items=max_results)
+
+        seen: dict[str, RetrievedDocument] = {}
+        for doc in docs:
+            if doc.doc_id not in seen or doc.score > seen[doc.doc_id].score:
+                seen[doc.doc_id] = doc
+        return sorted(seen.values(), key=lambda d: d.score, reverse=True)
+
+    async def aretrieve(
+        self,
+        query: str,
+        max_results: int = 10,
+        filter: dict | None = None,
+        level: ChunkLevel | None = None,
+    ) -> list[RetrievedDocument]:
+        """Async retrieve: embeds query in the current event loop, then queries Chroma synchronously.
+
+        Avoids the event-loop mismatch that occurs when the sync embedding function
+        is called from a thread pool (asyncio.to_thread).
+        """
+        embeddings = await embed_texts([query], self._embedder)
+
+        effective_filter = dict(filter) if filter else None
+        if level is not None:
+            level_filter: dict = {"level": {"$eq": level.value}}
+            effective_filter = (
+                {"$and": [effective_filter, level_filter]} if effective_filter else level_filter
+            )
+
+        results = self._collection.query(
+            query_embeddings=embeddings,
+            n_results=max_results,
+            where=effective_filter,
+            include=["documents", "metadatas", "distances"],
+        )
+        docs = self._parse_chroma_results(results)
 
         seen: dict[str, RetrievedDocument] = {}
         for doc in docs:
@@ -258,10 +317,11 @@ def get_vector_db(
     if persist_key not in _chroma_clients:
         _chroma_clients[persist_key] = chromadb.PersistentClient(path=str(persist_dir))
 
+    ef = PydanticAIEmbeddingFunction(embedding_config, config_path)
     collection = _chroma_clients[persist_key].get_or_create_collection(
         name=collection_name,
-        embedding_function=PydanticAIEmbeddingFunction(embedding_config, config_path),
+        embedding_function=ef,
     )
-    vdb = VectorDB(collection)
+    vdb = VectorDB(collection, ef._embedder, client=_chroma_clients[persist_key], ef=ef)
     _vector_dbs[collection_name] = vdb
     return vdb

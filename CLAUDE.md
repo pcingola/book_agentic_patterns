@@ -37,7 +37,7 @@ book_agentic_patterns/
 │   ├── toolkits/      # Business logic (pure Python, no framework dependency)
 │   ├── tools/         # PydanticAI tool wrappers (each file exposes get_all_tools())
 │   ├── mcp/           # MCP servers (each subdir: tools.py + server.py)
-│   ├── agents/        # Domain-specific agents (db_catalog, vocabulary, nl2sql, openapi, etc.)
+│   ├── agents/        # Domain-specific agents (db_catalog, vocabulary, nl2sql, openapi, debate/, research/, red_team)
 │   ├── a2a/           # A2A servers (wrap agents for inter-agent communication)
 │   ├── examples/      # Code examples by chapter
 │   └── testing/       # Testing utilities for agents

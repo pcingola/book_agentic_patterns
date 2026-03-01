@@ -2,13 +2,11 @@
 
 A Rubric Agent turns “committee-style” review into a repeatable, auditable, evidence-backed evaluation pipeline.
 
-The core idea is composition: the agent does not invent new mechanisms so much as it wires together retrieval, structured extraction, clustering over historical feedback, calibrated verdict assignment, and adversarial stress-testing into one coherent loop. Compared to ad-hoc “LLM judging”, the rubric framing forces stable criterion IDs, explicit evidence requirements, and consistent application across time, which is what you need when reviewers can (and will) challenge both the criteria and the conclusions.
+The core idea is composition: the agent does not invent new mechanisms so much as it wires together retrieval, structured extraction, clustering over historical feedback, and calibrated verdict assignment into one coherent loop. Compared to ad-hoc “LLM judging”, the rubric framing forces stable criterion IDs, explicit evidence requirements, and consistent application across time, which is what you need when reviewers can (and will) challenge both the criteria and the conclusions.
 
 ### Why rubrics are different from generic LLM evaluation
 
 Most LLM-based evaluation is optimized for “pick the better answer” or “score this output,” and often relies on implicit criteria. A rubric pipeline makes the criteria first-class objects that can be versioned, diffed, and traced to source policy text and past committee behavior. This changes both engineering and governance: you can explain not just why an item failed, but which requirement it maps to, where that requirement came from, and what evidence would flip the verdict.
-
-A practical rubric also needs to anticipate social dynamics. Committees do not only check compliance; they probe ambiguity, missing artifacts, and inconsistencies with precedent. That is why the final stage is adversarial simulation: it operationalizes “what will reviewers ask?” as a tool-driven output, not as informal intuition.
 
 ### Data model: stable IDs, evidence requirements, and cross-framework traceability
 
@@ -31,9 +29,9 @@ class Rubric(BaseModel):
     items: list[RubricItem]
 ```
 
-### Four-stage pipeline
+### Three-stage pipeline
 
-The pipeline splits cleanly into offline build/refinement and online assessment/simulation. This split matters operationally: offline steps can be slower, more expensive, and heavily reviewed; online steps need bounded latency and predictable costs.
+The pipeline splits cleanly into offline build/refinement and online assessment. This split matters operationally: offline steps can be slower, more expensive, and heavily reviewed; online steps need bounded latency and predictable costs.
 
 ### Stage 1: Rubric creation from policy (offline)
 
@@ -108,39 +106,16 @@ class RubricEvaluator:
         return status
 ```
 
-### Stage 4: Adversarial simulation and committee packet (online)
-
-The assessment output is not the end product; the end product is a committee packet. The Red Team stage consumes the rubric status table plus history, then generates a ranked question bank that targets weak points, ambiguities, and missing evidence. It also proposes fixes, which are best framed as concrete edits: what to add, where to add it, and which rubric item that addition would satisfy.
-
-This stage is where prior “Adversarial & Debate Agents” composition shows up: a `RedTeamAgent` behaves like a hostile reviewer, while an “owner” sub-agent proposes remediations, and an arbiter can rank the questions by expected impact.
-
-```python
-class CommitteePacket(BaseModel):
-    readiness_summary: str
-    rubric_status: list[RubricVerdict]
-    question_bank: list[str]     # ranked
-    fix_plan: list[str]          # actionable edits tied to item_ids
-
-def assemble_committee_packet(rubric_status, history_index) -> CommitteePacket:
-    questions = RedTeamAgent().generate_questions(rubric_status, history_index)
-    fixes = propose_fixes(rubric_status)  # focused on RISK/FAIL items
-    return CommitteePacket(
-        readiness_summary=summarize_readiness(rubric_status),
-        rubric_status=rubric_status,
-        question_bank=rank(questions),
-        fix_plan=fixes,
-    )
-```
 
 ### Compliance as the canonical application domain
 
-Compliance workflows make the rubric pattern concrete because they already have the primitives the agent needs: control frameworks (policy), past audit findings (history), implementation artifacts (project), and adversarial reviewers (external auditors). Stage 1 becomes control extraction from regulatory or standards text; Stage 2 incorporates audit findings and corrective actions; Stage 3 performs evidence-based control assessment; Stage 4 simulates the auditor’s questioning, producing an audit-ready packet. This mapping is particularly direct for access control, which appears across HIPAA technical safeguards, ISO 27001 access control controls, and NIST SP 800-53 access control families. ([ecfr.gov][1])
+Compliance workflows make the rubric pattern concrete because they already have the primitives the agent needs: control frameworks (policy), past audit findings (history), and implementation artifacts (project). Stage 1 becomes control extraction from regulatory or standards text; Stage 2 incorporates audit findings and corrective actions; Stage 3 performs evidence-based control assessment. This mapping is particularly direct for access control, which appears across HIPAA technical safeguards, ISO 27001 access control controls, and NIST SP 800-53 access control families. ([ecfr.gov][1])
 
 Cross-framework mappings should be treated as traceability edges, not as loose annotations. When a rubric item maps to multiple frameworks, the packet can render per-framework views without re-evaluating the project, which keeps assessment consistent while satisfying different stakeholder checklists.
 
-### Hands-on: end-to-end compliance assessment packet
+### Hands-on: end-to-end compliance assessment
 
-A minimal end-to-end exercise uses (1) a small SOC 2 subset as policy text, (2) a handful of mock audit findings as history, and (3) a short project security description as the submission. The stage outputs are: extracted controls with stable IDs; a refined rubric with weight bumps driven by clustered findings; a Pass/Risk/Fail table with citations; and an auditor-style question bank plus fix plan. The final rendering step produces a compliance packet that is mechanically generated from the `CommitteePacket`, rather than being treated as a separate agent pattern.
+A minimal end-to-end exercise uses (1) a small SOC 2 subset as policy text, (2) a handful of mock audit findings as history, and (3) a short project security description as the submission. The stage outputs are: extracted controls with stable IDs; a refined rubric with weight bumps driven by clustered findings; and a Pass/Risk/Fail table with a concise per-item rationale.
 
 ## References (references.md)
 
