@@ -63,6 +63,6 @@ A research task must complete before the writing task that uses its findings. Tw
 
 ### Connection to Sub-Agents and A2A
 
-Tasks and sub-agents are orthogonal systems that work together. Tasks track what needs to be done and in what order. Sub-agents (via `AgentRunner`) handle execution. The `OrchestratorAgent` wires both into the same agent: task tools for planning and tracking, agent runner tools (`task_launch`, `task_output`, `task_stop`) for delegation.
+Tasks and sub-agents are orthogonal systems that work together. Tasks track what needs to be done and in what order. Sub-agents (via `AgentRunner`) handle execution. `OrchestratorAgent` -- introduced fully in the chapter *The Complete Agent* -- wires both into the same agent: task tools for planning and tracking, agent runner tools (`task_launch`, `task_output`, `task_stop`) for delegation.
 
 The same coordination concepts appear in A2A as protocol-level guarantees. A2A defines task states, streaming via Server-Sent Events, push notifications via webhooks, and task storage as protocol requirements. The `core/tasks/` module is the local implementation of those ideas -- lightweight coordination within a single process rather than across a network.

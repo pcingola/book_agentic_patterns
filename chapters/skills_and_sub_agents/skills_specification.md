@@ -111,7 +111,7 @@ If you encounter scanned PDFs or complex layouts, consult the reference file.
 
 ### Progressive disclosure tiers
 
-The specification formalizes the three disclosure tiers introduced earlier:
+The specification defines three progressive disclosure tiers:
 
 1. **Metadata** (~100 tokens): The `name` and `description` fields, loaded at startup for all skills.
 

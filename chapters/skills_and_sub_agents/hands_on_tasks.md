@@ -1,6 +1,6 @@
 ## Hands-On: Tasks
 
-This hands-on explores `example_tasks.ipynb`, which demonstrates how `OrchestratorAgent` uses tasks to coordinate parallel sub-agent execution. The orchestrator creates tasks with dependencies forming a DAG, runs independent tasks concurrently, and enforces that dependent tasks wait for their prerequisites.
+This hands-on explores `example_tasks.ipynb`, which demonstrates how `OrchestratorAgent` (covered in detail in the chapter *The Complete Agent*) uses tasks to coordinate parallel sub-agent execution. The orchestrator creates tasks with dependencies forming a DAG, runs independent tasks concurrently, and enforces that dependent tasks wait for their prerequisites.
 
 ### Agents and Roles
 
