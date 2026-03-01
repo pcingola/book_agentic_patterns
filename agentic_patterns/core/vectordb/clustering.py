@@ -56,9 +56,11 @@ def _reduce(X: np.ndarray, reducer: DimReducer, n_components: int) -> np.ndarray
     match reducer:
         case DimReducer.UMAP:
             import umap
+
             return umap.UMAP(n_components=n_components).fit_transform(X)
         case DimReducer.PACMAP:
             import pacmap
+
             return pacmap.PaCMAP(n_components=n_components).fit_transform(X)
 
 
@@ -71,26 +73,39 @@ def _run_algorithm(
     match algorithm:
         case ClusterAlgorithm.AGGLOMERATIVE:
             from sklearn.cluster import AgglomerativeClustering
+
             if n_clusters is not None:
-                model = AgglomerativeClustering(n_clusters=n_clusters, metric="cosine", linkage="average")
+                model = AgglomerativeClustering(
+                    n_clusters=n_clusters, metric="cosine", linkage="average"
+                )
             else:
-                model = AgglomerativeClustering(metric="cosine", linkage="average", distance_threshold=distance_threshold, n_clusters=None)
+                model = AgglomerativeClustering(
+                    metric="cosine",
+                    linkage="average",
+                    distance_threshold=distance_threshold,
+                    n_clusters=None,
+                )
             return list(model.fit_predict(X))
         case ClusterAlgorithm.HDBSCAN:
             import hdbscan
+
             return list(hdbscan.HDBSCAN(min_cluster_size=2).fit_predict(X))
         case ClusterAlgorithm.KMEANS:
             from sklearn.cluster import KMeans
+
             if n_clusters is None:
                 raise ValueError("n_clusters is required for kmeans")
             return list(KMeans(n_clusters=n_clusters, n_init="auto").fit_predict(X))
         case ClusterAlgorithm.SPHERICAL_KMEANS:
             from sklearn.cluster import KMeans
+
             if n_clusters is None:
                 raise ValueError("n_clusters is required for spherical_kmeans")
             norms = np.linalg.norm(X, axis=1, keepdims=True)
             X_norm = X / np.where(norms == 0, 1, norms)
-            return list(KMeans(n_clusters=n_clusters, n_init="auto").fit_predict(X_norm))
+            return list(
+                KMeans(n_clusters=n_clusters, n_init="auto").fit_predict(X_norm)
+            )
 
 
 def _embed_chunks(chunks: list[Chunk], embedder) -> tuple[list, list, list, list]:
@@ -106,6 +121,7 @@ def _embed_chunks(chunks: list[Chunk], embedder) -> tuple[list, list, list, list
     loop = asyncio.get_event_loop()
     if loop.is_running():
         import nest_asyncio
+
         nest_asyncio.apply()
     embeddings = loop.run_until_complete(embed_texts(texts, embedder))
     return ids, texts, metadatas, embeddings

@@ -23,7 +23,6 @@ REQUIRES_SERVER = {
 
 
 class TestNotebooks(unittest.TestCase):
-
     def test_standalone_notebooks(self) -> None:
         notebook_filter = os.environ.get("NOTEBOOK_FILTER")
 

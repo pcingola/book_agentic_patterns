@@ -98,7 +98,12 @@ class TestOrchestratorAgent(unittest.IsolatedAsyncioTestCase):
             ]
         )
 
-        spec = AgentSpec(name="coordinator", model=model, a2a_clients=[self.client])
+        spec = AgentSpec(
+            name="coordinator",
+            model=model,
+            system_prompt="You are a coordinator.",
+            a2a_clients=[self.client],
+        )
 
         async with OrchestratorAgent(spec) as agent:
             await agent.run("Research something")
@@ -121,7 +126,12 @@ class TestOrchestratorAgent(unittest.IsolatedAsyncioTestCase):
             reference_paths=[],
             asset_paths=[],
         )
-        spec = AgentSpec(name="skilled-agent", model=model, skills=[skill])
+        spec = AgentSpec(
+            name="skilled-agent",
+            model=model,
+            system_prompt="You are a skilled agent.",
+            skills=[skill],
+        )
 
         async with OrchestratorAgent(spec) as agent:
             system_prompt = agent._build_system_prompt({})
@@ -141,7 +151,9 @@ class TestOrchestratorAgent(unittest.IsolatedAsyncioTestCase):
     async def test_cleanup_on_exit(self):
         """Agent and connections should be cleaned up on context exit."""
         model = ModelMock(responses=["Done"])
-        spec = AgentSpec(name="cleanup-test", model=model)
+        spec = AgentSpec(
+            name="cleanup-test", model=model, system_prompt="You are a test agent."
+        )
 
         agent = OrchestratorAgent(spec)
         async with agent:

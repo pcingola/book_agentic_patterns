@@ -9,7 +9,9 @@ from typing import Any, Sequence
 from pydantic_ai import ModelMessage, ToolCallPart
 
 
-async def run_parallel(coros: list[Coroutine[Any, Any, Any]], *, concurrency: int | None = None) -> list:
+async def run_parallel(
+    coros: list[Coroutine[Any, Any, Any]], *, concurrency: int | None = None
+) -> list:
     """Run coroutines in parallel with an optional concurrency cap."""
     if concurrency is None:
         return list(await asyncio.gather(*coros))

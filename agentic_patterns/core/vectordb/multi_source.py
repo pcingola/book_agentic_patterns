@@ -22,13 +22,16 @@ class MultiSourceRetriever:
 
         Source name is stored in each document's metadata under 'source_collection'.
         """
+
         async def _query(name: str, vdb: VectorDB) -> list[RetrievedDocument]:
             docs = await vdb.aretrieve(query, max_results=max_results, level=level)
             for doc in docs:
                 doc.metadata["source_collection"] = name
             return docs
 
-        results = await asyncio.gather(*[_query(name, vdb) for name, vdb in self.sources.items()])
+        results = await asyncio.gather(
+            *[_query(name, vdb) for name, vdb in self.sources.items()]
+        )
         all_docs = [doc for docs in results for doc in docs]
 
         seen: dict[str, RetrievedDocument] = {}

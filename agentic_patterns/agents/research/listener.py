@@ -17,7 +17,9 @@ class ResearchListener(AgentListener[ResearchReport]):
     async def on_gap_start(self, iteration: int) -> None:
         pass
 
-    async def on_gap_done(self, iteration: int, sufficient: bool, gaps: list[str]) -> None:
+    async def on_gap_done(
+        self, iteration: int, sufficient: bool, gaps: list[str]
+    ) -> None:
         pass
 
     async def on_conflict_start(self) -> None:
@@ -50,7 +52,9 @@ class PrintResearchListener(ResearchListener):
     async def on_gap_start(self, iteration: int) -> None:
         print(f"\nAssessing gaps (iteration {iteration})...")
 
-    async def on_gap_done(self, iteration: int, sufficient: bool, gaps: list[str]) -> None:
+    async def on_gap_done(
+        self, iteration: int, sufficient: bool, gaps: list[str]
+    ) -> None:
         if sufficient:
             print("Evidence sufficient, skipping further iterations.")
         else:
@@ -73,4 +77,6 @@ class PrintResearchListener(ResearchListener):
         print("\nSynthesizing report...")
 
     async def on_done(self, report: ResearchReport) -> None:
-        print(f"Done. Report: {len(report.content)} chars, {len(report.references)} references.")
+        print(
+            f"Done. Report: {len(report.content)} chars, {len(report.references)} references."
+        )

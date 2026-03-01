@@ -172,7 +172,9 @@ class OrchestratorAgent:
                 elif isinstance(part, ToolCallPart):
                     args = part.args_as_dict() or {}
                     if part.tool_name in _SKILL_TOOLS:
-                        await self._listener.on_skill_call(args.get("skill_name", part.tool_name))
+                        await self._listener.on_skill_call(
+                            args.get("skill_name", part.tool_name)
+                        )
                     elif part.tool_name == "task_launch":
                         await self._listener.on_agent_launch(args.get("agent_name", ""))
                     elif part.tool_name not in _AGENT_TOOLS:
@@ -291,8 +293,16 @@ class OrchestratorAgent:
             (self.spec.file_tools, "file_tools.md", {}),
             (self.spec.sandbox, "sandbox.md", {}),
             (bool(self._task_list), "tasks.md", {}),
-            (bool(self.spec.skills), "skills.md", {"skills_catalog": variables.get("skills_catalog", "")}),
-            (bool(agents_catalog), "sub_agents.md", {"agents_catalog": variables.get("agents_catalog", "")}),
+            (
+                bool(self.spec.skills),
+                "skills.md",
+                {"skills_catalog": variables.get("skills_catalog", "")},
+            ),
+            (
+                bool(agents_catalog),
+                "sub_agents.md",
+                {"agents_catalog": variables.get("agents_catalog", "")},
+            ),
         ]
         for condition, filename, file_vars in blocks:
             path = shared / filename

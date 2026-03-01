@@ -1,6 +1,11 @@
 from agentic_patterns.core.agents.agents import get_agent
 from agentic_patterns.agents.debate.listener import DebateListener
-from agentic_patterns.agents.debate.models import DebateResult, DebateRound, DebateTurn, Verdict
+from agentic_patterns.agents.debate.models import (
+    DebateResult,
+    DebateRound,
+    DebateTurn,
+    Verdict,
+)
 from agentic_patterns.core.config.config import PROMPTS_DIR
 from agentic_patterns.core.prompt import load_prompt
 
@@ -43,7 +48,9 @@ class DebateOrchestrator:
         self._critic = get_agent(config_name=config_name, output_type=DebateTurn)
         self._arbiter = get_agent(config_name=config_name, output_type=Verdict)
 
-    async def _advocate_turn(self, proposal: str, transcript: str, round_num: int) -> DebateTurn:
+    async def _advocate_turn(
+        self, proposal: str, transcript: str, round_num: int
+    ) -> DebateTurn:
         if self._listener:
             await self._listener.on_advocate_start(round_num, self._max_rounds)
         prompt = load_prompt(
@@ -57,7 +64,9 @@ class DebateOrchestrator:
             await self._listener.on_advocate(round_num, self._max_rounds, turn)
         return turn
 
-    async def _critic_turn(self, proposal: str, transcript: str, adv_turn: DebateTurn, round_num: int) -> DebateTurn:
+    async def _critic_turn(
+        self, proposal: str, transcript: str, adv_turn: DebateTurn, round_num: int
+    ) -> DebateTurn:
         if self._listener:
             await self._listener.on_critic_start(round_num, self._max_rounds)
         prompt = load_prompt(
@@ -72,7 +81,9 @@ class DebateOrchestrator:
             await self._listener.on_critic(round_num, self._max_rounds, turn)
         return turn
 
-    async def _arbiter_verdict(self, proposal: str, transcript: str, round_num: int) -> Verdict:
+    async def _arbiter_verdict(
+        self, proposal: str, transcript: str, round_num: int
+    ) -> Verdict:
         if self._listener:
             await self._listener.on_verdict_start(round_num, self._max_rounds)
         prompt = load_prompt(

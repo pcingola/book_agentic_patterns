@@ -53,12 +53,16 @@ class SearchSourcePerplexity:
             "model": self._model,
             "messages": [{"role": "user", "content": query}],
         }
-        async with httpx.AsyncClient(timeout=60, verify=ssl.create_default_context()) as client:
+        async with httpx.AsyncClient(
+            timeout=60, verify=ssl.create_default_context()
+        ) as client:
             resp = await client.post(
                 f"{self._api_url}/chat/completions", headers=headers, json=payload
             )
             if resp.status_code == 401:
-                raise PermissionError("Perplexity API key is missing or invalid. Check 'search.perplexity.api_key' in config.yaml.")
+                raise PermissionError(
+                    "Perplexity API key is missing or invalid. Check 'search.perplexity.api_key' in config.yaml."
+                )
             resp.raise_for_status()
             data = resp.json()
 
@@ -87,7 +91,11 @@ class SearchSourcePerplexity:
         with open(MAIN_PROJECT_DIR / "config.yaml") as f:
             cfg = yaml.safe_load(f)
         p = cfg["search"]["perplexity"]
-        return cls(api_key=p["api_key"], model=p.get("model", "sonar"), api_url=p.get("api_url", "https://api.perplexity.ai"))
+        return cls(
+            api_key=p["api_key"],
+            model=p.get("model", "sonar"),
+            api_url=p.get("api_url", "https://api.perplexity.ai"),
+        )
 
     def __str__(self) -> str:
         return f"SearchSourcePerplexity(model={self._model!r})"

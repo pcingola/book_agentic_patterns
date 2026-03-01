@@ -4,7 +4,11 @@ import asyncio
 import unittest
 from unittest.mock import AsyncMock, patch
 
-from agentic_patterns.core.agents.orchestrator import AgentResult, AgentRunner, AgentStatus
+from agentic_patterns.core.agents.orchestrator import (
+    AgentResult,
+    AgentRunner,
+    AgentStatus,
+)
 
 
 class TestAgentRunner(unittest.IsolatedAsyncioTestCase):

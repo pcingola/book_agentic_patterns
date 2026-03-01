@@ -17,7 +17,13 @@ from agentic_patterns.core.agents.orchestrator import (
     AgentStatus,
     OrchestratorAgent,
 )
-from agentic_patterns.agents.red_team import Challenge, PrintRedTeamListener, RedTeamAgent, RedTeamListener, RedTeamResult
+from agentic_patterns.agents.red_team import (
+    Challenge,
+    PrintRedTeamListener,
+    RedTeamAgent,
+    RedTeamListener,
+    RedTeamResult,
+)
 from agentic_patterns.agents.research import (
     DeepResearchAgent,
     Reference,

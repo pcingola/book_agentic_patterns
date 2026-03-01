@@ -37,10 +37,7 @@ async def label_clusters(
     for cluster in result.clusters:
         sample = cluster.items[:max_items_per_cluster]
         items_text = json.dumps(
-            [
-                {"doc_id": item.doc_id, "text": item.text[:500]}
-                for item in sample
-            ],
+            [{"doc_id": item.doc_id, "text": item.text[:500]} for item in sample],
             indent=2,
         )
         prompt = load_prompt(prompt_path, items=items_text)

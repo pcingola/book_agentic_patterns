@@ -105,10 +105,14 @@ class VectorDB:
     def reset(self) -> None:
         """Drop and recreate this collection, leaving it empty."""
         if self._client is None:
-            raise RuntimeError("VectorDB was not created via get_vector_db; cannot reset.")
+            raise RuntimeError(
+                "VectorDB was not created via get_vector_db; cannot reset."
+            )
         name = self._collection.name
         self._client.delete_collection(name)
-        self._collection = self._client.get_or_create_collection(name, embedding_function=self._ef)
+        self._collection = self._client.get_or_create_collection(
+            name, embedding_function=self._ef
+        )
 
     def get_by_id(self, doc_id: str) -> dict:
         return self._collection.get(ids=[doc_id])
@@ -210,7 +214,9 @@ class VectorDB:
         if level is not None:
             level_filter: dict = {"level": {"$eq": level.value}}
             effective_filter = (
-                {"$and": [effective_filter, level_filter]} if effective_filter else level_filter
+                {"$and": [effective_filter, level_filter]}
+                if effective_filter
+                else level_filter
             )
 
         results = self._collection.query(
