@@ -16,7 +16,7 @@ Both strategies implement the same interface, so the VocabularyConnector and the
 
 ### Registering Vocabularies
 
-The notebook registers both vocabularies programmatically using in-memory toy data. In production, vocabularies would be loaded from files (OBO, OWL, tabular formats) declared in `vocabularies.yaml`:
+The notebook registers both vocabularies programmatically using in-memory toy data. In production, vocabularies would be loaded from files ([OBO][vocab-1], [OWL][vocab-2], [RF2][vocab-3], tabular formats) declared in `vocabularies.yaml`:
 
 ```python
 reset()
@@ -80,3 +80,7 @@ This is the pattern that would precede a SQL query in a clinical database pipeli
 ### Key Takeaways
 
 Controlled vocabularies bridge natural language and structured databases. The Tree strategy handles medium vocabularies with exact and fuzzy matching over an in-memory adjacency list. The RAG strategy handles large vocabularies with semantic search via vector embeddings. Both strategies share the same interface, so the VocabularyConnector and agent tools are strategy-agnostic. The vocabulary agent autonomously decides which vocabulary to search, resolves terms, and navigates hierarchies, producing standardized codes that downstream agents can use directly in SQL queries.
+
+[vocab-1]: https://owlcollab.github.io/oboformat/doc/obo-syntax.html
+[vocab-2]: https://www.w3.org/TR/owl2-overview/
+[vocab-3]: https://confluence.ihtsdotools.org/display/DOCRELFMT

@@ -30,12 +30,12 @@ class Case(Generic[InputsT, OutputT]):
 
 # A result can be: assertion(bool), score(float), or label(str), optionally with a reason.
 @dataclass(frozen=True)
-class EvalResult:
+class EvaluationReason:
     value: bool | float | str
     reason: str = ""
 
 @dataclass(frozen=True)
-class EvalContext(Generic[InputsT, OutputT]):
+class EvaluatorContext(Generic[InputsT, OutputT]):
     case: Case[InputsT, OutputT]
     output: OutputT
     # Optional execution traces/telemetry identifiers for deeper debugging.
@@ -44,7 +44,7 @@ class EvalContext(Generic[InputsT, OutputT]):
 
 class Evaluator(Protocol[InputsT, OutputT]):
     name: str
-    def evaluate(self, ctx: EvalContext[InputsT, OutputT]) -> EvalResult | dict[str, EvalResult]:
+    def evaluate(self, ctx: EvaluatorContext[InputsT, OutputT]) -> EvaluationReason | dict[str, EvaluationReason]:
         ...
 
 @dataclass
@@ -53,7 +53,7 @@ class Dataset(Generic[InputsT, OutputT]):
     evaluators: list[Evaluator[InputsT, OutputT]]
 ```
 
-This structure captures the core idea: datasets describe intent, experiments execute the system, and reports summarize what happened, including per-case outputs and per-evaluation reasons, plus links back to execution traces when available. These abstractions are illustrative: they show the essential concepts that any eval system needs. The pydantic-evals library, used in the hands-on sections, provides its own concrete implementations of these same ideas (with classes like `EvaluatorContext` instead of `EvalContext`, and richer return types), but the underlying pattern is identical. ([Pydantic AI][ev-1])
+This structure captures the core idea: datasets describe intent, experiments execute the system, and reports summarize what happened, including per-case outputs and per-evaluation reasons, plus links back to execution traces when available. These abstractions are illustrative: they show the essential concepts that any eval system needs. The pydantic-evals library, used in the hands-on sections, provides concrete implementations of these same ideas with richer type signatures, but the underlying pattern is identical. ([Pydantic AI][ev-1])
 
 #### Structured-output evals vs free-form evals
 
@@ -88,7 +88,7 @@ class Judge(Evaluator[InputsT, OutputT]):
     rubric: str
     judge_model: Callable[[str], str]  # takes a prompt, returns model text
 
-    def evaluate(self, ctx: EvalContext[InputsT, OutputT]) -> EvalResult:
+    def evaluate(self, ctx: EvaluatorContext[InputsT, OutputT]) -> EvaluationReason:
         prompt = f"""
 You are grading an assistant output.
 
@@ -108,7 +108,7 @@ Return:
         raw = self.judge_model(prompt)
         score = parse_score_0_to_10(raw)       # keep parsing deterministic
         reason = parse_reason(raw)
-        return EvalResult(value=float(score), reason=reason)
+        return EvaluationReason(value=float(score), reason=reason)
 ```
 
 The critical engineering point is that judge outputs must be constrained enough to be machine-consumable. If the judge's response cannot be parsed deterministically, you have built a flaky evaluator.
@@ -163,13 +163,13 @@ class SpanMatcher(Evaluator[InputsT, OutputT]):
     required: list[dict]  # declarative patterns: {"op": "tool.call", "tool": "sql.query"}
     forbidden: list[dict] | None = None
 
-    def evaluate(self, ctx: EvalContext[InputsT, OutputT]) -> EvalResult:
+    def evaluate(self, ctx: EvaluatorContext[InputsT, OutputT]) -> EvaluationReason:
         spans = load_spans(trace_id=ctx.trace_id)  # your OTel backend / captured trace
         ok_required = all(match_any(spans, pattern) for pattern in self.required)
         ok_forbidden = all(not match_any(spans, pattern) for pattern in (self.forbidden or []))
         ok = ok_required and ok_forbidden
         reason = build_span_reason(spans, self.required, self.forbidden)
-        return EvalResult(value=bool(ok), reason=reason)
+        return EvaluationReason(value=bool(ok), reason=reason)
 ```
 
 This is the key bridge between evals and observability: the same telemetry you rely on in production becomes the substrate for behavioral tests, and failing cases can link directly to trace identifiers for fast diagnosis. ([Pydantic AI][ev-6])

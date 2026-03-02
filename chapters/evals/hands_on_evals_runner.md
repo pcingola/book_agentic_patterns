@@ -63,7 +63,7 @@ Each discovered dataset can then be executed individually or in batch. The runne
 
 ### Custom Evaluators
 
-The core library provides four evaluators for common agent scenarios that go beyond basic string or type checks.
+The core library provides evaluators for common agent scenarios that go beyond basic string or type checks.
 
 `OutputContainsJson` checks whether the output is valid JSON. This is useful when agents are expected to return structured data but the output type is a raw string.
 
@@ -93,6 +93,27 @@ The first case passes both evaluators. The second case fails both: the output is
 
 `ToolWasCalled` and `NoToolErrors` inspect the execution span tree to verify tool invocation patterns. `ToolWasCalled` asserts that a specific tool was invoked during the agent run, while `NoToolErrors` asserts that no tool calls resulted in errors. These evaluators address the process-level guarantees discussed in the evals section: verifying not just what the agent returned, but how it executed.
 
+```python
+from agentic_patterns.core.evals import Case, Dataset, Contains, ToolWasCalled, NoToolErrors
+
+dataset_search = Dataset(
+    cases=[
+        Case(
+            name="search_query",
+            inputs="Find papers about attention mechanisms",
+            expected_output="attention",
+        ),
+    ],
+    evaluators=[
+        Contains(),
+        ToolWasCalled(tool_name="search"),
+        NoToolErrors(),
+    ],
+)
+```
+
+When this dataset runs against an agent, `Contains` checks the output as usual, but `ToolWasCalled` and `NoToolErrors` look at the span tree recorded during execution. If the agent answered without calling the `search` tool, or if a tool call raised an error, the corresponding evaluator fails. This makes it possible to enforce behavioral expectations beyond output content.
+
 ### CLI Integration
 
 The same discovery and execution logic is available as a command-line tool:
@@ -105,4 +126,4 @@ python -m agentic_patterns.core.evals --evals-dir agentic_patterns/examples/eval
 python -m agentic_patterns.core.evals --evals-dir agentic_patterns/examples/evals --filter capitals
 ```
 
-The CLI returns a non-zero exit code when any evaluation fails, making it suitable as a CI gate. Options control report detail (`--include-reasons`, `--include-output`) and pass thresholds (`--min-assertions`). This is how evals move from interactive notebooks to automated regression checks that run on every commit.
+The CLI returns a non-zero exit code when any evaluation fails, making it suitable as a CI gate. Options control report detail (`--include-output`, `--include-reasons`, `--include-evaluator-failures`) and pass thresholds (`--min-assertions`). This is how evals move from interactive notebooks to automated regression checks that run on every commit.
