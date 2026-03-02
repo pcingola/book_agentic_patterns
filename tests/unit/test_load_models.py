@@ -4,8 +4,10 @@ import unittest
 from pathlib import Path
 
 from agentic_patterns.core.agents.config import (
+    AIGatewayConfig,
     AzureConfig,
     BedrockConfig,
+    GatewayProvider,
     OllamaConfig,
     OpenAIConfig,
     OpenRouterConfig,
@@ -28,6 +30,8 @@ class TestLoadModels(unittest.TestCase):
         self.assertIsInstance(models.get("ollama_model"), OllamaConfig)
         self.assertIsInstance(models.get("azure_model"), AzureConfig)
         self.assertIsInstance(models.get("openrouter_model"), OpenRouterConfig)
+        self.assertIsInstance(models.get("gateway_model"), AIGatewayConfig)
+        self.assertIsInstance(models.get("gateway_model_explicit"), AIGatewayConfig)
 
     def test_load_parses_config_values(self):
         """Verify load_models correctly extracts config field values."""
@@ -37,6 +41,19 @@ class TestLoadModels(unittest.TestCase):
         self.assertEqual(openai_config.model_name, "gpt-4")
         self.assertEqual(openai_config.api_key, "test-key")
         self.assertEqual(openai_config.timeout, 60)
+
+    def test_load_gateway_config_values(self):
+        """Verify load_models correctly parses AI Gateway config fields."""
+        models = load_models(TEST_DATA_DIR / "valid_config.yaml")
+
+        gw = models.get("gateway_model")
+        self.assertEqual(gw.gateway_url, "https://test-gateway.example.com")
+        self.assertEqual(gw.gateway_key, "test-gateway-key")
+        self.assertIsNone(gw.gateway_provider)
+        self.assertEqual(gw.timeout, 180)
+
+        gw_explicit = models.get("gateway_model_explicit")
+        self.assertEqual(gw_explicit.gateway_provider, GatewayProvider.AZURE)
 
     def test_load_file_not_found(self):
         """Verify load_models raises FileNotFoundError for missing files."""

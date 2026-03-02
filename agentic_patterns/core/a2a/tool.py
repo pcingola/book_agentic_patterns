@@ -28,10 +28,11 @@ def create_a2a_tool(
         is_cancelled: Optional callback to check if operation should be cancelled
 
     The tool returns formatted strings for the coordinator to interpret:
-    - [COMPLETED] result text
-    - [INPUT_REQUIRED:task_id=xyz] question
-    - [FAILED] error message
+    - [AUTH_REQUIRED] authentication required
     - [CANCELLED] task was cancelled
+    - [COMPLETED] result text
+    - [FAILED] error message
+    - [INPUT_REQUIRED:task_id=xyz] question
     - [TIMEOUT] task timed out
     """
     tool_name = name or slugify(card["name"])
@@ -54,6 +55,8 @@ def create_a2a_tool(
         )
 
         match status:
+            case TaskStatus.AUTH_REQUIRED:
+                return "[AUTH_REQUIRED] Agent requires authentication"
             case TaskStatus.COMPLETED:
                 text = extract_text(task) or "Task completed"
                 return f"[COMPLETED] {text}"

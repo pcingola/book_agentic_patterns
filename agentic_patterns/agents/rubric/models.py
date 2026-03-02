@@ -33,6 +33,7 @@ class PoolItem(BaseModel):
 
     text: str
     sources: list[SourceRef]
+    label: str = ""  # short human-readable description for logging (e.g. "[MUST] Title")
 
 
 class RubricItem(BaseModel):

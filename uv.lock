@@ -485,6 +485,7 @@ version = "0.3.6"
 source = { editable = "." }
 dependencies = [
     { name = "aiosqlite" },
+    { name = "boto3" },
     { name = "chainlit" },
     { name = "chromadb" },
     { name = "docker" },
@@ -525,6 +526,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "aiosqlite", specifier = ">=0.21.0" },
+    { name = "boto3", specifier = ">=1.35.0" },
     { name = "chainlit", specifier = ">=2.9.6" },
     { name = "chromadb", specifier = ">=1.4.1" },
     { name = "docker", specifier = ">=7.0.0" },

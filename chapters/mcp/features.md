@@ -1,4 +1,4 @@
-## Other Server and Client Features
+## Features
 
 MCP features beyond tools define how instructions, data, generation control, and human input are modeled explicitly, making agent behavior inspectable, reproducible, and scalable.
 

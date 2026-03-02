@@ -40,3 +40,4 @@
 - [Personalized AI](https://github.com/danielmiessler/Personal_AI_Infrastructure/tree/main)
 - [Genetic Algorithms for search](https://arxiv.org/html/2601.10657v1)
 
+agentic_patterns/examples/advanced_agents/example_rubric.ipynb

@@ -57,6 +57,29 @@ models:
     api_url: https://openrouter.ai/api/v1
     timeout: 120
 
+  gateway_bedrock:
+    model_family: ai-gateway
+    model_name: anthropic.claude-sonnet-4-20250514-v1:0
+    gateway_url: https://your-gateway.example.com
+    gateway_key: your-gateway-key
+    # gateway_provider auto-inferred from model_name; override with: bedrock | azure | vertex-openai
+    timeout: 180
+
+  gateway_azure:
+    model_family: ai-gateway
+    model_name: gpt-4o
+    gateway_url: https://your-gateway.example.com
+    gateway_key: your-gateway-key
+    gateway_provider: azure
+    timeout: 120
+
+  gateway_vertex:
+    model_family: ai-gateway
+    model_name: gemini-2.0-flash
+    gateway_url: https://your-gateway.example.com
+    gateway_key: your-gateway-key
+    timeout: 120
+
 embeddings:
   default:
     provider: ollama

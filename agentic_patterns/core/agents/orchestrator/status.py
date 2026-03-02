@@ -4,9 +4,10 @@ from enum import Enum
 
 
 class AgentStatus(str, Enum):
-    RUNNING = "running"
+    AUTH_REQUIRED = "auth_required"
+    CANCELLED = "cancelled"
     COMPLETED = "completed"
     FAILED = "failed"
     INPUT_REQUIRED = "input_required"
-    CANCELLED = "cancelled"
+    RUNNING = "running"
     TIMEOUT = "timeout"

@@ -17,10 +17,11 @@ logger = logging.getLogger(__name__)
 class TaskStatus(str, Enum):
     """Possible status outcomes from send_and_observe."""
 
+    AUTH_REQUIRED = "auth-required"
+    CANCELLED = "cancelled"
     COMPLETED = "completed"
     FAILED = "failed"
     INPUT_REQUIRED = "input-required"
-    CANCELLED = "cancelled"
     TIMEOUT = "timeout"
 
 
@@ -108,6 +109,9 @@ class A2AClientExtended:
             logger.debug(f"[A2A] Task {task_id}: {state}")
 
             match state:
+                case "auth-required":
+                    logger.error(f"[A2A] Task {task_id} requires authentication")
+                    return (TaskStatus.AUTH_REQUIRED, task)
                 case "completed":
                     logger.info(f"[A2A] Task {task_id} completed")
                     return (TaskStatus.COMPLETED, task)
@@ -131,6 +135,8 @@ class A2AClientExtended:
         task = response["result"]
         state = task["status"]["state"]
         match state:
+            case "auth-required":
+                return (TaskStatus.AUTH_REQUIRED, task)
             case "completed":
                 return (TaskStatus.COMPLETED, task)
             case "failed" | "rejected":

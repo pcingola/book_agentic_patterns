@@ -217,6 +217,9 @@ class AgentRunner:
         from agentic_patterns.core.a2a.utils import extract_text
 
         match status:
+            case A2ATaskStatus.AUTH_REQUIRED:
+                result.status = AgentStatus.AUTH_REQUIRED
+                result.error = "Agent requires authentication"
             case A2ATaskStatus.COMPLETED:
                 result.status = AgentStatus.COMPLETED
                 result.output = extract_text(task) if task else None

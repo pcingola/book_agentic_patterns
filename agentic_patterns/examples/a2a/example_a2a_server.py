@@ -16,4 +16,4 @@ def sub(a: int, b: int) -> int:
 
 
 agent = get_agent(tools=[add, sub])
-app = agent.to_a2a(debug=True)
+app = agent.to_a2a()

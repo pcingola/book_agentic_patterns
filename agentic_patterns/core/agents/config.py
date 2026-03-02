@@ -2,10 +2,19 @@
 Pydantic models for agent configurations.
 """
 
+from enum import Enum
 from pathlib import Path
 
 import yaml
 from pydantic import BaseModel, Field
+
+
+class GatewayProvider(str, Enum):
+    """Supported AI Gateway backend providers."""
+
+    AZURE = "azure"
+    BEDROCK = "bedrock"
+    VERTEX_OPENAI = "vertex-openai"
 
 
 class AzureConfig(BaseModel):
@@ -66,8 +75,20 @@ class OpenRouterConfig(BaseModel):
     parallel_tool_calls: bool | None = Field(default=None)
 
 
+class AIGatewayConfig(BaseModel):
+    """Configuration for AI Gateway proxy models (Bedrock, Azure, Vertex AI)."""
+
+    model_family: str = Field(default="ai-gateway")
+    model_name: str
+    gateway_url: str
+    gateway_key: str
+    gateway_provider: GatewayProvider | None = Field(default=None)
+    timeout: int = Field(default=120)
+    parallel_tool_calls: bool | None = Field(default=None)
+
+
 AgentConfig = (
-    AzureConfig | BedrockConfig | OllamaConfig | OpenAIConfig | OpenRouterConfig
+    AIGatewayConfig | AzureConfig | BedrockConfig | OllamaConfig | OpenAIConfig | OpenRouterConfig
 )
 
 
@@ -102,6 +123,8 @@ def load_models(config_path: Path | str) -> Models:
         model_family = config_data.get("model_family")
 
         match model_family:
+            case "ai-gateway":
+                configs[name] = AIGatewayConfig(**config_data)
             case "azure":
                 configs[name] = AzureConfig(**config_data)
             case "bedrock":
