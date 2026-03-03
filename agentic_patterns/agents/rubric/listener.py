@@ -39,6 +39,12 @@ class RubricListener:
     ) -> None:
         pass
 
+    async def on_dedup_start(self, n_items: int) -> None:
+        pass
+
+    async def on_dedup_done(self, before_count: int, after_count: int) -> None:
+        pass
+
     async def on_done(self, rubric: Rubric) -> None:
         pass
 
@@ -97,6 +103,12 @@ class PrintRubricListener(RubricListener):
         print(
             f"[rubric]   {phase} {detail} failed ({error.__class__.__name__}), retry {attempt} in {delay:.0f}s"
         )
+
+    async def on_dedup_start(self, n_items: int) -> None:
+        print(f"[rubric] dedup: {n_items} items, merging duplicates")
+
+    async def on_dedup_done(self, before_count: int, after_count: int) -> None:
+        print(f"[rubric] dedup: {before_count} -> {after_count} items")
 
     async def on_done(self, rubric: Rubric) -> None:
         print(f"[rubric] done: {len(rubric.items)} rubric items")

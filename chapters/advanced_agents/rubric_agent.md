@@ -35,47 +35,44 @@ The pipeline splits cleanly into offline build/refinement and online assessment.
 
 ### Stage 1: Rubric creation from policy (offline)
 
-Rubric creation starts by ingesting policy handbooks, process guides, and control frameworks into a `policy_index`. Each chunk is processed with structured extraction that emits candidate requirements with explicit modality (MUST/SHOULD), scope, and evidence expectations. The agent then canonicalizes those candidates by deduplicating semantically equivalent items, assigning stable IDs, and normalizing evidence fields into a constrained vocabulary (so later retrieval can target specific artifact types).
+Rubric creation starts by ingesting policy handbooks, process guides, and control frameworks. Each chunk is processed with structured extraction that emits candidate requirements with explicit modality (MUST/SHOULD), scope, and evidence expectations. The agent then canonicalizes those candidates by deduplicating semantically equivalent items, assigning stable IDs, and normalizing evidence fields into a constrained vocabulary (so later retrieval can target specific artifact types).
 
 A key design choice is to store provenance at the item level: each item should retain pointers to the policy spans that created it. That makes the rubric auditable when someone asks “why is this a requirement?”
 
-```python
-class RubricBuilder:
-    def build_from_policy(self, policy_index) -> Rubric:
-        candidates = []
-        for chunk in policy_index.iter_chunks():
-            reqs = extract_requirements(chunk)   # structured output
-            candidates.extend(reqs)
+`RubricSession` is the high-level API that handles chunking, indexing, extraction, and synthesis. Two workflows are supported: incremental (one document at a time) and batch (extract many, build once).
 
-        canon = canonicalize_requirements(candidates)  # dedupe + normalize
-        items = assign_stable_ids(canon)               # deterministic hashing + salt
-        return Rubric(rubric_id=version(), provenance=provenance(), items=items)
+```python
+# Incremental: each add_document() extracts + builds against existing rubric
+session = RubricSession(“soc2_demo”)
+rubric = await session.add_document(POLICY_TEXT, source=”soc2_policy”)
 ```
+
+Under the hood, `RubricSession` delegates to `RubricBuilder`, which runs the three-phase pipeline: extraction, merge passes, and synthesis.
 
 ### Stage 2: Rubric refinement from history (offline)
 
-Rubrics fail when they ignore precedent. Stage 2 ingests meeting minutes, past reviews, and prior submissions into a `history_index`, extracts “concern sentences” (short, atomic statements of what reviewers flagged), and clusters them. The purpose of clustering is not just summarization; it is governance. If a large cluster is repeatedly mentioned and is not covered by the rubric, the agent can propose a new rubric item, but only under a gated promotion rule (for example: minimum cluster size, diversity across meetings, and at least one explicit policy anchor).
+Rubrics fail when they ignore precedent. Stage 2 adds meeting minutes, past reviews, and prior submissions to the same session. Because the structured extractor outputs MUST/SHOULD/MAY requirements, historical findings that match existing items add their source references, while findings that represent gaps not covered by the policy are promoted into new rubric items.
 
 This stage produces an auditable diff. That diff is what you review with humans, because it is where institutional drift and “unwritten rules” enter the system.
 
 ```python
-def refine_with_history(rubric: Rubric, history_index) -> Rubric:
-    concerns = []
-    for chunk in history_index.iter_chunks():
-        concerns.extend(extract_concerns(chunk))   # short sentences, structured output
+# Same session -- add_document merges into the existing rubric
+rubric = await session.add_document(AUDIT_FINDINGS_TEXT, source=”audit_findings”)
+```
 
-    clusters = cluster(concerns)
-    labels   = label_clusters(clusters)
-    mapping  = map_clusters_to_items(labels, rubric.items)
+For batch processing, use `extract()` to process all documents first, then `build()` once:
 
-    for item_id in mapping.matched_item_ids:
-        bump_weight(rubric, item_id, mapping[item_id].support)
+```python
+session = RubricSession(“soc2_batch”)
+await session.extract(POLICY_TEXT, source=”soc2_policy”)
+await session.extract(AUDIT_FINDINGS_TEXT, source=”audit_findings”)
+rubric = await session.build()
+```
 
-    for c in mapping.unmatched_clusters:
-        if c.size >= PROMOTION_THRESHOLD and c.policy_anchors_present:
-            rubric.items.append(propose_new_item(c))  # still human-reviewed
+When rubrics grow large across many document sources, a `deduplicate()` pass merges semantically equivalent items back down. It re-clusters the existing rubric items, merges duplicates, and re-synthesizes -- the same merge and synthesis phases used during the initial build.
 
-    return rubric_versioned(rubric, diff=True)
+```python
+rubric = await session.deduplicate()
 ```
 
 ### Stage 3: Evidence-backed assessment (online)
@@ -115,7 +112,7 @@ Cross-framework mappings should be treated as traceability edges, not as loose a
 
 ### Hands-on: end-to-end compliance assessment
 
-A minimal end-to-end exercise uses (1) a small SOC 2 subset as policy text, (2) a handful of mock audit findings as history, and (3) a short project security description as the submission. The stage outputs are: extracted controls with stable IDs; a refined rubric with weight bumps driven by clustered findings; and a Pass/Risk/Fail table with a concise per-item rationale.
+A minimal end-to-end exercise uses (1) a small SOC 2 subset as policy text, (2) a handful of mock audit findings as history, and (3) a short project security description as the submission. The notebook demonstrates both workflows: incremental (`add_document()` called twice) and batch (`extract()` twice then `build()` once). Evaluation uses `RubricEvaluator` with a `MultiSourceRetriever` spanning policy, history, and project indexes. The stage outputs are: extracted controls with stable IDs; a refined rubric with new items promoted from historical findings; and a Pass/Risk/Fail table with a concise per-item rationale.
 
 ## References (references.md)
 

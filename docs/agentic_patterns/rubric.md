@@ -5,35 +5,39 @@ A pipeline for building evidence-backed evaluation rubrics from policy documents
 Located in `agents/rubric/`. Uses `get_agent()` with structured output and tools, and `load_prompt()` for each step. Prompts live in `prompts/rubric/`.
 
 
-## Stage 1: Build from Policy
+## RubricSession (primary API)
 
-`RubricBuilder.build_from_policy(policy_index, rubric_name)` fetches all chunks from a `VectorDB` policy index, extracts MUST/SHOULD/MAY requirements via LLM, converts them to `PoolItem`s, and passes them through the unified `build()` pipeline. Returns a `Rubric`.
+`RubricSession` is the high-level API that manages the full rubric lifecycle: chunking, indexing, extraction, merge, synthesis, and deduplication. All operations are checkpointed and scoped by content hash so nothing is ever lost or overwritten.
 
-The `rubric_id` is derived deterministically from `rubric_name` (MD5 hash) so the same name always maps to the same checkpoint directory. You can also pass an explicit `rubric_id` to override.
+Two workflows are supported:
 
-```python
-from agentic_patterns.agents.rubric.builder import RubricBuilder
-from agentic_patterns.agents.rubric.listener import PrintRubricListener
-from agentic_patterns.core.vectordb.vectordb import get_vector_db
-
-policy_index = get_vector_db("soc2_policies")
-builder = RubricBuilder(listener=PrintRubricListener())
-rubric = await builder.build_from_policy(policy_index, rubric_name="soc2")
-```
-
-
-## Stage 2: Refine with History
-
-`refine_with_history(rubric, history_index)` extracts concern sentences from historical documents (meeting minutes, audit findings), converts them to `PoolItem`s, and runs them through `build()` against the existing rubric. New concerns that are not covered by existing items are promoted into new `RubricItem`s; matched concerns add their `SourceRef` to the existing item. Returns a new `Rubric`.
+**Incremental** -- `add_document()` extracts from one document and merges into the existing rubric. Each call builds on the previous result.
 
 ```python
-from agentic_patterns.agents.rubric.builder import refine_with_history
+from agentic_patterns.agents.rubric.session import RubricSession
 from agentic_patterns.agents.rubric.listener import PrintRubricListener
-from agentic_patterns.core.vectordb.vectordb import get_vector_db
 
-history_index = get_vector_db("audit_findings")
-rubric_v2 = await refine_with_history(rubric, history_index, listener=PrintRubricListener())
+session = RubricSession("soc2_demo", listener=PrintRubricListener())
+rubric = await session.add_document(POLICY_TEXT, source="soc2_policy")
+rubric = await session.add_document(AUDIT_FINDINGS_TEXT, source="audit_findings")
 ```
+
+**Batch** -- `extract()` processes documents without building. Call `build()` once to produce the rubric from the combined pool.
+
+```python
+session = RubricSession("soc2_batch", listener=PrintRubricListener())
+await session.extract(POLICY_TEXT, source="soc2_policy")
+await session.extract(AUDIT_FINDINGS_TEXT, source="audit_findings")
+rubric = await session.build()
+```
+
+When rubrics grow large across many document sources, `deduplicate()` merges semantically equivalent items:
+
+```python
+rubric = await session.deduplicate()
+```
+
+`RubricSession` also accepts `add_index()` for power users with pre-built VectorDB indexes.
 
 
 ## Stage 3: Evidence-Backed Assessment
@@ -58,7 +62,7 @@ verdicts = await evaluator.evaluate(rubric_v2, retriever)
 
 ## Unified Build Pipeline
 
-Both Stage 1 and Stage 2 flow through `RubricBuilder.build(items, rubric)`:
+`add_documents` extracts requirements, then flows through `RubricBuilder.build(items, rubric)`:
 
 **Intermediate merge passes** (while pool size > `batch_size`): cluster the pool by semantic similarity, run the merge agent on each group in parallel, collect merged and ejected items. Repeat until pool fits in one batch or no further reduction is possible.
 
@@ -67,17 +71,24 @@ Both Stage 1 and Stage 2 flow through `RubricBuilder.build(items, rubric)`:
 
 ## Checkpointing and Recovery
 
-Every phase is checkpointed so the pipeline can resume after a crash. All checkpoint files live in `WORKSPACE_DIR/{user_id}/{session_id}/.rubric_synthesis/{rubric_id}/` and are human-readable JSON (indent=2). Writes are atomic (temp file + fsync + rename).
+Every phase is checkpointed so the pipeline can resume after a crash. All checkpoint files are preserved forever as audit logs -- never deleted, never overwritten by a different operation. Re-running with the same content resumes from checkpoint. Writes are atomic (temp file + fsync + rename). All files are human-readable JSON (indent=2).
 
-The `rubric_id` is derived deterministically from `rubric_name` so the same name always resumes from the same checkpoint directory.
+Checkpoints are scoped by content hash under `.rubric_synthesis/{rubric_id}/`:
 
-**`extraction.json`** -- updated after each chunk completes. Stores per-chunk results keyed by `doc_id`, plus metadata (`total_chunks`, `completed_chunks`, `updated_at`). On restart, only chunks not yet in the file are processed.
+```
+.rubric_synthesis/{rubric_id}/
+  extractions/{content_hash}/extraction.json   # per-document extraction results
+  incremental/{content_hash}/                  # incremental build for one document
+    extraction.json, merge.json, synthesis.json
+  builds/{build_hash}/                         # full rebuild from all extractions
+    merge.json, synthesis.json
+  dedup/{dedup_hash}/                          # deduplication pass
+    merge.json, synthesis.json
+```
 
-**`merge.json`** -- updated after each merge pass completes. Stores the current pool for resume, plus a `passes` array with per-group detail (input items, output items, counts) for every pass so you can inspect exactly what happened in any group.
+Content hash is `md5("|".join(sorted(doc_ids)))[:8]` -- deterministic, so the same content always maps to the same checkpoint directory. Build hash is computed from sorted extraction scope names. Dedup hash is computed from sorted rubric item IDs.
 
-**`checkpoint.json`** -- updated after each synthesis batch. Stores the full pool and all rubric items built so far (`batch_done`, `total_batches`, `rubric_items_count`). On restart, completed batches are skipped. If a synthesis checkpoint exists, merge is skipped entirely since the pool is saved in the checkpoint.
-
-All checkpoint files are preserved after completion as audit logs. Each file has a `status` field (`"in_progress"` or `"completed"`) so you can tell whether the phase finished successfully or was interrupted. Pass `force=True` to `RubricBuilder` to discard checkpoints and start fresh.
+Each checkpoint file has a `status` field (`"in_progress"` or `"completed"`) so you can tell whether the phase finished successfully or was interrupted.
 
 Transient errors (timeouts, connection drops, HTTP 5xx from the model provider) are retried with exponential backoff in all three phases. Configured via `max_retries` (default 3) and `retry_delay` (default 30s).
 
@@ -118,14 +129,26 @@ All models are in `agents/rubric/models.py`.
 | `SpanRef` | Pydantic model | Document span reference for citations |
 | `RubricVerdict` | Pydantic model | Per-item assessment verdict |
 
+### `agentic_patterns.agents.rubric.session`
+
+| Name | Kind | Description |
+|---|---|---|
+| `RubricSession(name, rubric_id, listener, **builder_kwargs)` | Class | High-level API managing the full rubric lifecycle |
+| `RubricSession.rubric` | Property | Current rubric |
+| `RubricSession.add_document(text, source)` | Method | Extract from one document and incrementally build into rubric |
+| `RubricSession.add_index(index)` | Method | Incremental build from a pre-built VectorDB index |
+| `RubricSession.extract(text, source)` | Method | Extract requirements (checkpointed, no build) |
+| `RubricSession.build()` | Method | Full rebuild from all completed extractions |
+| `RubricSession.deduplicate()` | Method | Merge duplicate items in the current rubric |
+
 ### `agentic_patterns.agents.rubric.builder`
 
 | Name | Kind | Description |
 |---|---|---|
-| `RubricBuilder(config_name, batch_size, max_passes, algorithm, listener, max_retries, retry_delay, force)` | Class | Configures and runs the build pipeline |
-| `RubricBuilder.build(items, rubric)` | Method | Unified pipeline: merge passes + synthesis -> Rubric |
-| `RubricBuilder.build_from_policy(policy_index, rubric_name, rubric_id)` | Method | Stage 1: extract requirements -> build |
-| `refine_with_history(rubric, history_index, ...)` | Function | Stage 2: extract concerns -> build with existing rubric |
+| `RubricBuilder(config_name, batch_size, max_passes, algorithm, listener, max_retries, retry_delay)` | Class | Low-level build pipeline engine |
+| `RubricBuilder.build(items, rubric)` | Method | Merge passes + synthesis -> Rubric |
+| `RubricBuilder.add_documents(rubric, index, ckpt_dir)` | Method | Extract requirements from index and merge into rubric |
+| `RubricBuilder.deduplicate(rubric, ckpt_dir)` | Method | Merge duplicate items in a large rubric |
 
 ### `agentic_patterns.agents.rubric.evaluator`
 
@@ -138,7 +161,7 @@ All models are in `agents/rubric/models.py`.
 
 | Name | Kind | Description |
 |---|---|---|
-| `RubricListener` | Class | Base listener for build pipeline (on_pass_start, on_group_done, on_checkpoint_loaded, on_retry, on_done) |
+| `RubricListener` | Class | Base listener for build pipeline (on_pass_start, on_group_done, on_checkpoint_loaded, on_retry, on_dedup_start, on_dedup_done, on_done) |
 | `PrintRubricListener` | Class | Prints build progress to stdout |
 | `RubricEvaluatorListener` | Class | Base listener for evaluation (on_item_start, on_item_done, on_done) |
 | `PrintRubricEvaluatorListener` | Class | Prints evaluation progress to stdout |
