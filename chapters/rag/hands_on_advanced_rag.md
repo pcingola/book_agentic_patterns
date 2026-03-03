@@ -14,11 +14,11 @@ The ingestion notebook (`example_RAG_02_load.ipynb`) replaces naive paragraph sp
 
 #### Chunking with ChunkerLLM
 
-`ChunkerLLM` in `agents/rag/chunker_llm.py` handles the full ingestion pipeline: batching the text, prompting the LLM to identify topic boundaries, and managing the leftover strategy across batch edges.
+`ChunkerLLM` in `core/rag/chunker_llm.py` handles the full ingestion pipeline: batching the text, prompting the LLM to identify topic boundaries, and managing the leftover strategy across batch edges.
 
 ```python
 from agentic_patterns.core.doc_ingestion.models import DocumentProvenance
-from agentic_patterns.agents.rag.chunker_llm import ChunkerLLM
+from agentic_patterns.core.rag import ChunkerLLM
 from agentic_patterns.core.vectordb import get_vector_db
 
 vdb = get_vector_db('books_semantic')

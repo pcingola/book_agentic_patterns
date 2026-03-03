@@ -25,8 +25,7 @@ from agentic_patterns.agents.rubric.builder import (
 from agentic_patterns.agents.rubric.listener import RubricListener
 from agentic_patterns.agents.rubric.models import PoolItem, Rubric
 from agentic_patterns.core.doc_ingestion.models import DocumentProvenance
-from agentic_patterns.core.vectordb.chunker import Chunker
-from agentic_patterns.core.vectordb.chunker_paragraph import ChunkerParagraph
+from agentic_patterns.core.rag import Chunker, ChunkerSmart
 from agentic_patterns.core.vectordb.vectordb import VectorDB
 
 
@@ -48,7 +47,7 @@ class RubricSession:
         self._name = name
         self._rubric_id = rubric_id or hashlib.md5(name.encode()).hexdigest()[:8]
         self._listener = listener or RubricListener()
-        self._chunker = chunker or ChunkerParagraph(min_lines=1)
+        self._chunker = chunker or ChunkerSmart()
         self._builder = RubricBuilder(listener=self._listener, **builder_kwargs)
         self._rubric = self._load_latest_rubric()
 

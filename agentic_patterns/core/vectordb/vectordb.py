@@ -11,7 +11,7 @@ from agentic_patterns.core.vectordb.embeddings import embed_texts
 from agentic_patterns.core.vectordb.models import Chunk, ChunkLevel, RetrievedDocument
 
 if TYPE_CHECKING:
-    from agentic_patterns.core.vectordb.chunker import Chunker
+    from agentic_patterns.core.rag.chunker import Chunker
 
 _vector_dbs: dict[str, "VectorDB"] = {}
 
@@ -209,7 +209,7 @@ class VectorDB(ABC):
     ) -> int:
         """Load a file, chunk it, and store in the collection."""
         if chunker is None:
-            from agentic_patterns.core.vectordb.chunker_smart import ChunkerSmart
+            from agentic_patterns.core.rag.chunker_smart import ChunkerSmart
 
             chunker = ChunkerSmart()
 

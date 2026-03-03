@@ -9,8 +9,8 @@ from agentic_patterns.core.agents import get_agent
 from agentic_patterns.core.config.config import PROMPTS_DIR
 from agentic_patterns.core.doc_ingestion.models import DocumentProvenance
 from agentic_patterns.core.prompt import load_prompt
-from agentic_patterns.core.vectordb.chunker import Chunker
-from agentic_patterns.core.vectordb.chunking import get_stem, provenance_to_meta
+from agentic_patterns.core.rag.chunker import Chunker
+from agentic_patterns.core.rag.chunking import get_stem, provenance_to_meta
 from agentic_patterns.core.vectordb.models import Chunk, ChunkLevel
 
 

@@ -3,8 +3,8 @@
 import re
 
 from agentic_patterns.core.doc_ingestion.models import DocumentProvenance
-from agentic_patterns.core.vectordb.chunker import Chunker
-from agentic_patterns.core.vectordb.chunking import (
+from agentic_patterns.core.rag.chunker import Chunker
+from agentic_patterns.core.rag.chunking import (
     get_stem,
     parse_sections,
     provenance_to_meta,

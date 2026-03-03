@@ -30,7 +30,7 @@ The `get_vector_db` function handles database initialization and configuration. 
 
 ```python
 from pathlib import Path
-from agentic_patterns.core.vectordb import ChunkerParagraph
+from agentic_patterns.core.rag import ChunkerParagraph
 from agentic_patterns.core.doc_ingestion.models import DocumentProvenance
 
 txt_file = Path("data/books/hhgttg.txt")

@@ -94,7 +94,7 @@ def chunk_by_paragraphs(
     text: str, provenance: DocumentProvenance, min_lines: int = 3
 ) -> list[Chunk]:
     """Naive splitter at blank lines. All chunks at PARAGRAPH level with parent_id=None."""
-    from agentic_patterns.core.vectordb.chunker_paragraph import ChunkerParagraph
+    from agentic_patterns.core.rag.chunker_paragraph import ChunkerParagraph
 
     return ChunkerParagraph(min_lines=min_lines).chunk(text, provenance)
 
@@ -103,13 +103,13 @@ def chunk_by_markdown(
     text: str, provenance: DocumentProvenance, max_chunk_size: int = 2000
 ) -> list[Chunk]:
     """Split at heading boundaries with hierarchy tracking."""
-    from agentic_patterns.core.vectordb.chunker_markdown import ChunkerMarkdown
+    from agentic_patterns.core.rag.chunker_markdown import ChunkerMarkdown
 
     return ChunkerMarkdown(max_chunk_size=max_chunk_size).chunk(text, provenance)
 
 
 def chunk(text: str, provenance: DocumentProvenance) -> list[Chunk]:
     """Auto-select chunking strategy (delegates to ChunkerSmart)."""
-    from agentic_patterns.core.vectordb.chunker_smart import ChunkerSmart
+    from agentic_patterns.core.rag.chunker_smart import ChunkerSmart
 
     return ChunkerSmart().chunk(text, provenance)
