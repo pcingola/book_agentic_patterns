@@ -16,16 +16,18 @@
 14. Cobbe, K. et al. *Training Verifiers to Solve Math Word Problems*. arXiv, 2021. https://arxiv.org/abs/2110.14168
 15. Nakano, R. et al. *WebGPT: Browser-assisted Question-answering with Human Feedback*. arXiv, 2021. https://arxiv.org/abs/2112.09332
 16. Nye, M. et al. *Show Your Work: Scratchpads for Intermediate Computation with Language Models*. arXiv, 2021. https://arxiv.org/abs/2112.00114
-17. Karpas, E. et al. *MRKL Systems: A Modular, Neuro-Symbolic Architecture that Combines Large Language Models, External Knowledge Sources and Discrete Reasoning*. arXiv, 2022. https://arxiv.org/abs/2205.00445
-18. Kojima, T. et al. *Large Language Models are Zero-Shot Reasoners*. NeurIPS, 2022. https://arxiv.org/abs/2205.11916
-19. Saunders, W. et al. *Self-Critique and the Limits of Model Introspection*. arXiv, 2022.
-20. Wang, X. et al. *Self-Consistency Improves Chain of Thought Reasoning in Language Models*. arXiv, 2022.
-21. Wei, J. et al. *Chain-of-Thought Prompting Elicits Reasoning in Large Language Models*. NeurIPS, 2022. https://arxiv.org/abs/2201.11903
-22. Xie, S., Ma, X., Wang, Y. et al. *An Explanation of In-Context Learning as Implicit Bayesian Inference*. ICLR, 2022.
-23. Yao, S. et al. *ReAct: Synergizing Reasoning and Acting in Language Models*. ICLR, 2023. https://arxiv.org/abs/2210.03629
-24. Madaan, A. et al. *Self-Refine: Iterative Refinement with Self-Feedback*. arXiv, 2023.
-25. Schick, T. et al. *Toolformer: Language Models Can Teach Themselves to Use Tools*. arXiv, 2023. https://arxiv.org/abs/2302.04761
-26. Shinn, N. et al. *Reflexion: Language Agents with Verbal Reinforcement Learning*. NeurIPS, 2023.
-27. Yao, S. et al. *Tree of Thoughts: Deliberate Problem Solving with Large Language Models*. arXiv, 2023. https://arxiv.org/abs/2305.10601
-28. Zhou, D. et al. *Least-to-Most Prompting Enables Complex Reasoning in Large Language Models*. ICLR, 2023.
-29. OpenAI. *Best Practices for Human-in-the-Loop AI Systems*. Technical blog, 2023.
+17. Ahn, M. et al. *Do As I Can, Not As I Say: Grounding Language in Robotic Affordances*. arXiv, 2022. https://arxiv.org/abs/2204.01691
+18. Karpas, E. et al. *MRKL Systems: A Modular, Neuro-Symbolic Architecture that Combines Large Language Models, External Knowledge Sources and Discrete Reasoning*. arXiv, 2022. https://arxiv.org/abs/2205.00445
+19. Kojima, T. et al. *Large Language Models are Zero-Shot Reasoners*. NeurIPS, 2022. https://arxiv.org/abs/2205.11916
+20. Saunders, W. et al. *Self-Critique and the Limits of Model Introspection*. arXiv, 2022.
+21. Wang, X. et al. *Self-Consistency Improves Chain of Thought Reasoning in Language Models*. arXiv, 2022.
+22. Wei, J. et al. *Chain-of-Thought Prompting Elicits Reasoning in Large Language Models*. NeurIPS, 2022. https://arxiv.org/abs/2201.11903
+23. Xie, S., Ma, X., Wang, Y. et al. *An Explanation of In-Context Learning as Implicit Bayesian Inference*. ICLR, 2022.
+24. Yao, S. et al. *ReAct: Synergizing Reasoning and Acting in Language Models*. ICLR, 2023. https://arxiv.org/abs/2210.03629
+25. Madaan, A. et al. *Self-Refine: Iterative Refinement with Self-Feedback*. arXiv, 2023.
+26. Schick, T. et al. *Toolformer: Language Models Can Teach Themselves to Use Tools*. arXiv, 2023. https://arxiv.org/abs/2302.04761
+27. Shinn, N. et al. *Reflexion: Language Agents with Verbal Reinforcement Learning*. NeurIPS, 2023.
+28. Yao, S. et al. *Tree of Thoughts: Deliberate Problem Solving with Large Language Models*. arXiv, 2023. https://arxiv.org/abs/2305.10601
+29. Zhou, D. et al. *Least-to-Most Prompting Enables Complex Reasoning in Large Language Models*. ICLR, 2023.
+30. OpenAI. *Best Practices for Human-in-the-Loop AI Systems*. Technical blog, 2023.
+31. Wang, X. et al. *Executable Code Actions Elicit Better LLM Agents*. arXiv, 2024. https://arxiv.org/abs/2402.01030

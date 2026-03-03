@@ -133,7 +133,7 @@ The pattern scales to external verification. In production, the verifier might n
 
 ### Comparison: With and Without Verification
 
-The notebook includes a comparison showing direct generation without a verification loop:
+Consider what happens with direct generation without a verification loop:
 
 ```python
 direct_agent = get_agent(system_prompt="You generate passwords. Be very careful to satisfy all constraints exactly.")

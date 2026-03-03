@@ -46,7 +46,7 @@ In LLM systems, modularity reappeared in a new form around 2022-2023: language m
 
 #### From hand-built intelligence to scalable methods
 
-A repeating pattern in AI history is that approaches which "bake in" human knowledge and reasoning tricks often deliver quick wins, but are eventually outpaced by more general methods that can absorb more compute and data. Sutton's *The Bitter Lesson* distilled this from decades of results across search and learning: progress tends to come from methods that scale (and from the discipline to keep systems simple enough to scale), even when the "hand-designed" approach feels more insightful in the moment. ([UT Austin Computer Science][26])
+A repeating pattern in AI history is that approaches which "bake in" human knowledge and reasoning tricks often deliver quick wins, but are eventually outpaced by more general methods that can absorb more compute and data. Sutton's *The Bitter Lesson* distilled this from decades of results across search and learning: progress tends to come from methods that scale (and from the discipline to keep systems simple enough to scale), even when the "hand-designed" approach feels more insightful in the moment. ([Incomplete Ideas][26])
 
 Modern LLM agents reintroduce an old temptation in a new form: over-fitting behavior through elaborate prompting, brittle heuristics, or highly bespoke orchestration. The best current practice is to resist that temptation by investing in (1) strong interfaces (tools, schemas, contracts), (2) evaluation-driven iteration, and (3) designs that keep the model doing what it's good at (flexible reasoning under uncertainty) while pushing deterministic work into code.
 
@@ -58,4 +58,4 @@ Modern LLM agents reintroduce an old temptation in a new form: over-fitting beha
 [10]: https://arxiv.org/abs/2210.03629
 [11]: https://dl.acm.org/doi/10.1145/361598.361623
 [12]: https://martinfowler.com/articles/microservices.html
-[26]: https://www.cs.utexas.edu/~eunsol/courses/data/bitter_lesson.pdf
+[26]: https://www.incompleteideas.net/IncIdeas/BitterLesson.html

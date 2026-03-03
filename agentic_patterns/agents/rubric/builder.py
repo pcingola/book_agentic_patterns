@@ -383,7 +383,7 @@ class RubricBuilder:
         doc IDs under incremental/{content_hash}/.
         """
         if ckpt_dir is None:
-            doc_ids = sorted(index.collection.get()["ids"])
+            doc_ids = sorted(index.get_all_ids())
             scope = hashlib.md5("|".join(doc_ids).encode()).hexdigest()[:8]
             base = self._get_checkpoint_dir(rubric.rubric_id)
             ckpt_dir = base / "incremental" / scope
@@ -460,10 +460,8 @@ class RubricBuilder:
         """
         ckpt_path = ckpt_dir / _EXTRACTION_CKPT
 
-        collection_name = index.collection.name
-        all_docs = index.collection.get(include=["documents"])
-        ids: list[str] = all_docs.get("ids", [])
-        texts: list[str] = all_docs.get("documents", []) or []
+        collection_name = index.name
+        ids, texts = index.get_all_documents()
 
         # Load checkpoint if one exists.
         done: dict[str, list[dict]] = {}
@@ -734,6 +732,11 @@ class RubricBuilder:
         """Convert pool items into RubricItems via a tool-calling agent."""
         import chromadb
 
+        from agentic_patterns.core.vectordb.vectordb_chroma import (
+            PydanticAIEmbeddingFunction,
+            VectorDBChroma,
+        )
+
         rubric_name = rubric.name
         rubric_id = rubric.rubric_id
 
@@ -772,15 +775,17 @@ class RubricBuilder:
             client.delete_collection("rubric_synthesis")
         except Exception:
             pass
-        collection = client.create_collection("rubric_synthesis")
+        ef = PydanticAIEmbeddingFunction()
+        collection = client.create_collection("rubric_synthesis", embedding_function=ef)
+        synthesis_vdb = VectorDBChroma(collection, ef._embedder, client=client, ef=ef)
 
         if items:
             embs = await embed_texts(
                 [i.requirement_text for i in items], self._embedder
             )
-            collection.add(
+            synthesis_vdb.add_with_embeddings(
+                texts=[i.requirement_text for i in items],
                 ids=[i.item_id for i in items],
-                documents=[i.requirement_text for i in items],
                 embeddings=embs,
                 metadatas=[{"title": i.title} for i in items],
             )
@@ -801,7 +806,7 @@ class RubricBuilder:
             )
 
         # ------------------------------------------------------------------
-        # Tools -- closures over `items` and `collection`.
+        # Tools -- closures over `items` and `synthesis_vdb`.
         # ------------------------------------------------------------------
 
         async def rubric_find_similar_items(text: str, top_k: int = 5) -> list[dict]:
@@ -810,24 +815,15 @@ class RubricBuilder:
                 return []
             emb = await embed_text(text, self._embedder)
             n = min(top_k, len(items))
-            res = collection.query(
-                query_embeddings=[emb],
-                n_results=n,
-                include=["documents", "metadatas", "distances"],
-            )
+            docs = synthesis_vdb.query_by_embedding(emb, max_items=n)
             return [
                 {
-                    "item_id": iid,
-                    "title": meta.get("title", ""),
-                    "requirement_text": doc,
-                    "score": round(1.0 - dist, 4),
+                    "item_id": d.doc_id,
+                    "title": d.metadata.get("title", ""),
+                    "requirement_text": d.text,
+                    "score": round(d.score, 4),
                 }
-                for iid, meta, doc, dist in zip(
-                    res["ids"][0],
-                    res["metadatas"][0],
-                    res["documents"][0],
-                    res["distances"][0],
-                )
+                for d in docs
             ]
 
         async def rubric_add_item(
@@ -852,9 +848,9 @@ class RubricBuilder:
             )
             items.append(item)
             emb = await embed_text(requirement_text, self._embedder)
-            collection.add(
+            synthesis_vdb.add_with_embeddings(
+                texts=[requirement_text],
                 ids=[item_id],
-                documents=[requirement_text],
                 embeddings=[emb],
                 metadatas=[{"title": title}],
             )

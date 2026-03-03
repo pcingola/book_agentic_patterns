@@ -12,30 +12,31 @@ Similarly, simple retrieval assumes the user's query directly matches how inform
 
 The ingestion notebook (`example_RAG_02_load.ipynb`) replaces naive paragraph splitting with an LLM that identifies semantic boundaries.
 
-#### Chunking with chunk_with_llm
+#### Chunking with ChunkerLLM
 
-The `chunk_with_llm` function in `agents/rag/chunking.py` handles the full ingestion pipeline: batching the text, prompting the LLM to identify topic boundaries, and managing the leftover strategy across batch edges.
+`ChunkerLLM` in `agents/rag/chunker_llm.py` handles the full ingestion pipeline: batching the text, prompting the LLM to identify topic boundaries, and managing the leftover strategy across batch edges.
 
 ```python
 from agentic_patterns.core.doc_ingestion.models import DocumentProvenance
-from agentic_patterns.agents.rag.chunking import chunk_with_llm
+from agentic_patterns.agents.rag.chunker_llm import ChunkerLLM
 from agentic_patterns.core.vectordb import get_vector_db
 
 vdb = get_vector_db('books_semantic')
+chunker = ChunkerLLM()
 
 for txt_file in DOCS_DIR.glob('*.txt'):
     text = txt_file.read_text()
     provenance = DocumentProvenance(original_file=txt_file, source=txt_file.stem)
-    chunks = await chunk_with_llm(text, provenance, batch_size=15000)
+    chunks = await chunker.achunk(text, provenance)
     added = vdb.ingest(chunks, force=False)
     print(f"{txt_file.name}: {added} semantic chunks added")
 ```
 
-`chunk_with_llm` splits the text into batches at paragraph boundaries so that no single batch exceeds the LLM's practical context limit. It prompts the LLM to identify where topics or scenes change within each batch, returning a list of coherent text segments. Each chunk comes back at `ChunkLevel.SECTION` — one level coarser than the paragraph-level chunks produced by `chunk_by_paragraphs`.
+`ChunkerLLM` splits the text into batches at paragraph boundaries so that no single batch exceeds the LLM's practical context limit. It prompts the LLM to identify where topics or scenes change within each batch, returning a list of coherent text segments. Each chunk comes back at `ChunkLevel.SECTION` -- one level coarser than the paragraph-level chunks produced by `ChunkerParagraph`. Because the LLM call is inherently async, `ChunkerLLM` overrides `achunk()` and raises in the sync `chunk()` method.
 
 #### Handling Incomplete Chunks Across Batches
 
-The key challenge with batching is that a semantic unit might straddle a batch boundary. `chunk_with_llm` addresses this with a leftover strategy: the last chunk of each batch is treated as potentially incomplete and is prepended to the next batch. The LLM then sees that fragment with sufficient following context to determine where the topic actually ends.
+The key challenge with batching is that a semantic unit might straddle a batch boundary. `ChunkerLLM` addresses this with a leftover strategy: the last chunk of each batch is treated as potentially incomplete and is prepended to the next batch. The LLM then sees that fragment with sufficient following context to determine where the topic actually ends.
 
 This approach maintains coherence across arbitrary batch boundaries without requiring the LLM to see the entire document at once. The prompt instructs the LLM to place potentially incomplete content last, which makes the detection reliable: the final element of each batch response is always the candidate for continuation.
 
@@ -43,7 +44,7 @@ This approach maintains coherence across arbitrary batch boundaries without requ
 
 Unlike heuristic approaches that count characters or split on punctuation, the LLM understands when a scene changes or a new concept begins. Two ideas that happen to share a paragraph boundary will be separated; a single paragraph that covers two distinct topics will be split. The resulting chunks are more semantically self-contained, which directly improves retrieval precision because each embedding represents one coherent idea.
 
-The trade-off is cost and latency. LLM chunking requires one or more API calls per document at ingestion time. For small corpora this is acceptable; for very large corpora, the markdown-aware `chunk_by_markdown` chunker provides a cheaper approximation that still respects heading structure.
+The trade-off is cost and latency. LLM chunking requires one or more API calls per document at ingestion time. For small corpora this is acceptable; for very large corpora, `ChunkerMarkdown` provides a cheaper approximation that still respects heading structure.
 
 ### Part 2: Advanced Retrieval
 
@@ -134,4 +135,4 @@ For small corpora with well-structured documents, simple paragraph chunking and 
 
 ### Connection to the Chapter
 
-The techniques demonstrated here correspond to concepts from the chapter sections on document ingestion and retrieval. `chunk_with_llm` implements the topic-aware segmentation described in the ingestion section. `expand_query`, metadata filtering, and score-based re-ranking implement stages of the retrieval pipeline described in the retrieval section. The code makes these abstract concepts concrete and runnable.
+The techniques demonstrated here correspond to concepts from the chapter sections on document ingestion and retrieval. `ChunkerLLM` implements the topic-aware segmentation described in the ingestion section. `expand_query`, metadata filtering, and score-based re-ranking implement stages of the retrieval pipeline described in the retrieval section. The code makes these abstract concepts concrete and runnable.

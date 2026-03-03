@@ -156,100 +156,16 @@ Approach C was pruned after evaluation. Approaches A and B were expanded. Final 
 
 This tree structure is managed explicitly through prompt engineering. Unlike Chain-of-Thought, where reasoning is implicit, Tree of Thought requires explicit instructions to generate branches, evaluate them, and decide which to expand.
 
-### When Tree of Thought Helps
-
-Tree of Thought is most valuable for problems where:
-
-**Multiple valid solutions exist**: Design problems, algorithmic choices, architectural decisions. If there's only one correct answer, exploration adds no value.
-
-**Early commitment is risky**: Problems where the first approach that comes to mind may have hidden flaws. Tree of Thought prevents "sunk cost fallacy" in reasoning.
-
-**Trade-offs matter**: When solutions have competing strengths (accuracy vs speed, simplicity vs flexibility). Explicit evaluation surfaces these trade-offs.
-
-**Solution quality justifies cost**: Tree of Thought uses multiple agent turns. If the problem is trivial or stakes are low, this overhead isn't justified.
-
-**Evaluation is possible**: You need criteria to score approaches. If you can't define what "good" means, evaluation becomes subjective and unreliable.
-
-Tree of Thought is less valuable for problems with obvious solutions, tasks requiring retrieval rather than reasoning, or situations where any working solution is acceptable.
-
-### Implementation Patterns
-
-When implementing Tree of Thought in production systems, consider these patterns:
+### Implementation Tips
 
 **Define explicit evaluation criteria**: Don't ask "which is better?" Ask "rate on accuracy (1-5), performance (1-5), complexity (1-5)." Concrete criteria produce consistent evaluations.
 
-**Control branching width and depth**: Generating 3 branches with 2 levels of depth (like our example) is manageable. Generating 10 branches with 5 levels becomes expensive quickly. Choose branching parameters based on problem complexity and budget.
-
-**Use message history to maintain context**: Each turn builds on previous turns. The `nodes_to_message_history` function converts agent execution nodes into conversation context, allowing the model to reference earlier branches when evaluating or expanding.
-
-```python
-message_history = nodes_to_message_history(previous_nodes)
-next_run, next_nodes = await run_agent(agent, next_prompt, message_history=message_history)
-```
+**Control branching width and depth**: Generating 3 branches with 2 levels of depth (like our example) is manageable. Generating 10 branches with 5 levels becomes expensive quickly.
 
 **Prune strategically**: Pruning saves computation but may discard good ideas. In our example, we kept the top 2 of 3 approaches (67% retention). For critical decisions, consider keeping more branches or using multiple pruning stages.
 
-**Progressive detail**: Generate high-level ideas first, evaluate, then add detail only to promising branches. This is more efficient than generating detailed proposals for every branch upfront.
-
 **Structured prompts**: Each phase (generate, evaluate, expand, select) uses a carefully structured prompt that tells the model exactly what to produce. Loose prompts lead to inconsistent outputs that break downstream phases.
-
-### Comparison to Chain-of-Thought
-
-Chain-of-Thought and Tree of Thought serve different purposes:
-
-**Chain-of-Thought** generates a single reasoning trace from problem to solution. It's linear, transparent, and suitable for problems with clear reasoning paths (arithmetic, logic, constraint satisfaction).
-
-**Tree of Thought** generates multiple reasoning traces, evaluates them, and selectively expands promising ones. It's branching, comparative, and suitable for problems with multiple solution approaches.
-
-Chain-of-Thought asks: "Show your work step by step."
-Tree of Thought asks: "Consider multiple approaches, evaluate each, and choose the best."
-
-Chain-of-Thought is cheaper (one agent turn) and simpler to implement. Tree of Thought is more expensive (multiple turns) but explores the solution space more thoroughly.
-
-For problems where the solution path is known, use Chain-of-Thought. For problems where choosing the right approach is critical, use Tree of Thought.
-
-### Trade-offs and Limitations
-
-Tree of Thought introduces several trade-offs:
-
-**High token usage**: Multiple branches mean multiple agent turns. Our example used 4 turns with 3 approaches evaluated. This is 3-4x more expensive than linear reasoning.
-
-**Increased latency**: Sequential agent turns cannot be parallelized easily (each depends on previous context). The example takes 4x as long as a single Chain-of-Thought turn.
-
-**Evaluation quality matters**: If evaluation criteria are poorly chosen, the model may prune good approaches and expand weak ones. Garbage in, garbage out applies to Tree of Thought evaluation.
-
-**Not a guarantee of optimality**: Tree of Thought explores more of the solution space than linear reasoning, but doesn't exhaustively search it. The best solution might lie in a pruned branch or an approach never generated.
-
-**Prompt engineering complexity**: Implementing Tree of Thought requires carefully structured prompts for each phase. Small mistakes in prompt wording can cause phases to produce incompatible outputs.
-
-**Overkill for simple problems**: If the solution is obvious or the problem is trivial, Tree of Thought wastes computation. Use it when solution quality justifies the cost.
-
-Despite these limitations, Tree of Thought is valuable for high-stakes design decisions, architectural choices, and problems where early commitment to a suboptimal approach is costly.
-
-### How It Connects to Other Patterns
-
-Tree of Thought builds on and combines with other patterns:
-
-**Chain-of-Thought**: Tree of Thought is "multiple Chain-of-Thought paths in parallel." Each branch follows Chain-of-Thought-style reasoning, but we explore multiple chains simultaneously.
-
-**Self-Reflection**: Evaluation is a form of self-reflection. The model critiques its own proposals based on explicit criteria. Tree of Thought formalizes this reflection into structured comparison.
-
-**Verification**: Detailed expansion allows verification of claims made during initial generation. If an approach claims "fast performance," the detailed implementation can verify this with concrete data structures and algorithms.
-
-**Planning and Decomposition**: The progressive detail pattern (generate high-level, evaluate, expand detail) is a form of hierarchical planning. We decompose the problem into "choose approach" then "design implementation."
-
-**Best-of-N Sampling**: Tree of Thought can be viewed as structured best-of-N. Instead of generating N complete solutions and picking the best, we generate N partial solutions, evaluate early, and invest detail only in promising candidates.
-
-Advanced patterns build on Tree of Thought by adding search algorithms (breadth-first, depth-first, Monte Carlo Tree Search), value functions (learned evaluation instead of prompted evaluation), or external verifiers (unit tests, formal verification).
 
 ### Key Takeaways
 
-Tree of Thought structures reasoning as deliberate exploration of multiple solution paths. Instead of committing to the first approach, it generates alternatives, evaluates them, and selectively expands the most promising ones.
-
-The pattern requires four phases: generation (create multiple approaches), evaluation (score each on criteria), expansion (develop detail for top candidates), and selection (choose the best based on detailed analysis).
-
-Tree of Thought is most valuable for design problems with multiple valid solutions, where early commitment is risky and trade-offs matter. It's less valuable for problems with obvious solutions or when computation cost outweighs solution quality.
-
-Implementation requires careful prompt engineering for each phase, management of message history to maintain tree structure, and strategic pruning to balance exploration breadth with computation cost.
-
-Tree of Thought uses significantly more tokens and time than linear reasoning but produces better solutions for complex problems by preventing premature commitment to suboptimal approaches. Use it when solution quality justifies the cost.
+Tree of Thought requires four phases: generation, evaluation, expansion, and selection. Our example used 4 agent turns with 3 initial branches -- roughly 3-4x the token cost and latency of linear Chain-of-Thought reasoning. This cost is justified for high-stakes design decisions where early commitment to a suboptimal approach is expensive to reverse. For problems with obvious solutions or low stakes, linear reasoning suffices.

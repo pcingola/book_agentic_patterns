@@ -179,7 +179,7 @@ The configuration module (`agentic_patterns.core.config`) handles environment lo
 
 ### Environment loading
 
-At import time, `config.py` calls `load_env_variables()` which searches for a `.env` file in multiple locations: the current working directory and its parents, the project root (determined by the main script's location), and the config file's own directory. The first `.env` found wins. If no `.env` file exists, the process exits with code 1.
+At import time, `config.py` calls `load_env_variables()` which searches for a `.env` file in multiple locations: the current working directory and its parents, the project root (determined by the main script's location), and the config file's own directory. The first `.env` found wins. If no `.env` file exists, loading is silently skipped -- this allows the library to work as an installed package in projects that do not use `.env` files.
 
 ```python
 from agentic_patterns.core.config.env import get_variable_env
@@ -193,12 +193,13 @@ db_url = get_variable_env("DATABASE_URL", allow_empty=False)
 
 ### Path constants
 
-All paths are `Path` objects. Most can be overridden via environment variables; otherwise they resolve relative to `MAIN_PROJECT_DIR` (the parent directory of the found `.env` file).
+All paths are `Path` objects. Most can be overridden via environment variables; otherwise they resolve relative to `MAIN_PROJECT_DIR`.
+
+`MAIN_PROJECT_DIR` is resolved by `find_project_root()` with this priority: (1) `MAIN_PROJECT_DIR` environment variable if set, (2) the nearest ancestor of the current working directory or main script directory that contains a `config.yaml`, (3) the current working directory as fallback.
 
 | Constant | Env override | Default |
 |---|---|---|
-| `AGENTIC_PATTERNS_PROJECT_DIR` | -- | The `agentic_patterns/` package directory |
-| `MAIN_PROJECT_DIR` | -- | Parent of the `.env` file |
+| `MAIN_PROJECT_DIR` | `MAIN_PROJECT_DIR` | Nearest directory containing `config.yaml`, or cwd |
 | `SCRIPTS_DIR` | -- | `MAIN_PROJECT_DIR / "scripts"` |
 | `DATA_DIR` | `DATA_DIR` | `MAIN_PROJECT_DIR / "data"` |
 | `DATA_DB_DIR` | `DATA_DB_DIR` | `DATA_DIR / "db"` |

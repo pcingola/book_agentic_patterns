@@ -3,17 +3,11 @@ from pathlib import Path
 import yaml
 
 from agentic_patterns.core.config.env import get_variable_env, load_env_variables
+from agentic_patterns.core.config.utils import find_project_root
 
+load_env_variables()
 
-FILE_PATH = Path(__file__).resolve()
-AGENTIC_PATTERNS_PROJECT_DIR = FILE_PATH.parent.parent.parent.resolve()
-
-env_file = load_env_variables()
-
-# Assign project dir based on the .env file
-# Note: When this is used as a package within another project the '.env' file will be in that
-# other project's directory, so MAIN_PROJECT_DIR will be that other project.
-MAIN_PROJECT_DIR = Path(env_file).parent
+MAIN_PROJECT_DIR = find_project_root()
 
 # Directories
 SCRIPTS_DIR = MAIN_PROJECT_DIR / "scripts"

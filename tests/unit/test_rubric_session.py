@@ -87,9 +87,7 @@ class TestRubricSession(unittest.IsolatedAsyncioTestCase):
         pool = _make_pool_items(3)
 
         mock_index = AsyncMock()
-        mock_index.collection = type(
-            "C", (), {"get": lambda self_=None: {"ids": ["d1", "d2"]}}
-        )()
+        mock_index.get_all_ids = lambda: ["d1", "d2"]
 
         with (
             patch.object(session, "_create_temp_index", return_value=mock_index),
@@ -124,9 +122,7 @@ class TestRubricSession(unittest.IsolatedAsyncioTestCase):
         result_rubric = Rubric(rubric_id=session._rubric_id, name="test", items=items)
 
         mock_index = AsyncMock()
-        mock_index.collection = type(
-            "C", (), {"get": lambda self_=None: {"ids": ["e1"]}}
-        )()
+        mock_index.get_all_ids = lambda: ["e1"]
 
         with (
             patch.object(session, "_create_temp_index", return_value=mock_index),
@@ -171,20 +167,12 @@ class TestRubricSession(unittest.IsolatedAsyncioTestCase):
         mock_index_a = type(
             "I",
             (),
-            {
-                "collection": type(
-                    "C", (), {"get": lambda self_=None: {"ids": ["a1", "a2"]}}
-                )()
-            },
+            {"get_all_ids": lambda self_=None: ["a1", "a2"]},
         )()
         mock_index_b = type(
             "I",
             (),
-            {
-                "collection": type(
-                    "C", (), {"get": lambda self_=None: {"ids": ["b1", "b2"]}}
-                )()
-            },
+            {"get_all_ids": lambda self_=None: ["b1", "b2"]},
         )()
 
         with (

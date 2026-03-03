@@ -158,10 +158,10 @@ class StrategyRag:
         return result
 
     def roots(self) -> list[VocabularyTerm]:
-        all_results = self._vdb.collection.get(include=["metadatas"])
+        ids, metadatas = self._vdb.get_all_metadatas()
         return [
             _meta_to_term(doc_id, meta)
-            for doc_id, meta in zip(all_results["ids"], all_results["metadatas"])
+            for doc_id, meta in zip(ids, metadatas)
             if not json.loads(meta.get("parents", "[]"))
         ]
 

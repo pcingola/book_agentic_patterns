@@ -1,3 +1,7 @@
+from agentic_patterns.core.vectordb.chunker import Chunker
+from agentic_patterns.core.vectordb.chunker_markdown import ChunkerMarkdown
+from agentic_patterns.core.vectordb.chunker_paragraph import ChunkerParagraph
+from agentic_patterns.core.vectordb.chunker_smart import ChunkerSmart
 from agentic_patterns.core.vectordb.config import (
     EmbeddingConfig,
     VectorDBConfig,
@@ -18,10 +22,15 @@ from agentic_patterns.core.vectordb.models import (
 )
 from agentic_patterns.core.vectordb.multi_source import MultiSourceRetriever
 from agentic_patterns.core.vectordb.vectordb import VectorDB, get_vector_db
+from agentic_patterns.core.vectordb.vectordb_chroma import VectorDBChroma
 
 __all__ = [
     "Chunk",
     "ChunkLevel",
+    "Chunker",
+    "ChunkerMarkdown",
+    "ChunkerParagraph",
+    "ChunkerSmart",
     "Cluster",
     "ClusterItem",
     "ClusterResult",
@@ -29,6 +38,7 @@ __all__ = [
     "MultiSourceRetriever",
     "RetrievedDocument",
     "VectorDB",
+    "VectorDBChroma",
     "VectorDBConfig",
     "embed_text",
     "embed_texts",

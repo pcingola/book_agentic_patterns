@@ -280,19 +280,7 @@ Managing this loop manually involves significant complexity: parsing tool calls,
 
 ### Provider-Specific Variations
 
-While the OpenAI format is standard, providers implement subtle differences:
-
-**Anthropic Claude**: Uses the same message structure but has different parameter names. `max_tokens` is required (no default). System messages can be passed as a separate `system` parameter instead of a message. Tool calling uses a slightly different format in older versions but now aligns with OpenAI's standard.
-
-**Google Gemini**: Calls roles `user` and `model` instead of `user` and `assistant`. System instructions are passed differently. Tool definitions use a similar but not identical schema.
-
-**Azure OpenAI**: Identical to OpenAI but requires different authentication (API key in header vs. Azure AD token). Endpoint URLs include deployment names.
-
-**AWS Bedrock**: Wraps provider-specific formats in a unified "Converse API" that's OpenAI-compatible. Legacy formats for Claude, Llama, and others differ significantly.
-
-**Ollama**: OpenAI-compatible for local models. Adds options for controlling model loading behavior and resource allocation.
-
-Frameworks like Pydantic-ai normalize these differences. You configure the provider once; the framework handles format translation automatically.
+While the OpenAI format is the de-facto standard, providers implement subtle differences: Anthropic requires `max_tokens` and passes system messages differently; Google Gemini uses `model` instead of `assistant` as a role name; Azure OpenAI uses different authentication; AWS Bedrock wraps formats in a unified "Converse API." Frameworks like Pydantic-ai normalize these differences -- you configure the provider once and the framework handles format translation automatically.
 
 ### Cost Implications
 
@@ -439,75 +427,7 @@ While frameworks handle these details, understanding the underlying API helps yo
 
 ### Practical Example: Manual vs Framework
 
-Here's a simple weather agent implemented both ways.
-
-#### Manual Implementation (100+ lines):
-
-```python
-import httpx
-import json
-
-async def run_weather_agent(user_prompt: str) -> str:
-    api_key = "your-api-key"
-    url = "https://api.openai.com/v1/chat/completions"
-    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
-
-    messages = [
-        {"role": "system", "content": "You are a helpful weather assistant."},
-        {"role": "user", "content": user_prompt}
-    ]
-
-    tools = [{
-        "type": "function",
-        "function": {
-            "name": "get_weather",
-            "description": "Get current weather for a location",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "location": {"type": "string", "description": "City name"}
-                },
-                "required": ["location"]
-            }
-        }
-    }]
-
-    async with httpx.AsyncClient() as client:
-        while True:
-            payload = {"model": "gpt-4o", "messages": messages, "tools": tools}
-            response = await client.post(url, json=payload, headers=headers)
-            data = response.json()
-
-            message = data["choices"][0]["message"]
-            finish_reason = data["choices"][0]["finish_reason"]
-
-            if finish_reason == "tool_calls":
-                messages.append(message)
-
-                for tool_call in message["tool_calls"]:
-                    function_name = tool_call["function"]["name"]
-                    arguments = json.loads(tool_call["function"]["arguments"])
-
-                    if function_name == "get_weather":
-                        result = get_weather_impl(arguments["location"])
-                        tool_message = {
-                            "role": "tool",
-                            "tool_call_id": tool_call["id"],
-                            "content": json.dumps(result)
-                        }
-                        messages.append(tool_message)
-
-            elif finish_reason == "stop":
-                return message["content"]
-
-            else:
-                raise Exception(f"Unexpected finish_reason: {finish_reason}")
-
-def get_weather_impl(location: str) -> dict:
-    return {"temperature": 18, "condition": "sunny"}
-```
-
-#### Framework Implementation (10 lines):
+A manual implementation of a simple weather agent with tool calling requires 100+ lines: building the messages array, defining tool schemas as JSON, writing the HTTP request loop, parsing tool calls, dispatching to functions, appending tool results, and looping until `finish_reason` is `stop`. With a framework, the same agent is about 10 lines:
 
 ```python
 from pydantic_ai import Agent
@@ -523,7 +443,7 @@ result = await agent.run("What's the weather in Paris?")
 print(result.output)
 ```
 
-Both implementations produce identical API interactions. The framework version eliminates boilerplate while providing better error handling, type safety, and maintainability.
+Both produce identical API interactions. The framework eliminates boilerplate while providing better error handling, type safety, and maintainability.
 
 ### Key Takeaways
 

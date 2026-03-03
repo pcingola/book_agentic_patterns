@@ -26,32 +26,36 @@ The `get_vector_db` function handles database initialization and configuration. 
 
 #### Chunking Strategy
 
-`chunk_by_paragraphs` splits a document at blank lines and filters out blocks that are too short:
+`ChunkerParagraph` splits a document at blank lines and filters out blocks that are too short:
 
 ```python
 from pathlib import Path
-from agentic_patterns.core.vectordb.chunking import chunk_by_paragraphs
+from agentic_patterns.core.vectordb import ChunkerParagraph
 from agentic_patterns.core.doc_ingestion.models import DocumentProvenance
 
 txt_file = Path("data/books/hhgttg.txt")
 text = txt_file.read_text()
 provenance = DocumentProvenance(original_file=txt_file, source=txt_file.stem)
-chunks = chunk_by_paragraphs(text, provenance, min_lines=3)
+chunker = ChunkerParagraph(min_lines=3)
+chunks = chunker.chunk(text, provenance)
 ```
 
 This is the simplest useful chunking strategy: split on double newlines (paragraph boundaries) and discard blocks shorter than `min_lines`. Each `Chunk` object carries a unique `doc_id` derived from the filename and paragraph position, a `level` of `ChunkLevel.PARAGRAPH`, and a `metadata` dict containing the provenance fields. The provenance captures the source filename so that retrieved passages can be traced back to their origin.
 
 The `min_lines` filter removes trivial blocks like chapter headings or blank sections. Without it, the vector database fills with short, semantically weak chunks that add noise to retrieval results.
 
+All chunkers implement the `Chunker` ABC, which defines a single `chunk(text, provenance)` method (plus an async `achunk` variant). The library provides several built-in chunkers: `ChunkerParagraph` for simple paragraph splitting, `ChunkerMarkdown` for heading-aware splitting, `ChunkerSmart` which auto-selects a strategy based on document size and structure, and `ChunkerLLM` for LLM-based semantic chunking.
+
 #### Loading Documents
 
 `vdb.ingest` stores the chunks as embeddings in the vector database:
 
 ```python
+chunker = ChunkerParagraph(min_lines=3)
 for txt_file in DOCS_DIR.glob('*.txt'):
     text = txt_file.read_text()
     provenance = DocumentProvenance(original_file=txt_file, source=txt_file.stem)
-    chunks = chunk_by_paragraphs(text, provenance, min_lines=3)
+    chunks = chunker.chunk(text, provenance)
     added = vdb.ingest(chunks, force=False)
     print(f"{txt_file.name}: {added} chunks added")
 ```

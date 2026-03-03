@@ -9,9 +9,6 @@ if [ -f "${PROJECT_DIR}/.env" ]; then
     set -a
     source "${PROJECT_DIR}/.env"
     set +a
-else
-    echo "Error: .env file not found at ${PROJECT_DIR}/.env"
-    exit 1
 fi
 
 # Check for virtual environment

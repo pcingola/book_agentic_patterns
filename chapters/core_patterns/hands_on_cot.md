@@ -31,11 +31,9 @@ Final Answer: [answer]"""
 
 By requiring explicit steps, we force the model to allocate generation capacity to reasoning rather than compressing everything into an opaque prediction.
 
-### Example 1: Direct Answer vs Chain-of-Thought
+### Example 1: Direct Answer (No Reasoning)
 
-Let's examine the difference between direct answering and Chain-of-Thought.
-
-#### Direct Answer
+A word problem requiring multi-step reasoning. Without explicit instructions to show work, the model may skip steps or make errors.
 
 ```python
 from agentic_patterns.core.agents import get_agent, run_agent
@@ -55,7 +53,9 @@ print(agent_run.result.output)
 
 The model produces an answer, but we cannot see how it arrived at that answer. If the answer is wrong, we cannot identify where the reasoning failed. Even if correct, we don't know if the model truly understood the problem or got lucky.
 
-#### Chain-of-Thought Answer
+### Example 2: Chain-of-Thought Reasoning
+
+Same problem, but prompting the model to think step by step. This increases accuracy and provides transparency into the reasoning process.
 
 ```python
 system_prompt = """Solve the problem step by step. Show your reasoning for each step before providing the final answer.
@@ -79,7 +79,7 @@ print(agent_run.result.output)
 
 Now we can see the reasoning. The model explicitly calculated the number of boxes before calculating revenue. If the answer were wrong, we could identify which step failed. This transparency is valuable for debugging and verification.
 
-### Example 2: Zero-Shot Chain-of-Thought
+### Example 3: Zero-Shot Chain-of-Thought
 
 The simplest form of Chain-of-Thought is "zero-shot CoT," introduced by Kojima et al. in 2022. You don't need to specify a format or provide examples. Just add the phrase "Think step by step" to your prompt:
 
@@ -97,7 +97,7 @@ This remarkably simple technique often produces comparable results to structured
 
 Zero-shot CoT works because large language models have been trained on vast amounts of text containing step-by-step explanations. The phrase "Think step by step" activates this pattern in the model's learned representations, causing it to generate similar step-by-step structures.
 
-### Example 3: Logical Reasoning
+### Example 4: More Complex Reasoning
 
 Chain-of-Thought is not limited to arithmetic. It improves performance on any task requiring sequential reasoning or constraint satisfaction. Consider this logic puzzle:
 

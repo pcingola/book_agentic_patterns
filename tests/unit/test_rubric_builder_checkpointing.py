@@ -43,13 +43,11 @@ def _make_rubric_items(n: int) -> list[RubricItem]:
 
 def _mock_index(doc_ids: list[str]):
     """Create a mock index with given doc_ids and texts."""
+    texts = [f"text for {d}" for d in doc_ids]
     mock = type("MockIndex", (), {})()
-    mock.collection = type("MockCollection", (), {})()
-    mock.collection.name = "test_collection"
-    mock.collection.get = lambda include=None: {
-        "ids": doc_ids,
-        "documents": [f"text for {d}" for d in doc_ids],
-    }
+    mock.name = "test_collection"
+    mock.get_all_ids = lambda: list(doc_ids)
+    mock.get_all_documents = lambda: (list(doc_ids), list(texts))
     return mock
 
 

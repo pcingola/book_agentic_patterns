@@ -128,12 +128,7 @@ def _embed_chunks(chunks: list[Chunk], embedder) -> tuple[list, list, list, list
 
 
 def _fetch_collection(vdb: "VectorDB") -> tuple[list, list, list, list]:
-    result = vdb.collection.get(include=["embeddings", "documents", "metadatas"])
-    ids = result.get("ids", [])
-    texts = result.get("documents", []) or [""] * len(ids)
-    metadatas = result.get("metadatas", []) or [{}] * len(ids)
-    embeddings = result.get("embeddings", [])
-    return ids, texts, metadatas, embeddings
+    return vdb.get_all_with_embeddings()
 
 
 def _build_result(

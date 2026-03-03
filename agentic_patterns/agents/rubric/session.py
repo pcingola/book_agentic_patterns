@@ -15,8 +15,6 @@ import hashlib
 import tempfile
 from pathlib import Path
 
-import chromadb
-
 from agentic_patterns.agents.rubric.builder import (
     RubricBuilder,
     _CheckpointStatus,
@@ -27,11 +25,9 @@ from agentic_patterns.agents.rubric.builder import (
 from agentic_patterns.agents.rubric.listener import RubricListener
 from agentic_patterns.agents.rubric.models import PoolItem, Rubric
 from agentic_patterns.core.doc_ingestion.models import DocumentProvenance
-from agentic_patterns.core.vectordb.chunking import chunk_by_paragraphs
-from agentic_patterns.core.vectordb.vectordb import (
-    PydanticAIEmbeddingFunction,
-    VectorDB,
-)
+from agentic_patterns.core.vectordb.chunker import Chunker
+from agentic_patterns.core.vectordb.chunker_paragraph import ChunkerParagraph
+from agentic_patterns.core.vectordb.vectordb import VectorDB
 
 
 class RubricSession:
@@ -46,11 +42,13 @@ class RubricSession:
         name: str,
         rubric_id: str | None = None,
         listener: RubricListener | None = None,
+        chunker: Chunker | None = None,
         **builder_kwargs,
     ) -> None:
         self._name = name
         self._rubric_id = rubric_id or hashlib.md5(name.encode()).hexdigest()[:8]
         self._listener = listener or RubricListener()
+        self._chunker = chunker or ChunkerParagraph(min_lines=1)
         self._builder = RubricBuilder(listener=self._listener, **builder_kwargs)
         self._rubric = self._load_latest_rubric()
 
@@ -71,7 +69,7 @@ class RubricSession:
         """Incremental build from a pre-built VectorDB index."""
         from agentic_patterns.agents.rubric.builder import _SYNTHESIS_CKPT
 
-        doc_ids = sorted(index.collection.get()["ids"])
+        doc_ids = sorted(index.get_all_ids())
         scope = hashlib.md5("|".join(doc_ids).encode()).hexdigest()[:8]
         base = self._builder._get_checkpoint_dir(self._rubric_id)
 
@@ -124,7 +122,7 @@ class RubricSession:
     async def extract(self, text: str, source: str) -> None:
         """Extract requirements from text. Checkpointed, skipped if already done."""
         index = self._create_temp_index(text, source)
-        doc_ids = sorted(index.collection.get()["ids"])
+        doc_ids = sorted(index.get_all_ids())
         scope = hashlib.md5("|".join(doc_ids).encode()).hexdigest()[:8]
         base = self._builder._get_checkpoint_dir(self._rubric_id)
         extract_dir = base / "extractions" / scope
@@ -155,16 +153,21 @@ class RubricSession:
 
     def _create_temp_index(self, text: str, source: str) -> VectorDB:
         """Chunk text and ingest into a temporary Chroma index."""
-        chunks = chunk_by_paragraphs(
-            text, DocumentProvenance(source=source), min_lines=1
+        import chromadb
+
+        from agentic_patterns.core.vectordb.vectordb_chroma import (
+            PydanticAIEmbeddingFunction,
+            VectorDBChroma,
         )
+
+        chunks = self._chunker.chunk(text, DocumentProvenance(source=source))
         tmp_dir = tempfile.mkdtemp(prefix="rubric_idx_")
         client = chromadb.PersistentClient(path=tmp_dir)
         ef = PydanticAIEmbeddingFunction()
         collection = client.get_or_create_collection(
             name=f"rubric_{source}", embedding_function=ef
         )
-        index = VectorDB(collection, ef._embedder, client=client, ef=ef)
+        index = VectorDBChroma(collection, ef._embedder, client=client, ef=ef)
         index.ingest(chunks)
         return index
 

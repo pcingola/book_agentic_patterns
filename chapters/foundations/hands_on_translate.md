@@ -6,47 +6,13 @@ This section explores two different approaches to prompting language models usin
 
 There are fundamentally two ways to give instructions to a language model:
 
-**Single prompt approach**: Combine instructions and content in one message. Example: "Translate to French: I like coffee."
+**Single prompt approach**: Combine instructions and content in one message. This is what we did in the previous section with `example_translate_basic.ipynb`, where the prompt was `"Translate to French: I like coffee."` The model receives a single user message containing both the instruction and the content.
 
 **Separated prompt approach**: Put instructions in a system prompt and content in a user prompt. System prompt: "Translate into French". User prompt: "I like coffee."
 
-Both approaches produce the same output, but they differ in reusability, maintainability, and how the model processes the instructions.
+Both approaches produce the same output, but they differ in reusability, maintainability, and how the model processes the instructions. The single prompt approach works fine for one-off tasks, but the instruction is repeated in every prompt and harder to maintain if you want to change the target language or instruction style.
 
-### Example 1: Everything in the User Prompt
-
-Let's examine `example_translate_basic.ipynb`:
-
-```python
-from agentic_patterns.core.agents import get_agent, run_agent
-
-agent = get_agent()
-prompt = "Translate to French: I like coffee."
-agent_run, nodes = await run_agent(agent, prompt)
-print(agent_run.result.output)
-```
-
-This approach is straightforward. The entire task is described in a single string. The model receives one message containing both the instruction (translate to French) and the content (I like coffee).
-
-When you send this prompt, the model receives a message structure like:
-
-```json
-{
-  "role": "user",
-  "content": "Translate to French: I like coffee."
-}
-```
-
-This works perfectly fine for one-off tasks. However, consider what happens if you need to translate multiple sentences. You would need to construct a new prompt each time:
-
-```python
-prompt1 = "Translate to French: I like coffee."
-prompt2 = "Translate to French: The weather is nice."
-prompt3 = "Translate to French: Good morning."
-```
-
-The instruction "Translate to French:" is repeated in every prompt, and the structure is harder to maintain if you want to change the target language or instruction style.
-
-### Example 2: Separating System and User Prompts
+### Separating System and User Prompts
 
 Now let's examine `example_translate_system_prompt.ipynb`:
 

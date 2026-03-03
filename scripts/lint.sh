@@ -7,10 +7,12 @@ source "${SCRIPT_DIR}/config.sh"
 
 cd "${PROJECT_DIR}"
 
+EXCLUDE="--exclude *.ipynb"
+
 if [[ "${1:-}" == "--fix" ]]; then
-    ruff check --fix agentic_patterns/ tests/
-    ruff format agentic_patterns/ tests/
+    ruff check --fix ${EXCLUDE} agentic_patterns/ tests/
+    ruff format ${EXCLUDE} agentic_patterns/ tests/
 else
-    ruff check agentic_patterns/ tests/
-    ruff format --check agentic_patterns/ tests/
+    ruff check ${EXCLUDE} agentic_patterns/ tests/
+    ruff format --check ${EXCLUDE} agentic_patterns/ tests/
 fi

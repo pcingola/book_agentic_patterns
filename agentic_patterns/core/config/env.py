@@ -1,7 +1,6 @@
 import logging
 import os
 from pathlib import Path
-import sys
 from dotenv import dotenv_values, find_dotenv, load_dotenv
 
 from agentic_patterns.core.config.utils import all_parents, get_project_root
@@ -40,26 +39,18 @@ def get_variable_env(name: str, allow_empty=True, default=None) -> str | None:
     return val
 
 
-def load_env_variables():
-    # Set up environment search path
-    # Start with the most specific (current directory) and expand outward
-    # This file's path
+def load_env_variables() -> str | None:
+    """Load .env file if found. Returns the path to the .env file, or None."""
     file_path = Path(__file__).resolve()
     env_dirs = [Path.cwd(), get_project_root(), file_path.parent]
     env_file = find_env_file(env_dirs)
 
     if env_file:
         logger.debug("Using .env file at '%s'", env_file)
-        # Load the environment variables from the found .env file
         load_dotenv(env_file)
-        # Assign variables in '.env' global python environment
         env_vars = dotenv_values(env_file)
         globals().update(env_vars)
-
         return env_file
-    else:
-        logger.error(
-            "No '.env' file found in any of the search paths, or their parents: %s",
-            env_dirs,
-        )
-        sys.exit(1)
+
+    logger.debug("No '.env' file found in search paths: %s", env_dirs)
+    return None
