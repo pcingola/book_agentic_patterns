@@ -97,7 +97,10 @@ async def embed_text(text: str, embedder: Embedder | None = None) -> list[float]
     """Embed a single text string."""
     if embedder is None:
         embedder = get_embedder()
-    result = await embedder.embed_query(text)
+    try:
+        result = await embedder.embed_query(text)
+    except Exception as e:
+        raise _wrap_connection_error(e, embedder) from e
     return list(result.embeddings[0])
 
 
@@ -107,5 +110,27 @@ async def embed_texts(
     """Embed multiple text strings."""
     if embedder is None:
         embedder = get_embedder()
-    result = await embedder.embed_documents(texts)
+    try:
+        result = await embedder.embed_documents(texts)
+    except Exception as e:
+        raise _wrap_connection_error(e, embedder) from e
     return [list(emb) for emb in result.embeddings]
+
+
+def _wrap_connection_error(exc: Exception, embedder: Embedder) -> Exception:
+    """Re-raise connection errors with a user-friendly message, pass others through."""
+    import httpx
+
+    cause = exc
+    while cause is not None:
+        if isinstance(cause, (httpx.ConnectError, ConnectionError, OSError)):
+            model = getattr(embedder, '_model', None)
+            provider = getattr(model, '_provider', None) if model else None
+            base_url = getattr(provider, '_base_url', None) if provider else None
+            url_hint = f" at {base_url}" if base_url else ""
+            return ConnectionError(
+                f"Cannot connect to embedding provider{url_hint}. "
+                f"If using Ollama, make sure it is running ('ollama serve')."
+            )
+        cause = cause.__cause__ or cause.__context__
+    return exc
