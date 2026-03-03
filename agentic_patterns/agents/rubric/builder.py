@@ -84,6 +84,20 @@ except ImportError:
     pass
 _RETRYABLE_EXCEPTIONS: tuple[type[BaseException], ...] = tuple(_retryable)
 
+# Content-filter errors are non-retryable but non-fatal: skip the chunk.
+_content_filter_exceptions: list[type[BaseException]] = []
+try:
+    from pydantic_ai.exceptions import ContentFilterError
+
+    _content_filter_exceptions.append(ContentFilterError)
+except ImportError:
+    pass
+_CONTENT_FILTER_EXCEPTIONS: tuple[type[BaseException], ...] = tuple(
+    _content_filter_exceptions
+)
+
+_SENTINEL = object()
+
 # Checkpoint file names.
 _EXTRACTION_CKPT = "extraction.json"
 _MERGE_CKPT = "merge.json"
@@ -306,8 +320,19 @@ class RubricBuilder:
         ckpt_dir.mkdir(parents=True, exist_ok=True)
         return ckpt_dir
 
-    async def _with_retry(self, coro_factory, phase: str, detail: str):
-        """Run a coroutine with exponential-backoff retry on transient errors."""
+    async def _with_retry(
+        self,
+        coro_factory,
+        phase: str,
+        detail: str,
+        *,
+        content_filter_fallback=_SENTINEL,
+    ):
+        """Run a coroutine with exponential-backoff retry on transient errors.
+
+        If content_filter_fallback is provided, ContentFilterError returns
+        that value instead of propagating (the chunk is skipped gracefully).
+        """
         for attempt in range(self._max_retries):
             try:
                 return await coro_factory()
@@ -319,6 +344,11 @@ class RubricBuilder:
                 delay = self._retry_delay * (2**attempt)
                 await self._listener.on_retry(phase, detail, attempt + 1, delay, e)
                 await asyncio.sleep(delay)
+            except _CONTENT_FILTER_EXCEPTIONS as e:
+                if content_filter_fallback is _SENTINEL:
+                    raise
+                await self._listener.on_content_filtered(phase, detail, e)
+                return content_filter_fallback
 
     # ------------------------------------------------------------------
     # Public API
@@ -484,6 +514,7 @@ class RubricBuilder:
                 lambda d=doc_id, t=text: extractor(d, t, collection_name),
                 "extraction",
                 doc_id,
+                content_filter_fallback=[],
             )
             async with ckpt_lock:
                 done[doc_id] = [item.model_dump(mode="json") for item in items]
@@ -673,7 +704,10 @@ class RubricBuilder:
             lambda: self._merge_agent.run(prompt),
             "merge",
             f"{len(group)} items",
+            content_filter_fallback=None,
         )
+        if result is None:
+            return group
         output: _MergeOutput = result.output
 
         ejected_set = set(i for i in output.ejected_indices if 0 <= i < len(group))

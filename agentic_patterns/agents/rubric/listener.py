@@ -34,6 +34,11 @@ class RubricListener:
     async def on_checkpoint_loaded(self, phase: str, detail: str) -> None:
         pass
 
+    async def on_content_filtered(
+        self, phase: str, detail: str, error: Exception
+    ) -> None:
+        pass
+
     async def on_retry(
         self, phase: str, detail: str, attempt: int, delay: float, error: Exception
     ) -> None:
@@ -96,6 +101,11 @@ class PrintRubricListener(RubricListener):
 
     async def on_checkpoint_loaded(self, phase: str, detail: str) -> None:
         print(f"[rubric] resuming {phase}: {detail}")
+
+    async def on_content_filtered(
+        self, phase: str, detail: str, error: Exception
+    ) -> None:
+        print(f"[rubric]   {phase} {detail} skipped (content filter triggered)")
 
     async def on_retry(
         self, phase: str, detail: str, attempt: int, delay: float, error: Exception

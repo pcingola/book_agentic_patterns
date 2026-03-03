@@ -124,9 +124,9 @@ def _wrap_connection_error(exc: Exception, embedder: Embedder) -> Exception:
     cause = exc
     while cause is not None:
         if isinstance(cause, (httpx.ConnectError, ConnectionError, OSError)):
-            model = getattr(embedder, '_model', None)
-            provider = getattr(model, '_provider', None) if model else None
-            base_url = getattr(provider, '_base_url', None) if provider else None
+            model = getattr(embedder, "_model", None)
+            provider = getattr(model, "_provider", None) if model else None
+            base_url = getattr(provider, "_base_url", None) if provider else None
             url_hint = f" at {base_url}" if base_url else ""
             return ConnectionError(
                 f"Cannot connect to embedding provider{url_hint}. "

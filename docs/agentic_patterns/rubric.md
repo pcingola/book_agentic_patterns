@@ -161,7 +161,7 @@ All models are in `agents/rubric/models.py`.
 
 | Name | Kind | Description |
 |---|---|---|
-| `RubricListener` | Class | Base listener for build pipeline (on_pass_start, on_group_done, on_checkpoint_loaded, on_retry, on_dedup_start, on_dedup_done, on_done) |
+| `RubricListener` | Class | Base listener for build pipeline (on_pass_start, on_group_done, on_checkpoint_loaded, on_content_filtered, on_retry, on_dedup_start, on_dedup_done, on_done) |
 | `PrintRubricListener` | Class | Prints build progress to stdout |
 | `RubricEvaluatorListener` | Class | Base listener for evaluation (on_item_start, on_item_done, on_done) |
 | `PrintRubricEvaluatorListener` | Class | Prints evaluation progress to stdout |
