@@ -13,20 +13,26 @@ Most LLM-based evaluation is optimized for “pick the better answer” or “sc
 Rubric items need to be stable across revisions, even when text is reworded or moved. The typical design is a versioned `Rubric` with `RubricItem`s that include a stable `item_id`, a requirement strength, and an explicit `evidence_required` contract. For compliance-like domains, cross-framework mappings are critical because the same control intent appears in multiple standards (for example, access control requirements in SOC 2, HIPAA, and ISO 27001). ([ecfr.gov][1])
 
 ```python
+class RequirementLevel(str, Enum):
+    MUST = "MUST"
+    SHOULD = "SHOULD"
+    MAY = "MAY"
+
 class RubricItem(BaseModel):
     item_id: str                 # stable across versions
     title: str
-    requirement_level: Literal["MUST", "SHOULD", "MAY"]
+    requirement_level: RequirementLevel
     requirement_text: str        # canonicalized, de-duplicated phrasing
     evidence_required: list[str] # named artifacts or proofs, not free-form
+    sources: list[SourceRef] = []
     framework_mappings: dict[str, list[str]] = {}  # e.g. {"SOC2":[...], "HIPAA":[...]}
-    weight: float = 1.0
     tags: set[str] = set()
 
 class Rubric(BaseModel):
-    rubric_id: str               # versioned, e.g. "soc2-mini@v3"
-    provenance: dict             # sources + build metadata
-    items: list[RubricItem]
+    rubric_id: str               # auto-generated UUID prefix
+    name: str
+    items: list[RubricItem] = []
+    provenance: dict = {}        # sources + build metadata
 ```
 
 ### Three-stage pipeline
@@ -82,25 +88,26 @@ Online assessment begins by ingesting the submission (spec, slides, supporting d
 This is also where you enforce consistency: verdict prompts must be constrained to the rubric item and the retrieved evidence, and the model must be prevented from “making up” missing artifacts.
 
 ```python
+class VerdictStatus(str, Enum):
+    PASS = "PASS"
+    RISK = "RISK"
+    FAIL = "FAIL"
+
 class RubricVerdict(BaseModel):
     item_id: str
-    status: Literal["PASS", "RISK", "FAIL"]
+    status: VerdictStatus
     rationale: str
-    citations: list["SpanRef"]     # (index_name, doc_id, start, end)
+    citations: list[SpanRef] = []    # (index_name, doc_id, start, end)
     missing_evidence: list[str] = []
 
 class RubricEvaluator:
-    def evaluate(self, rubric: Rubric, policy_index, history_index, project_index):
-        status = []
+    async def evaluate(self, rubric: Rubric, retriever: MultiSourceRetriever):
+        verdicts = []
         for item in rubric.items:
-            evidence = MultiSourceRetriever.retrieve_all(
-                query=item.requirement_text,
-                sources=[policy_index, history_index, project_index],
-                filters={"tags": item.tags},
-            )
-            verdict = judge_item(item, evidence)  # constrained output + citations required
-            status.append(verdict)
-        return status
+            docs = await retriever.retrieve_all(item.requirement_text)
+            verdict = await self._evaluate_item(item, docs)
+            verdicts.append(verdict)
+        return verdicts
 ```
 
 
