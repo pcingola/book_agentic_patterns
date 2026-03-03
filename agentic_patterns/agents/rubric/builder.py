@@ -86,7 +86,7 @@ _RETRYABLE_EXCEPTIONS: tuple[type[BaseException], ...] = tuple(_retryable)
 # Checkpoint file names.
 _EXTRACTION_CKPT = "extraction.json"
 _MERGE_CKPT = "merge.json"
-_SYNTHESIS_CKPT = "checkpoint.json"
+_SYNTHESIS_CKPT = "synthesis.json"
 
 
 # ---------------------------------------------------------------------------
