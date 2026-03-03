@@ -88,7 +88,12 @@ class AIGatewayConfig(BaseModel):
 
 
 AgentConfig = (
-    AIGatewayConfig | AzureConfig | BedrockConfig | OllamaConfig | OpenAIConfig | OpenRouterConfig
+    AIGatewayConfig
+    | AzureConfig
+    | BedrockConfig
+    | OllamaConfig
+    | OpenAIConfig
+    | OpenRouterConfig
 )
 
 

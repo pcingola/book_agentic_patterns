@@ -15,7 +15,9 @@ def _format_evidence(docs: list[RetrievedDocument]) -> str:
     parts = []
     for i, doc in enumerate(docs, 1):
         source = doc.metadata.get("source_collection", "unknown")
-        parts.append(f"[{i}] ({source}) {doc.doc_id} (score={doc.score:.3f})\n{doc.text}")
+        parts.append(
+            f"[{i}] ({source}) {doc.doc_id} (score={doc.score:.3f})\n{doc.text}"
+        )
     return "\n\n".join(parts) if parts else "No evidence retrieved."
 
 
@@ -32,7 +34,9 @@ class RubricEvaluator:
         self._max_results = max_results
         self._listener = listener or RubricEvaluatorListener()
 
-    async def evaluate(self, rubric: Rubric, retriever: MultiSourceRetriever) -> list[RubricVerdict]:
+    async def evaluate(
+        self, rubric: Rubric, retriever: MultiSourceRetriever
+    ) -> list[RubricVerdict]:
         """Evaluate all rubric items against retrieved evidence."""
         verdicts = []
         for item in rubric.items:
@@ -43,8 +47,12 @@ class RubricEvaluator:
         await self._listener.on_done(verdicts)
         return verdicts
 
-    async def _evaluate_item(self, item, retriever: MultiSourceRetriever) -> RubricVerdict:
-        docs = await retriever.retrieve_all(item.requirement_text, max_results=self._max_results)
+    async def _evaluate_item(
+        self, item, retriever: MultiSourceRetriever
+    ) -> RubricVerdict:
+        docs = await retriever.retrieve_all(
+            item.requirement_text, max_results=self._max_results
+        )
         evidence = _format_evidence(docs)
         evidence_required_str = "\n".join(f"- {e}" for e in item.evidence_required)
         prompt = load_prompt(

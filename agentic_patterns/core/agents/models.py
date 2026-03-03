@@ -114,7 +114,14 @@ def _infer_gateway_provider(model_name: str) -> GatewayProvider:
     """
     model_lower = model_name.lower()
 
-    bedrock_prefixes = ("anthropic.", "amazon.", "meta.", "cohere.", "us.", "google.gemma")
+    bedrock_prefixes = (
+        "anthropic.",
+        "amazon.",
+        "meta.",
+        "cohere.",
+        "us.",
+        "google.gemma",
+    )
     if model_lower.startswith(bedrock_prefixes):
         return GatewayProvider.BEDROCK
 
@@ -137,7 +144,9 @@ def _get_model_gateway_azure(config: AIGatewayConfig):
         api_version="2025-01-01-preview",
         api_key=config.gateway_key,
     )
-    return OpenAIChatModel(config.model_name, provider=OpenAIProvider(openai_client=client))
+    return OpenAIChatModel(
+        config.model_name, provider=OpenAIProvider(openai_client=client)
+    )
 
 
 def _get_model_gateway_bedrock(config: AIGatewayConfig):
@@ -151,14 +160,20 @@ def _get_model_gateway_bedrock(config: AIGatewayConfig):
         aws_secret_access_key="",
         config=Config(retries={"max_attempts": 0}),
     )
-    return BedrockConverseModel(model_name=config.model_name, provider=BedrockProvider(bedrock_client=bedrock_client))
+    return BedrockConverseModel(
+        model_name=config.model_name,
+        provider=BedrockProvider(bedrock_client=bedrock_client),
+    )
 
 
 def _get_model_gateway_vertex_openai(config: AIGatewayConfig):
     model_name = config.model_name
     if model_name.lower().startswith("gemini-"):
         model_name = f"google/{model_name}"
-        logger.debug("Auto-prefixed model name to '%s' for OpenAI-compatible endpoint", model_name)
+        logger.debug(
+            "Auto-prefixed model name to '%s' for OpenAI-compatible endpoint",
+            model_name,
+        )
     client = AsyncOpenAI(
         base_url=f"{config.gateway_url}/vertex-ai-openai/v1",
         api_key=config.gateway_key,
@@ -168,7 +183,9 @@ def _get_model_gateway_vertex_openai(config: AIGatewayConfig):
 
 def _get_model_ai_gateway(config: AIGatewayConfig):
     provider = config.gateway_provider or _infer_gateway_provider(config.model_name)
-    logger.info("AI Gateway: model='%s', provider='%s'", config.model_name, provider.value)
+    logger.info(
+        "AI Gateway: model='%s', provider='%s'", config.model_name, provider.value
+    )
 
     match provider:
         case GatewayProvider.AZURE:

@@ -3,13 +3,16 @@
 The pipeline has three phases:
 
   1. Extraction: each document chunk is sent to an LLM to pull out PoolItems
-     (requirements or concerns). Runs in parallel across chunks.
+     (requirements or concerns). Runs in parallel across chunks. Each chunk
+     extraction is retried on transient errors. Results are checkpointed
+     per-chunk so a crash only loses the in-flight chunk.
 
   2. Merge passes: while the pool is larger than batch_size, cluster it by
      semantic similarity and run a merge agent on each cluster in parallel.
      The agent ejects outliers back to the pool and merges the coherent core
      into a single PoolItem with unified sources. Repeats until the pool fits
-     in one batch or stops shrinking (convergence).
+     in one batch or stops shrinking (convergence). Pool state is checkpointed
+     after each completed pass.
 
   3. Synthesis: the reduced pool is processed in sequential batches by an agent
      that has three tools -- find_similar, add_item, add_source -- backed by a
@@ -17,12 +20,24 @@ The pipeline has three phases:
      sequential and add_item writes to the VDB immediately, every batch sees
      items committed by previous ones, preventing duplicates across batches.
      The VDB persists across turns so multi-turn agents don't lose state.
+     Both the pool and built items are checkpointed after each batch.
+
+All checkpoints live in a shared directory per rubric_id in the workspace.
+On successful completion, all checkpoint files are removed. To force a fresh
+run, pass force=True to the builder.
+
+Checkpoint files are human-readable JSON (indented) for debugging.
 """
 
+import asyncio
 import functools
+import hashlib
 import math
-import uuid
-from pathlib import PurePosixPath
+import os
+import tempfile
+from datetime import datetime, timezone
+from enum import Enum
+from pathlib import Path, PurePosixPath
 
 from pydantic import BaseModel, Field
 
@@ -39,7 +54,11 @@ from agentic_patterns.core.agents.utils import run_parallel
 from agentic_patterns.core.config.config import PROMPTS_DIR, SANDBOX_PREFIX
 from agentic_patterns.core.prompt import load_prompt
 from agentic_patterns.core.vectordb.clustering import cluster
-from agentic_patterns.core.vectordb.embeddings import embed_text, embed_texts, get_embedder
+from agentic_patterns.core.vectordb.embeddings import (
+    embed_text,
+    embed_texts,
+    get_embedder,
+)
 from agentic_patterns.core.vectordb.models import Chunk, ChunkLevel, ClusterAlgorithm
 
 _RUBRIC_PROMPTS = PROMPTS_DIR / "rubric"
@@ -48,23 +67,136 @@ _RUBRIC_PROMPTS = PROMPTS_DIR / "rubric"
 # uses rubric_find_similar_items to search instead of receiving the full list.
 _LARGE_RUBRIC_THRESHOLD = 50
 
+# Exceptions worth retrying (transient network / provider errors).
+_retryable: list[type[BaseException]] = [TimeoutError, ConnectionError, OSError]
+try:
+    from pydantic_ai.exceptions import ModelHTTPError
+
+    _retryable.append(ModelHTTPError)
+except ImportError:
+    pass
+try:
+    from botocore.exceptions import ConnectTimeoutError, ReadTimeoutError
+
+    _retryable.extend([ReadTimeoutError, ConnectTimeoutError])
+except ImportError:
+    pass
+_RETRYABLE_EXCEPTIONS: tuple[type[BaseException], ...] = tuple(_retryable)
+
+# Checkpoint file names.
+_EXTRACTION_CKPT = "extraction.json"
+_MERGE_CKPT = "merge.json"
+_SYNTHESIS_CKPT = "checkpoint.json"
+
+
+# ---------------------------------------------------------------------------
+# Checkpoint status
+# ---------------------------------------------------------------------------
+
+
+class _CheckpointStatus(str, Enum):
+    IN_PROGRESS = "in_progress"
+    COMPLETED = "completed"
+
+
+# ---------------------------------------------------------------------------
+# Checkpoint models
+# ---------------------------------------------------------------------------
+
+
+class _ExtractionCheckpoint(BaseModel):
+    phase: str = "extraction"
+    status: _CheckpointStatus = _CheckpointStatus.IN_PROGRESS
+    updated_at: str = ""
+    total_chunks: int = 0
+    completed_chunks: int = 0
+    chunks: dict[str, list[dict]] = Field(default_factory=dict)
+
+
+class _MergeGroupLog(BaseModel):
+    group: int
+    input_count: int
+    input: list[dict]
+    output_count: int
+    output: list[dict]
+
+
+class _MergePassLog(BaseModel):
+    pass_num: int = Field(alias="pass")
+    updated_at: str = ""
+    input_pool_size: int = 0
+    output_pool_size: int = 0
+    n_groups: int = 0
+    groups: list[_MergeGroupLog] = Field(default_factory=list)
+
+    model_config = {"populate_by_name": True}
+
+
+class _MergeCheckpoint(BaseModel):
+    phase: str = "merge"
+    status: _CheckpointStatus = _CheckpointStatus.IN_PROGRESS
+    updated_at: str = ""
+    pass_done: int = 0
+    pool_size: int = 0
+    pool: list[dict] = Field(default_factory=list)
+    passes: list[_MergePassLog] = Field(default_factory=list)
+
+
+class _SynthesisCheckpoint(BaseModel):
+    phase: str = "synthesis"
+    status: _CheckpointStatus = _CheckpointStatus.IN_PROGRESS
+    updated_at: str = ""
+    batch_done: int = 0
+    total_batches: int = 0
+    rubric_items_count: int = 0
+    pool_size: int = 0
+    pool: list[dict] = Field(default_factory=list)
+    items: list[dict] = Field(default_factory=list)
+
+
+# ---------------------------------------------------------------------------
+# Atomic JSON writer / reader
+# ---------------------------------------------------------------------------
+
+
+def _write_checkpoint(path: Path, checkpoint: BaseModel) -> None:
+    """Write checkpoint atomically: temp file + rename. Pretty-printed for humans."""
+    content = checkpoint.model_dump_json(indent=2, by_alias=True)
+    fd, tmp = tempfile.mkstemp(dir=path.parent, suffix=".tmp")
+    closed = False
+    try:
+        os.write(fd, content.encode("utf-8"))
+        os.fsync(fd)
+        os.close(fd)
+        closed = True
+        Path(tmp).rename(path)
+    except BaseException:
+        if not closed:
+            os.close(fd)
+        Path(tmp).unlink(missing_ok=True)
+        raise
+
+
+def _read_checkpoint[T: BaseModel](path: Path, model: type[T]) -> T:
+    """Read and validate a checkpoint file."""
+    return model.model_validate_json(path.read_text(encoding="utf-8"))
+
 
 # ---------------------------------------------------------------------------
 # Private structured-output models (LLM responses, not part of public API)
 # ---------------------------------------------------------------------------
 
-class _MergeOutput(BaseModel):
-    """What the merge agent returns for one cluster.
 
-    merged_text: the single unified requirement text for the coherent core.
-    ejected_indices: zero-based indices of items that did not belong in the cluster.
-    """
+class _MergeOutput(BaseModel):
+    """What the merge agent returns for one cluster."""
+
     merged_text: str
     ejected_indices: list[int] = Field(default_factory=list)
 
 
 class _ExtractedRequirement(BaseModel):
     """One requirement extracted from a policy chunk."""
+
     title: str
     requirement_level: RequirementLevel
     requirement_text: str
@@ -83,12 +215,9 @@ class _ExtractedConcerns(BaseModel):
 # Prompt formatting helpers
 # ---------------------------------------------------------------------------
 
-def _format_pool_items(items: list[PoolItem]) -> str:
-    """Format pool items for inclusion in an agent prompt.
 
-    Each item shows its index (so the merge agent can reference ejected_indices),
-    its text, and the source references the synthesis agent must pass to add_item.
-    """
+def _format_pool_items(items: list[PoolItem]) -> str:
+    """Format pool items for inclusion in an agent prompt."""
     parts = []
     for i, item in enumerate(items):
         sources_str = ", ".join(str(s) for s in item.sources)
@@ -104,49 +233,21 @@ def _format_rubric_items(items: list[RubricItem]) -> str:
     )
 
 
+def _now() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
 # ---------------------------------------------------------------------------
 # RubricBuilder
 # ---------------------------------------------------------------------------
 
+
 class RubricBuilder:
     """Builds and refines compliance rubrics from extracted text items.
 
-    The pipeline has three phases:
-
-    Phase 1 -- Extraction (build_from_policy / refine_with_history only):
-        Each document chunk is sent to an LLM in parallel. For policy documents
-        the LLM extracts structured requirements (title, MUST/SHOULD/MAY level,
-        evidence needed). For history documents it extracts concern sentences.
-        Each result becomes a PoolItem: a piece of text with one or more SourceRefs
-        pointing back to the chunk it came from.
-
-    Phase 2 -- Merge passes (build):
-        When the pool is larger than batch_size it cannot be sent to a single LLM
-        call. The pool is clustered by semantic similarity into groups of ~batch_size.
-        A merge agent runs on each group in parallel: it ejects items that do not
-        belong and merges the coherent core into one PoolItem whose sources are the
-        union of all merged items. This repeats until the pool fits in one batch or
-        stops shrinking (convergence guard).
-
-    Phase 3 -- Synthesis (build):
-        The reduced pool is processed in sequential batches. A synthesis agent
-        receives each batch and decides for every PoolItem whether it is already
-        covered by the rubric or genuinely new, using three tools:
-          - rubric_find_similar_items: cosine search over the rubric VDB
-          - rubric_add_item: creates a RubricItem, appends it to the live items
-            list, and writes it to the VDB immediately so the next tool call
-            (within the same batch or the next) already sees it
-          - rubric_add_source: records an additional SourceRef on an existing item
-        Batches are sequential -- not parallel -- so the shared VDB state is
-        always consistent and no two batches can independently add the same item.
-        The VDB is a PersistentClient stored in the workspace (isolated per
-        user/session), so it survives across turns in a multi-turn conversation.
-
-    Entry points:
-        build(items, rubric=None)  -- core method; rubric=None builds from scratch,
-                                      pass an existing Rubric to refine it
-        build_from_policy(index)   -- runs Phase 1 then delegates to build()
-        refine_with_history(rubric, index)  -- module-level wrapper, same pattern
+    Every phase is checkpointed so the process can resume after a crash.
+    Transient errors are retried with exponential backoff in all phases.
+    Checkpoint files are human-readable JSON with indent=2.
     """
 
     def __init__(
@@ -156,6 +257,9 @@ class RubricBuilder:
         max_passes: int = 10,
         algorithm: ClusterAlgorithm = ClusterAlgorithm.AGGLOMERATIVE,
         listener: RubricListener | None = None,
+        max_retries: int = 3,
+        retry_delay: float = 30.0,
+        force: bool = False,
     ) -> None:
         self._config_name = config_name
         self._batch_size = batch_size
@@ -163,126 +267,368 @@ class RubricBuilder:
         self._algorithm = algorithm
         self._listener = listener or RubricListener()
         self._embedder = get_embedder()
+        self._max_retries = max_retries
+        self._retry_delay = retry_delay
+        self._force = force
+
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _clean_checkpoints(ckpt_dir: Path) -> None:
+        """Remove all checkpoint files, leaving the VDB data intact."""
+        for name in (_EXTRACTION_CKPT, _MERGE_CKPT, _SYNTHESIS_CKPT):
+            (ckpt_dir / name).unlink(missing_ok=True)
+
+    def _get_checkpoint_dir(self, rubric_id: str) -> Path:
+        """Return (and create) the checkpoint directory for a rubric."""
+        from agentic_patterns.core.workspace import workspace_to_host_path
+
+        ckpt_dir = workspace_to_host_path(
+            PurePosixPath(SANDBOX_PREFIX) / ".rubric_synthesis" / rubric_id
+        )
+        ckpt_dir.mkdir(parents=True, exist_ok=True)
+        if self._force:
+            self._clean_checkpoints(ckpt_dir)
+        return ckpt_dir
+
+    async def _with_retry(self, coro_factory, phase: str, detail: str):
+        """Run a coroutine with exponential-backoff retry on transient errors."""
+        for attempt in range(self._max_retries):
+            try:
+                return await coro_factory()
+            except _RETRYABLE_EXCEPTIONS as e:
+                if hasattr(e, "status_code") and e.status_code < 500:
+                    raise
+                if attempt == self._max_retries - 1:
+                    raise
+                delay = self._retry_delay * (2**attempt)
+                await self._listener.on_retry(phase, detail, attempt + 1, delay, e)
+                await asyncio.sleep(delay)
 
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
 
-    async def build(self, items: list[PoolItem], rubric: Rubric | None = None) -> Rubric:
+    async def build(
+        self, items: list[PoolItem], rubric: Rubric | None = None
+    ) -> Rubric:
         """Phase 2 + 3: merge passes to reduce the pool, then synthesize into a Rubric."""
+        if rubric is None:
+            rubric = Rubric(name="rubric")
+        ckpt_dir = self._get_checkpoint_dir(rubric.rubric_id)
         pool = list(items)
 
-        # Phase 2: merge passes -- keep going until the pool fits in one batch
-        # or until no further reduction is possible (convergence guard).
-        for pass_num in range(1, self._max_passes + 1):
-            if len(pool) <= self._batch_size:
-                break
-            await self._listener.on_pass_start(pass_num, len(pool))
-            new_pool = await self._merge_pass(pool, pass_num)
-            if len(new_pool) >= len(pool):   # no progress -- stop early
-                break
-            pool = new_pool
+        # If a synthesis checkpoint already exists the pool is saved inside it,
+        # so we can skip merge entirely and jump straight to synthesis.
+        synthesis_ckpt = ckpt_dir / _SYNTHESIS_CKPT
+        if not synthesis_ckpt.exists():
+            pool = await self._merge_phase(pool, ckpt_dir)
 
-        # Phase 3: synthesize the (now small) pool into rubric items.
-        return await self._synthesis_phase(pool, rubric)
+        # Phase 3: synthesis.
+        result = await self._synthesis_phase(pool, rubric, ckpt_dir)
 
-    async def build_from_policy(self, policy_index, rubric_name: str) -> Rubric:
-        """Phase 1 + pipeline: extract requirements from policy chunks, then build."""
-        pool = await self._extract_all(policy_index, extractor=self._extract_requirements)
-        return await self.build(pool, rubric=Rubric(name=rubric_name))
+        return result
+
+    async def build_from_policy(
+        self, policy_index, rubric_name: str, rubric_id: str | None = None
+    ) -> Rubric:
+        """Phase 1 + pipeline: extract requirements from policy chunks, then build.
+
+        rubric_id defaults to a hash of rubric_name so the same name always
+        resumes from the same checkpoint directory.
+        """
+        rubric_id = rubric_id or hashlib.md5(rubric_name.encode()).hexdigest()[:8]
+        rubric = Rubric(name=rubric_name, rubric_id=rubric_id)
+        ckpt_dir = self._get_checkpoint_dir(rubric.rubric_id)
+        pool = await self._extract_with_checkpoint(
+            policy_index, self._extract_requirements, ckpt_dir
+        )
+        return await self.build(pool, rubric=rubric)
 
     # ------------------------------------------------------------------
     # Phase 1: extraction
     # ------------------------------------------------------------------
 
-    async def _extract_all(self, index, extractor) -> list[PoolItem]:
-        """Fetch all chunks from a VectorDB and run extractor on each in parallel."""
-        collection_name = index.collection.name
-        all_docs = index.collection.get(include=["documents"])
-        ids = all_docs.get("ids", [])
-        texts = all_docs.get("documents", []) or []
-
-        n_chunks = len(ids)
-        n_done = 0
-        await self._listener.on_pass_start(-1, n_chunks)
-
-        async def _tracked(doc_id: str, text: str) -> list[PoolItem]:
-            nonlocal n_done
-            items = await extractor(doc_id, text, collection_name)
-            n_done += 1
-            await self._listener.on_group_done(-1, n_done, n_chunks, items=[i.label for i in items])
-            return items
-
-        results = await run_parallel([_tracked(doc_id, text) for doc_id, text in zip(ids, texts)])
-        return [item for chunk_items in results for item in chunk_items]
-
-    async def _extract_requirements(self, doc_id: str, text: str, collection_name: str) -> list[PoolItem]:
-        """LLM call: extract MUST/SHOULD/MAY requirements from one policy chunk."""
-        prompt = load_prompt(_RUBRIC_PROMPTS / "extract_requirements.md", chunk_text=text)
-        agent = get_agent(config_name=self._config_name, output_type=_ExtractedRequirements)
-        result = await agent.run(prompt)
-        source = SourceRef(doc_id=doc_id, collection_name=collection_name)
-        items = []
-        for r in result.output.requirements:
-            text = f"[{r.requirement_level.value}] {r.title}\n{r.requirement_text}"
-            if r.evidence_required:
-                text += "\nEvidence required: " + "; ".join(r.evidence_required)
-            items.append(PoolItem(text=text, sources=[source], label=f"[{r.requirement_level.value}] {r.title}"))
-        return items
-
-    async def _extract_concerns(self, doc_id: str, text: str, collection_name: str) -> list[PoolItem]:
+    async def _extract_concerns(
+        self, doc_id: str, text: str, collection_name: str
+    ) -> list[PoolItem]:
         """LLM call: extract concern sentences from one history chunk."""
         prompt = load_prompt(_RUBRIC_PROMPTS / "extract_concerns.md", chunk_text=text)
         agent = get_agent(config_name=self._config_name, output_type=_ExtractedConcerns)
         result = await agent.run(prompt)
-        source = SourceRef(doc_id=doc_id, collection_name=collection_name)
-        return [PoolItem(text=concern, sources=[source], label=concern[:80]) for concern in result.output.concerns]
+        source = SourceRef(
+            doc_id=doc_id, collection_name=collection_name, source_text=text
+        )
+        return [
+            PoolItem(text=concern, sources=[source], label=concern[:80])
+            for concern in result.output.concerns
+        ]
+
+    async def _extract_requirements(
+        self, doc_id: str, text: str, collection_name: str
+    ) -> list[PoolItem]:
+        """LLM call: extract MUST/SHOULD/MAY requirements from one policy chunk."""
+        prompt = load_prompt(
+            _RUBRIC_PROMPTS / "extract_requirements.md", chunk_text=text
+        )
+        agent = get_agent(
+            config_name=self._config_name, output_type=_ExtractedRequirements
+        )
+        result = await agent.run(prompt)
+        source = SourceRef(
+            doc_id=doc_id, collection_name=collection_name, source_text=text
+        )
+        items = []
+        for r in result.output.requirements:
+            display = f"[{r.requirement_level.value}] {r.title}\n{r.requirement_text}"
+            if r.evidence_required:
+                display += "\nEvidence required: " + "; ".join(r.evidence_required)
+            items.append(
+                PoolItem(
+                    text=display,
+                    sources=[source],
+                    label=f"[{r.requirement_level.value}] {r.title}",
+                    requirement_level=r.requirement_level,
+                    title=r.title,
+                    requirement_text=r.requirement_text,
+                    evidence_required=r.evidence_required,
+                )
+            )
+        return items
+
+    async def _extract_with_checkpoint(
+        self, index, extractor, ckpt_dir: Path
+    ) -> list[PoolItem]:
+        """Extract from all chunks with per-chunk checkpointing.
+
+        Each chunk's results are saved to disk as it completes. On restart,
+        already-done chunks are skipped.
+        """
+        ckpt_path = ckpt_dir / _EXTRACTION_CKPT
+
+        collection_name = index.collection.name
+        all_docs = index.collection.get(include=["documents"])
+        ids: list[str] = all_docs.get("ids", [])
+        texts: list[str] = all_docs.get("documents", []) or []
+
+        # Load checkpoint if one exists.
+        done: dict[str, list[dict]] = {}
+        if ckpt_path.exists():
+            ckpt_data = _read_checkpoint(ckpt_path, _ExtractionCheckpoint)
+            done = ckpt_data.chunks
+            if ckpt_data.status == _CheckpointStatus.COMPLETED:
+                pool = [PoolItem.model_validate(d) for doc_id in ids for d in done.get(doc_id, [])]
+                await self._listener.on_checkpoint_loaded("extraction", f"completed, {len(pool)} pool items")
+                return pool
+
+        pending = [
+            (doc_id, text) for doc_id, text in zip(ids, texts) if doc_id not in done
+        ]
+        n_total = len(ids)
+        n_done = n_total - len(pending)
+
+        if not pending:
+            pool = [
+                PoolItem.model_validate(d)
+                for doc_id in ids
+                for d in done.get(doc_id, [])
+            ]
+            await self._listener.on_checkpoint_loaded(
+                "extraction", f"{len(pool)} pool items from {ckpt_path}"
+            )
+            return pool
+
+        if done:
+            await self._listener.on_checkpoint_loaded(
+                "extraction",
+                f"{n_done}/{n_total} chunks done, {len(pending)} remaining",
+            )
+
+        await self._listener.on_pass_start(-1, n_total)
+
+        ckpt_lock = asyncio.Lock()
+
+        async def _tracked(doc_id: str, text: str) -> list[PoolItem]:
+            nonlocal n_done
+            items = await self._with_retry(
+                lambda d=doc_id, t=text: extractor(d, t, collection_name),
+                "extraction",
+                doc_id,
+            )
+            async with ckpt_lock:
+                done[doc_id] = [item.model_dump(mode="json") for item in items]
+                n_done += 1
+                _write_checkpoint(ckpt_path, _ExtractionCheckpoint(
+                    updated_at=_now(),
+                    total_chunks=n_total,
+                    completed_chunks=n_done,
+                    chunks=done,
+                ))
+            await self._listener.on_group_done(
+                -1, n_done, n_total, items=[i.label for i in items]
+            )
+            return items
+
+        await run_parallel([_tracked(doc_id, text) for doc_id, text in pending])
+
+        _write_checkpoint(ckpt_path, _ExtractionCheckpoint(
+            status=_CheckpointStatus.COMPLETED,
+            updated_at=_now(),
+            total_chunks=n_total,
+            completed_chunks=n_total,
+            chunks=done,
+        ))
+
+        return [
+            PoolItem.model_validate(d) for doc_id in ids for d in done.get(doc_id, [])
+        ]
 
     # ------------------------------------------------------------------
     # Phase 2: merge passes
     # ------------------------------------------------------------------
 
-    async def _merge_pass(self, pool: list[PoolItem], pass_num: int) -> list[PoolItem]:
+    async def _merge_phase(
+        self, pool: list[PoolItem], ckpt_dir: Path
+    ) -> list[PoolItem]:
+        """Run merge passes with per-pass checkpointing.
+
+        Everything goes into a single merge.json: the current pool for resume,
+        plus a passes[] array with per-group detail for debugging.
+        """
+        merge_ckpt_path = ckpt_dir / _MERGE_CKPT
+        start_pass = 0
+        passes_log: list[_MergePassLog] = []
+
+        if merge_ckpt_path.exists():
+            ckpt = _read_checkpoint(merge_ckpt_path, _MergeCheckpoint)
+            pool = [PoolItem.model_validate(d) for d in ckpt.pool]
+            start_pass = ckpt.pass_done
+            passes_log = ckpt.passes
+            if ckpt.status == _CheckpointStatus.COMPLETED:
+                await self._listener.on_checkpoint_loaded("merge", f"completed, {len(pool)} pool items")
+                return pool
+            await self._listener.on_checkpoint_loaded(
+                "merge",
+                f"pass {start_pass}, {len(pool)} pool items from {merge_ckpt_path}",
+            )
+
+        pool_dicts = lambda: [item.model_dump(mode="json") for item in pool]
+
+        for pass_num in range(start_pass + 1, self._max_passes + 1):
+            if len(pool) <= self._batch_size:
+                break
+            await self._listener.on_pass_start(pass_num, len(pool))
+            new_pool, group_logs = await self._merge_pass(pool, pass_num)
+            if len(new_pool) >= len(pool):
+                break
+
+            passes_log.append(_MergePassLog(
+                **{"pass": pass_num},
+                updated_at=_now(),
+                input_pool_size=len(pool),
+                output_pool_size=len(new_pool),
+                n_groups=len(group_logs),
+                groups=group_logs,
+            ))
+            pool = new_pool
+
+            _write_checkpoint(merge_ckpt_path, _MergeCheckpoint(
+                updated_at=_now(),
+                pass_done=pass_num,
+                pool_size=len(pool),
+                pool=pool_dicts(),
+                passes=passes_log,
+            ))
+
+        _write_checkpoint(merge_ckpt_path, _MergeCheckpoint(
+            status=_CheckpointStatus.COMPLETED,
+            updated_at=_now(),
+            pass_done=pass_num if passes_log else 0,
+            pool_size=len(pool),
+            pool=pool_dicts(),
+            passes=passes_log,
+        ))
+
+        return pool
+
+    def _cluster_pool(self, pool: list[PoolItem]) -> list[list[PoolItem]]:
+        """Partition pool into ~batch_size clusters by semantic similarity."""
+        n_clusters = max(1, math.ceil(len(pool) / self._batch_size))
+        chunks = [
+            Chunk(
+                doc_id=str(i),
+                text=item.text,
+                level=ChunkLevel.PARAGRAPH,
+                parent_id=None,
+                metadata={},
+            )
+            for i, item in enumerate(pool)
+        ]
+        result = cluster(
+            chunks,
+            n_clusters=n_clusters,
+            algorithm=self._algorithm,
+            embedder=self._embedder,
+        )
+        return [[pool[int(ci.doc_id)] for ci in c.items] for c in result.clusters]
+
+    @functools.cached_property
+    def _merge_agent(self):
+        return get_agent(config_name=self._config_name, output_type=_MergeOutput)
+
+    async def _merge_pass(
+        self, pool: list[PoolItem], pass_num: int
+    ) -> tuple[list[PoolItem], list[_MergeGroupLog]]:
         """Cluster the pool and run the merge agent on each cluster in parallel."""
         groups = self._cluster_pool(pool)
         n_total = len(groups)
         n_done = 0
+        group_logs: list[_MergeGroupLog] = []
+        log_lock = asyncio.Lock()
 
-        async def _process_group(group_items: list[PoolItem], group_num: int) -> list[PoolItem]:
+        async def _process_group(
+            group_items: list[PoolItem], group_num: int
+        ) -> list[PoolItem]:
             nonlocal n_done
             await self._listener.on_group_start(pass_num, group_num, n_total)
             merged = await self._run_merge_agent(group_items)
             n_done += 1
+
+            entry = _MergeGroupLog(
+                group=group_num,
+                input_count=len(group_items),
+                input=[{"label": it.label, "text": it.text} for it in group_items],
+                output_count=len(merged),
+                output=[{"label": it.label, "text": it.text} for it in merged],
+            )
+            async with log_lock:
+                group_logs.append(entry)
+
             await self._listener.on_group_done(pass_num, n_done, n_total)
             return merged
 
-        results = await run_parallel([_process_group(g, i + 1) for i, g in enumerate(groups)])
-        return [item for sublist in results for item in sublist]
+        results = await run_parallel(
+            [_process_group(g, i + 1) for i, g in enumerate(groups)]
+        )
+        new_pool = [item for sublist in results for item in sublist]
 
-    def _cluster_pool(self, pool: list[PoolItem]) -> list[list[PoolItem]]:
-        """Partition pool into ~batch_size clusters by semantic similarity.
-
-        Uses doc_id=str(index) so we can map cluster items back to the original pool.
-        """
-        n_clusters = max(1, math.ceil(len(pool) / self._batch_size))
-        chunks = [
-            Chunk(doc_id=str(i), text=item.text, level=ChunkLevel.PARAGRAPH, parent_id=None, metadata={})
-            for i, item in enumerate(pool)
-        ]
-        result = cluster(chunks, n_clusters=n_clusters, algorithm=self._algorithm, embedder=self._embedder)
-        return [[pool[int(ci.doc_id)] for ci in c.items] for c in result.clusters]
+        return new_pool, sorted(group_logs, key=lambda g: g.group)
 
     async def _run_merge_agent(self, group: list[PoolItem]) -> list[PoolItem]:
-        """LLM call: merge a cluster into one PoolItem, eject outliers back to pool.
-
-        Returns [merged_item] + ejected_items. If the agent finds no coherent core,
-        all items are returned unchanged.
-        """
+        """LLM call: merge a cluster into one PoolItem, eject outliers back to pool."""
         if len(group) == 1:
             return group
 
-        prompt = load_prompt(_RUBRIC_PROMPTS / "group_merge.md", items=_format_pool_items(group))
-        result = await self._merge_agent.run(prompt)
+        prompt = load_prompt(
+            _RUBRIC_PROMPTS / "group_merge.md", items=_format_pool_items(group)
+        )
+        result = await self._with_retry(
+            lambda: self._merge_agent.run(prompt),
+            "merge",
+            f"{len(group)} items",
+        )
         output: _MergeOutput = result.output
 
         ejected_set = set(i for i in output.ejected_indices if 0 <= i < len(group))
@@ -290,10 +636,8 @@ class RubricBuilder:
         coherent = [item for i, item in enumerate(group) if i not in ejected_set]
 
         if not coherent or not output.merged_text.strip():
-            # No coherent core found -- return all items unchanged
             return group
 
-        # Accumulate sources from all coherent items, deduplicating by (doc_id, collection)
         seen: dict[tuple, SourceRef] = {}
         for item in coherent:
             for s in item.sources:
@@ -301,48 +645,58 @@ class RubricBuilder:
         merged = PoolItem(text=output.merged_text, sources=list(seen.values()))
         return [merged] + ejected
 
-    @functools.cached_property
-    def _merge_agent(self):
-        return get_agent(config_name=self._config_name, output_type=_MergeOutput)
-
     # ------------------------------------------------------------------
     # Phase 3: synthesis
     # ------------------------------------------------------------------
 
-    async def _synthesis_phase(self, pool: list[PoolItem], existing_rubric: Rubric | None) -> Rubric:
-        """Convert pool items into RubricItems via a tool-calling agent.
-
-        The agent has three tools:
-          - rubric_find_similar_items: cosine search over the rubric VDB
-          - rubric_add_item: creates a RubricItem and writes it to both the
-            in-memory items list and the VDB immediately, so the next tool
-            call within the same batch (or the next batch) already sees it
-          - rubric_add_source: records an additional SourceRef on an existing item
-
-        The VDB is a per-session PersistentClient stored in the workspace.
-        It persists across turns so multi-turn agents can refine incrementally.
-        Batches are processed sequentially (not in parallel) so the shared VDB
-        state is consistent -- no two batches can add the same item independently.
-        """
+    async def _synthesis_phase(
+        self, pool: list[PoolItem], rubric: Rubric, ckpt_dir: Path
+    ) -> Rubric:
+        """Convert pool items into RubricItems via a tool-calling agent."""
         import chromadb
-        from agentic_patterns.core.workspace import workspace_to_host_path
 
-        rubric_name = existing_rubric.name if existing_rubric else "rubric"
-        rubric_id = existing_rubric.rubric_id if existing_rubric else str(uuid.uuid4())[:8]
+        rubric_name = rubric.name
+        rubric_id = rubric.rubric_id
 
         # items is the live rubric being built -- tools mutate it in place.
-        items: list[RubricItem] = list(existing_rubric.items) if existing_rubric else []
+        items: list[RubricItem] = list(rubric.items)
 
-        # The VDB lives in the workspace, isolated per user/session.
-        # Path: WORKSPACE_DIR/user_id/session_id/.rubric_synthesis/{rubric_id}
-        vdb_path = workspace_to_host_path(PurePosixPath(SANDBOX_PREFIX) / ".rubric_synthesis" / rubric_id)
-        vdb_path.mkdir(parents=True, exist_ok=True)
-        client = chromadb.PersistentClient(path=str(vdb_path))
-        collection = client.get_or_create_collection("rubric_synthesis")
+        # The VDB lives in the checkpoint directory.
+        client = chromadb.PersistentClient(path=str(ckpt_dir))
 
-        # Seed the VDB with any items already in the rubric (refine path).
+        # Check for a checkpoint from a previous run.
+        checkpoint_path = ckpt_dir / _SYNTHESIS_CKPT
+        start_batch = 0
+        if checkpoint_path.exists():
+            ckpt = _read_checkpoint(checkpoint_path, _SynthesisCheckpoint)
+            restored = [RubricItem.model_validate(d) for d in ckpt.items]
+            if ckpt.status == _CheckpointStatus.COMPLETED:
+                rubric = Rubric(rubric_id=rubric_id, name=rubric_name, items=restored)
+                await self._listener.on_checkpoint_loaded("synthesis", f"completed, {len(restored)} rubric items")
+                await self._listener.on_done(rubric)
+                return rubric
+            if restored:
+                items.clear()
+                items.extend(restored)
+                start_batch = ckpt.batch_done
+            if ckpt.pool:
+                pool = [PoolItem.model_validate(d) for d in ckpt.pool]
+            await self._listener.on_checkpoint_loaded(
+                "synthesis",
+                f"batch {start_batch}, {len(items)} rubric items from {checkpoint_path}",
+            )
+
+        # (Re)create the collection so it's always in sync with `items`.
+        try:
+            client.delete_collection("rubric_synthesis")
+        except Exception:
+            pass
+        collection = client.create_collection("rubric_synthesis")
+
         if items:
-            embs = await embed_texts([i.requirement_text for i in items], self._embedder)
+            embs = await embed_texts(
+                [i.requirement_text for i in items], self._embedder
+            )
             collection.add(
                 ids=[i.item_id for i in items],
                 documents=[i.requirement_text for i in items],
@@ -350,19 +704,34 @@ class RubricBuilder:
                 metadatas=[{"title": i.title} for i in items],
             )
 
+        # Build a lookup for source_text so synthesis tools can preserve it.
+        source_text_lookup: dict[tuple[str, str], str] = {}
+        for p in pool:
+            for s in p.sources:
+                key = (s.doc_id, s.collection_name)
+                if key not in source_text_lookup and s.source_text:
+                    source_text_lookup[key] = s.source_text
+
+        def _resolve_source(doc_id: str, collection_name: str) -> SourceRef:
+            return SourceRef(
+                doc_id=doc_id,
+                collection_name=collection_name,
+                source_text=source_text_lookup.get((doc_id, collection_name), ""),
+            )
+
         # ------------------------------------------------------------------
         # Tools -- closures over `items` and `collection`.
-        # Each write goes to both so they stay in sync.
         # ------------------------------------------------------------------
 
         async def rubric_find_similar_items(text: str, top_k: int = 5) -> list[dict]:
-            """Semantic search over current rubric items. Returns item_id, title, requirement_text, score."""
+            """Semantic search over current rubric items."""
             if not items:
                 return []
             emb = await embed_text(text, self._embedder)
             n = min(top_k, len(items))
             res = collection.query(
-                query_embeddings=[emb], n_results=n,
+                query_embeddings=[emb],
+                n_results=n,
                 include=["documents", "metadatas", "distances"],
             )
             return [
@@ -373,7 +742,10 @@ class RubricBuilder:
                     "score": round(1.0 - dist, 4),
                 }
                 for iid, meta, doc, dist in zip(
-                    res["ids"][0], res["metadatas"][0], res["documents"][0], res["distances"][0]
+                    res["ids"][0],
+                    res["metadatas"][0],
+                    res["documents"][0],
+                    res["distances"][0],
                 )
             ]
 
@@ -384,9 +756,11 @@ class RubricBuilder:
             evidence_required: list[str],
             sources: list[dict],
         ) -> str:
-            """Add a new rubric item. Writes to both items list and VDB. Returns the new item_id."""
+            """Add a new rubric item. Returns the new item_id."""
             item_id = f"r{len(items) + 1:03d}"
-            source_refs = [SourceRef(doc_id=s["doc_id"], collection_name=s["collection_name"]) for s in sources]
+            source_refs = [
+                _resolve_source(s["doc_id"], s["collection_name"]) for s in sources
+            ]
             item = RubricItem(
                 item_id=item_id,
                 title=title,
@@ -406,46 +780,85 @@ class RubricBuilder:
             await self._listener.on_item_added(item_id, title, requirement_level)
             return item_id
 
-        async def rubric_add_source(item_id: str, doc_id: str, collection_name: str) -> None:
+        async def rubric_add_source(
+            item_id: str, doc_id: str, collection_name: str
+        ) -> None:
             """Record an additional source reference on an existing rubric item."""
             for item in items:
                 if item.item_id == item_id:
-                    item.sources.append(SourceRef(doc_id=doc_id, collection_name=collection_name))
+                    item.sources.append(_resolve_source(doc_id, collection_name))
                     await self._listener.on_source_mapped(item_id, item.title)
                     return
 
         # ------------------------------------------------------------------
-        # Batch loop -- sequential so the shared VDB stays consistent.
-        # When the rubric is small, pass the full item list in the prompt.
-        # When large, the agent uses rubric_find_similar_items instead.
+        # Batch loop
         # ------------------------------------------------------------------
 
-        use_tool_search = len(items) > _LARGE_RUBRIC_THRESHOLD
-        prompt_file = "group_synthesize_with_tool.md" if use_tool_search else "group_synthesize.md"
-        system_prompt = load_prompt(_RUBRIC_PROMPTS / prompt_file)
-
-        batches = [pool[i : i + self._batch_size] for i in range(0, len(pool), self._batch_size)]
+        tools = [rubric_find_similar_items, rubric_add_item, rubric_add_source]
+        batches = [
+            pool[i : i + self._batch_size]
+            for i in range(0, len(pool), self._batch_size)
+        ]
+        n_batches = len(batches)
         await self._listener.on_pass_start(0, len(pool))
 
         for batch_num, batch in enumerate(batches, 1):
-            await self._listener.on_group_start(0, batch_num, len(batches))
+            if batch_num <= start_batch:
+                continue
 
-            if use_tool_search:
-                user_msg = f"## Pool items to process\n\n{_format_pool_items(batch)}"
-            else:
-                # Include the current rubric so the agent can see it directly.
-                # `items` grows as the agent adds items, so each batch sees all
-                # items committed by previous batches.
-                rubric_section = f"## Current rubric\n\n{_format_rubric_items(items)}\n\n" if items else ""
-                user_msg = f"{rubric_section}## Pool items to process\n\n{_format_pool_items(batch)}"
+            await self._listener.on_group_start(0, batch_num, n_batches)
 
-            agent = get_agent(
-                config_name=self._config_name,
-                system_prompt=system_prompt,
-                tools=[rubric_find_similar_items, rubric_add_item, rubric_add_source],
-            )
-            await agent.run(user_msg)
-            await self._listener.on_group_done(0, batch_num, len(batches))
+            async def _run_batch(b=batch):
+                use_tool_search = len(items) > _LARGE_RUBRIC_THRESHOLD
+                prompt_file = (
+                    "group_synthesize_with_tool.md"
+                    if use_tool_search
+                    else "group_synthesize.md"
+                )
+                system_prompt = load_prompt(_RUBRIC_PROMPTS / prompt_file)
+                if use_tool_search:
+                    user_msg = f"## Pool items to process\n\n{_format_pool_items(b)}"
+                else:
+                    rubric_section = (
+                        f"## Current rubric\n\n{_format_rubric_items(items)}\n\n"
+                        if items
+                        else ""
+                    )
+                    user_msg = f"{rubric_section}## Pool items to process\n\n{_format_pool_items(b)}"
+                agent = get_agent(
+                    config_name=self._config_name,
+                    system_prompt=system_prompt,
+                    tools=tools,
+                )
+                await agent.run(user_msg)
+
+            await self._with_retry(_run_batch, "synthesis", f"batch {batch_num}")
+            await self._listener.on_group_done(0, batch_num, n_batches)
+
+            pool_dicts = [p.model_dump(mode="json") for p in pool]
+            item_dicts = [item.model_dump(mode="json") for item in items]
+            _write_checkpoint(checkpoint_path, _SynthesisCheckpoint(
+                updated_at=_now(),
+                batch_done=batch_num,
+                total_batches=n_batches,
+                rubric_items_count=len(items),
+                pool_size=len(pool),
+                pool=pool_dicts,
+                items=item_dicts,
+            ))
+
+        pool_dicts = [p.model_dump(mode="json") for p in pool]
+        item_dicts = [item.model_dump(mode="json") for item in items]
+        _write_checkpoint(checkpoint_path, _SynthesisCheckpoint(
+            status=_CheckpointStatus.COMPLETED,
+            updated_at=_now(),
+            batch_done=n_batches,
+            total_batches=n_batches,
+            rubric_items_count=len(items),
+            pool_size=len(pool),
+            pool=pool_dicts,
+            items=item_dicts,
+        ))
 
         rubric = Rubric(rubric_id=rubric_id, name=rubric_name, items=items)
         await self._listener.on_done(rubric)
@@ -453,8 +866,9 @@ class RubricBuilder:
 
 
 # ---------------------------------------------------------------------------
-# Convenience wrapper for Stage 2
+# Convenience wrapper for refine-with-history
 # ---------------------------------------------------------------------------
+
 
 async def refine_with_history(
     rubric: Rubric,
@@ -463,7 +877,12 @@ async def refine_with_history(
     listener: RubricListener | None = None,
     **builder_kwargs,
 ) -> Rubric:
-    """Phase 1 + pipeline: extract concerns from history chunks, refine existing rubric."""
-    builder = RubricBuilder(config_name=config_name, listener=listener, **builder_kwargs)
-    pool = await builder._extract_all(history_index, extractor=builder._extract_concerns)
+    """Extract concerns from history chunks and refine an existing rubric."""
+    builder = RubricBuilder(
+        config_name=config_name, listener=listener, **builder_kwargs
+    )
+    ckpt_dir = builder._get_checkpoint_dir(rubric.rubric_id)
+    pool = await builder._extract_with_checkpoint(
+        history_index, builder._extract_concerns, ckpt_dir
+    )
     return await builder.build(pool, rubric=rubric)

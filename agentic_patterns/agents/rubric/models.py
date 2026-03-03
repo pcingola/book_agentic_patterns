@@ -23,17 +23,28 @@ class SourceRef(BaseModel):
 
     doc_id: str
     collection_name: str
+    source_text: str = ""  # original chunk text for audit trail
 
     def __str__(self) -> str:
         return f"{self.doc_id} ({self.collection_name})"
 
 
 class PoolItem(BaseModel):
-    """An item flowing through the build pipeline (text + accumulated sources)."""
+    """An item flowing through the build pipeline.
+
+    For requirements: structured fields (requirement_level, title, requirement_text,
+    evidence_required) carry the extraction data. After merge passes these are cleared
+    since the merged text may combine multiple items.
+    The text field is always set as the pipeline representation for LLM prompts and embedding.
+    """
 
     text: str
     sources: list[SourceRef]
-    label: str = ""  # short human-readable description for logging (e.g. "[MUST] Title")
+    label: str = ""  # short human-readable description for logging
+    requirement_level: RequirementLevel | None = None
+    title: str = ""
+    requirement_text: str = ""
+    evidence_required: list[str] = Field(default_factory=list)
 
 
 class RubricItem(BaseModel):
@@ -61,7 +72,9 @@ class Rubric(BaseModel):
     provenance: dict = Field(default_factory=dict)
 
     def __str__(self) -> str:
-        return f"Rubric({self.rubric_id!r}, name={self.name!r}, {len(self.items)} items)"
+        return (
+            f"Rubric({self.rubric_id!r}, name={self.name!r}, {len(self.items)} items)"
+        )
 
 
 class SpanRef(BaseModel):
