@@ -107,7 +107,7 @@ async def add(ctx: RunContext[StateDeps[CalculatorState]], a: int, b: int) -> To
 
 The `ToolReturn` carries both the return value (what the LLM sees) and metadata events (what the frontend sees). `StateSnapshotEvent` tells the frontend to update its local state with the new snapshot. `CustomEvent` signals a domain-specific action the frontend can interpret however it wants.
 
-The `sub` and `mul` tools follow the same pattern. The shared calculator code -- state model, `update_state_with_result()` helper, and arithmetic tools -- lives in `calculator.py` so v4 and v5 reuse them without duplication. `example_agui_app_v3.py` adds two tools for history management:
+The `sub` and `mul` tools follow the same pattern. The shared calculator components -- state model, `update_state_with_result()` helper, arithmetic tools, and `show_history` -- live in `calculator.py` so v4 and v5 reuse them. v3 adds `clear_history` for resetting state:
 
 ```python
 async def show_history(ctx: RunContext[StateDeps[CalculatorState]]) -> str:

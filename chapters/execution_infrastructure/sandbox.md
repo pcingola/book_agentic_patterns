@@ -281,4 +281,4 @@ Neither layer depends on the other. Tool permissions cannot prevent code from ma
 
 **Pickle IPC** supports rich Python objects but introduces deserialization risks. The temp directory is short-lived and mounted read-write only for the duration of execution, limiting the attack surface.
 
-**Subprocess fallback** provides no isolation on non-Linux platforms. This is acceptable for development but must not be used in production with untrusted code.
+**No subprocess fallback**. Running agent-generated code in a plain subprocess is a security risk -- the child inherits full host access. If neither bwrap nor Docker is available, the system raises an error rather than silently degrading to an unsandboxed process.
