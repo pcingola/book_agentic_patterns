@@ -6,7 +6,7 @@ If we add data analysis operations, SQL queries, visualization tools, and vocabu
 
 Instead of giving the coordinator SQL tools, it gets a sub-agent that has SQL tools. Instead of giving it data analysis operations, it gets a sub-agent that has those operations. The coordinator decides *who* should handle a task; the sub-agent decides *how*.
 
-Each sub-agent is defined as an `AgentSpec` with its own name, description, system prompt, and tool list. The data analysis sub-agent has file, CSV, JSON, data analysis, data visualization, and REPL tools. The SQL sub-agent has file, CSV, and SQL tools. The vocabulary sub-agent has vocabulary resolution tools. Each runs in its own context with its own instructions, isolated from the coordinator's concerns.
+Each sub-agent is defined as an `AgentSpec` with its own name, description, system prompt, and tool list. The data analysis sub-agent has file, CSV, JSON, data analysis, data visualization, and REPL tools. The SQL sub-agent has file, CSV, and SQL tools. The vocabulary sub-agent has vocabulary resolution tools. The OpenAPI sub-agent has API discovery and invocation tools from an ingested spec. Each runs in its own context with its own instructions, isolated from the coordinator's concerns.
 
 ### Tool Composition
 
@@ -25,6 +25,7 @@ agents:
       - agentic_patterns.agents.data_analysis:get_spec
       - agentic_patterns.agents.sql:get_spec
       - agentic_patterns.agents.vocabulary:get_spec
+      - agentic_patterns.agents.openapi:get_spec
 ```
 
 Each `sub_agents` entry points to a `get_spec()` factory that returns an `AgentSpec` with its own name, description, system prompt, and tool list. The notebook loads everything with `AgentSpec.from_config("coordinator")`.

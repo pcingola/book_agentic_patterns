@@ -29,6 +29,7 @@ agents:
       - agentic_patterns.agents.data_analysis:get_spec
       - agentic_patterns.agents.sql:get_spec
       - agentic_patterns.agents.vocabulary:get_spec
+      - agentic_patterns.agents.openapi:get_spec
 ```
 
 The `OrchestratorAgent` generates `task_launch`, `task_output`, and `task_stop` tools whenever sub-agents are present -- the same tools as V4. Both prompts mention background delegation in their workflow, but the Full Agent adds a dedicated "Background tasks" section that explains when to use synchronous versus asynchronous delegation. The Coordinator's prompt mentions `run_in_background=True` as a workflow step; the Full Agent's prompt makes the distinction between the two modes a first-class concept with explicit guidance on when to choose each.

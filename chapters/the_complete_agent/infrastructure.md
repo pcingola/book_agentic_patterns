@@ -17,7 +17,7 @@ agents:
   infrastructure_agent:
     system_prompt: the_complete_agent/agent_infrastructure.md
     mcp_servers: [file_ops, sandbox, todo, format_conversion]
-    a2a_clients: [nl2sql, data_analysis, vocabulary]
+    a2a_clients: [nl2sql, data_analysis, vocabulary, openapi]
 ```
 
 The notebook loads it with `AgentSpec.from_config("infrastructure_agent")`, same as V3-V5.
@@ -26,7 +26,7 @@ The notebook loads it with `AgentSpec.from_config("infrastructure_agent")`, same
 
 The coordinator connects to four MCP servers for its direct tools: `file_ops` (file, CSV, and JSON operations), `sandbox` (Docker execution), `todo` (task management), and `format_conversion` (document conversion). Each runs as an independent HTTP service started via `fastmcp run ... --transport http --port N`.
 
-The A2A servers also connect to MCP servers internally. The `data_analysis` A2A server connects to four: `data_analysis` (DataFrame operations), `data_viz` (plotting), `file_ops` (file, CSV, and JSON I/O), and `repl` (Python notebook execution). The monolithic version imported file, CSV, and JSON tools from three separate modules; the distributed version consolidates them into a single `file_ops` MCP server. The `nl2sql` A2A server connects to `sql`. The `vocabulary` A2A server connects to `vocabulary`. All MCP connections are declared in `config.yaml` under `mcp_servers`.
+The A2A servers also connect to MCP servers internally. The `data_analysis` A2A server connects to four: `data_analysis` (DataFrame operations), `data_viz` (plotting), `file_ops` (file, CSV, and JSON I/O), and `repl` (Python notebook execution). The monolithic version imported file, CSV, and JSON tools from three separate modules; the distributed version consolidates them into a single `file_ops` MCP server. The `nl2sql` A2A server connects to `sql`. The `vocabulary` A2A server connects to `vocabulary`. The `openapi` A2A server connects to `openapi` for API discovery and invocation. All MCP connections are declared in `config.yaml` under `mcp_servers`.
 
 ### A2A Servers as Delegation Targets
 
@@ -43,7 +43,7 @@ The coordinator discovers each A2A server's capabilities by fetching its agent c
 
 ### The Launch Script
 
-Starting the distributed system requires launching nine MCP servers and three A2A servers. The launch script (`scripts/launch_infrastructure.sh`) starts all processes in the background with a trap to kill them on exit. MCP servers start first since A2A servers depend on them for tool discovery at import time.
+Starting the distributed system requires launching ten MCP servers and four A2A servers. The launch script (`scripts/launch_infrastructure.sh`) starts all processes in the background with a trap to kill them on exit. MCP servers start first since A2A servers depend on them for tool discovery at import time.
 
 ### The Example
 
