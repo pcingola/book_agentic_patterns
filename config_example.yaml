@@ -301,6 +301,11 @@ agents:
       - agentic_patterns.agents.vocabulary:get_spec
       - agentic_patterns.agents.openapi:get_spec
 
+  code_index:
+    system_prompt: code_index/system_prompt.md
+    tools:
+      - agentic_patterns.tools.code_index:get_all_tools
+
   infrastructure_agent:
     system_prompt: the_complete_agent/agent_infrastructure.md
     mcp_servers: [file_ops, sandbox, todo, format_conversion]

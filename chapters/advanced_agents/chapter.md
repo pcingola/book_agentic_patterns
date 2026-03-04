@@ -10,6 +10,8 @@
 
 [Code Indexing and Search Agent](./code_indexing.md)
 
+[Anonymization Agent](./anonymization_agent.md)
+
 [Hands-on: Introduction](./hands_on_intro.md)
 
 [Hands-on: Debate Agent](./hands_on_debate.md)

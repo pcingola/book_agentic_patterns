@@ -1,16 +1,14 @@
 ## Rubric Agent
 
-A Rubric Agent turns “committee-style” review into a repeatable, auditable, evidence-backed evaluation pipeline.
-
-The core idea is composition: the agent does not invent new mechanisms so much as it wires together retrieval, structured extraction, clustering over historical feedback, and calibrated verdict assignment into one coherent loop. Compared to ad-hoc “LLM judging”, the rubric framing forces stable criterion IDs, explicit evidence requirements, and consistent application across time, which is what you need when reviewers can (and will) challenge both the criteria and the conclusions.
+A Rubric Agent turns criteria-driven evaluation into a repeatable, auditable, evidence-backed pipeline by composing structured extraction, semantic clustering, multi-source retrieval, and adversarial probing.
 
 ### Why rubrics are different from generic LLM evaluation
 
-Most LLM-based evaluation is optimized for “pick the better answer” or “score this output,” and often relies on implicit criteria. A rubric pipeline makes the criteria first-class objects that can be versioned, diffed, and traced to source policy text and past committee behavior. This changes both engineering and governance: you can explain not just why an item failed, but which requirement it maps to, where that requirement came from, and what evidence would flip the verdict.
+Most LLM-based evaluation asks a model to "score this output" or "pick the better answer," relying on implicit criteria baked into the prompt. This works for quick comparisons but breaks down when reviewers challenge the results: which requirement failed? Where did that requirement come from? What evidence was considered? A rubric pipeline addresses these questions by making criteria first-class objects that can be versioned, diffed, and traced to source policy text. The shift from implicit judgment to explicit criteria changes both engineering and governance: you can explain not just why an item failed, but which requirement it maps to, where that requirement originated, and what evidence would flip the verdict. LLM-Rubric demonstrates that rubric-based evaluation with calibrated, multidimensional criteria significantly improves alignment with human judges compared to single-score approaches. ([ACL Anthology][1])
 
 ### Data model: stable IDs, evidence requirements, and cross-framework traceability
 
-Rubric items need to be stable across revisions, even when text is reworded or moved. The typical design is a versioned `Rubric` with `RubricItem`s that include a stable `item_id`, a requirement strength, and an explicit `evidence_required` contract. For compliance-like domains, cross-framework mappings are critical because the same control intent appears in multiple standards (for example, access control requirements in SOC 2, HIPAA, and ISO 27001). ([ecfr.gov][1])
+Rubric items need to remain stable across revisions, even when wording shifts or requirements are reorganized. The data model centers on a versioned `Rubric` containing `RubricItem`s, each carrying a stable `item_id`, a requirement strength drawn from RFC 2119 language (MUST, SHOULD, MAY), and an explicit `evidence_required` contract that names the concrete artifact types needed to demonstrate compliance.
 
 ```python
 class RequirementLevel(str, Enum):
@@ -19,122 +17,140 @@ class RequirementLevel(str, Enum):
     MAY = "MAY"
 
 class RubricItem(BaseModel):
-    item_id: str                 # stable across versions
+    item_id: str                 # stable across versions (e.g., "r001")
     title: str
     requirement_level: RequirementLevel
-    requirement_text: str        # canonicalized, de-duplicated phrasing
-    evidence_required: list[str] # named artifacts or proofs, not free-form
+    requirement_text: str
+    evidence_required: list[str] # named artifacts, not free-form
     sources: list[SourceRef] = []
-    framework_mappings: dict[str, list[str]] = {}  # e.g. {"SOC2":[...], "HIPAA":[...]}
-    tags: set[str] = set()
-
-class Rubric(BaseModel):
-    rubric_id: str               # auto-generated UUID prefix
-    name: str
-    items: list[RubricItem] = []
-    provenance: dict = {}        # sources + build metadata
+    framework_mappings: dict[str, list[str]] = {}  # e.g. {"SOC2": [...]}
 ```
+
+Two design choices deserve emphasis. First, `evidence_required` lists specific artifact types ("quarterly access review report," "TLS certificate inventory") rather than vague descriptions. This constrains the assessment phase to look for concrete evidence instead of accepting fluent prose as proof. Second, `framework_mappings` supports cross-standard traceability: the same access control intent appears in SOC 2, HIPAA technical safeguards, and ISO 27001 Annex A, and a single rubric item can track all three without duplicating the requirement. When a rubric item maps to multiple frameworks, per-framework views can be rendered without re-evaluating the project, keeping assessment consistent while satisfying different stakeholder checklists. ([ecfr.gov][2], [ISMS.online][7])
 
 ### Three-stage pipeline
 
-The pipeline splits cleanly into offline build/refinement and online assessment. This split matters operationally: offline steps can be slower, more expensive, and heavily reviewed; online steps need bounded latency and predictable costs.
+The pipeline separates offline construction from online assessment. Stages 1 and 2 build and refine the rubric -- they can be slow, expensive, and heavily reviewed by humans before deployment. Stage 3 runs the rubric against a submission and produces evidence-backed verdicts -- it needs bounded latency and predictable costs.
 
-### Stage 1: Rubric creation from policy (offline)
+### Stage 1: Structured extraction from policy text
 
-Rubric creation starts by ingesting policy handbooks, process guides, and control frameworks. Each chunk is processed with structured extraction that emits candidate requirements with explicit modality (MUST/SHOULD), scope, and evidence expectations. The agent then canonicalizes those candidates by deduplicating semantically equivalent items, assigning stable IDs, and normalizing evidence fields into a constrained vocabulary (so later retrieval can target specific artifact types).
-
-A key design choice is to store provenance at the item level: each item should retain pointers to the policy spans that created it. That makes the rubric auditable when someone asks “why is this a requirement?”
-
-`RubricSession` is the high-level API that handles chunking, indexing, extraction, and synthesis. Two workflows are supported: incremental (one document at a time) and batch (extract many, build once).
+Rubric creation begins by ingesting policy documents, control frameworks, and process guides. Each document is split into chunks (the default chunker uses semantic boundaries, though paragraph-level chunking can be substituted), and each chunk is sent to an LLM for structured extraction. The extractor is prompted as a policy analyst and returns a list of candidate requirements, each with a title, requirement level, requirement text, and a list of evidence types that would demonstrate compliance. The output is a typed `PoolItem` -- the uniform currency flowing through the entire build pipeline.
 
 ```python
-# Incremental: each add_document() extracts + builds against existing rubric
-session = RubricSession(“soc2_demo”)
-rubric = await session.add_document(POLICY_TEXT, source=”soc2_policy”)
+prompt = load_prompt("extract_requirements.md", chunk_text=text)
+agent = get_agent(output_type=ExtractedRequirements)
+result = await agent.run(prompt)
+# Returns: [{title, requirement_level, requirement_text, evidence_required}, ...]
 ```
 
-Under the hood, `RubricSession` delegates to `RubricBuilder`, which runs the three-phase pipeline: extraction, merge passes, and synthesis.
+Extraction runs in parallel across all chunks. Each chunk's results are checkpointed to disk immediately on completion, so a crash loses only the in-flight chunks while all completed chunks are preserved. Transient errors (timeouts, HTTP 5xx) are retried with exponential backoff; content-filter errors skip the chunk gracefully rather than halting the entire run. The extraction prompt constrains the model to pull only requirements that are explicitly stated or clearly implied -- no invention.
 
-### Stage 2: Rubric refinement from history (offline)
+A key design choice is to store provenance at the item level: each pool item retains a `SourceRef` pointing to the chunk that produced it, including the original text. That makes the rubric auditable when someone later asks "why is this a requirement?"
 
-Rubrics fail when they ignore precedent. Stage 2 adds meeting minutes, past reviews, and prior submissions to the same session. Because the structured extractor outputs MUST/SHOULD/MAY requirements, historical findings that match existing items add their source references, while findings that represent gaps not covered by the policy are promoted into new rubric items.
+### Stage 2: Refinement via semantic clustering
 
-This stage produces an auditable diff. That diff is what you review with humans, because it is where institutional drift and “unwritten rules” enter the system.
+Raw extraction from multiple documents produces many candidates with heavy overlap. "Quarterly access reviews must be completed on time" might appear in the access control policy, in three separate audit findings from different quarters, and in a process guide, each worded differently. Stage 2 reduces this redundancy through iterative merge passes driven by semantic clustering, then synthesizes the reduced pool into the final rubric.
+
+The merge phase operates as a convergent loop. While the pool is larger than a configurable batch size, the builder embeds all pool items, clusters them using agglomerative clustering over cosine similarity, and runs a merge agent on each cluster in parallel. The merge agent identifies the coherent core of each cluster -- requirements that address the same underlying compliance need -- and produces a single merged statement that preserves the strictest requirement level across the group. Items that do not belong (semantically unrelated outliers) are ejected back to the pool for the next pass. This approach draws on the insight behind SemDeDup: embedding-based similarity identifies semantic duplicates that exact string matching misses. ([arXiv][3])
 
 ```python
-# Same session -- add_document merges into the existing rubric
-rubric = await session.add_document(AUDIT_FINDINGS_TEXT, source=”audit_findings”)
+def merge_pass(pool, batch_size, algorithm):
+    n_clusters = ceil(len(pool) / batch_size)
+    groups = cluster(pool, n_clusters=n_clusters, algorithm=algorithm)
+    new_pool = []
+    for group in groups:
+        result = merge_agent.run(group)  # {merged_text, ejected_indices}
+        coherent = [g for i, g in enumerate(group) if i not in result.ejected_indices]
+        new_pool.append(PoolItem(text=result.merged_text, sources=union(coherent)))
+        new_pool.extend(group[i] for i in result.ejected_indices)
+    return new_pool
 ```
 
-For batch processing, use `extract()` to process all documents first, then `build()` once:
+The loop repeats until the pool fits in one batch or stops shrinking. The convergence check -- exit if the new pool is at least as large as the old one -- prevents infinite cycling when items cannot be merged further. Pool state is checkpointed after each completed pass, so a resume picks up from the last full pass rather than rerunning already-merged groups.
+
+Once the pool is small enough, the synthesis phase converts pool items into final `RubricItem`s. The synthesis agent has three tools: `find_similar_items` (semantic search over the current rubric via a persistent vector index), `add_item` (create a new rubric item and index it), and `add_source` (record an additional source reference on an existing item). Batches are processed sequentially, and because `add_item` writes to the vector index immediately, every subsequent batch sees items committed by previous ones. This prevents cross-batch duplicates without requiring the full rubric in the prompt context. For rubrics above fifty items, the agent must call `find_similar_items` before deciding to add; for smaller rubrics, the full list is included directly in the prompt.
 
 ```python
-session = RubricSession(“soc2_batch”)
-await session.extract(POLICY_TEXT, source=”soc2_policy”)
-await session.extract(AUDIT_FINDINGS_TEXT, source=”audit_findings”)
+# Synthesis tools -- closures over the live rubric and its vector index
+async def rubric_find_similar_items(text, top_k=5) -> list[dict]:
+    """Semantic search over current rubric items."""
+
+async def rubric_add_item(title, requirement_level, requirement_text,
+                          evidence_required, sources) -> str:
+    """Create new rubric item and index it."""
+
+async def rubric_add_source(item_id, doc_id, collection_name) -> None:
+    """Map an additional source to an existing rubric item."""
+```
+
+`RubricSession` exposes two workflows on top of this machinery. In the incremental workflow, each `add_document()` call extracts, merges, and synthesizes against the current rubric, so the rubric grows document by document. In the batch workflow, `extract()` is called multiple times to checkpoint each document's pool items independently, and then `build()` pools everything together for a single merge-and-synthesize pass. Batch tends to produce a more compact rubric when documents overlap heavily; incremental lets you observe how each new document changes the criteria.
+
+```python
+# Incremental: rubric evolves with each document
+session = RubricSession("soc2_demo")
+rubric = await session.add_document(POLICY_TEXT, source="soc2_policy")
+rubric = await session.add_document(AUDIT_FINDINGS_TEXT, source="audit_findings")
+
+# Batch: extract all, build once
+session = RubricSession("soc2_batch")
+await session.extract(POLICY_TEXT, source="soc2_policy")
+await session.extract(AUDIT_FINDINGS_TEXT, source="audit_findings")
 rubric = await session.build()
 ```
 
-When rubrics grow large across many document sources, a `deduplicate()` pass merges semantically equivalent items back down. It re-clusters the existing rubric items, merges duplicates, and re-synthesizes -- the same merge and synthesis phases used during the initial build.
+When rubrics grow large across many sources, a `deduplicate()` pass re-clusters existing items by semantic similarity, merges duplicates through the same merge agent, and re-synthesizes into a cleaner set.
+
+### Stage 3: Multi-source evidence-backed assessment
+
+Assessment is where the rubric becomes an instrument. The evaluator processes rubric items sequentially; for each item, it retrieves evidence from multiple independent sources in parallel. A typical compliance setup uses three indexes: policy (what the requirement means), history (whether similar issues have occurred before), and project (the submission's own claims about its posture). The `MultiSourceRetriever` queries all registered vector indexes concurrently, deduplicates results by document ID (keeping the highest-scoring occurrence), and returns a merged, score-sorted evidence set.
 
 ```python
-rubric = await session.deduplicate()
+retriever = MultiSourceRetriever(
+    policy=policy_index,
+    history=history_index,
+    project=project_index,
+)
+evaluator = RubricEvaluator()
+verdicts = await evaluator.evaluate(rubric, retriever)
 ```
 
-### Stage 3: Evidence-backed assessment (online)
-
-Online assessment begins by ingesting the submission (spec, slides, supporting docs) into a `project_index`. For each rubric item, the evaluator retrieves evidence across multiple indexes: policy (definition), history (precedent), and project (claimed implementation). The output is a per-item verdict—Pass, Risk, or Fail—backed by citations to retrieved spans. The citations are not optional: they are the mechanism that makes the pipeline defensible and debuggable.
-
-This is also where you enforce consistency: verdict prompts must be constrained to the rubric item and the retrieved evidence, and the model must be prevented from “making up” missing artifacts.
+For each item, the evaluator formats the retrieved evidence with source attribution and relevance scores, then prompts an LLM acting as an evidence-based auditor. The model must produce a structured verdict: PASS (sufficient evidence demonstrates compliance), RISK (partial or ambiguous evidence), or FAIL (no credible evidence, or evidence contradicts the requirement). The verdict includes citations -- span references into the source documents -- and a list of missing evidence types. Citations are not decorative; they are the mechanism that makes the pipeline defensible and debuggable. When a reviewer questions a FAIL verdict, they can trace the judgment through the citation to the retrieved span, the source index, and the original document.
 
 ```python
-class VerdictStatus(str, Enum):
-    PASS = "PASS"
-    RISK = "RISK"
-    FAIL = "FAIL"
-
 class RubricVerdict(BaseModel):
     item_id: str
-    status: VerdictStatus
-    rationale: str
+    status: VerdictStatus            # PASS, RISK, or FAIL
+    rationale: str                   # concise explanation (2-4 sentences)
     citations: list[SpanRef] = []    # (index_name, doc_id, start, end)
-    missing_evidence: list[str] = []
-
-class RubricEvaluator:
-    async def evaluate(self, rubric: Rubric, retriever: MultiSourceRetriever):
-        verdicts = []
-        for item in rubric.items:
-            docs = await retriever.retrieve_all(item.requirement_text)
-            verdict = await self._evaluate_item(item, docs)
-            verdicts.append(verdict)
-        return verdicts
+    missing_evidence: list[str] = [] # expected artifact types not found
 ```
 
+The multi-source design creates natural triangulation. Policy evidence establishes what the requirement means, historical evidence reveals whether similar issues have occurred before, and project evidence claims compliance. When project evidence contradicts historical evidence -- the project claims encryption is handled, but past audits found gaps -- the tension surfaces explicitly in the rationale rather than being papered over.
 
-### Compliance as the canonical application domain
+### The rubric as structured adversarial probe
 
-Compliance workflows make the rubric pattern concrete because they already have the primitives the agent needs: control frameworks (policy), past audit findings (history), and implementation artifacts (project). Stage 1 becomes control extraction from regulatory or standards text; Stage 2 incorporates audit findings and corrective actions; Stage 3 performs evidence-based control assessment. This mapping is particularly direct for access control, which appears across HIPAA technical safeguards, ISO 27001 access control controls, and NIST SP 800-53 access control families. ([ecfr.gov][1])
+A rubric pipeline is, at its core, a structured form of adversarial testing. Each MUST requirement with an explicit evidence contract is a targeted challenge: "show me the artifact, or fail." This is more systematic than ad-hoc red-teaming because the challenges are derived from policy rather than improvised, the evidence requirements are concrete rather than vague, and the verdicts are traceable rather than subjective.
 
-Cross-framework mappings should be treated as traceability edges, not as loose annotations. When a rubric item maps to multiple frameworks, the packet can render per-framework views without re-evaluating the project, which keeps assessment consistent while satisfying different stakeholder checklists.
+The connection to the adversarial patterns discussed earlier in this chapter is direct. A red-team agent can operate on the rubric itself, probing for gaps in criteria coverage ("what failure modes does this rubric not test for?") or challenging the evidence behind PASS verdicts ("is a quarterly access review script sufficient evidence for RBAC enforcement, or should it also require role-definition documentation?"). Feeding RISK verdicts through a debate agent -- where one side argues the evidence is sufficient and the other argues it is not -- can surface ambiguities that a single-pass assessment would miss.
+
+The pipeline also stress-tests rubric coverage against historical data. When audit findings from multiple quarters are added as documents in Stage 2, findings that do not map to any existing policy requirement are promoted into new rubric items. These are the "unwritten rules" and institutional knowledge that no policy document captures, and surfacing them is one of the highest-value outputs of the refinement process.
 
 ### Hands-on: end-to-end compliance assessment
 
-A minimal end-to-end exercise uses (1) a small SOC 2 subset as policy text, (2) a handful of mock audit findings as history, and (3) a short project security description as the submission. The notebook demonstrates both workflows: incremental (`add_document()` called twice) and batch (`extract()` twice then `build()` once). Evaluation uses `RubricEvaluator` with a `MultiSourceRetriever` spanning policy, history, and project indexes. The stage outputs are: extracted controls with stable IDs; a refined rubric with new items promoted from historical findings; and a Pass/Risk/Fail table with a concise per-item rationale.
+The accompanying notebook (`example_rubric.ipynb`) demonstrates both workflows using a simplified SOC 2 subset (access control, encryption, logging, incident response) as policy, mock audit findings from three quarters as history, and a project security description as the submission under evaluation. The exercise produces extracted controls with stable IDs, a refined rubric with new items promoted from historical findings, and a Pass/Risk/Fail table with per-item rationale and citations.
 
 ## References (references.md)
 
-1. Joint Task Force. *Security and Privacy Controls for Information Systems and Organizations (NIST SP 800-53 Rev. 5)*. NIST, 2020. ([NIST Computer Security Resource Center][2])
-2. Electronic Code of Federal Regulations. *45 CFR § 164.312 Technical safeguards (HIPAA Security Rule)*. eCFR, current version. ([ecfr.gov][1])
-3. David Holloway. *ISO 27001 – Annex A.9: Access Control*. ISMS.online, 2025. ([ISMS.online][3])
-4. Liu, Iter, Xu, et al. *G-Eval: NLG Evaluation using GPT-4 with Better Human Alignment*. EMNLP, 2023. ([arXiv][4])
-5. Zheng, et al. *Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena*. NeurIPS, 2023. ([arXiv][5])
-6. Es, James, et al. *RAGAs: Automated Evaluation of Retrieval Augmented Generation*. arXiv, 2023. ([arXiv][6])
-7. OpenAI. *Evals: A framework for evaluating LLMs and LLM systems*. GitHub repository, 2024. ([GitHub][7])
+1. Hashemi, Arian, et al. *LLM-Rubric: A Multidimensional, Calibrated Approach to Automated Evaluation of Natural Language Texts*. ACL, 2024. [https://aclanthology.org/2024.acl-long.745/](https://aclanthology.org/2024.acl-long.745/)
+2. Electronic Code of Federal Regulations. *45 CFR 164.312 Technical safeguards (HIPAA Security Rule)*. eCFR, current version. [https://www.ecfr.gov/current/title-45/subtitle-A/subchapter-C/part-164/subpart-C/section-164.312](https://www.ecfr.gov/current/title-45/subtitle-A/subchapter-C/part-164/subpart-C/section-164.312)
+3. Abbas, Amro, et al. *SemDeDup: Data-efficient learning at web-scale through semantic deduplication*. ICLR, 2023. [https://arxiv.org/abs/2303.09540](https://arxiv.org/abs/2303.09540)
+4. Joint Task Force. *Security and Privacy Controls for Information Systems and Organizations (NIST SP 800-53 Rev. 5)*. NIST, 2020. [https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final](https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final)
+5. Liu, Yang, et al. *G-Eval: NLG Evaluation using GPT-4 with Better Human Alignment*. EMNLP, 2023. [https://arxiv.org/abs/2303.16634](https://arxiv.org/abs/2303.16634)
+6. Zheng, Lianmin, et al. *Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena*. NeurIPS, 2023. [https://arxiv.org/abs/2306.05685](https://arxiv.org/abs/2306.05685)
+7. David Holloway. *ISO 27001 -- Annex A.9: Access Control*. ISMS.online, 2025. [https://www.isms.online/iso-27001/annex-a-2013/annex-a-9-access-control-2013/](https://www.isms.online/iso-27001/annex-a-2013/annex-a-9-access-control-2013/)
+8. OpenAI. *Evals: A framework for evaluating LLMs and LLM systems*. GitHub repository, 2024. [https://github.com/openai/evals](https://github.com/openai/evals)
 
-[1]: https://www.ecfr.gov/current/title-45/subtitle-A/subchapter-C/part-164/subpart-C/section-164.312?utm_source=chatgpt.com "45 CFR 164.312 -- Technical safeguards."
-[2]: https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final?utm_source=chatgpt.com "SP 800-53 Rev. 5, Security and Privacy Controls ... - NIST CSRC"
-[3]: https://www.isms.online/iso-27001/annex-a-2013/annex-a-9-access-control-2013/?utm_source=chatgpt.com "ISO 27001 – Annex A.9: Access Control | ISMS.online"
-[4]: https://arxiv.org/abs/2303.16634?utm_source=chatgpt.com "G-Eval: NLG Evaluation using GPT-4 with Better Human Alignment"
-[5]: https://arxiv.org/abs/2306.05685?utm_source=chatgpt.com "Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena"
-[6]: https://arxiv.org/abs/2309.15217?utm_source=chatgpt.com "Automated Evaluation of Retrieval Augmented Generation"
-[7]: https://github.com/openai/evals?utm_source=chatgpt.com "openai/evals: Evals is a framework for evaluating LLMs ..."
+[1]: https://aclanthology.org/2024.acl-long.745/ "LLM-Rubric: A Multidimensional, Calibrated Approach to Automated Evaluation"
+[2]: https://www.ecfr.gov/current/title-45/subtitle-A/subchapter-C/part-164/subpart-C/section-164.312 "45 CFR 164.312 -- Technical safeguards"
+[3]: https://arxiv.org/abs/2303.09540 "SemDeDup: Data-efficient learning at web-scale through semantic deduplication"
+[7]: https://www.isms.online/iso-27001/annex-a-2013/annex-a-9-access-control-2013/ "ISO 27001 -- Annex A.9: Access Control"
