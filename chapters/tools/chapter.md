@@ -32,5 +32,7 @@
 
 [Hands-On: The Workspace](./hands_on_workspace.md)
 
+[Hands-On: Advanced Topics](./hands_on_advanced_topics.md)
+
 [References](./references.md)
 
