@@ -73,9 +73,11 @@ class Rubric(BaseModel):
     provenance: dict = Field(default_factory=dict)
 
     def __str__(self) -> str:
-        return (
-            f"Rubric({self.rubric_id!r}, name={self.name!r}, {len(self.items)} items)"
-        )
+        header = f"Rubric({self.rubric_id!r}, name={self.name!r}, {len(self.items)} items)"
+        if not self.items:
+            return header
+        items_str = "\n".join(f"  {item}" for item in self.items)
+        return f"{header}\n{items_str}"
 
     def save(self, path: Path) -> None:
         """Save rubric to a JSON file."""
