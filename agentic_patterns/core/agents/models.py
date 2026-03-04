@@ -66,11 +66,20 @@ def _get_model_bedrock(config: BedrockConfig):
     )
 
     if config.aws_profile is not None:
+        provider = BedrockProvider(
+            profile_name=config.aws_profile,
+            aws_read_timeout=float(config.timeout),
+            aws_connect_timeout=float(config.timeout),
+        )
         return BedrockConverseModel(
-            model_name=config.model_name, settings=model_settings
+            model_name=config.model_name, provider=provider, settings=model_settings
         )
 
-    provider = BedrockProvider(region_name=config.aws_region)
+    provider = BedrockProvider(
+        region_name=config.aws_region,
+        aws_read_timeout=float(config.timeout),
+        aws_connect_timeout=float(config.timeout),
+    )
     return BedrockConverseModel(
         model_name=config.model_name, provider=provider, settings=model_settings
     )
@@ -158,7 +167,11 @@ def _get_model_gateway_bedrock(config: AIGatewayConfig):
         endpoint_url=f"{config.gateway_url}/bedrock",
         aws_access_key_id="",
         aws_secret_access_key="",
-        config=Config(retries={"max_attempts": 0}),
+        config=Config(
+            retries={"max_attempts": 0},
+            read_timeout=config.timeout,
+            connect_timeout=config.timeout,
+        ),
     )
     return BedrockConverseModel(
         model_name=config.model_name,

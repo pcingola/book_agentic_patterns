@@ -92,9 +92,9 @@ agent = get_agent(tools=enforced_tools)
 
 The agent now has `transfer_funds` in its tool set and can reason about using it. But when the agent actually calls `transfer_funds`, the wrapper function checks permissions and raises `ToolPermissionError` because WRITE permission was not granted.
 
-The agent receives this error as a tool result and must handle it. Typically, the agent will explain to the user that it attempted the action but was denied permission. This provides more transparency than construction-time filtering: the user learns that the capability exists but is restricted, rather than being told it does not exist.
+Unlike `ModelRetry` or Pydantic `ValidationError` (which are returned to the model as tool error results), `ToolPermissionError` propagates up to the caller. This is a deliberate design choice: a permission violation is a system-level boundary, not a recoverable tool error that the model should retry. The notebook demonstrates this with a `try`/`except` block around the agent run, catching the error externally. The caller can then decide how to handle it -- log it, inform the user, or escalate to a supervisor.
 
-Runtime enforcement is useful when you want agents to be aware of their limitations. It also enables patterns where an agent might request elevated permissions from a human supervisor before proceeding with a restricted operation.
+This still provides more transparency than construction-time filtering. The agent's tool set includes the restricted tools, so system prompts or error-handling logic can reference them. The key difference is that enforcement happens at the call boundary rather than before the agent starts reasoning.
 
 ### Choosing an Approach
 
@@ -112,6 +112,6 @@ Permissions are attached to tools using decorators and can be combined when a to
 
 Construction-time filtering removes unauthorized tools from the agent's view entirely. The agent cannot attempt restricted operations but also cannot explain why they are unavailable.
 
-Runtime enforcement lets the agent see all tools but raises errors for unauthorized calls. The agent can reason about restricted capabilities and explain its limitations to users.
+Runtime enforcement lets the agent see all tools but raises errors for unauthorized calls. The error propagates to the caller (not back to the model), so the surrounding application handles the violation.
 
 The choice between approaches depends on whether you prioritize strict containment or transparent communication about capability boundaries.

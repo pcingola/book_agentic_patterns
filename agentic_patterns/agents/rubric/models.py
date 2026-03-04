@@ -2,6 +2,7 @@
 
 import uuid
 from enum import Enum
+from pathlib import Path
 
 from pydantic import BaseModel, Field
 
@@ -75,6 +76,17 @@ class Rubric(BaseModel):
         return (
             f"Rubric({self.rubric_id!r}, name={self.name!r}, {len(self.items)} items)"
         )
+
+    def save(self, path: Path) -> None:
+        """Save rubric to a JSON file."""
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(self.model_dump_json(indent=2), encoding="utf-8")
+
+    @classmethod
+    def load(cls, path: Path) -> "Rubric":
+        """Load rubric from a JSON file."""
+        return cls.model_validate_json(Path(path).read_text(encoding="utf-8"))
 
 
 class SpanRef(BaseModel):
