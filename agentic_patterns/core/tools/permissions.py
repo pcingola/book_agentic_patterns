@@ -75,12 +75,23 @@ def enforce_tool_permission(func: Callable, granted: set[ToolPermission]) -> Cal
     """Wrap a tool with runtime permission checking. Permissions are baked into the wrapper."""
     required = get_permissions(func)
 
-    @wraps(func)
-    def wrapper(*args, **kwargs):
+    def _check() -> None:
         if not required.issubset(granted):
             missing = required - granted
             raise ToolPermissionError(f"Tool '{func.__name__}' requires {missing}")
-        return func(*args, **kwargs)
+
+    if asyncio.iscoroutinefunction(func):
+
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            _check()
+            return await func(*args, **kwargs)
+    else:
+
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            _check()
+            return func(*args, **kwargs)
 
     wrapper._permissions = required
     return wrapper

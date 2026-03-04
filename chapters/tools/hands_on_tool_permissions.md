@@ -92,7 +92,7 @@ agent = get_agent(tools=enforced_tools)
 
 The agent now has `transfer_funds` in its tool set and can reason about using it. But when the agent actually calls `transfer_funds`, the wrapper function checks permissions and raises `ToolPermissionError` because WRITE permission was not granted.
 
-Unlike `ModelRetry` or Pydantic `ValidationError` (which are returned to the model as tool error results), `ToolPermissionError` propagates up to the caller. This is a deliberate design choice: a permission violation is a system-level boundary, not a recoverable tool error that the model should retry. The notebook demonstrates this with a `try`/`except` block around the agent run, catching the error externally. The caller can then decide how to handle it -- log it, inform the user, or escalate to a supervisor.
+Unlike `ModelRetry` or Pydantic `ValidationError` -- errors that PydanticAI feeds back to the model so it can self-correct and retry -- `ToolPermissionError` propagates up to the caller. This is a deliberate design choice: a permission violation is a system-level boundary, not a recoverable tool error that the model should retry. The notebook demonstrates this with a `try`/`except` block around the agent run, catching the error externally. The caller can then decide how to handle it -- log it, inform the user, or escalate to a supervisor.
 
 This still provides more transparency than construction-time filtering. The agent's tool set includes the restricted tools, so system prompts or error-handling logic can reference them. The key difference is that enforcement happens at the call boundary rather than before the agent starts reasoning.
 

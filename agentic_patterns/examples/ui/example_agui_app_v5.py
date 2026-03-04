@@ -11,14 +11,11 @@ Run with: uvicorn agentic_patterns.examples.ui.example_agui_app_v5:app --reload
 
 from pathlib import PurePosixPath
 
-from ag_ui.core import CustomEvent, EventType, StateSnapshotEvent
-from pydantic import BaseModel
 from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Route
 
-from pydantic_ai import RunContext, ToolReturn
 from pydantic_ai.ui import StateDeps
 from pydantic_ai.ui.ag_ui.app import AGUIApp
 
@@ -30,70 +27,17 @@ from agentic_patterns.core.workspace import (
     write_to_workspace_async,
     workspace_to_host_path,
 )
+from agentic_patterns.examples.ui.calculator import (
+    CalculatorState,
+    add,
+    mul,
+    show_history,
+    sub,
+)
 
 UPLOAD_PREFIX = "/workspace/uploads"
 DEMO_USER_ID = "demo"
 DEMO_SESSION_ID = "agui"
-
-
-class CalculatorState(BaseModel):
-    """Shared state for the calculator application."""
-
-    history: list[str] = []
-    last_result: int | None = None
-
-
-def update_state_with_result(
-    ctx: RunContext[StateDeps[CalculatorState]],
-    operation: str,
-    a: int,
-    b: int,
-    result: int,
-) -> ToolReturn:
-    """Helper function to update state and emit events after a calculation."""
-    state = ctx.deps.state
-    state.history.append(f"{a} {operation} {b} = {result}")
-    state.last_result = result
-    return ToolReturn(
-        return_value=f"Result: {result}",
-        metadata=[
-            StateSnapshotEvent(type=EventType.STATE_SNAPSHOT, snapshot=state),
-            CustomEvent(
-                type=EventType.CUSTOM,
-                name="calculation_complete",
-                value={"operation": operation, "result": result},
-            ),
-        ],
-    )
-
-
-async def add(
-    ctx: RunContext[StateDeps[CalculatorState]], a: int, b: int
-) -> ToolReturn:
-    """Add two numbers and update the state."""
-    return update_state_with_result(ctx, "add", a, b, a + b)
-
-
-async def mul(
-    ctx: RunContext[StateDeps[CalculatorState]], a: int, b: int
-) -> ToolReturn:
-    """Multiply two numbers and update the state."""
-    return update_state_with_result(ctx, "mul", a, b, a * b)
-
-
-async def show_history(ctx: RunContext[StateDeps[CalculatorState]]) -> str:
-    """Show the calculation history."""
-    state = ctx.deps.state
-    if not state.history:
-        return "No calculations performed yet."
-    return "Calculation history:\n" + "\n".join(state.history)
-
-
-async def sub(
-    ctx: RunContext[StateDeps[CalculatorState]], a: int, b: int
-) -> ToolReturn:
-    """Subtract two numbers and update the state."""
-    return update_state_with_result(ctx, "sub", a, b, a - b)
 
 
 async def feedback_handler(request: Request) -> JSONResponse:
@@ -116,7 +60,7 @@ async def feedback_handler(request: Request) -> JSONResponse:
 
 
 async def upload_handler(request: Request) -> JSONResponse:
-    """Handle file uploads via multipart/form-data."""
+    """Handle file uploads: save to workspace, tag as private, summarize."""
     form = await request.form()
     file = form.get("file")
     if file is None:

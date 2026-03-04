@@ -93,17 +93,17 @@ async def content_pipeline(topic: str) -> WorkflowState:
     state = WorkflowState(topic=topic)
 
     # Stage 1: Outline
-    outline_agent = get_agent(output_type=Outline, system_prompt="Create clear article outlines.")
+    outline_agent = get_agent(output_type=Outline, system_prompt="You are an outline specialist. Create clear, logical article structures.")
     agent_run, _ = await run_agent(outline_agent, f"Create an outline for: {topic}")
     state.outline = agent_run.result.output
 
     # Stage 2: Draft
-    draft_agent = get_agent(output_type=Draft, system_prompt="Write engaging articles from outlines.")
+    draft_agent = get_agent(output_type=Draft, system_prompt="You are a content writer. Write engaging, informative articles based on outlines.")
     agent_run, _ = await run_agent(draft_agent, f"Write ~300 words based on: {state.outline.model_dump_json()}")
     state.draft = agent_run.result.output
 
     # Stage 3: Edit
-    editor_agent = get_agent(output_type=EditedArticle, system_prompt="Edit for clarity and engagement.")
+    editor_agent = get_agent(output_type=EditedArticle, system_prompt="You are an editor. Improve clarity, fix errors, and enhance readability while preserving the author's voice.")
     agent_run, _ = await run_agent(editor_agent, f"Edit this article: {state.draft.content}")
     state.final = agent_run.result.output
 

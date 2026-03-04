@@ -42,4 +42,4 @@ Delegation is less appropriate when the subtask is deterministic and doesn't nee
 
 ### Relationship to Sub-Agents
 
-Delegation is how sub-agents are invoked from a control flow perspective. For detailed coverage of sub-agent patterns, including fixed specialists with structured outputs and dynamic sub-agent creation at runtime, see the [Sub-Agents chapter](../sub_agents/chapter.md).
+Delegation is how sub-agents are invoked from a control flow perspective. For detailed coverage of sub-agent patterns, including fixed specialists with structured outputs and dynamic sub-agent creation at runtime, see the [Skills, Sub-Agents & Tasks chapter](../skills_and_sub_agents/chapter.md).

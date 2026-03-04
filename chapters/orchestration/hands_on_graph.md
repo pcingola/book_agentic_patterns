@@ -93,7 +93,7 @@ Running the graph requires an initial node and state:
 
 ```python
 graph = Graph(nodes=[GenerateDraft, EvaluateQuality, Revise])
-state = DocumentState(topic="The importance of code reviews")
+state = DocumentState(topic="The importance of code reviews in software development")
 result = await graph.run(GenerateDraft(), state=state)
 ```
 
