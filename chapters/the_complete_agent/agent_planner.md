@@ -19,7 +19,7 @@ tools = get_file_tools() + get_sandbox_tools() + get_todo_tools()
 agent = get_agent(system_prompt=system_prompt, tools=tools)
 ```
 
-`get_todo_tools()` provides functions for creating lists, adding items, updating status, and displaying the plan. Items have hierarchical IDs (e.g., "1", "1.1", "1.2") and four possible states: pending, in_progress, completed, and failed.
+`get_todo_tools()` provides functions for creating lists, adding items, deleting items, updating status, and displaying the plan. Items have hierarchical IDs (e.g., "1", "1.1", "1.2") and four possible states: pending, in_progress, completed, and failed.
 
 ### Execution
 

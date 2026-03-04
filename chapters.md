@@ -267,7 +267,8 @@ Five progressively capable monolithic agents combining all prior patterns, then 
 - [x] Agent V5: The Full Agent -- Asynchronous task submission with event-driven wait for concurrent sub-agent execution
 - [x] Server Requirements -- Consolidated checklist of authentication, workspace, context, permissions, and compliance requirements for MCP and A2A servers
 - [x] Infrastructure -- Decomposing the monolithic agent into distributed MCP servers and A2A services with identical agent architecture
-- [x] References
+
+NOTE: This chapter is entirely hands-on -- each section pairs theory with its notebook. No separate hands-on or references sections.
 
 ### Chapter: [Advanced Agents](chapters/advanced_agents/chapter.md)
 
