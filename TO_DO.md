@@ -1,11 +1,8 @@
 # To do
 
-- [x] Check Advanced agents
 - [ ] MCP & A2A proxy: security / auth / logging / visivility
-- [ ] Agent: annonimization agent
-
-- Chapter UI: Add A2UI
-- Chapter: Long Running agents / Swarms / OpenClaw
+- [ ] Chapter UI: Add A2UI
+- [ ] Chapter: Long Running agents / Swarms / OpenClaw
 
 ### References and Suggested topics
 

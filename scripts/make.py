@@ -3,6 +3,28 @@ import re
 import sys
 from pathlib import Path
 
+def _make_refs_unique(content: str, file_path: Path) -> str:
+    """Prefix numeric reference link IDs to make them globally unique across the book."""
+    # Find all numeric reference definitions: [N]: url
+    ref_def_pattern = re.compile(r'^\[(\d+)\]:', re.MULTILINE)
+    ref_ids = set(ref_def_pattern.findall(content))
+
+    if not ref_ids:
+        return content
+
+    prefix = f"{file_path.stem}-"
+
+    for ref_id in ref_ids:
+        # Replace definitions: [N]: -> [stem-N]:
+        content = content.replace(f'\n[{ref_id}]:', f'\n[{prefix}{ref_id}]:')
+        # Handle definition at start of content
+        if content.startswith(f'[{ref_id}]:'):
+            content = f'[{prefix}{ref_id}]:' + content[len(f'[{ref_id}]:'):]
+        # Replace usages: ][N]) or ][N]] -> ][stem-N]) or ][stem-N]]
+        content = re.sub(rf'\]\[{ref_id}\]', f'][{prefix}{ref_id}]', content)
+
+    return content
+
 
 def resolve_includes(file_path: Path, visited: set[Path], source_file: Path | None = None, source_line: int | None = None) -> str:
     """Recursively resolve markdown includes, detecting circular references."""
@@ -97,6 +119,9 @@ def resolve_includes(file_path: Path, visited: set[Path], source_file: Path | No
 
     result = '\n'.join(result_lines)
     visited.remove(file_path)
+
+    # Make reference link IDs unique per included file
+    result = _make_refs_unique(result, file_path)
 
     return result
 

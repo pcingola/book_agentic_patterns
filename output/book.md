@@ -85,33 +85,33 @@ What changed with large language models is not the agent abstraction itself, but
 
 #### From probabilistic language models to modern decoding
 
-Language modeling has been probabilistic from the start: the core object is a probability distribution over sequences, not a single "correct" next token. Early information theory formalized the idea of modeling sources statistically, which later became the conceptual backbone of language modeling. ([ESSRL][1])
+Language modeling has been probabilistic from the start: the core object is a probability distribution over sequences, not a single "correct" next token. Early information theory formalized the idea of modeling sources statistically, which later became the conceptual backbone of language modeling. ([ESSRL][historical_perspectives-1])
 
-Neural language models made this explicit by learning a parameterized distribution over next tokens, and modern LLMs are essentially extremely large versions of that idea. ([Journal of Machine Learning Research][2]) What changed in practice is that, as models became strong generators, *decoding* became a first-class engineering decision. Deterministic decoding (greedy/beam) tends to be repeatable but can degrade quality (repetition, blandness), while stochastic decoding (temperature, top-k/top-p) trades determinism for diversity and sometimes robustness. Nucleus sampling is a canonical example of decoding research motivated by these practical failures. ([arXiv][3])
+Neural language models made this explicit by learning a parameterized distribution over next tokens, and modern LLMs are essentially extremely large versions of that idea. ([Journal of Machine Learning Research][historical_perspectives-2]) What changed in practice is that, as models became strong generators, *decoding* became a first-class engineering decision. Deterministic decoding (greedy/beam) tends to be repeatable but can degrade quality (repetition, blandness), while stochastic decoding (temperature, top-k/top-p) trades determinism for diversity and sometimes robustness. Nucleus sampling is a canonical example of decoding research motivated by these practical failures. ([arXiv][historical_perspectives-3])
 
 #### From software modules to tool-using agents
 
-Modularity predates "agents" by decades. In classic software engineering, information hiding and stable interfaces were formalized as the core mechanism for building systems that can change without collapsing under their own complexity. The canonical argument is that you do *not* modularize by "steps in the processing," but by design decisions likely to change-so changes are localized behind module boundaries. ([ACM Digital Library][11])
+Modularity predates "agents" by decades. In classic software engineering, information hiding and stable interfaces were formalized as the core mechanism for building systems that can change without collapsing under their own complexity. The canonical argument is that you do *not* modularize by "steps in the processing," but by design decisions likely to change-so changes are localized behind module boundaries. ([ACM Digital Library][historical_perspectives-11])
 
-As systems grew, the same pressure pushed modularity "out of process" into services: independently deployable components with explicit network contracts. This trajectory is often summarized as monolith -> modules/packages -> services/SOA -> microservices, with the key idea remaining constant: smaller components, clear interfaces, and ownership boundaries. ([martinfowler.com][12])
+As systems grew, the same pressure pushed modularity "out of process" into services: independently deployable components with explicit network contracts. This trajectory is often summarized as monolith -> modules/packages -> services/SOA -> microservices, with the key idea remaining constant: smaller components, clear interfaces, and ownership boundaries. ([martinfowler.com][historical_perspectives-12])
 
-In LLM systems, modularity reappeared in a new form around 2022-2023: language models began to *route* to external tools and specialized components rather than "do everything in weights." Neuro-symbolic and tool-augmented architectures (e.g., MRKL) made modular routing explicit ([arXiv][9]), while ReAct showed the practical value of interleaving reasoning with actions (tool calls) during execution. ([arXiv][10]) Toolformer then pushed toward models that can learn to decide *when* to call tools. ([arXiv][4])
+In LLM systems, modularity reappeared in a new form around 2022-2023: language models began to *route* to external tools and specialized components rather than "do everything in weights." Neuro-symbolic and tool-augmented architectures (e.g., MRKL) made modular routing explicit ([arXiv][historical_perspectives-9]), while ReAct showed the practical value of interleaving reasoning with actions (tool calls) during execution. ([arXiv][historical_perspectives-10]) Toolformer then pushed toward models that can learn to decide *when* to call tools. ([arXiv][historical_perspectives-4])
 
 #### From hand-built intelligence to scalable methods
 
-A repeating pattern in AI history is that approaches which "bake in" human knowledge and reasoning tricks often deliver quick wins, but are eventually outpaced by more general methods that can absorb more compute and data. Sutton's *The Bitter Lesson* distilled this from decades of results across search and learning: progress tends to come from methods that scale (and from the discipline to keep systems simple enough to scale), even when the "hand-designed" approach feels more insightful in the moment. ([UT Austin Computer Science][26])
+A repeating pattern in AI history is that approaches which "bake in" human knowledge and reasoning tricks often deliver quick wins, but are eventually outpaced by more general methods that can absorb more compute and data. Sutton's *The Bitter Lesson* distilled this from decades of results across search and learning: progress tends to come from methods that scale (and from the discipline to keep systems simple enough to scale), even when the "hand-designed" approach feels more insightful in the moment. ([Incomplete Ideas][historical_perspectives-26])
 
 Modern LLM agents reintroduce an old temptation in a new form: over-fitting behavior through elaborate prompting, brittle heuristics, or highly bespoke orchestration. The best current practice is to resist that temptation by investing in (1) strong interfaces (tools, schemas, contracts), (2) evaluation-driven iteration, and (3) designs that keep the model doing what it's good at (flexible reasoning under uncertainty) while pushing deterministic work into code.
 
-[1]: https://www.essrl.wustl.edu/~jao/itrg/shannon.pdf
-[2]: https://www.jmlr.org/papers/volume3/bengio03a/bengio03a.pdf
-[3]: https://arxiv.org/abs/1904.09751
-[4]: https://arxiv.org/abs/2302.04761
-[9]: https://arxiv.org/abs/2205.00445
-[10]: https://arxiv.org/abs/2210.03629
-[11]: https://dl.acm.org/doi/10.1145/361598.361623
-[12]: https://martinfowler.com/articles/microservices.html
-[26]: https://www.cs.utexas.edu/~eunsol/courses/data/bitter_lesson.pdf
+[historical_perspectives-1]: https://www.essrl.wustl.edu/~jao/itrg/shannon.pdf
+[historical_perspectives-2]: https://www.jmlr.org/papers/volume3/bengio03a/bengio03a.pdf
+[historical_perspectives-3]: https://arxiv.org/abs/1904.09751
+[historical_perspectives-4]: https://arxiv.org/abs/2302.04761
+[historical_perspectives-9]: https://arxiv.org/abs/2205.00445
+[historical_perspectives-10]: https://arxiv.org/abs/2210.03629
+[historical_perspectives-11]: https://dl.acm.org/doi/10.1145/361598.361623
+[historical_perspectives-12]: https://martinfowler.com/articles/microservices.html
+[historical_perspectives-26]: https://www.incompleteideas.net/IncIdeas/BitterLesson.html
 
 
 ## What is an Agent / Agentic System
@@ -193,7 +193,7 @@ Agentic systems sit at the boundary between deterministic software and stochasti
 
 #### LLMs are stochastic (even when you try to “turn it off”)
 
-An LLM call is not “a function” in the strict software sense. Even if the model were held fixed, generation typically involves sampling from a distribution; lowering temperature just sharpens that distribution. Many production model APIs also involve infrastructure-level nondeterminism (e.g., backend changes, load balancing, numerical differences), which means that setting “temperature = 0” is best understood as “reduce randomness,” not “prove determinism.” This is explicitly called out in agent-oriented tooling docs: even with temperature set to 0.0, outputs are not guaranteed to be fully deterministic. ([Pydantic AI][5])
+An LLM call is not “a function” in the strict software sense. Even if the model were held fixed, generation typically involves sampling from a distribution; lowering temperature just sharpens that distribution. Many production model APIs also involve infrastructure-level nondeterminism (e.g., backend changes, load balancing, numerical differences), which means that setting “temperature = 0” is best understood as “reduce randomness,” not “prove determinism.” This is explicitly called out in agent-oriented tooling docs: even with temperature set to 0.0, outputs are not guaranteed to be fully deterministic. ([Pydantic AI][stochasticity-5])
 
 Two practical implications follow:
 
@@ -273,9 +273,9 @@ This lets you test the *agent as software* with the speed and determinism you ex
 
 ##### 4) Treat evaluation as a first-class harness, not ad-hoc assertions
 
-For end-to-end behavior, you typically need evaluation infrastructure: curated datasets, repeatable runs, and scoring. Evaluation frameworks aimed at agentic systems emphasize running many scenarios and attaching evaluators that produce scores/labels/assertions, including “LLM-as-judge” when deterministic checks are insufficient. ([Pydantic AI][6])
+For end-to-end behavior, you typically need evaluation infrastructure: curated datasets, repeatable runs, and scoring. Evaluation frameworks aimed at agentic systems emphasize running many scenarios and attaching evaluators that produce scores/labels/assertions, including “LLM-as-judge” when deterministic checks are insufficient. ([Pydantic AI][stochasticity-6])
 
-A practical rubric pattern is: deterministic checks first, then an LLM judge for the remaining ambiguity, with guidance to keep the judge itself as stable as possible (for example, low temperature) and to combine multiple judges when needed. ([Pydantic AI][7])
+A practical rubric pattern is: deterministic checks first, then an LLM judge for the remaining ambiguity, with guidance to keep the judge itself as stable as possible (for example, low temperature) and to combine multiple judges when needed. ([Pydantic AI][stochasticity-7])
 
 ```python
 case = {"input": "...", "expected_facts": [...], "constraints": [...]}
@@ -302,12 +302,12 @@ Exact text snapshots are brittle. When you *must* snapshot, snapshot the right t
 
 ##### 6) Design for controlled nondeterminism in production
 
-Even if your tests are solid, production will still face drift. The production counterpart of your testing strategy is: log the parameters and environment identifiers; keep prompts versioned; isolate tools behind stable contracts; and monitor outcome metrics so you detect behavior changes quickly. If your provider supports seeds and fingerprints, treat them as debugging aids, not as a determinism guarantee. ([OpenAI Cookbook][8])
+Even if your tests are solid, production will still face drift. The production counterpart of your testing strategy is: log the parameters and environment identifiers; keep prompts versioned; isolate tools behind stable contracts; and monitor outcome metrics so you detect behavior changes quickly. If your provider supports seeds and fingerprints, treat them as debugging aids, not as a determinism guarantee. ([OpenAI Cookbook][stochasticity-8])
 
-[5]: https://ai.pydantic.dev/api/settings/
-[6]: https://ai.pydantic.dev/evals/
-[7]: https://ai.pydantic.dev/evals/evaluators/llm-judge/
-[8]: https://cookbook.openai.com/examples/reproducible_outputs_with_the_seed_parameter
+[stochasticity-5]: https://ai.pydantic.dev/api/settings/
+[stochasticity-6]: https://ai.pydantic.dev/evals/
+[stochasticity-7]: https://ai.pydantic.dev/evals/evaluators/llm-judge/
+[stochasticity-8]: https://cookbook.openai.com/examples/reproducible_outputs_with_the_seed_parameter
 
 
 ## Modularity in agentic systems
@@ -388,11 +388,11 @@ This is the same mental model as functions/classes:
 * errors = exceptions contract
 * retryable vs not = idempotency + side-effect model
 
-Modern “tool calling” APIs formalize this multi-step control flow (model proposes a call → app executes → model continues with results), which makes tool contracts a first-class modular boundary. ([OpenAI Platform][15])
+Modern “tool calling” APIs formalize this multi-step control flow (model proposes a call → app executes → model continues with results), which makes tool contracts a first-class modular boundary. ([OpenAI Platform][modularity-15])
 
 ##### MCP: modularity at the “port” boundary
 
-Model Context Protocol (MCP) pushes modularity one level outward: tools, prompts, and resources are exposed by *servers* behind a standard client/server protocol. Instead of each application inventing bespoke integrations, MCP aims to standardize the boundary so components become swappable. The MCP specification explicitly frames this as a modular protocol design where implementations can support only the layers they need. ([Model Context Protocol][16])
+Model Context Protocol (MCP) pushes modularity one level outward: tools, prompts, and resources are exposed by *servers* behind a standard client/server protocol. Instead of each application inventing bespoke integrations, MCP aims to standardize the boundary so components become swappable. The MCP specification explicitly frames this as a modular protocol design where implementations can support only the layers they need. ([Model Context Protocol][modularity-16])
 
 Two key modularity consequences follow:
 
@@ -400,7 +400,7 @@ Two key modularity consequences follow:
    A database connector, a filesystem browser, or a domain API wrapper can be shipped as an MCP server with a stable contract, then reused across multiple agents/apps.
 
 2. **“Context” becomes a structured dependency**
-   MCP resources and prompts let you treat context not as “more text in the prompt,” but as a separate module with its own retrieval and lifecycle rules. ([Model Context Protocol][17])
+   MCP resources and prompts let you treat context not as “more text in the prompt,” but as a separate module with its own retrieval and lifecycle rules. ([Model Context Protocol][modularity-17])
 
 Conceptually:
 
@@ -426,7 +426,7 @@ Note what changed versus “plain tool calling”: the agent no longer links dir
 
 ##### A2A: modularity at the “agent as a service” boundary
 
-If MCP makes *tools* reusable modules, A2A makes *agents themselves* reusable modules: independently hosted, potentially opaque systems that interoperate through a common language and interaction model. ([a2a-protocol.org][18])
+If MCP makes *tools* reusable modules, A2A makes *agents themselves* reusable modules: independently hosted, potentially opaque systems that interoperate through a common language and interaction model. ([a2a-protocol.org][modularity-18])
 
 The software analogy is direct:
 
@@ -457,7 +457,7 @@ This is modularity at the same boundary as “service calls,” except the remot
 
 ##### Skills: packaging and discoverability as modularity
 
-“Skills” address a different (often underestimated) modularity problem: **packaging, documentation, and discoverability**. A skill format standardizes *how* a capability is described and shipped—typically as a small directory with a canonical manifest (e.g., a `SKILL.md`) plus optional scripts/assets/references. ([Agent Skills][19])
+“Skills” address a different (often underestimated) modularity problem: **packaging, documentation, and discoverability**. A skill format standardizes *how* a capability is described and shipped—typically as a small directory with a canonical manifest (e.g., a `SKILL.md`) plus optional scripts/assets/references. ([Agent Skills][modularity-19])
 
 In software terms, skills are closest to:
 
@@ -468,7 +468,7 @@ This becomes especially valuable when capabilities are not only code (tools), bu
 
 ##### Sub-agents: classes and dependency injection for behavior
 
-Inside a single application, you often want multiple specialized agents (e.g., “planner,” “researcher,” “executor,” “critic”). That is modularity at the *component* level: each sub-agent has a purpose, its own prompt constraints, and a limited toolset. Frameworks that emphasize typed dependencies and structured outputs make this decomposition less fragile by turning hidden coupling (prompt conventions) into explicit interfaces. ([Pydantic AI][20])
+Inside a single application, you often want multiple specialized agents (e.g., “planner,” “researcher,” “executor,” “critic”). That is modularity at the *component* level: each sub-agent has a purpose, its own prompt constraints, and a limited toolset. Frameworks that emphasize typed dependencies and structured outputs make this decomposition less fragile by turning hidden coupling (prompt conventions) into explicit interfaces. ([Pydantic AI][modularity-20])
 
 A useful engineering rule: a sub-agent should have a narrower surface area than the parent agent—fewer tools, stricter output schema, clearer termination conditions.
 
@@ -501,7 +501,7 @@ This mirrors classes/modules: each component has its own invariants and dependen
 
 When the number of components grows, the primary complexity shifts from “what does each part do?” to “who calls whom, and when?” That’s a control-flow modularity problem.
 
-Workflows (pipelines, supervisor/worker, hand-offs) keep control flow mostly linear and are often sufficient. Graphs (DAGs, state machines) make branching, retries, and long-lived state explicit and inspectable—useful when execution paths are numerous or must be audited. ([Pydantic AI][21])
+Workflows (pipelines, supervisor/worker, hand-offs) keep control flow mostly linear and are often sufficient. Graphs (DAGs, state machines) make branching, retries, and long-lived state explicit and inspectable—useful when execution paths are numerous or must be audited. ([Pydantic AI][modularity-21])
 
 A simple graph-shaped interface looks like this:
 
@@ -540,13 +540,13 @@ A compact mental mapping helps align agent architecture choices with well-unders
 
 The common principle is to choose boundaries based on what changes at different rates. Prompts and examples may change weekly; tool schemas change rarely; protocols and cross-team contracts should change almost never. Good agentic modularity aligns those change rates with explicit interfaces so iteration remains cheap where it should be cheap, and stability exists where it must be stable.
 
-[15]: https://platform.openai.com/docs/guides/function-calling
-[16]: https://modelcontextprotocol.io/specification/2025-06-18/basic
-[17]: https://modelcontextprotocol.io/
-[18]: https://a2a-protocol.org/latest/specification/
-[19]: https://agentskills.io/specification
-[20]: https://ai.pydantic.dev/
-[21]: https://ai.pydantic.dev/graph/
+[modularity-15]: https://platform.openai.com/docs/guides/function-calling
+[modularity-16]: https://modelcontextprotocol.io/specification/2025-06-18/basic
+[modularity-17]: https://modelcontextprotocol.io/
+[modularity-18]: https://a2a-protocol.org/latest/specification/
+[modularity-19]: https://agentskills.io/specification
+[modularity-20]: https://ai.pydantic.dev/
+[modularity-21]: https://ai.pydantic.dev/graph/
 
 
 ## Best practices
@@ -565,7 +565,7 @@ Third, keep the system **composable**. The more your architecture resembles smal
 
 #### Building effective agents: when to use workflows vs agents
 
-Anthropic draws a practical architectural distinction: **workflows** are LLM+tools orchestrated through predefined code paths, while **agents** are systems where the model dynamically decides what to do and which tools to call. Both are “agentic systems,” but they behave very differently in production. ([Anthropic][27])
+Anthropic draws a practical architectural distinction: **workflows** are LLM+tools orchestrated through predefined code paths, while **agents** are systems where the model dynamically decides what to do and which tools to call. Both are “agentic systems,” but they behave very differently in production. ([Anthropic][best_practices-27])
 
 A useful best practice is to start with workflows whenever possible:
 
@@ -599,7 +599,7 @@ Two concrete practices matter disproportionately in agent deployments:
 
 #### Writing tools for agents: contracts, context, and token economics
 
-Tools are where agent reliability is won or lost. Anthropic’s tool guidance is fundamentally about turning tool calling into a high-signal, low-ambiguity interface: pick the right tools, name and namespace them clearly, return meaningful context, keep responses token-efficient, and iterate using evaluations (including having agents help improve the tools themselves). ([Anthropic][28])
+Tools are where agent reliability is won or lost. Anthropic’s tool guidance is fundamentally about turning tool calling into a high-signal, low-ambiguity interface: pick the right tools, name and namespace them clearly, return meaningful context, keep responses token-efficient, and iterate using evaluations (including having agents help improve the tools themselves). ([Anthropic][best_practices-28])
 
 A few practices are especially transferable:
 
@@ -618,7 +618,7 @@ CreateTicket(
 ) -> { ticket_id: str, url: str }
 ```
 
-This style aligns with the broader “structured outputs” approach: use schemas to validate what the model returns, keep interfaces object-shaped, and make it easy to reject/repair malformed outputs. ([Pydantic AI][29])
+This style aligns with the broader “structured outputs” approach: use schemas to validate what the model returns, keep interfaces object-shaped, and make it easy to reject/repair malformed outputs. ([Pydantic AI][best_practices-29])
 
 ##### Return enough context for the model to make the next decision
 
@@ -642,7 +642,7 @@ Agent systems sit on top of probabilistic components and unreliable external ser
 
 ##### Retries belong at the system boundary
 
-Retries should be configured for the kinds of failures you expect: rate limits, timeouts, temporary outages, context-length issues. Treat retries as policy, not ad-hoc try/except scattered across tools. The Pydantic ecosystem’s guidance for retry strategies in evals mirrors what works in production systems: consistent retry configuration, bounded attempts, and exponential backoff where appropriate. ([Pydantic AI][30])
+Retries should be configured for the kinds of failures you expect: rate limits, timeouts, temporary outages, context-length issues. Treat retries as policy, not ad-hoc try/except scattered across tools. The Pydantic ecosystem’s guidance for retry strategies in evals mirrors what works in production systems: consistent retry configuration, bounded attempts, and exponential backoff where appropriate. ([Pydantic AI][best_practices-30])
 
 ```python
 def call_with_retry(fn, *, max_attempts=3, backoff_s=1.0):
@@ -659,11 +659,11 @@ The important part is not the mechanism—it’s the decision to classify errors
 
 ##### Validate model outputs like untrusted user input
 
-Whether it’s a tool call, a structured output, or a plan, treat the model as an untrusted producer. Schema validation and type checking catch entire categories of silent failures early (wrong types, missing fields, invalid enum values) and give you a clean “ask the model to try again” loop. ([Pydantic AI][29])
+Whether it’s a tool call, a structured output, or a plan, treat the model as an untrusted producer. Schema validation and type checking catch entire categories of silent failures early (wrong types, missing fields, invalid enum values) and give you a clean “ask the model to try again” loop. ([Pydantic AI][best_practices-29])
 
 ##### Use evals as the main lever for improvement
 
-The most reliable path to better agents is expanding your evaluation set with real failures and near-misses. Tool design, prompt changes, and orchestration tweaks should be judged against regression suites, not vibes. Anthropic’s tool-writing guidance explicitly centers comprehensive evaluations and iterative improvement loops (including using agents to help optimize tools). ([Anthropic][28])
+The most reliable path to better agents is expanding your evaluation set with real failures and near-misses. Tool design, prompt changes, and orchestration tweaks should be judged against regression suites, not vibes. Anthropic’s tool-writing guidance explicitly centers comprehensive evaluations and iterative improvement loops (including using agents to help optimize tools). ([Anthropic][best_practices-28])
 
 A minimal pattern is: capture a transcript → turn it into a test case → add an automated check.
 
@@ -687,10 +687,10 @@ In agentic engineering, “best practices” is less about any single framework 
 
 Simplicity over cleverness (because you will iterate), contracts over prose (because tools are your control surface), measurement over intuition (because stochastic systems deceive), and scalable feedback loops over handcrafted behavior (because that is where long-run performance comes from).
 
-[27]: https://www.anthropic.com/research/building-effective-agents
-[28]: https://www.anthropic.com/engineering/writing-tools-for-agents
-[29]: https://ai.pydantic.dev/output/
-[30]: https://ai.pydantic.dev/evals/how-to/retry-strategies/
+[best_practices-27]: https://www.anthropic.com/research/building-effective-agents
+[best_practices-28]: https://www.anthropic.com/engineering/writing-tools-for-agents
+[best_practices-29]: https://ai.pydantic.dev/output/
+[best_practices-30]: https://ai.pydantic.dev/evals/how-to/retry-strategies/
 
 
 ## Hands-On: Python Concepts for Async Agent Execution
@@ -1154,19 +1154,7 @@ Managing this loop manually involves significant complexity: parsing tool calls,
 
 ### Provider-Specific Variations
 
-While the OpenAI format is standard, providers implement subtle differences:
-
-**Anthropic Claude**: Uses the same message structure but has different parameter names. `max_tokens` is required (no default). System messages can be passed as a separate `system` parameter instead of a message. Tool calling uses a slightly different format in older versions but now aligns with OpenAI's standard.
-
-**Google Gemini**: Calls roles `user` and `model` instead of `user` and `assistant`. System instructions are passed differently. Tool definitions use a similar but not identical schema.
-
-**Azure OpenAI**: Identical to OpenAI but requires different authentication (API key in header vs. Azure AD token). Endpoint URLs include deployment names.
-
-**AWS Bedrock**: Wraps provider-specific formats in a unified "Converse API" that's OpenAI-compatible. Legacy formats for Claude, Llama, and others differ significantly.
-
-**Ollama**: OpenAI-compatible for local models. Adds options for controlling model loading behavior and resource allocation.
-
-Frameworks like Pydantic-ai normalize these differences. You configure the provider once; the framework handles format translation automatically.
+While the OpenAI format is the de-facto standard, providers implement subtle differences: Anthropic requires `max_tokens` and passes system messages differently; Google Gemini uses `model` instead of `assistant` as a role name; Azure OpenAI uses different authentication; AWS Bedrock wraps formats in a unified "Converse API." Frameworks like Pydantic-ai normalize these differences -- you configure the provider once and the framework handles format translation automatically.
 
 ### Cost Implications
 
@@ -1313,75 +1301,7 @@ While frameworks handle these details, understanding the underlying API helps yo
 
 ### Practical Example: Manual vs Framework
 
-Here's a simple weather agent implemented both ways.
-
-#### Manual Implementation (100+ lines):
-
-```python
-import httpx
-import json
-
-async def run_weather_agent(user_prompt: str) -> str:
-    api_key = "your-api-key"
-    url = "https://api.openai.com/v1/chat/completions"
-    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
-
-    messages = [
-        {"role": "system", "content": "You are a helpful weather assistant."},
-        {"role": "user", "content": user_prompt}
-    ]
-
-    tools = [{
-        "type": "function",
-        "function": {
-            "name": "get_weather",
-            "description": "Get current weather for a location",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "location": {"type": "string", "description": "City name"}
-                },
-                "required": ["location"]
-            }
-        }
-    }]
-
-    async with httpx.AsyncClient() as client:
-        while True:
-            payload = {"model": "gpt-4o", "messages": messages, "tools": tools}
-            response = await client.post(url, json=payload, headers=headers)
-            data = response.json()
-
-            message = data["choices"][0]["message"]
-            finish_reason = data["choices"][0]["finish_reason"]
-
-            if finish_reason == "tool_calls":
-                messages.append(message)
-
-                for tool_call in message["tool_calls"]:
-                    function_name = tool_call["function"]["name"]
-                    arguments = json.loads(tool_call["function"]["arguments"])
-
-                    if function_name == "get_weather":
-                        result = get_weather_impl(arguments["location"])
-                        tool_message = {
-                            "role": "tool",
-                            "tool_call_id": tool_call["id"],
-                            "content": json.dumps(result)
-                        }
-                        messages.append(tool_message)
-
-            elif finish_reason == "stop":
-                return message["content"]
-
-            else:
-                raise Exception(f"Unexpected finish_reason: {finish_reason}")
-
-def get_weather_impl(location: str) -> dict:
-    return {"temperature": 18, "condition": "sunny"}
-```
-
-#### Framework Implementation (10 lines):
+A manual implementation of a simple weather agent with tool calling requires 100+ lines: building the messages array, defining tool schemas as JSON, writing the HTTP request loop, parsing tool calls, dispatching to functions, appending tool results, and looping until `finish_reason` is `stop`. With a framework, the same agent is about 10 lines:
 
 ```python
 from pydantic_ai import Agent
@@ -1397,7 +1317,7 @@ result = await agent.run("What's the weather in Paris?")
 print(result.output)
 ```
 
-Both implementations produce identical API interactions. The framework version eliminates boilerplate while providing better error handling, type safety, and maintainability.
+Both produce identical API interactions. The framework eliminates boilerplate while providing better error handling, type safety, and maintainability.
 
 ### Key Takeaways
 
@@ -1655,47 +1575,13 @@ This section explores two different approaches to prompting language models usin
 
 There are fundamentally two ways to give instructions to a language model:
 
-**Single prompt approach**: Combine instructions and content in one message. Example: "Translate to French: I like coffee."
+**Single prompt approach**: Combine instructions and content in one message. This is what we did in the previous section with `example_translate_basic.ipynb`, where the prompt was `"Translate to French: I like coffee."` The model receives a single user message containing both the instruction and the content.
 
 **Separated prompt approach**: Put instructions in a system prompt and content in a user prompt. System prompt: "Translate into French". User prompt: "I like coffee."
 
-Both approaches produce the same output, but they differ in reusability, maintainability, and how the model processes the instructions.
+Both approaches produce the same output, but they differ in reusability, maintainability, and how the model processes the instructions. The single prompt approach works fine for one-off tasks, but the instruction is repeated in every prompt and harder to maintain if you want to change the target language or instruction style.
 
-### Example 1: Everything in the User Prompt
-
-Let's examine `example_translate_basic.ipynb`:
-
-```python
-from agentic_patterns.core.agents import get_agent, run_agent
-
-agent = get_agent()
-prompt = "Translate to French: I like coffee."
-agent_run, nodes = await run_agent(agent, prompt)
-print(agent_run.result.output)
-```
-
-This approach is straightforward. The entire task is described in a single string. The model receives one message containing both the instruction (translate to French) and the content (I like coffee).
-
-When you send this prompt, the model receives a message structure like:
-
-```json
-{
-  "role": "user",
-  "content": "Translate to French: I like coffee."
-}
-```
-
-This works perfectly fine for one-off tasks. However, consider what happens if you need to translate multiple sentences. You would need to construct a new prompt each time:
-
-```python
-prompt1 = "Translate to French: I like coffee."
-prompt2 = "Translate to French: The weather is nice."
-prompt3 = "Translate to French: Good morning."
-```
-
-The instruction "Translate to French:" is repeated in every prompt, and the structure is harder to maintain if you want to change the target language or instruction style.
-
-### Example 2: Separating System and User Prompts
+### Separating System and User Prompts
 
 Now let's examine `example_translate_system_prompt.ipynb`:
 
@@ -2511,11 +2397,9 @@ Final Answer: [answer]"""
 
 By requiring explicit steps, we force the model to allocate generation capacity to reasoning rather than compressing everything into an opaque prediction.
 
-### Example 1: Direct Answer vs Chain-of-Thought
+### Example 1: Direct Answer (No Reasoning)
 
-Let's examine the difference between direct answering and Chain-of-Thought.
-
-#### Direct Answer
+A word problem requiring multi-step reasoning. Without explicit instructions to show work, the model may skip steps or make errors.
 
 ```python
 from agentic_patterns.core.agents import get_agent, run_agent
@@ -2535,7 +2419,9 @@ print(agent_run.result.output)
 
 The model produces an answer, but we cannot see how it arrived at that answer. If the answer is wrong, we cannot identify where the reasoning failed. Even if correct, we don't know if the model truly understood the problem or got lucky.
 
-#### Chain-of-Thought Answer
+### Example 2: Chain-of-Thought Reasoning
+
+Same problem, but prompting the model to think step by step. This increases accuracy and provides transparency into the reasoning process.
 
 ```python
 system_prompt = """Solve the problem step by step. Show your reasoning for each step before providing the final answer.
@@ -2559,7 +2445,7 @@ print(agent_run.result.output)
 
 Now we can see the reasoning. The model explicitly calculated the number of boxes before calculating revenue. If the answer were wrong, we could identify which step failed. This transparency is valuable for debugging and verification.
 
-### Example 2: Zero-Shot Chain-of-Thought
+### Example 3: Zero-Shot Chain-of-Thought
 
 The simplest form of Chain-of-Thought is "zero-shot CoT," introduced by Kojima et al. in 2022. You don't need to specify a format or provide examples. Just add the phrase "Think step by step" to your prompt:
 
@@ -2577,7 +2463,7 @@ This remarkably simple technique often produces comparable results to structured
 
 Zero-shot CoT works because large language models have been trained on vast amounts of text containing step-by-step explanations. The phrase "Think step by step" activates this pattern in the model's learned representations, causing it to generate similar step-by-step structures.
 
-### Example 3: Logical Reasoning
+### Example 4: More Complex Reasoning
 
 Chain-of-Thought is not limited to arithmetic. It improves performance on any task requiring sequential reasoning or constraint satisfaction. Consider this logic puzzle:
 
@@ -2771,103 +2657,19 @@ Approach C was pruned after evaluation. Approaches A and B were expanded. Final 
 
 This tree structure is managed explicitly through prompt engineering. Unlike Chain-of-Thought, where reasoning is implicit, Tree of Thought requires explicit instructions to generate branches, evaluate them, and decide which to expand.
 
-### When Tree of Thought Helps
-
-Tree of Thought is most valuable for problems where:
-
-**Multiple valid solutions exist**: Design problems, algorithmic choices, architectural decisions. If there's only one correct answer, exploration adds no value.
-
-**Early commitment is risky**: Problems where the first approach that comes to mind may have hidden flaws. Tree of Thought prevents "sunk cost fallacy" in reasoning.
-
-**Trade-offs matter**: When solutions have competing strengths (accuracy vs speed, simplicity vs flexibility). Explicit evaluation surfaces these trade-offs.
-
-**Solution quality justifies cost**: Tree of Thought uses multiple agent turns. If the problem is trivial or stakes are low, this overhead isn't justified.
-
-**Evaluation is possible**: You need criteria to score approaches. If you can't define what "good" means, evaluation becomes subjective and unreliable.
-
-Tree of Thought is less valuable for problems with obvious solutions, tasks requiring retrieval rather than reasoning, or situations where any working solution is acceptable.
-
-### Implementation Patterns
-
-When implementing Tree of Thought in production systems, consider these patterns:
+### Implementation Tips
 
 **Define explicit evaluation criteria**: Don't ask "which is better?" Ask "rate on accuracy (1-5), performance (1-5), complexity (1-5)." Concrete criteria produce consistent evaluations.
 
-**Control branching width and depth**: Generating 3 branches with 2 levels of depth (like our example) is manageable. Generating 10 branches with 5 levels becomes expensive quickly. Choose branching parameters based on problem complexity and budget.
-
-**Use message history to maintain context**: Each turn builds on previous turns. The `nodes_to_message_history` function converts agent execution nodes into conversation context, allowing the model to reference earlier branches when evaluating or expanding.
-
-```python
-message_history = nodes_to_message_history(previous_nodes)
-next_run, next_nodes = await run_agent(agent, next_prompt, message_history=message_history)
-```
+**Control branching width and depth**: Generating 3 branches with 2 levels of depth (like our example) is manageable. Generating 10 branches with 5 levels becomes expensive quickly.
 
 **Prune strategically**: Pruning saves computation but may discard good ideas. In our example, we kept the top 2 of 3 approaches (67% retention). For critical decisions, consider keeping more branches or using multiple pruning stages.
 
-**Progressive detail**: Generate high-level ideas first, evaluate, then add detail only to promising branches. This is more efficient than generating detailed proposals for every branch upfront.
-
 **Structured prompts**: Each phase (generate, evaluate, expand, select) uses a carefully structured prompt that tells the model exactly what to produce. Loose prompts lead to inconsistent outputs that break downstream phases.
-
-### Comparison to Chain-of-Thought
-
-Chain-of-Thought and Tree of Thought serve different purposes:
-
-**Chain-of-Thought** generates a single reasoning trace from problem to solution. It's linear, transparent, and suitable for problems with clear reasoning paths (arithmetic, logic, constraint satisfaction).
-
-**Tree of Thought** generates multiple reasoning traces, evaluates them, and selectively expands promising ones. It's branching, comparative, and suitable for problems with multiple solution approaches.
-
-Chain-of-Thought asks: "Show your work step by step."
-Tree of Thought asks: "Consider multiple approaches, evaluate each, and choose the best."
-
-Chain-of-Thought is cheaper (one agent turn) and simpler to implement. Tree of Thought is more expensive (multiple turns) but explores the solution space more thoroughly.
-
-For problems where the solution path is known, use Chain-of-Thought. For problems where choosing the right approach is critical, use Tree of Thought.
-
-### Trade-offs and Limitations
-
-Tree of Thought introduces several trade-offs:
-
-**High token usage**: Multiple branches mean multiple agent turns. Our example used 4 turns with 3 approaches evaluated. This is 3-4x more expensive than linear reasoning.
-
-**Increased latency**: Sequential agent turns cannot be parallelized easily (each depends on previous context). The example takes 4x as long as a single Chain-of-Thought turn.
-
-**Evaluation quality matters**: If evaluation criteria are poorly chosen, the model may prune good approaches and expand weak ones. Garbage in, garbage out applies to Tree of Thought evaluation.
-
-**Not a guarantee of optimality**: Tree of Thought explores more of the solution space than linear reasoning, but doesn't exhaustively search it. The best solution might lie in a pruned branch or an approach never generated.
-
-**Prompt engineering complexity**: Implementing Tree of Thought requires carefully structured prompts for each phase. Small mistakes in prompt wording can cause phases to produce incompatible outputs.
-
-**Overkill for simple problems**: If the solution is obvious or the problem is trivial, Tree of Thought wastes computation. Use it when solution quality justifies the cost.
-
-Despite these limitations, Tree of Thought is valuable for high-stakes design decisions, architectural choices, and problems where early commitment to a suboptimal approach is costly.
-
-### How It Connects to Other Patterns
-
-Tree of Thought builds on and combines with other patterns:
-
-**Chain-of-Thought**: Tree of Thought is "multiple Chain-of-Thought paths in parallel." Each branch follows Chain-of-Thought-style reasoning, but we explore multiple chains simultaneously.
-
-**Self-Reflection**: Evaluation is a form of self-reflection. The model critiques its own proposals based on explicit criteria. Tree of Thought formalizes this reflection into structured comparison.
-
-**Verification**: Detailed expansion allows verification of claims made during initial generation. If an approach claims "fast performance," the detailed implementation can verify this with concrete data structures and algorithms.
-
-**Planning and Decomposition**: The progressive detail pattern (generate high-level, evaluate, expand detail) is a form of hierarchical planning. We decompose the problem into "choose approach" then "design implementation."
-
-**Best-of-N Sampling**: Tree of Thought can be viewed as structured best-of-N. Instead of generating N complete solutions and picking the best, we generate N partial solutions, evaluate early, and invest detail only in promising candidates.
-
-Advanced patterns build on Tree of Thought by adding search algorithms (breadth-first, depth-first, Monte Carlo Tree Search), value functions (learned evaluation instead of prompted evaluation), or external verifiers (unit tests, formal verification).
 
 ### Key Takeaways
 
-Tree of Thought structures reasoning as deliberate exploration of multiple solution paths. Instead of committing to the first approach, it generates alternatives, evaluates them, and selectively expands the most promising ones.
-
-The pattern requires four phases: generation (create multiple approaches), evaluation (score each on criteria), expansion (develop detail for top candidates), and selection (choose the best based on detailed analysis).
-
-Tree of Thought is most valuable for design problems with multiple valid solutions, where early commitment is risky and trade-offs matter. It's less valuable for problems with obvious solutions or when computation cost outweighs solution quality.
-
-Implementation requires careful prompt engineering for each phase, management of message history to maintain tree structure, and strategic pruning to balance exploration breadth with computation cost.
-
-Tree of Thought uses significantly more tokens and time than linear reasoning but produces better solutions for complex problems by preventing premature commitment to suboptimal approaches. Use it when solution quality justifies the cost.
+Tree of Thought requires four phases: generation, evaluation, expansion, and selection. Our example used 4 agent turns with 3 initial branches -- roughly 3-4x the token cost and latency of linear Chain-of-Thought reasoning. This cost is justified for high-stakes design decisions where early commitment to a suboptimal approach is expensive to reverse. For problems with obvious solutions or low stakes, linear reasoning suffices.
 
 
 ## Hands-On: ReAct (Reasoning + Acting)
@@ -3553,7 +3355,7 @@ The pattern scales to external verification. In production, the verifier might n
 
 ### Comparison: With and Without Verification
 
-The notebook includes a comparison showing direct generation without a verification loop:
+Consider what happens with direct generation without a verification loop:
 
 ```python
 direct_agent = get_agent(system_prompt="You generate passwords. Be very careful to satisfy all constraints exactly.")
@@ -4062,19 +3864,21 @@ Human-in-the-loop creates structured checkpoints where agents pause for human au
 14. Cobbe, K. et al. *Training Verifiers to Solve Math Word Problems*. arXiv, 2021. https://arxiv.org/abs/2110.14168
 15. Nakano, R. et al. *WebGPT: Browser-assisted Question-answering with Human Feedback*. arXiv, 2021. https://arxiv.org/abs/2112.09332
 16. Nye, M. et al. *Show Your Work: Scratchpads for Intermediate Computation with Language Models*. arXiv, 2021. https://arxiv.org/abs/2112.00114
-17. Karpas, E. et al. *MRKL Systems: A Modular, Neuro-Symbolic Architecture that Combines Large Language Models, External Knowledge Sources and Discrete Reasoning*. arXiv, 2022. https://arxiv.org/abs/2205.00445
-18. Kojima, T. et al. *Large Language Models are Zero-Shot Reasoners*. NeurIPS, 2022. https://arxiv.org/abs/2205.11916
-19. Saunders, W. et al. *Self-Critique and the Limits of Model Introspection*. arXiv, 2022.
-20. Wang, X. et al. *Self-Consistency Improves Chain of Thought Reasoning in Language Models*. arXiv, 2022.
-21. Wei, J. et al. *Chain-of-Thought Prompting Elicits Reasoning in Large Language Models*. NeurIPS, 2022. https://arxiv.org/abs/2201.11903
-22. Xie, S., Ma, X., Wang, Y. et al. *An Explanation of In-Context Learning as Implicit Bayesian Inference*. ICLR, 2022.
-23. Yao, S. et al. *ReAct: Synergizing Reasoning and Acting in Language Models*. ICLR, 2023. https://arxiv.org/abs/2210.03629
-24. Madaan, A. et al. *Self-Refine: Iterative Refinement with Self-Feedback*. arXiv, 2023.
-25. Schick, T. et al. *Toolformer: Language Models Can Teach Themselves to Use Tools*. arXiv, 2023. https://arxiv.org/abs/2302.04761
-26. Shinn, N. et al. *Reflexion: Language Agents with Verbal Reinforcement Learning*. NeurIPS, 2023.
-27. Yao, S. et al. *Tree of Thoughts: Deliberate Problem Solving with Large Language Models*. arXiv, 2023. https://arxiv.org/abs/2305.10601
-28. Zhou, D. et al. *Least-to-Most Prompting Enables Complex Reasoning in Large Language Models*. ICLR, 2023.
-29. OpenAI. *Best Practices for Human-in-the-Loop AI Systems*. Technical blog, 2023.
+17. Ahn, M. et al. *Do As I Can, Not As I Say: Grounding Language in Robotic Affordances*. arXiv, 2022. https://arxiv.org/abs/2204.01691
+18. Karpas, E. et al. *MRKL Systems: A Modular, Neuro-Symbolic Architecture that Combines Large Language Models, External Knowledge Sources and Discrete Reasoning*. arXiv, 2022. https://arxiv.org/abs/2205.00445
+19. Kojima, T. et al. *Large Language Models are Zero-Shot Reasoners*. NeurIPS, 2022. https://arxiv.org/abs/2205.11916
+20. Saunders, W. et al. *Self-Critique and the Limits of Model Introspection*. arXiv, 2022.
+21. Wang, X. et al. *Self-Consistency Improves Chain of Thought Reasoning in Language Models*. arXiv, 2022.
+22. Wei, J. et al. *Chain-of-Thought Prompting Elicits Reasoning in Large Language Models*. NeurIPS, 2022. https://arxiv.org/abs/2201.11903
+23. Xie, S., Ma, X., Wang, Y. et al. *An Explanation of In-Context Learning as Implicit Bayesian Inference*. ICLR, 2022.
+24. Yao, S. et al. *ReAct: Synergizing Reasoning and Acting in Language Models*. ICLR, 2023. https://arxiv.org/abs/2210.03629
+25. Madaan, A. et al. *Self-Refine: Iterative Refinement with Self-Feedback*. arXiv, 2023.
+26. Schick, T. et al. *Toolformer: Language Models Can Teach Themselves to Use Tools*. arXiv, 2023. https://arxiv.org/abs/2302.04761
+27. Shinn, N. et al. *Reflexion: Language Agents with Verbal Reinforcement Learning*. NeurIPS, 2023.
+28. Yao, S. et al. *Tree of Thoughts: Deliberate Problem Solving with Large Language Models*. arXiv, 2023. https://arxiv.org/abs/2305.10601
+29. Zhou, D. et al. *Least-to-Most Prompting Enables Complex Reasoning in Large Language Models*. ICLR, 2023.
+30. OpenAI. *Best Practices for Human-in-the-Loop AI Systems*. Technical blog, 2023.
+31. Wang, X. et al. *Executable Code Actions Elicit Better LLM Agents*. arXiv, 2024. https://arxiv.org/abs/2402.01030
 
 
 \newpage
@@ -4118,7 +3922,7 @@ As tool-using agents moved from research prototypes to production deployments, t
 
 Tool use is the core of AI agents and agentic behavior: it is the pattern by which a model reasons about the world and then deliberately acts on it through external capabilities, closing the loop between cognition and execution.
 
-#### The pattern in detail
+### The pattern in detail
 
 Tool use formalizes how an agent crosses the boundary between internal reasoning and external action. A tool is defined not by its implementation, but by a clear interface: what inputs it accepts, what outputs it produces, and what side effects it may have. From the agent’s perspective, invoking a tool is a deliberate act governed by constraints, rather than an unstructured guess.
 
@@ -4136,7 +3940,7 @@ Finally, tool use generalizes beyond simple function calls. It applies equally t
 
 Structured output is the pattern of treating a model's response not as free-form text, but as a value that must conform to an explicitly defined, machine-readable shape.
 
-#### Pattern explanation
+### The pattern in detail
 
 In an agentic system, structured output defines the moment where reasoning becomes action. Instead of asking the model to “say what to do,” the system asks it to *return* something: a data object whose shape is known in advance and whose validity can be checked automatically.
 
@@ -4158,7 +3962,7 @@ In this sense, structured output is not an optional refinement but a foundationa
 
 Tool discovery and selection is the pattern by which an agent determines which external capabilities are relevant to a task and decides which of them to invoke in order to make progress toward its goal.
 
-#### The pattern explained
+### The pattern in detail
 
 At its core, tool discovery and selection separates *capability awareness* from *capability execution*. An agent reasons over descriptions of available tools—what they do, what inputs they require, what outputs they produce, and what constraints they impose—without being tightly coupled to their implementations. This allows the agent to treat tools as interchangeable capabilities rather than fixed function calls.
 
@@ -4170,7 +3974,7 @@ In the second stage, a *task-execution agent* is invoked with the original task 
 
 This separation mirrors long-standing architectural principles in AI and distributed systems: planning versus acting, control plane versus execution plane, and global reasoning versus local decision-making. Tool discovery becomes an explicit, inspectable step, rather than an implicit side effect of prompting.
 
-#### Why the pattern matters
+### Why the pattern matters
 
 Treating tool discovery and selection as a first-class pattern enables agentic systems to scale. New tools can be added without overwhelming execution agents, safety and permission policies can be enforced during selection, and context length can be tightly controlled. Most importantly, agents remain adaptable: they reason over *what capabilities exist* independently of *how those capabilities are used*.
 
@@ -4182,7 +3986,7 @@ As agents evolve into long-running systems operating over large and dynamic tool
 
 Tool contracts and schemas define the precise, machine-verifiable interface through which a language model reasons about, invokes, composes, and recovers from interactions with external tools.
 
-#### Tools as explicit contracts
+### Tools as explicit contracts
 
 A tool is defined not by its implementation, but by its *contract*. This contract specifies the tool’s name, intent, inputs, outputs, and operational constraints. In Python-centric systems, contracts are naturally derived from function signatures, type annotations, and docstrings.
 
@@ -4204,42 +4008,11 @@ def get_weather(req: WeatherRequest) -> WeatherResponse:
 
 From this definition, the runtime derives a schema that is passed to the language model. The model never sees executable code—only the interface. This separation is critical: the model reasons about *capabilities*, not implementations.
 
-#### Structured output and tool calls
+### Contracts in the tool call loop
 
-As discussed in the structured output section, constraining model responses to well-defined schemas is a foundational pattern. Within tool contracts, this principle applies directly: once contracts are available, the model is constrained to produce structured output. Instead of emitting free-form text, it must either select a tool and provide arguments conforming to its schema, or emit a structured final result.
+The tool call loop described earlier—where the model proposes an action, the framework executes it, and the result feeds back as context—depends entirely on contracts for correctness. Contracts ensure that every transition in this loop is well defined and inspectable: arguments are validated before execution, and if validation fails, the error is returned to the model as structured feedback, allowing it to correct itself.
 
-Conceptually, a tool call looks like:
-
-```json
-{
-    "name": "get_weather", 
-    "arguments": { 
-        "city": "Buenos Aires", 
-        "unit": "C"
-    }
-}
-```
-
-Arguments are validated before execution. If validation fails, the error is returned to the model as structured feedback, allowing it to correct itself. Structured output thus replaces brittle parsing with explicit, enforceable contracts.
-
-#### The tool call loop
-
-Tool use occurs inside a loop. The model emits a structured action, the framework validates and executes it, and the result is appended to the agent’s state before the model continues.
-
-At a high level:
-
-```python
-while True:
-    msg = model.generate(state)
-    if msg.is_final:
-        return msg
-    result = execute_tool(msg)
-    state.append(result)
-```
-
-This loop is the operational core of agentic systems. Contracts and schemas ensure that every transition—generation, execution, and state update—is well defined and inspectable.
-
-#### Explicit termination via final schemas
+### Explicit termination via final schemas
 
 To avoid ambiguous stopping conditions, frameworks introduce an explicit final schema. Rather than replying with unconstrained text, the model must emit a structured object representing completion.
 
@@ -4250,7 +4023,7 @@ class FinalResult(BaseModel):
 
 Termination is therefore a validated action, not an implicit convention. This guarantees that every agent run ends in a well-typed result, simplifying downstream processing, logging, and evaluation.
 
-#### Retries as part of the contract
+### Retries as part of the contract
 
 Retries are not an implementation detail; they are part of the tool contract. A tool’s schema and documentation can communicate whether retries are safe, under what conditions they should occur, and which inputs must remain stable.
 
@@ -4266,7 +4039,7 @@ When a tool fails, the failure is returned as structured data rather than an exc
 
 This design shifts retry logic from opaque control flow into the reasoning loop itself.
 
-#### Parallel tool calls
+### Parallel tool calls
 
 Not all tool calls are sequential. In many cases, the model can identify independent actions that may be executed concurrently. Modern agent runtimes allow the model to emit *multiple* tool calls in a single step when their contracts indicate no dependency.
 
@@ -4283,7 +4056,7 @@ The framework executes these calls in parallel and returns their results togethe
 
 Parallelism is only safe because contracts make dependencies explicit. Without schemas, concurrent execution would be speculative; with schemas, it becomes a controlled optimization.
 
-#### Why this pattern matters
+### Why this pattern matters
 
 Tool contracts and schemas transform tool use from an informal convention into a disciplined interface. They enable validation before execution, structured feedback after execution, principled retries, safe parallelism, and explicit termination.
 
@@ -4295,7 +4068,7 @@ More importantly, they define clear capability boundaries. The model can act onl
 
 Tool permissions define the explicit authority boundaries that govern what an agent is allowed to observe, query, or mutate when interacting with external systems.
 
-#### Tool permissions in agentic systems
+### Tool permissions in agentic systems
 
 In an agentic system, tools are not neutral utilities. Each tool represents a channel through which the agent can affect or learn about the world. Tool permissions therefore serve three closely related goals:
 
@@ -4307,7 +4080,7 @@ Unlike traditional applications, agents dynamically decide *when* and *how* to i
 
 A useful mental model is to treat every tool invocation as a privileged operation that must be explicitly justified by the agent’s role and current task.
 
-#### Read vs write permissions
+### Read vs write permissions
 
 The most fundamental distinction is between **read** and **write** capabilities.
 
@@ -4336,7 +4109,7 @@ def update_record(record_id: str, payload: dict) -> None:
 
 The critical point is not the function signature itself, but the **permission metadata** attached to it and enforced by the agent runtime.
 
-#### Permission to connect and external access
+### Permission to connect and external access
 
 A particularly sensitive permission is the ability to **connect to external systems**, such as the public internet or third-party APIs.
 
@@ -4359,7 +4132,7 @@ def web_search(query: str) -> list[str]:
 
 Here, the gateway—not the agent—enforces logging, filtering, and redaction, ensuring that private context never leaves the trust boundary.
 
-#### Prompt leaking and contextual integrity
+### Prompt leaking and contextual integrity
 
 Prompt leaking is a uniquely agentic failure mode. Because agents reason over rich internal context, they may inadvertently embed that context into tool inputs. For example, a search query might include proprietary information simply because it was salient in the agent’s reasoning trace.
 
@@ -4371,7 +4144,7 @@ Permissions mitigate this by enforcing **contextual integrity**: tools receive o
 
 The key insight is that permission checks are not only about *whether* a tool can be called, but also about *what information* is allowed to flow through that call.
 
-#### Permissions as an architectural boundary
+### Permissions as an architectural boundary
 
 In mature agentic systems, tool permissions become an architectural primitive rather than an afterthought. They define clear responsibility boundaries between:
 
@@ -4389,7 +4162,7 @@ Tool permissions therefore act as the practical bridge between abstract agent au
 
 The workspace pattern introduces a shared, persistent file system that agents and tools use to externalize intermediate artifacts, manage context, and coordinate work beyond the limits of the model's prompt.
 
-#### The workspace as a concrete abstraction
+### The workspace as a concrete abstraction
 
 At its core, the workspace is intentionally simple: it is a directory on disk. Tools can read files from it and write files into it, and those files persist across tool calls and agent steps. There is no requirement for a database, schema, or specialized API. The power of the pattern comes precisely from its minimalism.
 
@@ -4397,13 +4170,13 @@ By relying on files as the shared medium, the workspace becomes universally acce
 
 Conceptually, the workspace sits between the agent’s internal reasoning loop and the external world. It is not part of the model’s hidden state, and it is not necessarily user-facing output. Instead, it functions as shared working material: drafts, logs, datasets, generated assets, and partial results.
 
-#### Sharing and coordination
+### Sharing and coordination
 
 A defining property of the workspace is that it is shared. Tools do not pass large payloads to each other directly; they leave artifacts behind. Another tool, or another agent, can later pick them up by reading the same files. Humans can also inspect or modify these artifacts, turning the workspace into a collaboration surface rather than a hidden implementation detail.
 
 This indirect coordination significantly reduces coupling. A tool only needs to know how to write its output and how to describe where it was written. It does not need to know which agent, tool, or human will consume it next. As systems scale to dozens of tools and agents, this loose coupling becomes essential.
 
-#### Context management, memory, and RAG
+### Context management, memory, and RAG
 
 The workspace plays a central role in managing limited context windows. Large intermediate artifacts—such as long transcripts, structured datasets, or verbose logs—do not belong in the prompt. Instead, they are written to the workspace and referenced indirectly.
 
@@ -4411,7 +4184,7 @@ Over time, the workspace naturally takes on the role of long-term memory. Artifa
 
 The result is a clear separation of concerns. The model reasons over concise summaries and pointers, while the workspace holds the unbounded, durable material.
 
-#### Writing files instead of returning large outputs
+### Writing files instead of returning large outputs
 
 A practical best practice follows directly from this pattern. When a tool produces an output that is too large to safely return in full, it should write the complete result to the workspace and return only a concise summary together with a file path.
 
@@ -4431,7 +4204,7 @@ def analyze_large_dataset(data, workspace):
 
 This allows the agent to continue reasoning without polluting its context, while preserving full fidelity in the external artifact.
 
-#### Multi-modal tools and the workspace
+### Multi-modal tools and the workspace
 
 The workspace pattern is especially important for multi-modal tools. Images, audio, and video are naturally file-based artifacts and do not fit cleanly into textual prompts. Rather than attempting to encode or inline such outputs, tools should write them to the workspace and return lightweight metadata.
 
@@ -4451,7 +4224,7 @@ def generate_image(prompt, workspace):
 
 This keeps the agent’s reasoning loop purely textual while enabling rich, multi-modal outputs to flow through the system.
 
-#### Tool composition and system robustness
+### Tool composition and system robustness
 
 Because tools communicate indirectly through files, the workspace enables flexible composition. Tool chains can be rearranged without changing interfaces, partial failures can be inspected by examining intermediate artifacts, and retries become simpler because previous outputs already exist on disk.
 
@@ -4463,7 +4236,7 @@ In practice, the workspace often doubles as a debugging and audit surface. Espec
 
 Advanced tool use is where an agent stops being a "function caller" and becomes a supervised, adaptive system: it can ask for approval, reshape its toolset at runtime, defer execution across boundaries, and diagnose or repair its own tool interface.
 
-#### Human in the loop for tools
+### Human in the loop for tools
 
 Human-in-the-loop (HITL) for tool use is not just “ask the user sometimes.” It is a deliberate control surface that converts high-impact tool invocations into *reviewable* requests. The key is to treat certain tool calls as *proposed actions* that require explicit approval (or additional input) before execution.
 
@@ -4493,7 +4266,7 @@ When approval is required, the agent should emit a structured “tool request”
 
 HITL is increasingly described as a first-class mechanism in agent frameworks, where certain tool calls can be flagged for approval based on context or arguments. [29]
 
-#### Dynamic tools
+### Dynamic tools
 
 “Dynamic tools” means the agent’s available tool interface is not static. Instead, the system can **filter, modify, or augment** tool definitions *at each step* based on context, policy, user role, runtime state, or the current phase of a plan. Conceptually, this is a *tool shaping* step inserted between “decide next action” and “call a tool.”
 
@@ -4522,7 +4295,7 @@ def prepare_tools(all_tools: list, state: dict) -> list:
 
 This pattern is explicitly supported in modern tool systems as an agent-wide hook to filter/modify tool definitions step-by-step. [26]
 
-#### Deferred tools
+### Deferred tools
 
 Deferred tools separate *selection* of a tool call from *execution* of that tool call. The agent can propose one or more tool invocations, then **pause** and return a bundle of “deferred requests.” Execution happens later—possibly by a human reviewer, an external worker, or a different trust zone—after which the run resumes with the corresponding results.
 
@@ -4556,7 +4329,7 @@ final = agent.resume_with_results(history=deferred.history, results=approved_res
 
 This "pause with requests → resume with results" mechanism is described directly in deferred-tool documentation. [27]
 
-#### Tool doctor (development-time focus)
+### Tool doctor (development-time focus)
 
 A *tool doctor* is a development-cycle mechanism used to analyze tool definitions and produce concrete recommendations for improvement **before** those tools are exposed to a running agent. Its goal is preventive rather than reactive: to eliminate ambiguous, underspecified, or misleading tool contracts that would otherwise manifest as failures, retries, or incorrect behavior at runtime.
 
@@ -4594,7 +4367,7 @@ Although it is possible to apply similar diagnostics to runtime logs, this shoul
 
 In short, the tool doctor belongs squarely in the development loop. It formalizes a practice that experienced teams already follow informally—reviewing and refining tool interfaces—but adapts it to the unique demands of language-model-driven agents, where the “caller” is probabilistic and highly sensitive to interface quality.
 
-#### Putting the pieces together
+### Putting the pieces together
 
 Advanced tool use is best understood as a *control architecture* around the basic tool loop:
 
@@ -4612,31 +4385,33 @@ This combination preserves autonomy where it is safe and cheap, while providing 
 
 The Model Context Protocol (MCP) defines a standardized, long-lived interface through which models interact with external capabilities—tools, resources, and stateful services—using structured messages over well-defined transports.
 
-#### From embedded tools to protocolized capabilities
+### From embedded tools to protocolized capabilities
 
 Traditional tool use patterns treat tools as prompt-level constructs: schemas are injected into context, the model emits a structured call, and the runtime executes it. MCP reframes this interaction by moving tools out of the prompt and into **external servers** that expose capabilities through a shared protocol.
 
 In this model, a tool is no longer a static definition bundled with the agent. It is a remotely exposed capability with its own lifecycle, versioning, and state. The agent connects to a server, queries what is available, and then reasons about which capabilities to invoke. This shift enables reuse across agents, reduces prompt size, and makes tool behavior observable and debuggable at the protocol level.
 
-#### Transport evolution and protocol design
+### Transport evolution and protocol design
 
 MCP adopts JSON-RPC 2.0 as its core message format, inheriting well-understood semantics for requests, responses, notifications, and error handling. Early implementations favored persistent local transports, closely mirroring LSP. As MCP moved beyond desktop use cases, the protocol evolved to support web-native transports.
 
 HTTP enables MCP servers to be deployed behind standard infrastructure, integrated with authentication and authorization systems, and scaled independently. Server-Sent Events (SSE) complement this by allowing servers to push asynchronous updates and streamed results back to the agent runtime. Crucially, MCP separates message semantics from transport details, allowing the same protocol concepts to operate across local, remote, and hybrid environments.
 
-#### MCP as a generalization of tool use
+### MCP as a generalization of tool use
 
 While tool invocation is a central use case, MCP generalizes the notion of “tools” into a broader concept of **capabilities**. These typically include callable functions, addressable resources such as files or datasets, reusable prompt fragments, and event streams emitted by long-running operations.
 
-Rather than embedding all of this information in the model’s context window, the agent maintains a live connection to one or more MCP servers. The model focuses on reasoning and decision-making, while the protocol layer handles execution, retries, streaming, and persistence. A minimal interaction sequence illustrates the idea:
+Rather than embedding all of this information in the model’s context window, the agent maintains a live connection to one or more MCP servers. The model focuses on reasoning and decision-making, while the protocol layer handles execution, retries, streaming, and persistence. A minimal interaction sequence illustrates the idea. First, the client discovers available tools:
 
 ```json
 {
   "jsonrpc": "2.0",
   "id": 1,
-  "method": "capabilities/list"
+  "method": "tools/list"
 }
 ```
+
+Then invokes one:
 
 ```json
 {
@@ -4654,31 +4429,31 @@ Rather than embedding all of this information in the model’s context window, t
 
 The model never needs to know where the tool runs or how it is implemented—only the contract exposed by the server.
 
-#### MCP as an architectural boundary
+### MCP as an architectural boundary
 
 A key contribution of MCP is the introduction of a **hard architectural boundary** between models and execution environments. MCP makes explicit that models reason, but do not own stateful side effects. Files, caches, background tasks, and long-running computations live on the server side; the model interacts with them through identifiers and protocol messages.
 
 This separation clarifies responsibilities. Tool servers evolve independently of agent prompts. Multiple agents can share the same capabilities. Security and permissioning can be enforced at the protocol boundary rather than through fragile prompt conventions. Conceptually, MCP plays a role similar to an operating system interface: it mediates access to resources without embedding implementation details into application logic.
 
-#### Capability discovery and late binding
+### Capability discovery and late binding
 
 MCP emphasizes late binding. Capabilities are discovered at connection time rather than fixed at agent construction. This allows agents to adapt to different environments, permission sets, or deployments without modification. The agent remains generic; specialization emerges from the servers it connects to.
 
 This design is particularly important in enterprise and multi-tenant settings, where available tools may depend on user identity, organizational policy, or runtime context. By deferring binding decisions to the protocol layer, MCP avoids the combinatorial explosion that would result from statically encoding all possibilities into prompts.
 
-#### Stateful servers and long-running interactions
+### Stateful servers and long-running interactions
 
 Another defining aspect of MCP is the explicit distinction between stateless models and stateful servers. Persistent context belongs with the server: open documents, indexed corpora, partial computations, or monitoring tasks. The model references this state indirectly, using handles or resource identifiers.
 
 This inversion is essential for long-running agents. Instead of repeatedly expanding prompts to carry accumulated state, MCP allows agents to operate over compact references. Token usage is reduced, failure modes become clearer, and sessions can span far beyond what prompt-based approaches allow.
 
-#### Streaming, events, and non-blocking tools
+### Streaming, events, and non-blocking tools
 
 MCP also generalizes beyond simple request–response interactions. Tools may emit incremental updates or asynchronous events, allowing agents to monitor progress, interleave reasoning, or react to external changes. This enables non-blocking patterns such as long-running analysis, background ingestion, or continuous observation of external systems.
 
 At the protocol level, these interactions are explicit, rather than simulated through repeated polling or prompt reconstruction.
 
-#### Why MCP matters
+### Why MCP matters
 
 MCP provides the connective tissue that allows all prior tool-use patterns to scale. Tool contracts define what can be called, permissions define whether it may be called, workspaces define where artifacts live, and MCP defines how these pieces interact over time. It does not replace tool use; it stabilizes it.
 
@@ -5132,9 +4907,9 @@ agent = get_agent(tools=enforced_tools)
 
 The agent now has `transfer_funds` in its tool set and can reason about using it. But when the agent actually calls `transfer_funds`, the wrapper function checks permissions and raises `ToolPermissionError` because WRITE permission was not granted.
 
-The agent receives this error as a tool result and must handle it. Typically, the agent will explain to the user that it attempted the action but was denied permission. This provides more transparency than construction-time filtering: the user learns that the capability exists but is restricted, rather than being told it does not exist.
+Unlike `ModelRetry` or Pydantic `ValidationError` -- errors that PydanticAI feeds back to the model so it can self-correct and retry -- `ToolPermissionError` propagates up to the caller. This is a deliberate design choice: a permission violation is a system-level boundary, not a recoverable tool error that the model should retry. The notebook demonstrates this with a `try`/`except` block around the agent run, catching the error externally. The caller can then decide how to handle it -- log it, inform the user, or escalate to a supervisor.
 
-Runtime enforcement is useful when you want agents to be aware of their limitations. It also enables patterns where an agent might request elevated permissions from a human supervisor before proceeding with a restricted operation.
+This still provides more transparency than construction-time filtering. The agent's tool set includes the restricted tools, so system prompts or error-handling logic can reference them. The key difference is that enforcement happens at the call boundary rather than before the agent starts reasoning.
 
 ### Choosing an Approach
 
@@ -5152,7 +4927,7 @@ Permissions are attached to tools using decorators and can be combined when a to
 
 Construction-time filtering removes unauthorized tools from the agent's view entirely. The agent cannot attempt restricted operations but also cannot explain why they are unavailable.
 
-Runtime enforcement lets the agent see all tools but raises errors for unauthorized calls. The agent can reason about restricted capabilities and explain its limitations to users.
+Runtime enforcement lets the agent see all tools but raises errors for unauthorized calls. The error propagates to the caller (not back to the model), so the surrounding application handles the violation.
 
 The choice between approaches depends on whether you prioritize strict containment or transparent communication about capability boundaries.
 
@@ -5298,6 +5073,132 @@ User and session identity is managed through contextvars, set once at the reques
 User isolation happens at the path translation layer. Different users writing to the same sandbox path produce files in different host directories.
 
 Security boundaries prevent path traversal. The translation function validates all paths and rejects attempts to escape the sandbox.
+
+
+## Hands-On: Advanced Topics
+
+The previous hands-on exercises demonstrated tool use, structured outputs, tool selection, permissions, and workspaces. Those patterns treat the tool interface as static: you define tools, hand them to an agent, and the agent uses them. Advanced tool use breaks that assumption. The toolset can change at each step, tool calls can pause for external approval, and tool definitions themselves can be analyzed and improved before deployment.
+
+This hands-on explores these patterns through `example_advanced_topics.ipynb`, covering dynamic tools, human-in-the-loop approval via deferred tools, and the tool doctor.
+
+### Dynamic Tools
+
+Dynamic tools mean the agent's available tool interface is not fixed. A `prepare_tools` function runs before each model step, filtering or modifying the tool definitions based on runtime context. This enables patterns like progressive disclosure (start with safe tools, unlock powerful ones later) and contextual minimization (only show tools relevant to the current subtask).
+
+The example defines four tools -- two read-only (`list_files`, `read_file`) and two mutating (`write_file`, `delete_file`) -- plus a `prepare_tools` function that filters based on a "phase" string passed as the agent's dependency:
+
+```python
+READ_TOOL_NAMES = {"list_files", "read_file"}
+
+async def filter_by_phase(
+    ctx: RunContext[str], tool_defs: list[ToolDefinition]
+) -> list[ToolDefinition] | None:
+    """In 'explore' phase, expose only read tools. Otherwise, expose all."""
+    if ctx.deps == "explore":
+        return [td for td in tool_defs if td.name in READ_TOOL_NAMES]
+    return tool_defs
+```
+
+The function receives a `RunContext` (which carries the dependency value) and the full list of `ToolDefinition` objects. It returns a filtered list. PydanticAI calls this function before every model step, so the toolset can change dynamically within a single conversation.
+
+The agent is created with all four tools and the `prepare_tools` hook:
+
+```python
+agent = get_agent(
+    tools=[list_files, read_file, write_file, delete_file],
+    prepare_tools=filter_by_phase,
+    deps_type=str,
+)
+```
+
+When run in "explore" phase, the agent can list and read files but cannot delete. The model does not see `write_file` or `delete_file` in its tool definitions at all. When run in "execute" phase, all four tools appear and the agent can perform mutations.
+
+The `prepare_tools` mechanism is an agent-wide hook. PydanticAI also supports per-tool `prepare` functions (via the `Tool` class) for cases where individual tools need conditional visibility rather than system-wide phase gating.
+
+### Human in the Loop (Deferred Tools)
+
+Deferred tools separate tool *selection* from tool *execution*. The agent proposes a tool call, but instead of executing it immediately, the run pauses and returns a `DeferredToolRequests` object. An external process (a human reviewer, a policy engine, an approval queue) inspects the proposed calls, approves or denies each one, and resumes the run with a `DeferredToolResults` object containing the decisions.
+
+The example defines two tools: `check_balance` (safe, executes immediately) and `transfer_funds` (marked with `requires_approval=True`):
+
+```python
+agent = get_agent(
+    tools=[check_balance, Tool(transfer_funds, requires_approval=True)],
+    output_type=[str, DeferredToolRequests],
+)
+```
+
+The `output_type` includes both `str` and `DeferredToolRequests` because the agent might return a text answer (if no deferred tools are triggered) or a set of deferred requests (if the model calls a tool that requires approval).
+
+When the agent is asked to check a balance and transfer funds, it executes `check_balance` normally and proposes `transfer_funds` as a deferred call. The run ends with a `DeferredToolRequests` object:
+
+```python
+result = await agent.run(
+    "Check the balance of ACC-123 and transfer $500 from ACC-123 to ACC-456."
+)
+assert isinstance(result.output, DeferredToolRequests)
+requests = result.output
+messages = result.all_messages()
+```
+
+The `requests.approvals` list contains `ToolCallPart` objects with the tool name, arguments, and a unique `tool_call_id`. The caller inspects these, decides on each one, and builds a `DeferredToolResults` object:
+
+```python
+deferred_results = DeferredToolResults()
+for call in requests.approvals:
+    deferred_results.approvals[call.tool_call_id] = True
+
+result = await agent.run(
+    message_history=messages, deferred_tool_results=deferred_results
+)
+```
+
+Approvals map each `tool_call_id` to `True` (approve), `ToolDenied("reason")` (deny with a message the model sees), or `ToolApproved(override_args={...})` (approve with modified arguments). The resume call passes the original `message_history` so the agent continues from where it paused. After resuming, the approved tool executes and the agent produces its final response.
+
+This pattern applies directly to any tool with irreversible side effects, security sensitivity, or high cost. The approval step can be a CLI prompt, a web form, a Slack message, or any other channel that maps tool call IDs to decisions.
+
+### Tool Doctor
+
+The tool doctor is a development-time diagnostic that analyzes tool function definitions and produces structured recommendations. It evaluates naming clarity, docstring completeness, type annotation coverage, argument semantics, and return type documentation. The goal is to catch interface problems before they reach a running agent, where they would manifest as tool confusion, incorrect invocations, or unnecessary retries.
+
+The example defines three intentionally under-documented tools:
+
+```python
+def process(data, flag=False):
+    """Process data."""
+    return data
+
+def calc(x, y):
+    return x + y
+
+def fetch_and_transform(
+    url: str, format: str = "json", retries: int = 3, timeout: float = 30.0
+) -> dict:
+    """Fetch data from URL."""
+    return {"status": "ok"}
+```
+
+`process` has a vague name and description, untyped parameters, and no indication of what "processing" means. `calc` has no docstring at all, no type hints, and an ambiguous name. `fetch_and_transform` has type hints but its docstring does not mention the transform step, the `format` parameter shadows a Python builtin, and several parameters are undocumented.
+
+Running the tool doctor produces a `ToolRecommendation` for each function:
+
+```python
+recommendations = await tool_doctor([process, calc, fetch_and_transform])
+for r in recommendations:
+    print(r)
+```
+
+Each recommendation includes the tool name, whether it needs improvement, general issues (naming, documentation), argument-level issues (missing types, vague names), and return type issues. The recommendations are structured Pydantic models, so they can be processed programmatically -- surfaced in CI, turned into pull request comments, or fed into automated fix pipelines.
+
+The tool doctor is most valuable during tool authoring. Running it as part of the development workflow catches the kind of interface ambiguities that are invisible to standard linters but directly affect how well an LLM can use the tool.
+
+### Key Takeaways
+
+Dynamic tools let you reshape the agent's toolset at each step based on runtime context. The `prepare_tools` hook filters or modifies tool definitions before the model sees them, enabling patterns like phase-gated access and contextual minimization.
+
+Deferred tools separate tool selection from execution by pausing the run and returning structured requests. An external process approves, denies, or modifies each proposed call, then resumes the run. This provides a clean control surface for human-in-the-loop review of high-impact operations.
+
+The tool doctor analyzes tool definitions at development time, producing structured recommendations for naming, documentation, typing, and argument clarity. It catches interface problems that would otherwise surface as runtime failures or model confusion.
 
 
 ## References
@@ -5569,7 +5470,7 @@ Within this pattern, long-running tasks can be understood as distributed convers
 
 Because long-running tasks operate over extended periods, failure is not exceptional but expected. The pattern therefore emphasizes retries, checkpoints, and escalation. Agents may automatically retry failed sub-tasks, switch strategies, or pause execution pending human review. Human-in-the-loop integration fits naturally at well-defined checkpoints, where the current task state can be inspected and adjusted without restarting the entire process.
 
-The concepts introduced here are implemented in later chapters. The [Skills, Sub-Agents & Tasks chapter](../skills_and_sub_agents/chapter.md) covers sub-agent delegation, task lifecycle management with durable state, and the task broker that coordinates background execution. The [The Complete Agent chapter](../the_complete_agent/chapter.md) brings these patterns together into a unified agent that orchestrates sub-agents, tasks, and event-driven coordination.
+The concepts introduced here are implemented in later chapters. The [Skills, Sub-Agents & Tasks chapter](../skills_and_sub_agents/chapter.md) covers sub-agent delegation and task lifecycle management with durable state and dependency tracking. The [The Complete Agent chapter](../the_complete_agent/chapter.md) brings these patterns together into a unified agent that orchestrates sub-agents via `AgentRunner`, coordinates work via `TaskList`, and supports both foreground and background delegation.
 
 
 
@@ -5777,17 +5678,17 @@ async def content_pipeline(topic: str) -> WorkflowState:
     state = WorkflowState(topic=topic)
 
     # Stage 1: Outline
-    outline_agent = get_agent(output_type=Outline, system_prompt="Create clear article outlines.")
+    outline_agent = get_agent(output_type=Outline, system_prompt="You are an outline specialist. Create clear, logical article structures.")
     agent_run, _ = await run_agent(outline_agent, f"Create an outline for: {topic}")
     state.outline = agent_run.result.output
 
     # Stage 2: Draft
-    draft_agent = get_agent(output_type=Draft, system_prompt="Write engaging articles from outlines.")
+    draft_agent = get_agent(output_type=Draft, system_prompt="You are a content writer. Write engaging, informative articles based on outlines.")
     agent_run, _ = await run_agent(draft_agent, f"Write ~300 words based on: {state.outline.model_dump_json()}")
     state.draft = agent_run.result.output
 
     # Stage 3: Edit
-    editor_agent = get_agent(output_type=EditedArticle, system_prompt="Edit for clarity and engagement.")
+    editor_agent = get_agent(output_type=EditedArticle, system_prompt="You are an editor. Improve clarity, fix errors, and enhance readability while preserving the author's voice.")
     agent_run, _ = await run_agent(editor_agent, f"Edit this article: {state.draft.content}")
     state.final = agent_run.result.output
 
@@ -5912,7 +5813,7 @@ Running the graph requires an initial node and state:
 
 ```python
 graph = Graph(nodes=[GenerateDraft, EvaluateQuality, Revise])
-state = DocumentState(topic="The importance of code reviews")
+state = DocumentState(topic="The importance of code reviews in software development")
 result = await graph.run(GenerateDraft(), state=state)
 ```
 
@@ -5969,7 +5870,7 @@ Delegation is less appropriate when the subtask is deterministic and doesn't nee
 
 ### Relationship to Sub-Agents
 
-Delegation is how sub-agents are invoked from a control flow perspective. For detailed coverage of sub-agent patterns, including fixed specialists with structured outputs and dynamic sub-agent creation at runtime, see the [Sub-Agents chapter](../sub_agents/chapter.md).
+Delegation is how sub-agents are invoked from a control flow perspective. For detailed coverage of sub-agent patterns, including fixed specialists with structured outputs and dynamic sub-agent creation at runtime, see the [Skills, Sub-Agents & Tasks chapter](../skills_and_sub_agents/chapter.md).
 
 
 ## Hands-On: Agent Hand-Off
@@ -6144,7 +6045,7 @@ The patterns covered so far -- reasoning, tool use, and orchestration -- give ag
 
 ![RAG system overview showing retrieval and generation components](/Users/kqrw311/workspace/aixplore/book_agentic_patterns/chapters/rag/img/rag_overview.jpg)
 
-This separation introduces a clear information workflow with two main phases -- **document ingestion** (offline) and **document retrieval** (online) -- followed by **generation**. The chapter begins with embeddings (the representation that makes semantic retrieval possible), then covers vector databases (the storage and search infrastructure), document ingestion (preparing a corpus for retrieval), document retrieval (the multi-stage pipeline from query to context), evaluation (measuring RAG quality), and references and attribution (tracing answers back to sources).
+This separation introduces a clear information workflow with two main phases -- **document ingestion** (offline) and **document retrieval** (online) -- followed by **generation**. The chapter begins with embeddings (the representation that makes semantic retrieval possible), then covers vector databases (the storage and search infrastructure), document ingestion (preparing a corpus for retrieval), document retrieval (the multi-stage pipeline from query to context), evaluation (measuring RAG quality), references and attribution (tracing answers back to sources), multi-source RAG (extending retrieval across independent knowledge sources), and semantic clustering (discovering corpus structure without a query).
 
 
 ## Historical Perspective
@@ -6168,7 +6069,7 @@ The concern for attribution and provenance also has deep roots. In database rese
 
 Embeddings are the mechanism that transforms raw data (text, images, audio, etc.) into numerical vectors such that semantic similarity becomes geometric proximity.
 
-#### From word counts to vector spaces (intuition)
+###From word counts to vector spaces (intuition)
 
 A simple way to build intuition is to start with word-count vectors. Consider the sentence:
 
@@ -6190,7 +6091,7 @@ Modern embeddings keep the core idea—mapping language to vectors—but replace
 
 ![Image](/Users/kqrw311/workspace/aixplore/book_agentic_patterns/chapters/rag/img/semantic_relevance.png)
 
-#### Dense semantic embeddings
+###Dense semantic embeddings
 
 Dense embeddings map words, sentences, or documents into a continuous vector space (often hundreds or thousands of dimensions). In this space, semantic relationships emerge naturally: synonyms cluster together, analogies correspond to vector offsets, and related concepts occupy nearby regions.
 
@@ -6198,7 +6099,7 @@ Early influential methods include **Word2Vec**, which learns word vectors by pre
 
 Conceptually, these embeddings still rely on co-occurrence statistics, but they compress them into a dense space where distance metrics such as cosine similarity become meaningful signals for retrieval.
 
-#### Transformer-based embeddings
+###Transformer-based embeddings
 
 The next major step came with transformer architectures. Models such as **BERT** introduced *contextual embeddings*: a word’s vector depends on its surrounding words, so “bank” in “river bank” differs from “bank” in “investment bank”. This resolved a long-standing limitation of earlier static embeddings.
 
@@ -6214,13 +6115,13 @@ vector = embed(text)   # returns a dense float array
 
 The key point is not the API, but the abstraction: text is projected into a semantic space where similarity search is efficient and meaningful.
 
-#### Multimodal generalization
+###Multimodal generalization
 
 The embedding concept generalizes naturally beyond text. Multimodal models learn a *shared* vector space for different data types, allowing cross-modal retrieval. A canonical example is **CLIP**, which aligns images and text descriptions so that an image of a “red chair” is close to the text “a red chair” in the same embedding space.
 
 This generalization is increasingly important in modern RAG systems, where documents may include text, diagrams, tables, or images. A single embedding space enables unified retrieval across modalities, simplifying system design while expanding capability.
 
-#### Embeddings in the RAG pipeline
+###Embeddings in the RAG pipeline
 
 Within a RAG architecture, embeddings serve as the semantic interface between raw data and retrieval. During ingestion, documents are converted into vectors and indexed. At query time, the user question is embedded into the same space, and nearest-neighbor search retrieves the most relevant chunks. The quality of the embeddings directly determines recall, precision, and ultimately the factual grounding of the generated answers.
 
@@ -6229,7 +6130,7 @@ Within a RAG architecture, embeddings serve as the semantic interface between ra
 
 Vector databases are specialized data systems designed to store high-dimensional vectors and efficiently retrieve the most similar vectors to a given query.
 
-#### How vector databases work
+### How vector databases work
 
 At a conceptual level, a vector database manages three tightly coupled concerns: storage, indexing, and similarity search. Each document, chunk, or entity is represented as a numerical vector produced by an embedding model. These vectors are stored alongside identifiers and optional metadata, but the primary operation is not key-value lookup—it is similarity search.
 
@@ -6237,7 +6138,7 @@ When a query arrives, it is first embedded into the same vector space. The datab
 
 In practice, a vector database behaves less like a traditional relational database and more like a search engine optimized for continuous spaces. Insertions update both raw storage and index structures; queries traverse those indexes to produce a ranked list of candidate vectors, often combined with metadata filtering before final results are returned.
 
-#### Similarity metrics
+### Similarity metrics
 
 Similarity metrics define what it means for two vectors to be “close.” The choice of metric is not incidental; it encodes assumptions about how embeddings were trained and how magnitude and direction should be interpreted.
 
@@ -6245,7 +6146,7 @@ Cosine similarity measures the angle between vectors and is invariant to vector 
 
 Most vector databases treat the metric as a first-class configuration, because index structures and optimizations may depend on it. A mismatch between embedding model and similarity metric can significantly degrade retrieval quality, even if the infrastructure itself is functioning correctly.
 
-#### Indexing strategies
+### Indexing strategies
 
 Indexing is the defining feature that distinguishes a vector database from a simple vector store. An index organizes vectors so that nearest-neighbor queries can be answered efficiently without exhaustive comparison.
 
@@ -6255,13 +6156,13 @@ Graph-based indexes represent vectors as nodes in a graph, with edges connecting
 
 Quantization-based approaches compress vectors into more compact representations, reducing memory footprint and improving cache efficiency. While quantization introduces approximation error, it often yields favorable trade-offs for large-scale deployments.
 
-#### Core vector database algorithms
+### Core vector database algorithms
 
 Most production vector databases rely on a small family of ANN algorithms, often combined or layered for better performance. Hierarchical Navigable Small World (HNSW) graphs build multi-layer proximity graphs that enable logarithmic-like search behavior in practice. Inverted file (IVF) indexes first cluster vectors and then search only within the most relevant clusters. Product quantization (PQ) decomposes vectors into subspaces and encodes them compactly, enabling fast distance estimation.
 
 These algorithms are rarely used in isolation. A common pattern is coarse partitioning (such as IVF) followed by graph-based or quantized search within partitions. The database exposes high-level configuration knobs—index type, efSearch, nprobe, recall targets—but internally orchestrates multiple algorithmic stages to balance latency, recall, and memory usage.
 
-#### Vector databases in RAG systems
+### Vector databases in RAG systems
 
 In a RAG architecture, the vector database acts as the semantic memory layer. Document chunks are embedded and indexed once during ingestion, while user queries are embedded and searched at runtime. The quality of retrieval depends jointly on embedding quality, similarity metric, index choice, and search parameters. As a result, vector databases are not passive storage components but active participants in the behavior of the overall system.
 
@@ -6271,7 +6172,7 @@ Tuning a RAG system often involves iterative adjustments to vector database conf
 
 The following sections provide a more formal treatment of the algorithms underlying vector databases. Readers primarily interested in practical usage may skip ahead; those seeking deeper understanding of the trade-offs between index types, approximation guarantees, and computational complexity will find the mathematical foundations useful for informed system design.
 
-#### Core Vector Database Algorithms
+### Mathematical Foundations
 
 Vector databases are fundamentally concerned with solving the *nearest neighbor search* problem in high-dimensional continuous spaces. The practical design of these systems is best understood by starting from the formal problem definition and then examining how successive algorithmic relaxations make large-scale retrieval tractable.
 
@@ -6450,7 +6351,7 @@ Document ingestion is the process that transforms raw, heterogeneous source mate
 
 ![Document ingestion and retrieval workflow](/Users/kqrw311/workspace/aixplore/book_agentic_patterns/chapters/rag/img/rag_workflow.png)
 
-#### The document ingestion pipeline
+###The document ingestion pipeline
 
 At a conceptual level, document ingestion is a deterministic transformation pipeline. Its purpose is not to answer queries, but to prepare a stable corpus over which retrieval can operate efficiently and reproducibly.
 
@@ -6464,7 +6365,7 @@ Only after these steps does **chunking** occur. Chunking transforms a single nor
 
 Finally, each chunk is **embedded and stored**, together with its metadata and a reference back to the source document. Although embedding and storage are sometimes discussed as part of retrieval infrastructure, from a systems perspective they conclude the ingestion phase: the corpus is now ready to be queried.
 
-#### Document chunking: motivations and constraints
+###Document chunking: motivations and constraints
 
 Chunking addresses three fundamental constraints.
 
@@ -6476,7 +6377,7 @@ Third, generation benefits from focused context. Passing a handful of precise ch
 
 These constraints imply that chunking is an information-theoretic trade-off between context completeness and semantic specificity.
 
-#### Chunking strategies
+###Chunking strategies
 
 The simplest strategy is **fixed-size chunking**, where text is split every *N* tokens or characters. This approach is easy to implement and model-agnostic, but it ignores document structure. Chunks may begin or end mid-sentence, which can reduce embedding quality.
 
@@ -6488,7 +6389,7 @@ In domains where meaning depends on logical flow, **recursive or hierarchical ch
 
 Finally, **semantic chunking** attempts to split text based on topic shifts rather than explicit structure. This can be implemented using lightweight similarity checks between adjacent spans. While more computationally expensive, it can produce chunks that align closely with conceptual units.
 
-#### Illustrative chunking logic
+###Illustrative chunking logic
 
 The following pseudocode illustrates structure-aware chunking with a size constraint, without committing to a specific framework or library:
 
@@ -6518,13 +6419,13 @@ def chunk_document(sections, max_tokens, overlap):
 
 This pattern highlights two core ideas: chunking respects document structure, and size constraints are enforced incrementally rather than by naïve slicing.
 
-#### Chunking as a design decision
+###Chunking as a design decision
 
 Chunk size, overlap, and boundary selection are not universal constants. They depend on embedding dimensionality, model context limits, expected query granularity, and downstream re-ranking strategies. In practice, ingestion pipelines often expose these parameters explicitly, treating chunking as a tunable component rather than a fixed preprocessing step.
 
 A well-designed ingestion pipeline therefore makes chunking reproducible, auditable, and revisable. Re-chunking a corpus with different parameters should be possible without re-ingesting raw sources, enabling systematic evaluation and iteration.
 
-#### Statistical chunking (unsupervised segmentation)
+###Statistical chunking (unsupervised segmentation)
 
 Statistical chunking refers to a family of methods that segment documents into coherent units using distributional signals derived directly from the text, without relying on predefined structure or large language models.
 
@@ -6564,7 +6465,7 @@ In contemporary RAG systems, statistical chunking is often used as a **baseline 
 From an architectural perspective, statistical chunking reinforces the idea that document ingestion is a spectrum of techniques rather than a single algorithm, with different strategies occupying different points in the trade-off space between cost, interpretability, and semantic fidelity.
 
 
-#### LLM-based chunking (topic-aware chunking)
+###LLM-based chunking (topic-aware chunking)
 
 An increasingly common alternative to heuristic chunking is **LLM-based chunking**, where a language model is explicitly asked to segment a document into coherent topical units.
 
@@ -6613,13 +6514,13 @@ From a systems perspective, LLM-based chunking reinforces a broader theme in mod
 
 Document retrieval is the stage in a RAG system that transforms a user query into a ranked, filtered set of candidate documents or passages that are most likely to support a correct answer.
 
-#### Conceptual overview of document retrieval
+###Conceptual overview of document retrieval
 
 In a RAG system, document retrieval is not a single operation but a pipeline. A raw user query is progressively transformed, evaluated, and constrained until a small, high-quality context set is produced. Each stage trades recall for precision, with early stages favoring breadth and later stages favoring accuracy and relevance.
 
 At a high level, the retrieval process consists of query interpretation and rewriting, candidate generation, scoring, re-ranking, filtering, and combination with structured constraints. While these stages can be collapsed in small systems, large-scale RAG deployments almost always implement them explicitly to control cost, latency, and quality.
 
-#### Query interpretation and rewriting
+###Query interpretation and rewriting
 
 User queries are often underspecified, ambiguous, or conversational. Before retrieval, the system may rewrite the query into one or more canonical forms that are better aligned with the indexed representation of documents. This includes expanding abbreviations, resolving coreferences, normalizing terminology, or decomposing a complex question into multiple sub-queries.
 
@@ -6635,7 +6536,7 @@ rewritten_query = rewrite_model.generate(
 
 Multiple rewritten queries may be generated to increase recall, with their results merged downstream.
 
-#### Candidate generation
+###Candidate generation
 
 Candidate generation is the first retrieval pass over the corpus. Its purpose is to retrieve a relatively large set of potentially relevant documents with high recall and low computational cost. This stage commonly uses either sparse retrieval (e.g., inverted indexes with BM25), dense vector search over embeddings, or both.
 
@@ -6652,7 +6553,7 @@ candidates = vector_index.search(
 
 The output of this stage is intentionally noisy. Precision is improved later.
 
-#### Scoring and initial ranking
+###Scoring and initial ranking
 
 Each candidate document is assigned a relevance score with respect to the query. In simple systems, this score may be the similarity returned by the vector database or the BM25 score. In more advanced systems, multiple signals are combined, such as dense similarity, sparse similarity, document freshness, or domain-specific heuristics.
 
@@ -6660,7 +6561,7 @@ Formally, scoring can be expressed as a function
 $s(d, q) \rightarrow \mathbb{R}$,
 where $d$ is a document and $q$ is the rewritten query. At this stage, the goal is to produce a reasonably ordered list, not a final ranking.
 
-#### Re-ranking with cross-encoders or task-aware models
+###Re-ranking with cross-encoders or task-aware models
 
 Re-ranking refines the initial ranking using more expensive but more accurate models. Instead of independently embedding queries and documents, re-rankers jointly encode the query–document pair, allowing fine-grained interaction between their tokens. This substantially improves precision, especially at the top of the ranking.
 
@@ -6677,7 +6578,7 @@ reranked = reranker.score_pairs(
 
 The result is a high-precision ordering optimized for downstream generation rather than generic relevance.
 
-#### Filtering and constraints
+###Filtering and constraints
 
 Filtering removes candidates that are irrelevant or invalid given explicit constraints. These constraints often come from metadata, such as document type, access permissions, time ranges, language, or domain tags. Filtering can be applied before retrieval to reduce the search space, after retrieval to prune results, or at both stages.
 
@@ -6691,7 +6592,7 @@ filtered = [
 ]
 ```
 
-#### Combined strategies: metadata, SQL, and embeddings
+###Combined strategies: metadata, SQL, and embeddings
 
 Modern retrieval pipelines frequently combine symbolic and vector-based approaches. A common pattern is to use structured queries (e.g., SQL or metadata filters) to narrow the candidate set, followed by dense similarity search within that subset. This hybrid approach exploits the strengths of both paradigms: exactness and interpretability from structured filters, and semantic generalization from embeddings.
 
@@ -6701,11 +6602,11 @@ where $m$ represents structured metadata constraints.
 
 This combination is especially powerful in domains with rich schemas, such as scientific literature, enterprise knowledge bases, or regulatory documents.
 
-#### Retrieval as a system, not a single model
+###Retrieval as a system, not a single model
 
 A key insight in modern RAG is that retrieval quality emerges from the interaction of stages rather than from any single algorithm. Query rewriting increases recall, candidate generation ensures coverage, scoring and re-ranking enforce relevance, and filtering guarantees validity. Treating retrieval as a modular pipeline allows systematic evaluation, targeted optimization, and controlled trade-offs between cost and quality.
 
-#### Putting it together: a simple RAG pipeline
+###Putting it together: a simple RAG pipeline
 
 In its simplest form, a RAG system can be described as a linear pipeline: ingest documents, retrieve relevant chunks, and generate an answer conditioned on them. The following pseudocode illustrates the core idea, omitting implementation details:
 
@@ -6733,11 +6634,11 @@ Despite its simplicity, this pattern already delivers most of the benefits assoc
 
 Evaluating a Retrieval-Augmented Generation (RAG) system means measuring, in a principled way, how well retrieval and generation jointly support factual, relevant, and grounded answers.
 
-#### Evaluation layers in RAG systems
+###Evaluation layers in RAG systems
 
 A modern RAG system is best evaluated as a pipeline with interacting components rather than a single black box. Each layer answers a different question: *are we retrieving the right things, are we selecting the right evidence, and does the final answer correctly use that evidence?*
 
-#### Metrics for vector search
+###Metrics for vector search
 
 Vector search evaluation focuses on the quality of nearest-neighbor retrieval in embedding space, independent of any downstream generation. The goal is to assess whether semantically relevant items are geometrically close to the query embedding.
 
@@ -6758,7 +6659,7 @@ def hit_at_k(retrieved_ids, relevant_ids, k):
 This level of evaluation answers the question: *given a query embedding, does the vector index surface semantically relevant candidates?* It does not tell us whether these candidates are actually useful for answering the question.
 
 
-#### Metrics for document retrieval
+###Metrics for document retrieval
 
 Document retrieval metrics evaluate the effectiveness of the full retrieval stack, which may include query rewriting, filtering, hybrid search, and re-ranking. Unlike pure vector search, this level is concerned with the *final set of documents passed to the generator*.
 
@@ -6769,7 +6670,7 @@ Evaluation at this level often relies on human annotation or weak supervision, s
 Conceptually, this layer answers: *does the system retrieve the right evidence, in the right form, for generation?*
 
 
-#### End-to-end RAG metrics
+###End-to-end RAG metrics
 
 End-to-end evaluation treats the RAG system as a whole and measures the quality of the final answer. This is the most user-visible layer and the hardest to evaluate reliably.
 
@@ -6792,7 +6693,7 @@ def judge_groundedness(answer, context):
 This level answers the question users actually care about: *does the system produce a correct, well-supported answer?*
 
 
-#### Measuring improvements in RAG systems
+###Measuring improvements in RAG systems
 
 Evaluating a single snapshot of a RAG system is rarely sufficient. What matters in practice is measuring *improvement* as the system evolves.
 
@@ -6809,7 +6710,7 @@ Taken together, these practices shift evaluation from a one-time score to a cont
 
 Attribution in RAG systems concerns the ability to explicitly link generated statements to the source documents, data items, and transformations that produced them.
 
-#### Conceptual overview
+###Conceptual overview
 
 In a RAG system, attribution spans the entire information flow. Documents are ingested, transformed, chunked, embedded, retrieved, possibly re-ranked, and finally used as conditioning context for generation. Each of these steps introduces opportunities to lose or blur the connection between an output token and its original source. Attribution mechanisms aim to preserve this connection explicitly.
 
@@ -6817,7 +6718,7 @@ Closely related but distinct concepts are often conflated. *Attribution* answers
 
 A robust RAG system treats these as complementary layers rather than a single feature.
 
-#### Attribution in RAG generation
+###Attribution in RAG generation
 
 At generation time, attribution typically operates at the level of retrieved chunks rather than entire documents. Each chunk carries stable identifiers and metadata inherited from ingestion. During retrieval, these identifiers are preserved and propagated alongside the text content. The generator is then constrained or guided to associate generated statements with one or more of these chunk identifiers.
 
@@ -6836,13 +6737,13 @@ A common pattern is to structure the model output so that answers and sources ar
 
 Even when the language model is free-form, the system can post-process token spans and align them with the retrieved chunks that were present in context. The key requirement is that attribution identifiers remain machine-readable and stable across the pipeline.
 
-#### References and citation strategies
+###References and citation strategies
 
 Citation is the user-facing expression of attribution. In RAG systems, citation strategies range from coarse to fine-grained. Some systems attach a single list of documents supporting the entire answer. More advanced designs provide sentence-level or clause-level citations, which improves trust and debuggability but requires tighter coupling between generation and retrieval.
 
 A critical design choice is whether citations are generated by the model or imposed by the system. Model-generated citations are flexible but error-prone, while system-enforced citations trade fluency for correctness. In practice, hybrid approaches are common: the system restricts the citation candidates to retrieved chunks, and the model selects among them.
 
-#### Provenance tracking across the pipeline
+###Provenance tracking across the pipeline
 
 Provenance tracking is not limited to the final answer. It begins at ingestion and continues through retrieval and generation. Each transformation step should preserve or enrich provenance metadata rather than overwrite it.
 
@@ -6861,7 +6762,7 @@ provenance = {
 
 Such records are rarely exposed to end users, but they are essential for auditing, debugging, and offline evaluation.
 
-#### Truth maintenance in evolving RAG systems
+###Truth maintenance in evolving RAG systems
 
 Truth maintenance addresses the fact that RAG systems are not static. Documents are updated, embeddings are recomputed, and models are replaced. Without explicit mechanisms, previously correct attributions can silently become invalid.
 
@@ -6869,18 +6770,232 @@ One approach is versioned provenance. Every answer is associated not just with a
 
 Another approach borrows ideas from classical truth maintenance systems, where derived facts are linked to their supporting assumptions. When an assumption changes, all dependent conclusions are marked for review. In RAG, the “assumptions” correspond to retrieved chunks and their content. This framing is particularly useful in regulated or high-stakes domains, where stale answers are unacceptable.
 
-#### Practical implications
+###Practical implications
 
 Attribution, provenance, and truth maintenance are often treated as optional add-ons in early RAG prototypes. In production systems, they quickly become essential. They enable explainability, support compliance requirements, and make systematic evaluation possible. More importantly, they turn RAG from a black-box augmentation trick into a transparent information system whose outputs can be inspected, trusted, and improved over time.
 
 
+## Multi-Source RAG & Evidence Grounding
+
+Real-world RAG systems rarely operate over a single homogeneous corpus. Enterprise knowledge is distributed across product documentation, internal wikis, regulatory filings, support tickets, and structured databases. Each source has different update cadences, access controls, and reliability levels. Treating them all as a flat pool of documents loses this structure and forces every query to compete globally, which degrades precision and makes attribution impossible at the source level. Multi-source RAG addresses this by managing named, independent indices and presenting them through a unified retrieval interface.
+
+###Named indices and domain isolation
+
+The core architectural decision in multi-source RAG is whether retrieval should be *federated* (each source queried independently, results merged) or *routed* (the query directed to one or a few sources based on its intent). Both approaches require treating each source as a first-class, named object rather than a segment of a shared index.
+
+Domain isolation provides several practical benefits beyond architecture. Different domains may require different embedding models. Legal documents often benefit from models trained on legal corpora; code snippets are better served by code-aware embedders; general prose works well with general-purpose models. When sources are isolated, each collection can use the most appropriate embedder without compromise. Isolation also enables independent update schedules: a daily crawl of external news can be re-ingested without touching the curated product documentation that changes quarterly.
+
+Access control is another reason to isolate indices. In multi-tenant systems, documents from one organization should never appear in another's retrieval results, even accidentally. A named collection that is provisioned per tenant enforces this boundary structurally rather than relying on post-retrieval filtering, which is error-prone.
+
+###Federated retrieval and result merging
+
+Federated retrieval queries all named sources simultaneously and merges the results. The principal challenge is that similarity scores are not directly comparable across collections. A score of 0.82 from a dense technical documentation index reflects a different retrieval regime than a score of 0.82 from a sparse conversational knowledge base. Naive score-based merging can therefore produce rankings dominated by whichever source generates the highest raw scores.
+
+Several strategies address this. Rank fusion combines results by their positions rather than their scores: documents are interleaved according to their rank in each source's result list. Reciprocal Rank Fusion is a common instance, assigning a weight to each document that is inversely proportional to its rank:
+
+```python
+def reciprocal_rank_fusion(results_per_source: dict[str, list], k: int = 60) -> list:
+    scores: dict[str, float] = {}
+    for source_results in results_per_source.values():
+        for rank, doc in enumerate(source_results):
+            doc_id = doc.doc_id
+            scores[doc_id] = scores.get(doc_id, 0.0) + 1.0 / (k + rank + 1)
+    return sorted(scores.items(), key=lambda x: x[1], reverse=True)
+```
+
+This approach is robust to score scale differences because it uses only rank ordering. The constant `k` controls the influence of lower-ranked documents: smaller values give more weight to top-ranked items.
+
+Score normalization within each source before merging is an alternative. Each source's scores are linearly mapped to the range [0, 1], making them comparable. This preserves relative information within a source but loses the signal embedded in absolute score magnitude.
+
+In practice, the right approach depends on the uniformity of the sources. When sources have similar domains and embedding models, score-based merging often works adequately. When sources are heterogeneous, rank-based fusion is safer.
+
+###Source metadata preservation and provenance
+
+Every retrieved document must carry its source origin through the entire retrieval-generation pipeline. This is not merely useful for citation; it is structurally necessary for filtering, access control enforcement, and downstream evaluation.
+
+In a multi-source system, each `RetrievedDocument` carries a `source_collection` field in its metadata, set at retrieval time. This field names the collection from which the document came, allowing the generator to distinguish a fact retrieved from regulatory guidance versus product documentation. At generation time, the language model can be instructed to cite sources by collection name, or the application layer can post-process citations into structured references.
+
+```python
+# Example: constructing the generation prompt with source attribution
+context_blocks = []
+for doc in retrieved:
+    source = doc.metadata.get("source_collection", "unknown")
+    context_blocks.append(f"[{source}] {doc.text}")
+
+context = "\n\n".join(context_blocks)
+prompt = f"Answer the question using the sources below.\n\n{context}\n\nQuestion: {query}"
+```
+
+The square-bracket prefix is a simple but effective convention: it forces the model to see source labels as part of the context, making it far more likely to include them in citations.
+
+###Evidence grounding
+
+Evidence grounding is the practice of linking specific claims in a generated answer to specific retrieved passages that support them. While attribution at the document level answers "which sources were used?", evidence grounding answers "which passage supports this sentence?". This granularity is important in regulated industries, where answers may need to be audited against specific regulatory clauses, and in enterprise settings where incorrect answers must be traceable to their origin.
+
+The simplest approach to evidence grounding is structured output. The language model is asked to produce answers as a list of claim–source pairs rather than free-form prose:
+
+```python
+class GroundedAnswer(BaseModel):
+    claims: list[ClaimWithSource]
+
+class ClaimWithSource(BaseModel):
+    claim: str
+    doc_id: str
+    source_collection: str
+    supporting_passage: str
+```
+
+By requiring the model to produce supporting passages alongside each claim, the system makes implicit reasoning explicit and auditable. Passages can be post-validated by checking whether they appear verbatim or near-verbatim in the retrieved documents, catching hallucinated citations.
+
+A softer variant asks the model only for document identifiers and relies on semantic similarity to validate the link. This is less precise but more flexible when claims are synthesized from multiple passages rather than copied from a single one.
+
+###Query routing vs. broadcast retrieval
+
+Broadcast retrieval (querying all sources every time) is the simplest approach and works well when the number of sources is small and queries are genuinely cross-cutting. As the number of sources grows, broadcast retrieval becomes expensive and may increase noise by retrieving weakly relevant results from tangentially related collections.
+
+Query routing addresses this by selecting a subset of sources before retrieval. A lightweight router classifies the query into one or more source categories and limits retrieval to those collections. The router can be rule-based (pattern matching on query text), model-based (a small classifier trained on query–source pairs), or LLM-based (a prompt that asks which sources are relevant given the query and a description of each source).
+
+```python
+router_prompt = """
+Given these sources:
+- product_docs: Official product documentation and API reference
+- support_history: Past support tickets and resolutions
+- regulatory: Compliance and regulatory guidance
+
+Which sources are relevant for this query? Return a JSON list of source names.
+
+Query: {query}
+"""
+```
+
+Routing reduces cost and latency at the price of recall: if the router incorrectly excludes a relevant source, those documents will never be seen. Hybrid strategies—always querying one or two core sources, routing for supplementary ones—balance these concerns.
+
+###Practical considerations
+
+The design of a multi-source RAG system requires explicit decisions about index granularity, merge strategy, score calibration, and routing logic. These decisions interact: a fine-grained routing strategy can compensate for poor score calibration, while a coarser merge strategy is safer when routing is less reliable.
+
+Operationally, multi-source systems benefit from monitoring per-source retrieval quality independently. A degraded collection (due to stale data, a schema change, or an embedding model update) may not be visible in aggregate metrics but can silently contaminate results. Source-level recall and precision metrics, tracked separately, make this visible.
+
+Ultimately, multi-source RAG is less about adding sources and more about maintaining the integrity of the information flow from each source to the final answer. Named indices, preserved provenance, and explicit grounding are the mechanisms by which that integrity is upheld.
+
+
+## Semantic Clustering
+
+Retrieval-augmented systems are built on the assumption that a query can identify the relevant subset of a corpus. This assumption holds when users know what they are looking for. But many RAG applications involve tasks where the structure of the corpus itself is unknown: a new domain corpus has just been ingested, a collection of customer concerns needs to be organized into themes, or a research assistant must identify recurring patterns across hundreds of documents. Semantic clustering addresses these tasks by grouping documents by embedding similarity rather than by query relevance.
+
+###Clustering in embedding space
+
+Semantic clustering treats each chunk or document as a point in a high-dimensional embedding space and applies a clustering algorithm to partition or densely group those points. The key property of clustering in embedding space is that geometric proximity reflects semantic similarity: chunks about the same topic will cluster together, even if they use different terminology.
+
+The choice of clustering algorithm has significant implications for how results are structured. Two families dominate RAG applications.
+
+Partitional clustering, most commonly k-means, divides the corpus into exactly *k* groups where each point belongs to exactly one cluster. The number of clusters must be specified in advance, which requires either domain knowledge or a model selection procedure. K-means is efficient and scales to millions of points, but it assumes spherical clusters and equal cluster sizes—assumptions that rarely hold in heterogeneous document corpora. It is most useful when the number of topics is approximately known and the corpus is relatively homogeneous.
+
+```python
+from sklearn.cluster import KMeans
+import numpy as np
+
+X = np.array(embeddings)
+km = KMeans(n_clusters=k, n_init="auto")
+labels = km.fit_predict(X)
+```
+
+Because embeddings are designed to be compared via cosine similarity, **spherical k-means** is generally more appropriate than standard k-means for document corpora. Spherical k-means normalizes all vectors to the unit sphere before clustering, making it equivalent to minimizing cosine distance. This aligns the clustering metric with the similarity metric used during retrieval:
+
+```python
+from sklearn.preprocessing import normalize
+
+X_norm = normalize(np.array(embeddings))  # project onto unit sphere
+km = KMeans(n_clusters=k, n_init="auto")
+labels = km.fit_predict(X_norm)
+```
+
+Density-based clustering, most commonly HDBSCAN (Hierarchical Density-Based Spatial Clustering of Applications with Noise), automatically discovers the number of clusters by finding dense regions in embedding space. Points in sparse regions are labeled as noise (cluster label -1) rather than forced into a cluster. This is important in RAG: not every document belongs to a coherent theme, and forcing noisy or peripheral documents into clusters distorts the structure. HDBSCAN is more computationally intensive than k-means but produces more interpretable results on heterogeneous corpora.
+
+A practical consideration is that HDBSCAN is sensitive to the curse of dimensionality: in high-dimensional spaces, distances between points become increasingly uniform, which makes density contrasts harder to detect. The standard remedy is to apply **dimensionality reduction** before clustering. UMAP, configured to preserve local neighborhood structure, compresses embeddings to a lower-dimensional space (typically 10–50 components) where density differences are more pronounced. Applying HDBSCAN to UMAP-reduced embeddings consistently produces more reliable clusters than applying it to raw embeddings.
+
+```python
+import umap
+import hdbscan
+import numpy as np
+
+X = np.array(embeddings)
+X_reduced = umap.UMAP(n_components=10, metric="cosine").fit_transform(X)
+clusterer = hdbscan.HDBSCAN(min_cluster_size=5)
+labels = clusterer.fit_predict(X_reduced)
+# labels == -1 indicates noise points
+```
+
+The `min_cluster_size` parameter controls the minimum number of points required to form a cluster. Setting it too low produces many small, specific clusters; setting it too high merges distinct themes. The appropriate value depends on corpus size and the expected granularity of topics.
+
+###Fetching stored embeddings
+
+A practical advantage of clustering collections that have been ingested into a vector database is that embeddings are already computed and stored. Re-embedding is expensive; fetching stored vectors is cheap. Chroma's collection API supports direct embedding retrieval:
+
+```python
+result = collection.get(include=["embeddings", "documents", "metadatas"])
+embeddings = result["embeddings"]  # shape: (n_docs, embedding_dim)
+documents = result["documents"]
+ids = result["ids"]
+```
+
+This avoids re-running embedding inference and ensures that clustering is performed in exactly the same space as retrieval, which is important for consistency.
+
+###LLM-based cluster labeling
+
+Clustering produces groups of documents, not interpretations. Each cluster is initially identified only by its constituent documents. To make clusters actionable, they must be labeled: given the items in a cluster, what topic or theme does it represent?
+
+This is a natural task for a language model. The prompt presents a sample of documents from the cluster (or their summaries) and asks the model to produce a short label and a concise summary. Because the model has broad semantic knowledge, it can identify themes even when individual documents use varied terminology.
+
+```python
+label_prompt = """
+Given these text passages from a cluster, provide:
+1. A short label (2-5 words) identifying the cluster's theme
+2. A one-sentence summary of what the cluster covers
+
+Passages:
+{passages}
+"""
+```
+
+The returned label and summary transform the cluster from an opaque set of embeddings into a named, interpretable category. In practice, cluster labels serve as the building blocks for higher-level corpus navigation.
+
+Two scaling limitations apply. First, sending all items in a large cluster to the LLM in a single prompt fills the context window. The practical fix is to sample a representative subset — typically 10 to 20 items — which is sufficient for labeling since cluster members are semantically similar by construction. Second, labeling is performed sequentially, one LLM call per cluster. For corpora with hundreds of clusters this becomes a bottleneck; the calls are independent and can be parallelized with `asyncio.gather`.
+
+###Applications in RAG systems
+
+Semantic clustering serves several distinct roles in RAG architectures.
+
+**Corpus exploration and quality control.** After ingesting a new document set, clustering reveals the topical distribution of the corpus. Dominant clusters indicate well-represented topics; sparse or isolated clusters may indicate outlier documents or ingestion errors. An engineer can inspect cluster labels to verify that the corpus covers the expected domains before the system goes into production.
+
+**Query routing at topic level.** When cluster labels are computed in advance, incoming queries can be routed not just by collection but by cluster. A query about a specific theme is directed to chunks in the relevant cluster, reducing retrieval noise. This is a form of dynamic filtering that operates on semantic structure rather than explicit metadata tags.
+
+**Rubric and criteria refinement.** In evaluation and assessment systems, clusters over historical examples reveal which themes occur frequently and which are rare. This allows rubric authors to calibrate criteria against actual evidence: criteria that no cluster matches may be obsolete, while frequently occurring clusters without a corresponding criterion indicate a gap in the rubric.
+
+**Theme extraction from unstructured feedback.** Customer support tickets, survey responses, and meeting minutes often contain recurring concerns that are not labeled explicitly. Clustering these texts groups related concerns together, and LLM labeling names the themes. The resulting cluster structure is a lightweight taxonomy derived from actual data rather than manually designed.
+
+###Hierarchical and multi-level clustering
+
+Single-level clustering treats all documents at the same granularity. For large or heterogeneous corpora, a hierarchical approach is often more useful. A coarse first pass identifies broad themes; a second pass clusters within each theme to produce subtopics. This two-level structure mirrors the hierarchical organization of knowledge in many domains: a top level of "product areas" and a second level of "feature categories" within each area.
+
+HDBSCAN supports hierarchical clustering natively through its condensed tree representation, which can be cut at different levels to produce coarser or finer partitions. K-means can be applied hierarchically by running a second k-means pass within each first-level cluster.
+
+The output of multi-level clustering is a cluster tree, where each node is a named topic and leaf nodes contain the individual documents. This structure can serve as a navigational index for the corpus, allowing users to drill into topics of interest rather than relying entirely on query-based retrieval.
+
+###Clustering as a complement to retrieval
+
+Retrieval and clustering are complementary strategies for accessing a corpus. Retrieval is query-driven and latency-sensitive; clustering is exploratory and batch-oriented. Together they support two modes of use: a user who knows what they are looking for uses retrieval; a user who wants to understand what is in the corpus uses clustering. In advanced RAG systems, the outputs of clustering—labels, summaries, and cluster assignments—are themselves indexed and made retrievable, blurring the boundary between the two modes.
+
+
 ## Hands-On: Introduction
 
-The hands-on sections that follow demonstrate the complete RAG pipeline in two stages: a straightforward implementation using paragraph-based chunking and direct retrieval, followed by an advanced version that introduces LLM-based semantic chunking, query expansion, metadata filtering, and re-ranking. Each section includes runnable notebooks that show the ingestion and retrieval phases separately, making it clear how documents flow from raw text into a searchable vector database and how queries retrieve relevant context for generation.
+The hands-on sections that follow demonstrate the complete RAG pipeline across three progressively capable exercises: a straightforward implementation using paragraph-based chunking and direct retrieval, an advanced version with LLM-based semantic chunking and multi-stage retrieval, and a clustering exercise that reveals corpus structure without a query.
 
 The simple RAG exercise establishes the foundational pattern described in the chapter introduction. Documents are split at paragraph boundaries, each chunk is embedded and stored in a Chroma vector database with source metadata, and queries retrieve the most similar passages to augment LLM prompts. This implementation works well for many use cases and illustrates the core insight of RAG: separating knowledge storage from reasoning allows updates without retraining and grounds responses in verifiable sources.
 
 The advanced RAG exercise addresses the limitations of naive chunking and single-query retrieval. Rather than splitting on paragraph boundaries, an LLM identifies semantic boundaries where topics or scenes change, producing chunks that preserve coherent units of meaning. Retrieval expands the user query into multiple reformulations to increase recall, then deduplicates, filters by metadata, and re-ranks the combined results for precision. These techniques correspond directly to the ingestion and retrieval concepts from the chapter: topic-aware segmentation, query expansion, multi-stage retrieval, and re-ranking.
+
+The semantic clustering exercise works over an already-ingested collection and discovers structure without requiring a query. HDBSCAN groups chunks by embedding proximity, and an LLM labels each cluster with a short theme and summary. The exercise then maps cluster labels to predefined criteria and indexes the cluster summaries as a navigational layer over the corpus. This demonstrates that retrieval and clustering are complementary strategies: retrieval serves users who know what they are looking for; clustering serves those who need to understand what is in the corpus.
 
 The progression from simple to advanced demonstrates a recurring theme in RAG systems: the basic pattern provides most of the value, while additional complexity should be justified by measured improvements for your specific domain and corpus.
 
@@ -6904,55 +7019,50 @@ The ingestion notebook (`example_RAG_01_load.ipynb`) demonstrates the three core
 The notebook begins by creating a connection to a Chroma vector database:
 
 ```python
-from agentic_patterns.core.vectordb import get_vector_db, vdb_add
+from agentic_patterns.core.vectordb import get_vector_db
 
 vdb = get_vector_db('books')
 ```
 
 The `get_vector_db` function handles database initialization and configuration. The collection name `'books'` identifies this particular set of documents. Chroma persists the data to disk, so the database survives across notebook sessions.
 
-Before loading documents, the notebook checks whether the collection is empty:
-
-```python
-count = vdb.count()
-create_vdb = (count == 0)
-```
-
-This check prevents duplicate ingestion. If documents are already loaded, the notebook skips re-ingestion. This pattern is important in practice: you want ingestion to be idempotent so that rerunning the notebook doesn't create duplicate entries.
-
 #### Chunking Strategy
 
-The chunking function splits documents into paragraphs:
+`ChunkerParagraph` splits a document at blank lines and filters out blocks that are too short:
 
 ```python
-def chunks(file: Path, min_lines: int = 3):
-    """Chunk a book into paragraphs, returning (document, doc_id, metadata) tuples."""
-    text = file.read_text()
-    paragraphs = text.split('\n\n')
-    for paragraph_num, paragraph in enumerate(paragraphs):
-        doc = paragraph.strip()
-        if not doc or len(doc.strip().split('\n')) < min_lines:
-            continue
-        doc_id = f"{file.stem}-{paragraph_num}"
-        metadata = {'source': str(file.stem), 'paragraph': paragraph_num}
-        yield doc, doc_id, metadata
+from pathlib import Path
+from agentic_patterns.core.rag import ChunkerParagraph
+from agentic_patterns.core.doc_ingestion.models import DocumentProvenance
+
+txt_file = Path("data/books/hhgttg.txt")
+text = txt_file.read_text()
+provenance = DocumentProvenance(original_file=txt_file, source=txt_file.stem)
+chunker = ChunkerParagraph(min_lines=3)
+chunks = chunker.chunk(text, provenance)
 ```
 
-This is the simplest useful chunking strategy: split on double newlines (paragraph boundaries) and filter out chunks that are too short. Each chunk receives a unique ID and metadata tracking its source file and position. The metadata becomes important during retrieval for citation and filtering.
+This is the simplest useful chunking strategy: split on double newlines (paragraph boundaries) and discard blocks shorter than `min_lines`. Each `Chunk` object carries a unique `doc_id` derived from the filename and paragraph position, a `level` of `ChunkLevel.PARAGRAPH`, and a `metadata` dict containing the provenance fields. The provenance captures the source filename so that retrieved passages can be traced back to their origin.
 
-The `min_lines` filter removes trivial chunks like chapter headings or blank sections. Without this filter, the vector database would fill with short, semantically weak chunks that add noise to retrieval results.
+The `min_lines` filter removes trivial blocks like chapter headings or blank sections. Without it, the vector database fills with short, semantically weak chunks that add noise to retrieval results.
+
+All chunkers implement the `Chunker` ABC, which defines a single `chunk(text, provenance)` method (plus an async `achunk` variant). The library provides several built-in chunkers: `ChunkerParagraph` for simple paragraph splitting, `ChunkerMarkdown` for heading-aware splitting, `ChunkerSmart` which auto-selects a strategy based on document size and structure, and `ChunkerLLM` for LLM-based semantic chunking.
 
 #### Loading Documents
 
-The loading loop processes each text file and adds its chunks to the database:
+`vdb.ingest` stores the chunks as embeddings in the vector database:
 
 ```python
+chunker = ChunkerParagraph(min_lines=3)
 for txt_file in DOCS_DIR.glob('*.txt'):
-    for doc, doc_id, meta in chunks(txt_file):
-        vdb_add(vdb, text=doc, doc_id=doc_id, meta=meta)
+    text = txt_file.read_text()
+    provenance = DocumentProvenance(original_file=txt_file, source=txt_file.stem)
+    chunks = chunker.chunk(text, provenance)
+    added = vdb.ingest(chunks, force=False)
+    print(f"{txt_file.name}: {added} chunks added")
 ```
 
-The `vdb_add` function handles embedding generation internally. Each chunk is converted to a dense vector and stored alongside its text and metadata. The document ID ensures that re-ingesting the same document updates rather than duplicates entries.
+`ingest` embeds and stores each chunk and returns the count actually added. The `force=False` argument skips chunks whose `doc_id` already exists in the collection, making ingestion idempotent. Rerunning the notebook does not create duplicate entries.
 
 ### Part 2: Document Retrieval
 
@@ -6963,16 +7073,14 @@ The retrieval notebook (`example_RAG_01_query.ipynb`) demonstrates querying the 
 The query process starts by embedding the user's question and finding similar documents:
 
 ```python
-from agentic_patterns.core.vectordb import get_vector_db, vdb_query
+from agentic_patterns.core.vectordb import get_vector_db
 
 vdb = get_vector_db('books')
 query = "Who is a man with two heads?"
-documents_with_scores = vdb_query(vdb, query=query)
+results = vdb.retrieve(query=query, max_results=5)
 ```
 
-The `vdb_query` function converts the query string to an embedding using the same model that embedded the documents. It then performs a similarity search, returning the closest matches along with their similarity scores and metadata.
-
-The returned list contains tuples of `(document_text, metadata, score)`. The score indicates semantic similarity: higher scores mean the document is more relevant to the query. These scores help in two ways: they order results by relevance, and they provide a signal for filtering out weak matches.
+`vdb.retrieve` converts the query string to an embedding using the same model that embedded the documents, performs a similarity search, deduplicates by `doc_id` (keeping the highest score per document), and returns results sorted by descending score. Each result is a `RetrievedDocument` with `.text`, `.score`, `.doc_id`, `.level`, `.parent_id`, and `.metadata` attributes.
 
 #### Building the Augmented Prompt
 
@@ -6980,8 +7088,8 @@ The retrieved documents become part of the LLM prompt:
 
 ```python
 docs_str = ''
-for doc, meta, score in documents_with_scores:
-    docs_str += f"Similarity Score: {score:.3f}\nDocument:\n{doc}\n\n"
+for doc in results:
+    docs_str += f"Similarity Score: {doc.score:.3f}\nDocument:\n{doc.text}\n\n"
 
 prompt = f"""
 Given the following documents, answer the question:
@@ -7014,21 +7122,21 @@ The LLM now has access to relevant passages from the corpus. If the question ask
 
 The RAG pattern succeeds because it separates concerns. Embeddings capture semantic similarity without requiring exact keyword matches. Vector search scales to large corpora with sub-linear query time. LLMs excel at reading comprehension and synthesis but struggle with precise recall. By combining these components, RAG gets the best of each: broad semantic matching, efficient retrieval, and fluent answer generation.
 
-The simple paragraph-based chunking in this example works well for narrative text where paragraphs correspond to coherent units of meaning. For technical documentation, code, or structured data, more sophisticated chunking strategies (covered in later examples) may be needed.
+The simple paragraph-based chunking works well for narrative text where paragraphs correspond to coherent units of meaning. For technical documentation, code, or structured data, more sophisticated chunking strategies (covered in later examples) may be needed.
 
 ### Limitations of Simple RAG
 
 This basic implementation has several limitations that motivate the advanced techniques covered in subsequent examples.
 
-The paragraph chunking is naive. It doesn't consider semantic boundaries, so a topic that spans two paragraphs gets split into separate chunks. A query might retrieve only half of the relevant context.
+The paragraph chunking is naive. It does not consider semantic boundaries, so a topic that spans two paragraphs gets split into separate chunks. A query might retrieve only half of the relevant context.
 
 The retrieval uses a single query. If the user's question could be phrased multiple ways, the system might miss relevant documents that match an alternate phrasing. Query expansion addresses this.
 
-There's no re-ranking. The initial similarity scores from the vector database are approximate. A dedicated re-ranker that jointly considers query-document pairs can improve precision, especially at the top of the ranking.
+There is no re-ranking. The initial similarity scores from the vector database are approximate. A dedicated re-ranker that jointly considers query-document pairs can improve precision, especially at the top of the ranking.
 
-There's no metadata filtering. In a production system, you might want to restrict retrieval to documents from a specific time period, author, or category. The metadata is captured during ingestion but not used during retrieval in this basic example.
+There is no metadata filtering. In a production system, you might want to restrict retrieval to documents from a specific time period, author, or category. The metadata is captured during ingestion but not used during retrieval in this basic example.
 
-These limitations don't diminish the value of the simple approach. For many use cases, paragraph chunking and direct retrieval work well. The advanced techniques add complexity that should be justified by measured improvements in retrieval quality for your specific domain.
+These limitations do not diminish the value of the simple approach. For many use cases, paragraph chunking and direct retrieval work well. The advanced techniques add complexity that should be justified by measured improvements in retrieval quality for your specific domain.
 
 
 ## Hands-On: Advanced Document Ingestion and Retrieval
@@ -7045,94 +7153,39 @@ Similarly, simple retrieval assumes the user's query directly matches how inform
 
 The ingestion notebook (`example_RAG_02_load.ipynb`) replaces naive paragraph splitting with an LLM that identifies semantic boundaries.
 
-#### The Chunking Prompt
+#### Chunking with ChunkerLLM
 
-The LLM receives explicit instructions about what makes a good chunk:
-
-```python
-CHUNKING_PROMPT = """
-You are a text chunking assistant. Your task is to divide the following text into coherent chunks based on topics or themes.
-
-Guidelines:
-- Each chunk should be self-contained and focus on a single topic, scene, or theme
-- Chunks should be substantial (at least a few sentences) but not too long
-- Preserve the original text exactly - do not summarize or modify the content
-- Return the chunks as a list of strings
-- IMPORTANT: If the text ends mid-topic (incomplete), include that partial content as the LAST chunk so it can be continued in the next batch
-
-TEXT TO CHUNK:
-{text}
-"""
-
-chunking_agent = get_agent(config_name="fast", output_type=list[str])
-```
-
-The prompt emphasizes self-containment and topic coherence. Unlike heuristic approaches that count characters or split on punctuation, the LLM understands when a scene changes or a new concept begins. The instruction to preserve text exactly prevents the LLM from summarizing, which would lose detail needed for retrieval.
-
-The `output_type=list[str]` ensures structured output. The LLM returns a list of strings rather than free-form text, making the result directly usable without parsing.
-
-#### Batching for Large Documents
-
-Documents often exceed LLM context limits. The notebook addresses this with a batching strategy that splits at natural boundaries:
+`ChunkerLLM` in `core/rag/chunker_llm.py` handles the full ingestion pipeline: batching the text, prompting the LLM to identify topic boundaries, and managing the leftover strategy across batch edges.
 
 ```python
-BATCH_SIZE_CHARS = 15000
+from agentic_patterns.core.doc_ingestion.models import DocumentProvenance
+from agentic_patterns.core.rag import ChunkerLLM
+from agentic_patterns.core.vectordb import get_vector_db
 
-def split_into_batches(text: str, batch_size: int) -> list[str]:
-    """Split text into batches by paragraphs, respecting batch_size limit."""
-    paragraphs = text.split('\n\n')
-    batches = []
-    current_batch = []
-    current_size = 0
+vdb = get_vector_db('books_semantic')
+chunker = ChunkerLLM()
 
-    for para in paragraphs:
-        para_size = len(para) + 2
-        if current_size + para_size > batch_size and current_batch:
-            batches.append('\n\n'.join(current_batch))
-            current_batch = [para]
-            current_size = para_size
-        else:
-            current_batch.append(para)
-            current_size += para_size
-
-    if current_batch:
-        batches.append('\n\n'.join(current_batch))
-
-    return batches
+for txt_file in DOCS_DIR.glob('*.txt'):
+    text = txt_file.read_text()
+    provenance = DocumentProvenance(original_file=txt_file, source=txt_file.stem)
+    chunks = await chunker.achunk(text, provenance)
+    added = vdb.ingest(chunks, force=False)
+    print(f"{txt_file.name}: {added} semantic chunks added")
 ```
 
-The function splits on paragraph boundaries rather than at arbitrary character positions. This prevents breaking mid-sentence and gives the LLM complete paragraphs to work with. Each batch stays under 15000 characters, roughly 3000-4000 tokens, leaving headroom for the prompt template and LLM response.
+`ChunkerLLM` splits the text into batches at paragraph boundaries so that no single batch exceeds the LLM's practical context limit. It prompts the LLM to identify where topics or scenes change within each batch, returning a list of coherent text segments. Each chunk comes back at `ChunkLevel.SECTION` -- one level coarser than the paragraph-level chunks produced by `ChunkerParagraph`. Because the LLM call is inherently async, `ChunkerLLM` overrides `achunk()` and raises in the sync `chunk()` method.
 
 #### Handling Incomplete Chunks Across Batches
 
-When batch boundaries fall in the middle of a semantic unit, the last chunk from one batch might be incomplete. The notebook handles this with a "leftover" strategy:
+The key challenge with batching is that a semantic unit might straddle a batch boundary. `ChunkerLLM` addresses this with a leftover strategy: the last chunk of each batch is treated as potentially incomplete and is prepended to the next batch. The LLM then sees that fragment with sufficient following context to determine where the topic actually ends.
 
-```python
-async def chunk_with_llm(file: Path) -> list[tuple[str, str, dict]]:
-    text = file.read_text()
-    batches = split_into_batches(text, BATCH_SIZE_CHARS)
+This approach maintains coherence across arbitrary batch boundaries without requiring the LLM to see the entire document at once. The prompt instructs the LLM to place potentially incomplete content last, which makes the detection reliable: the final element of each batch response is always the candidate for continuation.
 
-    all_chunks = []
-    leftover = ""
+#### Why Semantic Chunking Matters
 
-    for batch_num, batch in enumerate(batches):
-        batch_text = leftover + batch if leftover else batch
-        leftover = ""
+Unlike heuristic approaches that count characters or split on punctuation, the LLM understands when a scene changes or a new concept begins. Two ideas that happen to share a paragraph boundary will be separated; a single paragraph that covers two distinct topics will be split. The resulting chunks are more semantically self-contained, which directly improves retrieval precision because each embedding represents one coherent idea.
 
-        prompt = CHUNKING_PROMPT.format(text=batch_text)
-        agent_run, _ = await run_agent(chunking_agent, prompt, verbose=False)
-        chunks: list[str] = agent_run.result.output
-
-        if batch_num < len(batches) - 1 and chunks:
-            leftover = chunks.pop()
-
-        all_chunks.extend(chunks)
-
-    if leftover:
-        all_chunks.append(leftover)
-```
-
-The key insight is that the LLM is instructed to place potentially incomplete content in the last chunk. By removing that last chunk and prepending it to the next batch, the LLM sees the incomplete content with additional context and can properly determine where the semantic boundary falls. This approach maintains coherence across arbitrary batch boundaries without requiring the LLM to see the entire document at once.
+The trade-off is cost and latency. LLM chunking requires one or more API calls per document at ingestion time. For small corpora this is acceptable; for very large corpora, `ChunkerMarkdown` provides a cheaper approximation that still respects heading structure.
 
 ### Part 2: Advanced Retrieval
 
@@ -7140,69 +7193,53 @@ The retrieval notebook (`example_RAG_02_query.ipynb`) demonstrates a multi-stage
 
 #### Query Expansion
 
-A single query embedding might miss relevant documents that express the same concept differently. Query expansion generates multiple reformulations:
+A single query embedding might miss relevant documents that express the same concept differently. `expand_query` reformulates the user's question into multiple variants:
 
 ```python
-prompt = f"""
-Given the following user query, reformulate the query in three to five different ways to retrieve relevant documents from the vector database.
+from agentic_patterns.agents.rag.retrieval import expand_query
 
-{query}
-"""
-
-agent = get_agent(output_type=list[str])
-agent_run, nodes = await run_agent(agent, prompt=prompt, verbose=True)
-reformulated_queries = agent_run.result.output
+query = "Who is a man with two heads?"
+queries = await expand_query(query)
+# e.g. ["character described as having two heads",
+#        "dual-headed individual in the story",
+#        "person with two heads description", ...]
 ```
 
-For a query like "Who is a man with two heads?", the LLM might generate variations like "character with multiple heads", "person with two heads description", and "dual-headed individual". Each reformulation captures a different lexical angle on the same semantic intent. Querying with all variations increases recall because documents matching any phrasing will be retrieved.
+For a question like "Who is a man with two heads?", the LLM might generate variations like "character with multiple heads", "dual-headed individual", and "person with two heads description". Each reformulation captures a different lexical angle on the same semantic intent. Querying with all variations increases recall because documents matching any phrasing will be retrieved.
 
 #### Multi-Query Retrieval with Metadata Filtering
 
-Each reformulated query runs against the vector database with a metadata filter applied at query time:
+Each reformulated query runs against the vector database with an optional metadata filter applied at query time:
 
 ```python
+from agentic_patterns.core.vectordb import get_vector_db
+
+vdb = get_vector_db('books_semantic')
 book_name = 'hhgttg'
-metadata_filter = {'source': book_name}
 
-documents_with_scores = []
-for q in reformulated_queries:
-    documents_with_scores.extend(vdb_query(vdb, query=q, filter=metadata_filter))
+all_results = []
+for q in queries:
+    all_results.extend(vdb.retrieve(q, filter={'source': book_name}, max_results=10))
 ```
 
-The `filter` parameter restricts results at the database level, which is more efficient than filtering after retrieval. This filter restricts results to a specific book. In production systems, metadata filtering handles access control (only documents the user is authorized to see), temporal constraints (only documents from a certain time period), or domain restrictions (only documents from a particular category).
+The `filter` parameter restricts results at the database level, which is more efficient than filtering after retrieval. In production systems, metadata filtering handles access control (only documents the user is authorized to see), temporal constraints (only documents from a certain time period), or domain restrictions (only documents from a particular category).
 
-The same document might appear multiple times if it matches several reformulations. This duplication is handled in the next stage.
+The same document might appear multiple times because it matches several reformulations. This duplication is handled in the next step.
 
-#### Deduplication
+#### Deduplication and Re-ranking
 
-The combined results need deduplication to remove repeated documents:
+`vdb.retrieve` already deduplicates within a single query. Across multiple queries, we deduplicate by `doc_id`, keeping the highest score, then sort:
 
 ```python
-seen_ids = set()
-documents_deduplicated = []
-for doc, meta, score in documents_with_scores:
-    doc_id = f"{meta['source']}-{meta['chunk']}"
-    if doc_id in seen_ids:
-        continue
-    documents_deduplicated.append((doc, meta, score, doc_id))
-    seen_ids.add(doc_id)
+seen: dict[str, RetrievedDocument] = {}
+for doc in all_results:
+    if doc.doc_id not in seen or doc.score > seen[doc.doc_id].score:
+        seen[doc.doc_id] = doc
+
+top_results = sorted(seen.values(), key=lambda d: d.score, reverse=True)[:10]
 ```
 
-The document ID constructed from source and chunk number provides a unique key. Documents that appear in multiple query results are kept only once.
-
-#### Sorting and Limiting
-
-The results are sorted by similarity score and limited to a manageable number:
-
-```python
-documents_sorted = sorted(documents_deduplicated, key=lambda x: x[2], reverse=True)
-
-max_results = 10
-if len(documents_sorted) > max_results:
-    documents_sorted = documents_sorted[:max_results]
-```
-
-This example uses a simple score-based sort. Production systems often use cross-encoder models that jointly encode the query and document to produce more accurate relevance scores. The computational cost of cross-encoders makes them impractical for the initial search over thousands of documents, but they work well for re-ranking a small candidate set.
+This score-based sort provides a simple re-ranking baseline. Production systems often use cross-encoder models that jointly encode the query and document to produce more accurate relevance scores. Cross-encoders are too slow for an initial search over thousands of documents, but work well for re-ranking a small candidate set of ten to twenty documents.
 
 The `max_results` limit caps how many documents enter the final prompt. More documents provide more context but increase token usage and may dilute the most relevant passages.
 
@@ -7212,8 +7249,8 @@ The filtered, deduplicated, sorted documents become context for the LLM:
 
 ```python
 docs_str = ''
-for doc, meta, score, doc_id in documents_sorted:
-    docs_str += f"Similarity Score: {score:.3f}\nDocument ID: {doc_id}\nDocument:\n{doc}\n\n"
+for doc in top_results:
+    docs_str += f"Similarity Score: {doc.score:.3f}\nDocument ID: {doc.doc_id}\nDocument:\n{doc.text}\n\n"
 
 prompt = f"""
 Given the following documents, answer the user's question.
@@ -7239,7 +7276,134 @@ For small corpora with well-structured documents, simple paragraph chunking and 
 
 ### Connection to the Chapter
 
-The techniques demonstrated here correspond to concepts from the chapter sections on document ingestion and retrieval. LLM-based chunking implements the topic-aware segmentation described in the ingestion section. Query expansion, filtering, and re-ranking implement stages of the retrieval pipeline described in the retrieval section. The code makes these abstract concepts concrete and runnable.
+The techniques demonstrated here correspond to concepts from the chapter sections on document ingestion and retrieval. `ChunkerLLM` implements the topic-aware segmentation described in the ingestion section. `expand_query`, metadata filtering, and score-based re-ranking implement stages of the retrieval pipeline described in the retrieval section. The code makes these abstract concepts concrete and runnable.
+
+
+## Hands-On: Semantic Clustering
+
+This hands-on demonstrates how to cluster an existing vector database collection by embedding similarity, label the resulting clusters with an LLM, and use the cluster structure to understand what a corpus contains. The example uses `example_RAG_clustering.ipynb`.
+
+### What Clustering Reveals
+
+Retrieval serves users who know what they are looking for. Clustering serves a different need: understanding what is in the corpus without a specific query. By grouping embeddings that are close in vector space, clustering reveals the dominant themes, the proportion of content each theme occupies, and the presence of peripheral or transitional material that does not fit cleanly into any theme.
+
+This is useful before deploying a RAG system. If a corpus is supposed to cover ten topics but clustering reveals only three dense regions, the corpus is biased and retrieval will be unreliable for the underrepresented topics.
+
+### Clustering an Existing Collection
+
+After running the ingestion notebooks, the `books` collection already contains embeddings for all book chunks. The `cluster` function fetches those stored embeddings directly rather than re-embedding the documents:
+
+```python
+from agentic_patterns.core.vectordb import get_vector_db
+from agentic_patterns.core.vectordb.clustering import cluster
+from agentic_patterns.core.vectordb.models import ClusterAlgorithm, DimReducer
+
+vdb = get_vector_db("books")
+result = cluster(vdb, algorithm=ClusterAlgorithm.HDBSCAN, reduce_dim=DimReducer.UMAP, n_components=10)
+
+print(f"Found {len(result.clusters)} clusters")
+for c in result.clusters:
+    print(f"  Cluster {c.cluster_id}: {len(c.items)} items")
+```
+
+When the input is a `VectorDB`, `cluster` fetches stored embeddings directly via the underlying collection and works on them without any additional embedding calls. This makes clustering an existing collection fast and free of API cost.
+
+HDBSCAN does not require specifying the number of clusters. It finds dense regions in the embedding space and labels outlier points with cluster id `-1`. These noise points are intentional: some chunks are peripheral or transitional and should not be forced into a coherent theme. Forcing them in would dilute the coherent clusters. The `reduce_dim=DimReducer.UMAP` argument applies UMAP dimensionality reduction before clustering: HDBSCAN is sensitive to the curse of dimensionality, and compressing embeddings to a lower-dimensional space (here, 10 components) makes density contrasts more pronounced and results more reliable.
+
+### Labeling Clusters with an LLM
+
+Raw clusters are groups of document IDs and texts with no human-readable description. `label_clusters` passes a sample of each cluster's items to a language model and asks it to assign a short label and a summary:
+
+```python
+from agentic_patterns.agents.rag.clustering import label_clusters
+
+labeled = await label_clusters(result)
+
+for c in labeled.clusters:
+    if c.cluster_id == -1:
+        continue  # Skip noise
+    print(f"\nCluster {c.cluster_id}: {c.label}")
+    print(f"  Summary: {c.summary}")
+    print(f"  Items: {len(c.items)}")
+```
+
+The LLM receives up to 500 characters from each item's text, structured as a list, and returns a `label` like "Space travel and alien encounters" and a `summary` like "Passages describing interstellar journeys, first contact scenarios, and alien cultures." These labels make the clusters immediately interpretable without reading individual documents.
+
+### Interpreting the Results
+
+A typical run over the book corpus reveals clusters such as:
+
+- Narrative scenes with specific characters and dialogue
+- World-building and setting descriptions
+- Technical explanations of fictional technology or science
+- Philosophical reflections and inner monologue
+- Transitional passages and plot exposition
+
+This distribution reveals something about the corpus structure that a query-based approach would never show: the corpus is narrative-heavy with relatively few technical segments. A RAG system built on this corpus will be strong for character and plot queries but weak for factual lookups, because the factual content represents a small fraction of the chunks.
+
+### Using Spherical K-Means When the Number of Clusters Is Known
+
+For corpora where the expected number of topics is approximately known — for example, ten product categories in a support ticket corpus — k-means produces more balanced clusters. Because embeddings are compared via cosine similarity, **spherical k-means** is preferred: it normalizes vectors to the unit sphere before clustering, making it equivalent to minimizing cosine distance and aligning the clustering metric with retrieval:
+
+```python
+result_skm = cluster(vdb, algorithm=ClusterAlgorithm.SPHERICAL_KMEANS, n_clusters=10)
+labeled_skm = await label_clusters(result_skm)
+```
+
+Spherical k-means forces every document into a cluster, which is useful when the goal is complete coverage rather than noise rejection. The trade-off is that some clusters may be conceptually forced: groups that happen to be near each other in embedding space but do not represent a coherent theme. HDBSCAN's noise class provides an honest signal that spherical k-means cannot.
+
+### Mapping Clusters to Structured Items
+
+A practical downstream use of clustering is mapping corpus themes to a predefined structure. Suppose the application has a set of evaluation criteria and wants to identify which criteria are well-represented in the corpus and which are absent. After labeling clusters, a simple comparison — either embedding-based similarity or LLM-based matching — can assign each cluster to the most relevant criterion:
+
+```python
+criteria = [
+    "Ethical decision-making",
+    "Resource management under constraints",
+    "Communication with unknown entities",
+]
+
+for c in labeled.clusters:
+    if c.cluster_id == -1:
+        continue
+    # Embed the cluster label and compare against criteria embeddings
+    best_match = find_closest_criterion(c.label, criteria)
+    print(f"{c.label} -> {best_match}")
+```
+
+This mapping reveals coverage gaps: criteria with no matching cluster are absent from the corpus, suggesting the document set is incomplete or biased. In a rubric-based evaluation system, this analysis directly informs which evidence sources need to be supplemented.
+
+### Cluster Labels as a Navigation Layer
+
+The final step in the notebook indexes the cluster labels themselves into a separate collection, creating a navigational layer over the corpus:
+
+```python
+from agentic_patterns.core.vectordb import get_vector_db
+from agentic_patterns.core.vectordb.models import Chunk, ChunkLevel
+
+vdb_index = get_vector_db("books_cluster_index")
+
+index_chunks = []
+for c in labeled.clusters:
+    if c.cluster_id == -1:
+        continue
+    doc_ids = ",".join(item.doc_id for item in c.items)
+    index_chunks.append(Chunk(
+        doc_id=f"cluster-{c.cluster_id}",
+        text=f"{c.label}: {c.summary}",
+        level=ChunkLevel.DOCUMENT,
+        parent_id=None,
+        metadata={"cluster_id": c.cluster_id, "doc_ids": doc_ids},
+    ))
+
+vdb_index.ingest(index_chunks, force=True)
+```
+
+A user query first searches the cluster index to identify the most relevant theme, then retrieves chunks from only that cluster's documents. This two-stage retrieval reduces noise from irrelevant topics and can substantially improve precision for topically focused queries.
+
+### Connection to the Chapter
+
+Clustering and retrieval are complementary strategies over the same embedding space. Retrieval uses the space to answer a specific question; clustering uses the same space to map the territory. The `ClusterResult` returned by `cluster` and enriched by `label_clusters` is a reusable data structure: its labels can feed downstream filtering, its summaries can seed a navigational index, and its noise points identify documents that may need better chunking or categorization.
 
 
 ## References
@@ -7306,24 +7470,24 @@ The third thread is the discovery that larger context windows do not automatical
 
 Prompts are the agent's control surface: they define intent, constraints, and operating procedure for each model call, and they are the primary way an agent carries "what matters" forward from one step to the next.
 
-#### System prompts, developer instructions, and user prompts
+### System prompts, developer instructions, and user prompts
 
-Most agent stacks benefit from splitting “what to do” from “what the user said,” and from being explicit about what persists across calls. One useful distinction is between (a) system prompts that may be preserved as part of the message history, and (b) developer-provided instructions that are applied for the current run but are not replayed from prior turns when you pass message history back into the model. Some frameworks make this distinction explicitly: they recommend using an “instructions” channel by default, and using “system prompt” only when you deliberately want earlier system messages preserved across subsequent calls that include message history. ([Pydantic AI][32])
+Most agent stacks benefit from splitting “what to do” from “what the user said,” and from being explicit about what persists across calls. One useful distinction is between (a) system prompts that may be preserved as part of the message history, and (b) developer-provided instructions that are applied for the current run but are not replayed from prior turns when you pass message history back into the model. Some frameworks make this distinction explicitly: they recommend using an “instructions” channel by default, and using “system prompt” only when you deliberately want earlier system messages preserved across subsequent calls that include message history. ([Pydantic AI][prompts-32])
 
 | Layer                  | Typical author                | Primary purpose                                                 | When evaluated                      | Included when you pass prior conversation back to the model                                                                            | What should be inside                                                                | Common failure mode                                                     |
 | ---------------------- | ----------------------------- | --------------------------------------------------------------- | ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------- |
-| System prompt          | Platform / application        | Establish global rules, safety boundaries, role, and invariants | Every call                          | Often yes (if system messages are part of the stored chat transcript you replay) ([Pydantic AI][32])                                    | Non-negotiables, policy, tool-use constraints, formatting contract                   | Overstuffing; becomes brittle and conflicts with task-specific behavior |
-| Developer instructions | Application / agent developer | Define task procedure and style for a specific agent or run     | Every call                          | Typically no for prior turns; only the current agent’s instructions are applied even if you include message history ([Pydantic AI][32]) | Step-by-step method, required checks, domain constraints, output schema expectations | Too verbose; competes with user content and reduces task grounding      |
+| System prompt          | Platform / application        | Establish global rules, safety boundaries, role, and invariants | Every call                          | Often yes (if system messages are part of the stored chat transcript you replay) ([Pydantic AI][prompts-32])                                    | Non-negotiables, policy, tool-use constraints, formatting contract                   | Overstuffing; becomes brittle and conflicts with task-specific behavior |
+| Developer instructions | Application / agent developer | Define task procedure and style for a specific agent or run     | Every call                          | Typically no for prior turns; only the current agent’s instructions are applied even if you include message history ([Pydantic AI][prompts-32]) | Step-by-step method, required checks, domain constraints, output schema expectations | Too verbose; competes with user content and reduces task grounding      |
 | User prompt            | End user                      | Provide the request and any user constraints                    | Every call                          | Yes (as part of conversation history)                                                                                                  | User goals, preferences, situational details                                         | Ambiguity; missing constraints; conflicts with system/developer rules   |
-| Conversation history   | System-generated              | Provide continuity and references to earlier turns              | Every call where continuity matters | Yes (selected subset) ([Pydantic AI][32])                                                                                               | Prior user messages, prior assistant outputs, tool results the agent must honor      | Unbounded growth; irrelevant history crowds out current task            |
+| Conversation history   | System-generated              | Provide continuity and references to earlier turns              | Every call where continuity matters | Yes (selected subset) ([Pydantic AI][prompts-32])                                                                                               | Prior user messages, prior assistant outputs, tool results the agent must honor      | Unbounded growth; irrelevant history crowds out current task            |
 
 A practical mental model is that the “effective prompt” is the concatenation of these layers plus any tool outputs you feed back in. Because the model does not truly “remember,” everything you want it to condition on must be present in the tokens you send. That makes prompt boundaries an engineering problem: deciding what belongs in each layer, what is allowed to persist, and what must be summarized or externalized.
 
-A useful rule is to treat system prompts as a narrow compatibility layer (policies and invariants), and treat developer instructions as the primary control mechanism for agent behavior. This maps to the explicit recommendation some frameworks make: use “instructions” by default, and only use “system prompt persistence” when you have a concrete reason to keep earlier system messages in the replayed history. ([Pydantic AI][32])
+A useful rule is to treat system prompts as a narrow compatibility layer (policies and invariants), and treat developer instructions as the primary control mechanism for agent behavior. This maps to the explicit recommendation some frameworks make: use “instructions” by default, and only use “system prompt persistence” when you have a concrete reason to keep earlier system messages in the replayed history. ([Pydantic AI][prompts-32])
 
-#### Conversation history as working context
+### Conversation history as working context
 
-Conversation history is the simplest form of short-term memory: you resend prior turns so the model can resolve references (“his,” “that issue,” “the second option”) and maintain continuity. Most agent frameworks represent this as an explicit `message_history` (or equivalent) argument, where you pass the subset of prior messages you want the model to see. ([Pydantic AI][32])
+Conversation history is the simplest form of short-term memory: you resend prior turns so the model can resolve references (“his,” “that issue,” “the second option”) and maintain continuity. Most agent frameworks represent this as an explicit `message_history` (or equivalent) argument, where you pass the subset of prior messages you want the model to see. ([Pydantic AI][prompts-32])
 
 In agentic systems, the key decision is not whether to keep history, but how to curate it. A robust approach is to treat history as a structured artifact rather than a raw transcript:
 
@@ -7333,11 +7497,11 @@ In agentic systems, the key decision is not whether to keep history, but how to 
 
 Even without a dedicated “context engineering” section, it is worth stating one operational implication here: replaying raw history scales linearly in tokens and cost, and it eventually degrades quality when irrelevant detail dominates. The prompt stack should therefore be designed so that history can be safely truncated without losing correctness: core constraints remain in system/developer layers, and durable state lives outside the transcript.
 
-#### Short-term vs. long-term memory
+### Short-term vs. long-term memory
 
 Short-term memory is whatever you include in the current context window: system messages, developer instructions, the user’s latest request, selected conversation history, and any tool outputs. It is fast, simple, and fragile: it disappears after the call unless you explicitly store it.
 
-Long-term memory is information that persists across calls and sessions, and that you retrieve on demand. Historically, research systems explored learned memory modules (for example, Memory Networks and entity-centric recurrent memories), but most production agents implement long-term memory as external storage plus retrieval and summarization policies. ([NeurIPS Proceedings][31])
+Long-term memory is information that persists across calls and sessions, and that you retrieve on demand. Historically, research systems explored learned memory modules (for example, Memory Networks and entity-centric recurrent memories), but most production agents implement long-term memory as external storage plus retrieval and summarization policies. ([NeurIPS Proceedings][prompts-31])
 
 The practical boundary is not “how long ago did it happen,” but “how often must it be correct.” Examples:
 
@@ -7347,7 +7511,7 @@ Intermediate reasoning traces or verbose transcripts are rarely good long-term m
 
 The most reliable pattern is to convert episodic interactions into durable, typed records: preferences, decisions, tasks, entities, and constraints. Raw transcript can remain available for audit, but retrieval should preferentially use structured summaries.
 
-#### Memory and state management with a database
+### Memory and state management with a database
 
 A database-backed memory system is best treated as two separable concerns:
 
@@ -7408,36 +7572,17 @@ def build_memory_view(conversation_id: str, user_request: str, token_budget: int
 
 This design supports an important separation: conversation continuity (recent transcript) and durable memory (facts) can be budgeted and degraded independently. It also makes it easier to enforce correctness policies, such as “prefer tool-sourced facts over user-sourced guesses,” or “expire preferences unless reaffirmed.”
 
-Finally, note the interaction between “instruction-like” content and message history. If your system treats developer instructions as ephemeral per-run control text, you can store them for observability without replaying them as prior messages in future calls. Conversely, if your system relies on replaying system prompts as part of the stored transcript, you must treat that as an explicit compatibility choice because it changes what the model sees when you continue a conversation with message history. ([Pydantic AI][32])
+Finally, note the interaction between “instruction-like” content and message history. If your system treats developer instructions as ephemeral per-run control text, you can store them for observability without replaying them as prior messages in future calls. Conversely, if your system relies on replaying system prompts as part of the stored transcript, you must treat that as an explicit compatibility choice because it changes what the model sees when you continue a conversation with message history. ([Pydantic AI][prompts-32])
 
-[31]: https://proceedings.neurips.cc/paper/5846-end-to-end-memory-networks.pdf "End-To-End Memory Networks"
-[32]: https://ai.pydantic.dev/agents/ "Agents - Pydantic AI"
+[prompts-31]: https://proceedings.neurips.cc/paper/5846-end-to-end-memory-networks.pdf "End-To-End Memory Networks"
+[prompts-32]: https://ai.pydantic.dev/agents/ "Agents - Pydantic AI"
 
 
 ## Context engineering
 
 Context engineering is the practice of deliberately shaping what information an agent sees at inference time—what is included, what is omitted, how it is structured, and when it is refreshed—so that the model can reason effectively under real-world constraints such as finite context windows, latency limits, and cost.
 
-#### Prompt engineering
-
-Prompt engineering concerns the instruction layer of context engineering: how goals, constraints, and expected behaviors are communicated to the model. In agentic systems, prompts should be treated as *interfaces*, not as storage mechanisms.
-
-A robust pattern is to distinguish between stable instructions (role, policies, invariants), task-specific directives (what must be accomplished now), and supporting evidence. Blurring these layers leads to brittle prompts that are hard to evolve and difficult to reason about.
-
-As agents become long-lived, prompt engineering alone becomes insufficient. Attempting to preserve task state, decisions, or plans purely through accumulated conversational text tends to produce degradation over time. For this reason, modern agent architectures increasingly externalize memory and state, using prompts only as a projection of that state into the model at a given step.
-
-```python
-system = "You are an execution-focused agent. Follow policy and ask clarifying questions only when blocked."
-task = "Produce a merge-ready PR description with testing notes and rollback plan."
-evidence = retrieve_documents(query, k=5)
-
-prompt = render(system, task, evidence)
-response = llm(prompt)
-```
-
-The important property here is not syntax, but separation of concerns: prompts express intent and constraints, while state and knowledge live elsewhere.
-
-#### A practical aside: “the dumb zone”
+### A practical aside: “the dumb zone”
 
 In practice, many teams have adopted informal language to describe a familiar failure mode: when too much information is packed into the context window, model behavior becomes less reliable rather than more capable. Internally, this is sometimes jokingly referred to as *“the dumb zone.”*
 
@@ -7447,7 +7592,7 @@ The commonly cited “~40% of the context window” threshold should be understo
 
 The engineering takeaway is modest and pragmatic: context should be treated as a scarce resource, and indiscriminately adding more text is rarely a reliable strategy.
 
-#### Context compression
+### Context compression
 
 Context compression refers to any technique that reduces token usage while preserving task-relevant information. Compression is not limited to summarization; it also includes transforming free-form text into structured representations and discarding information that no longer serves the current objective.
 
@@ -7470,7 +7615,7 @@ prompt = render(instructions, state, evidence)
 
 This shift—from text to state—is one of the most effective ways to keep agents stable as interactions grow longer.
 
-#### Token budgeting
+### Token budgeting
 
 Token budgeting makes context engineering explicit and enforceable. Instead of letting the context grow organically, the system allocates space for different categories of information and applies deterministic rules when limits are reached.
 
@@ -7492,7 +7637,7 @@ prompt = assemble_with_budget(budget)
 
 Token budgeting transforms context management from an emergent behavior into a predictable system component.
 
-#### Write-back patterns
+### Write-back patterns
 
 Write-back patterns close the loop between context and memory. Instead of carrying all history forward, the agent periodically externalizes what it has learned or decided.
 
@@ -7991,14 +8136,12 @@ Tool call/return pairing is preserved automatically. The compactor finds safe bo
 
 ## References
 
-1. Tom B. Brown et al. *Language Models are Few-Shot Learners*. NeurIPS, 2020. https://proceedings.neurips.cc/paper/2020/file/1457c0d6bfcb4967418bfb8ac142f64a-Paper.pdf
-2. Jason Wei et al. *Finetuned Language Models Are Zero-Shot Learners*. ICLR, 2022. https://openreview.net/pdf?id=gEZrGCozdqR
-3. Long Ouyang et al. *Training language models to follow instructions with human feedback*. NeurIPS, 2022. https://proceedings.neurips.cc/paper_files/paper/2022/file/b1efde53be364a73914f58805a001731-Paper-Conference.pdf
-4. Ashish Vaswani et al. *Attention Is All You Need*. NeurIPS, 2017. https://papers.neurips.cc/paper/7181-attention-is-all-you-need.pdf
-5. Sainbayar Sukhbaatar et al. *End-To-End Memory Networks*. NeurIPS, 2015. https://proceedings.neurips.cc/paper/5846-end-to-end-memory-networks.pdf
-6. Mikael Henaff et al. *Tracking the World State with Recurrent Entity Networks*. ICLR, 2017. https://arxiv.org/pdf/1612.03969
-7. Pydantic AI Documentation. *Agents: System Prompts, Instructions, Runs vs. Conversations*. 2025. https://ai.pydantic.dev/agents/
-8. Ruirui Lou et al. *Large Language Model Instruction Following: A Survey of Progress and Challenges*. Computational Linguistics, 2024. https://direct.mit.edu/coli/article/50/3/1053/121669/Large-Language-Model-Instruction-Following-A
+1. Jason Wei et al. *Finetuned Language Models Are Zero-Shot Learners*. ICLR, 2022. https://openreview.net/pdf?id=gEZrGCozdqR
+2. Long Ouyang et al. *Training language models to follow instructions with human feedback*. NeurIPS, 2022. https://proceedings.neurips.cc/paper_files/paper/2022/file/b1efde53be364a73914f58805a001731-Paper-Conference.pdf
+3. Ashish Vaswani et al. *Attention Is All You Need*. NeurIPS, 2017. https://papers.neurips.cc/paper/7181-attention-is-all-you-need.pdf
+4. Sainbayar Sukhbaatar et al. *End-To-End Memory Networks*. NeurIPS, 2015. https://proceedings.neurips.cc/paper/5846-end-to-end-memory-networks.pdf
+5. Mikael Henaff et al. *Tracking the World State with Recurrent Entity Networks*. ICLR, 2017. https://arxiv.org/pdf/1612.03969
+6. Pydantic AI Documentation. *Agents: System Prompts, Instructions, Runs vs. Conversations*. 2025. https://ai.pydantic.dev/agents/
 
 
 \newpage
@@ -8274,7 +8417,7 @@ This separation prevents the agent from endlessly retrying operations that can n
 
 
 
-## Other Server and Client Features
+## Features
 
 MCP features beyond tools define how instructions, data, generation control, and human input are modeled explicitly, making agent behavior inspectable, reproducible, and scalable.
 
@@ -8981,20 +9124,20 @@ A2A is best understood as a pragmatic continuation of this decades-long line of 
 In A2A systems, a task is a durable, observable unit of work whose lifecycle is decoupled from synchronous execution through explicit state management, multiple observation channels, and a layered execution architecture.
 
 
-#### Asynchronous Execution as a First-Class Concept
+### Asynchronous Execution as a First-Class Concept
 
 A2A tasks are explicitly designed to be asynchronous. Once a task is created, the initiating agent does not assume immediate completion. Instead, progress and results are exposed incrementally through well-defined observation mechanisms. This makes tasks suitable for long-running reasoning, external tool calls, delegation chains, and human approval steps.
 
 Asynchrony in A2A is not an implementation detail but a protocol-level guarantee: every task can be observed, resumed, or completed independently of the original request-response channel.
 
 
-#### Task States
+### Task States
 
 Tasks progress through well-defined states: `working` (in progress), `completed` (terminal), `failed` (terminal), `canceled` (terminal), `rejected` (terminal), and `input-required` (the agent needs additional information to proceed). A special `auth-required` state signals authentication issues. The full state machine and transition semantics are covered in ## A2A in Detail
 
-A2A is a protocol-level contract for agent interoperability: a small set of operations plus a strict data model that lets independently-built agents exchange messages, manage long-running tasks, and deliver incremental updates over multiple delivery mechanisms. ([A2A Protocol][13])
+A2A is a protocol-level contract for agent interoperability: a small set of operations plus a strict data model that lets independently-built agents exchange messages, manage long-running tasks, and deliver incremental updates over multiple delivery mechanisms. ([A2A Protocol][details-13])
 
-#### Key abstractions
+### Key abstractions
 
 A2A's main abstractions are designed to match how multi-agent work actually unfolds over time.
 
@@ -9006,7 +9149,7 @@ A **Task** is a stateful unit of work with its own identity and lifecycle. Tasks
 
 A useful mental model is: **Agent Card** answers "who are you and what can you do?", **Task** answers "what unit of work are we coordinating?", **Messages** carry the interaction, and **Artifacts** are the outputs worth persisting.
 
-#### Agent discovery
+### Agent discovery
 
 A2A discovery is built around retrieving the Agent Card. A common mechanism is a well-known URL under the agent's domain (aligned with established "well-known URI" conventions), allowing clients to probe domains deterministically. Discovery is intentionally explicit: clients can validate capabilities, authentication requirements, and declared skills before initiating a task, and systems can log discovery metadata for audit and governance.
 
@@ -9027,7 +9170,7 @@ card = discover_agent_card("billing.example.com")
 
 This "metadata-first" approach matters operationally: it enables capability matching, policy gating (e.g., only delegate to agents with certain auth), and safer orchestration decisions *before* sending sensitive task content.
 
-#### A2A and MCP in composition
+### A2A and MCP in composition
 
 A2A and MCP are complementary layers. MCP standardizes how agents interact with tools and resources (structured inputs/outputs, tool schemas, permission boundaries). A2A standardizes how agents interact with *other agents* as autonomous peers (discovery, task lifecycle, messaging, artifact delivery).
 
@@ -9053,64 +9196,64 @@ A minimal task invocation at the wire level (illustrative, independent of any sp
 
 The important point is not the method name per se, but the design: JSON-RPC provides the envelope; A2A defines the task/message/artifact semantics; and implementations can remain diverse behind the boundary.
 
-#### Ecosystem tooling
+### Ecosystem tooling
 
 The Pydantic ecosystem documents A2A as a practical interoperability layer and provides Python tooling to expose agents as A2A servers and to build clients that can discover agents, initiate tasks, and consume artifacts -- without requiring the agent's internal design to be rewritten around protocol internals. The emphasis is on preserving your existing agent architecture while making the boundary interoperable.
 
 FastMCP, meanwhile, is often used as a pragmatic deployment unit for MCP tool servers. In practice, this leads to a common layered architecture: A2A connects agents across boundaries; MCP connects agents to tools/resources; and FastMCP-style servers host the tool endpoints that agents call. Bridging components can translate between A2A and MCP where needed (for example, to let an A2A-facing agent expose or consume MCP-backed capabilities behind the scenes).
 
-#### What "the spec" really is: operations + data model + bindings
+### What "the spec" really is: operations + data model + bindings
 
-At the lowest level, A2A is defined by (1) a core set of operations (send, stream, get/list/cancel tasks, subscribe, push-config management, extended agent card) and (2) a constrained object model (Task, Message, Part, Artifact, plus streaming event envelopes). ([A2A Protocol][13])
+At the lowest level, A2A is defined by (1) a core set of operations (send, stream, get/list/cancel tasks, subscribe, push-config management, extended agent card) and (2) a constrained object model (Task, Message, Part, Artifact, plus streaming event envelopes). ([A2A Protocol][details-13])
 
-The specification then defines how those operations and objects map onto concrete transports (“protocol bindings”), notably JSON-RPC over HTTP(S), gRPC, and an HTTP+JSON/REST-style mapping. ([A2A Protocol][13])
+The specification then defines how those operations and objects map onto concrete transports (“protocol bindings”), notably JSON-RPC over HTTP(S), gRPC, and an HTTP+JSON/REST-style mapping. ([A2A Protocol][details-13])
 
-A key design point is that the same *logical* operations are intended to be functionally equivalent across bindings; the binding decides *how* parameters and service-wide headers/metadata are carried, but not what they mean. ([A2A Protocol][13])
+A key design point is that the same *logical* operations are intended to be functionally equivalent across bindings; the binding decides *how* parameters and service-wide headers/metadata are carried, but not what they mean. ([A2A Protocol][details-13])
 
 
-#### Operation surface and execution semantics
+### Operation surface and execution semantics
 
-The “A2AService” operation set is designed around a task-centric model. Even if you initiate interaction by sending a message, the server may respond by creating/continuing a task, and all subsequent status and artifacts hang off that task identity. The specification’s “SendMessageRequest” carries the client message plus an optional configuration block and optional metadata. ([A2A Protocol][13])
+The “A2AService” operation set is designed around a task-centric model. Even if you initiate interaction by sending a message, the server may respond by creating/continuing a task, and all subsequent status and artifacts hang off that task identity. The specification’s “SendMessageRequest” carries the client message plus an optional configuration block and optional metadata. ([A2A Protocol][details-13])
 
-##### `SendMessage` and the `SendMessageConfiguration` contract
+#### `SendMessage` and the `SendMessageConfiguration` contract
 
 `SendMessageConfiguration` is where most of the “knobs” live:
 
-* `acceptedOutputModes`: a list of media types the client is willing to receive in response *parts* (for both messages and artifacts). Servers **should** tailor outputs to these modes. ([A2A Protocol][13])
-* `historyLength`: an optional upper bound on how many recent messages of task history should be returned. The semantics are shared across operations: unset means server default; `0` means omit history; `>0` means cap to N most recent. ([A2A Protocol][13])
-* `blocking`: when `true`, the server must wait until the task is terminal and return the final task state; when `false`, return immediately after task creation with an in-progress state, and the caller must obtain progress via polling/subscription/push. ([A2A Protocol][13])
-* `pushNotificationConfig`: requests server-initiated updates via webhook delivery (covered below). ([A2A Protocol][13])
+* `acceptedOutputModes`: a list of media types the client is willing to receive in response *parts* (for both messages and artifacts). Servers **should** tailor outputs to these modes. ([A2A Protocol][details-13])
+* `historyLength`: an optional upper bound on how many recent messages of task history should be returned. The semantics are shared across operations: unset means server default; `0` means omit history; `>0` means cap to N most recent. ([A2A Protocol][details-13])
+* `blocking`: when `true`, the server must wait until the task is terminal and return the final task state; when `false`, return immediately after task creation with an in-progress state, and the caller must obtain progress via polling/subscription/push. ([A2A Protocol][details-13])
+* `pushNotificationConfig`: requests server-initiated updates via webhook delivery (covered below). ([A2A Protocol][details-13])
 
-This configuration block is what makes A2A “async-first” without making simple request/response impossible: a client can force synchronous completion with `blocking: true`, but the spec treats streaming and async delivery as first-class rather than bolt-ons. ([A2A Protocol][13])
+This configuration block is what makes A2A “async-first” without making simple request/response impossible: a client can force synchronous completion with `blocking: true`, but the spec treats streaming and async delivery as first-class rather than bolt-ons. ([A2A Protocol][details-13])
 
-##### Blocking vs non-blocking as a protocol-level contract (not an implementation detail)
+#### Blocking vs non-blocking as a protocol-level contract (not an implementation detail)
 
 The `blocking` flag is normative and affects correctness expectations:
 
-* In blocking mode, the server **MUST** wait for terminal states (`completed`, `failed`, `canceled`, `rejected`) and include the final task state with artifacts/status. ([A2A Protocol][13])
-* In non-blocking mode, the server **MUST** return right after task creation and expects the client to continue via `GetTask`, subscription, or push. ([A2A Protocol][13])
+* In blocking mode, the server **MUST** wait for terminal states (`completed`, `failed`, `canceled`, `rejected`) and include the final task state with artifacts/status. ([A2A Protocol][details-13])
+* In non-blocking mode, the server **MUST** return right after task creation and expects the client to continue via `GetTask`, subscription, or push. ([A2A Protocol][details-13])
 
 This matters because it pushes queueing/execution details out of band: even if the server’s internal worker system is distributed, the *observable* behavior must match these semantics.
 
 
-#### The protocol data model: the “shape” constraints that make interoperability work
+### The protocol data model: the “shape” constraints that make interoperability work
 
 A2A’s objects include both “business” fields (task IDs, status) and structural invariants (“exactly one of these fields must be present”) that keep message parsing unambiguous across languages.
 
-##### Message identity and correlation
+#### Message identity and correlation
 
-A `Message` is a unit of communication between client and server. The spec requires `messageId` and makes it creator-generated. This is not cosmetic: the spec explicitly allows Send Message operations to be idempotent and calls out using `messageId` to detect duplicates. ([A2A Protocol][13])
+A `Message` is a unit of communication between client and server. The spec requires `messageId` and makes it creator-generated. This is not cosmetic: the spec explicitly allows Send Message operations to be idempotent and calls out using `messageId` to detect duplicates. ([A2A Protocol][details-13])
 
 A message may include `contextId` and/or `taskId`:
 
 * For server messages: `contextId` must be present; `taskId` is present only if a task was created.
-* For client messages: both are optional, but if both are present they must match the task’s context; if only `taskId` is provided, the server infers `contextId`. ([A2A Protocol][13])
+* For client messages: both are optional, but if both are present they must match the task’s context; if only `taskId` is provided, the server infers `contextId`. ([A2A Protocol][details-13])
 
 This rule is critical for multi-turn clients: it allows clients to “anchor” continuation on a known task without re-sending full conversational context.
 
-##### Parts: a strict “oneof” content container
+#### Parts: a strict “oneof” content container
 
-A `Part` is the atom of content in both messages and artifacts, and it must contain exactly one of `text`, `file`, or `data`. ([A2A Protocol][13])
+A `Part` is the atom of content in both messages and artifacts, and it must contain exactly one of `text`, `file`, or `data`. ([A2A Protocol][details-13])
 
 That constraint enables predictable parsing and transformation pipelines:
 
@@ -9118,77 +9261,77 @@ That constraint enables predictable parsing and transformation pipelines:
 * file → fetch via URI or decode bytes, respecting `mediaType` and optional `name`
 * data → structured JSON object for machine-to-machine exchange
 
-File parts have their own “oneof”: exactly one of `fileWithUri` or `fileWithBytes`. The spec also frames the intended usage: prefer bytes for small payloads; prefer URI for large payloads. ([A2A Protocol][13])
+File parts have their own “oneof”: exactly one of `fileWithUri` or `fileWithBytes`. The spec also frames the intended usage: prefer bytes for small payloads; prefer URI for large payloads. ([A2A Protocol][details-13])
 
-##### Artifacts: outputs as first-class objects
+#### Artifacts: outputs as first-class objects
 
-Artifacts represent task outputs and include an `artifactId` that must be unique at least within a task, plus a list of parts (must contain at least one). ([A2A Protocol][13])
+Artifacts represent task outputs and include an `artifactId` that must be unique at least within a task, plus a list of parts (must contain at least one). ([A2A Protocol][details-13])
 
 Treating outputs as artifacts rather than “just text” is what allows A2A to cover large files, structured results, and incremental generation in a uniform way.
 
-##### Task states and task status updates
+#### Task states and task status updates
 
-Tasks have states; the spec enumerates states including working, input-required, canceled (terminal), rejected (terminal), and auth-required (special: not terminal and not “interrupted” in the same way as input-required). ([A2A Protocol][13])
+Tasks have states; the spec enumerates states including working, input-required, canceled (terminal), rejected (terminal), and auth-required (special: not terminal and not “interrupted” in the same way as input-required). ([A2A Protocol][details-13])
 
-A task’s status container includes the current state, optional associated message, and timestamp. ([A2A Protocol][13])
+A task’s status container includes the current state, optional associated message, and timestamp. ([A2A Protocol][details-13])
 
 
-#### Streaming updates: the `StreamResponse` envelope and event types
+### Streaming updates: the `StreamResponse` envelope and event types
 
-A2A streaming is not “stream arbitrary tokens” by default; it streams *typed updates* wrapped in a `StreamResponse` envelope. The spec is explicit: a `StreamResponse` must contain exactly one of `task`, `message`, `statusUpdate`, or `artifactUpdate`. ([A2A Protocol][13])
+A2A streaming is not “stream arbitrary tokens” by default; it streams *typed updates* wrapped in a `StreamResponse` envelope. The spec is explicit: a `StreamResponse` must contain exactly one of `task`, `message`, `statusUpdate`, or `artifactUpdate`. ([A2A Protocol][details-13])
 
 That invariant matters because it defines how clients must implement event loops: you do not parse “some JSON”; you dispatch on which field is present, and you get strongly-typed behavior.
 
-##### `TaskStatusUpdateEvent`
+#### `TaskStatusUpdateEvent`
 
-A status update event includes `taskId`, `contextId`, `status`, and a required boolean `final` that indicates whether this is the final event in the stream for the interaction. ([A2A Protocol][13])
+A status update event includes `taskId`, `contextId`, `status`, and a required boolean `final` that indicates whether this is the final event in the stream for the interaction. ([A2A Protocol][details-13])
 
-A practical implication is that clients should treat `final=true` as a state machine edge, not merely “stream ended”. The spec describes this as the signal for end-of-updates in the cycle and often subsequent stream close. ([A2A Protocol][14])
+A practical implication is that clients should treat `final=true` as a state machine edge, not merely “stream ended”. The spec describes this as the signal for end-of-updates in the cycle and often subsequent stream close. ([A2A Protocol][details-14])
 
-##### `TaskArtifactUpdateEvent` and chunked artifact reconstruction
+#### `TaskArtifactUpdateEvent` and chunked artifact reconstruction
 
 Artifact updates are deltas. Each update carries the artifact plus two key booleans:
 
 * `append`: if true, append content to a previously sent artifact with the same ID
-* `lastChunk`: if true, this is the final chunk of the artifact ([A2A Protocol][13])
+* `lastChunk`: if true, this is the final chunk of the artifact ([A2A Protocol][details-13])
 
 This is the protocol’s answer to “how do I stream a large file/structured output?”: the artifact is the stable identity, and the parts are chunked. A client must reconstruct by `(taskId, artifactId)` and apply append semantics to parts.
 
 
-#### Push notifications: webhook delivery that reuses the same envelope
+### Push notifications: webhook delivery that reuses the same envelope
 
-Push notifications are not a separate event schema: the spec states that webhook payloads use the same `StreamResponse` format as streaming operations, delivering exactly one of the same event types. ([A2A Protocol][13])
+Push notifications are not a separate event schema: the spec states that webhook payloads use the same `StreamResponse` format as streaming operations, delivering exactly one of the same event types. ([A2A Protocol][details-13])
 
 The push payload section is unusually explicit about responsibilities:
 
-* Clients must ACK with 2xx, process idempotently (duplicates may occur), validate task ID, and verify source. ([A2A Protocol][13])
-* Agents must attempt delivery at least once per configured webhook and may retry with exponential backoff; recommended timeouts are 10–30 seconds. ([A2A Protocol][13])
+* Clients must ACK with 2xx, process idempotently (duplicates may occur), validate task ID, and verify source. ([A2A Protocol][details-13])
+* Agents must attempt delivery at least once per configured webhook and may retry with exponential backoff; recommended timeouts are 10–30 seconds. ([A2A Protocol][details-13])
 
 This means production-grade push is *not* “fire and forget”: both sides are expected to implement retry/idempotency logic.
 
 
-#### Service parameters, versioning, and extensions: the “horizontal” control plane
+### Service parameters, versioning, and extensions: the “horizontal” control plane
 
-A2A separates per-request metadata (arbitrary JSON) from “service parameters” (case-insensitive string keys + string values) whose transmission depends on binding (HTTP headers for HTTP-based bindings, gRPC metadata for gRPC). ([A2A Protocol][13])
+A2A separates per-request metadata (arbitrary JSON) from “service parameters” (case-insensitive string keys + string values) whose transmission depends on binding (HTTP headers for HTTP-based bindings, gRPC metadata for gRPC). ([A2A Protocol][details-13])
 
 Two standard service parameters are called out:
 
-* `A2A-Version`: client’s protocol version; server returns a version-not-supported error if unsupported. ([A2A Protocol][13])
-* `A2A-Extensions`: comma-separated extension URIs the client wants to use. ([A2A Protocol][13])
+* `A2A-Version`: client’s protocol version; server returns a version-not-supported error if unsupported. ([A2A Protocol][details-13])
+* `A2A-Extensions`: comma-separated extension URIs the client wants to use. ([A2A Protocol][details-13])
 
-This is the practical mechanism for incremental evolution: extensions let you strongly-type metadata for specific use cases, while the core stays stable. ([A2A Protocol][13])
+This is the practical mechanism for incremental evolution: extensions let you strongly-type metadata for specific use cases, while the core stays stable. ([A2A Protocol][details-13])
 
 
-#### Protocol bindings and interface negotiation
+### Protocol bindings and interface negotiation
 
-Agents advertise one or more supported interfaces. Each `AgentInterface` couples a URL with a `protocolBinding` string; the spec calls out core bindings `JSONRPC`, `GRPC`, and `HTTP+JSON`, while keeping the field open for future bindings. ([A2A Protocol][13])
+Agents advertise one or more supported interfaces. Each `AgentInterface` couples a URL with a `protocolBinding` string; the spec calls out core bindings `JSONRPC`, `GRPC`, and `HTTP+JSON`, while keeping the field open for future bindings. ([A2A Protocol][details-13])
 
-The ordering of interfaces is meaningful: clients should prefer earlier entries when multiple options are supported. ([A2A Protocol][13])
+The ordering of interfaces is meaningful: clients should prefer earlier entries when multiple options are supported. ([A2A Protocol][details-13])
 
 This makes interoperability practical in heterogeneous environments: a client can pick JSON-RPC for browser-like integrations, gRPC for intra-datacenter low-latency, or HTTP+JSON for simple REST stacks—while preserving the same logical semantics.
 
 
-#### Implementation patterns extracted from real server stacks: broker, worker, storage
+### Implementation patterns extracted from real server stacks: broker, worker, storage
 
 A typical A2A server splits responsibilities into:
 
@@ -9197,7 +9340,7 @@ A typical A2A server splits responsibilities into:
 * one or more workers that execute tasks and emit task operations/updates;
 * a storage layer that persists task state and artifacts for `GetTask`, resubscription, and recovery.
 
-This architecture is explicitly reflected in common A2A server implementations where the HTTP server schedules work via a broker abstraction intended to support both in-process and remote worker setups, and where workers receive task operations from that broker. ([Pydantic AI][40])
+This architecture is explicitly reflected in common A2A server implementations where the HTTP server schedules work via a broker abstraction intended to support both in-process and remote worker setups, and where workers receive task operations from that broker. ([Pydantic AI][details-17])
 
 The key protocol-driven reason to build it this way is that A2A requires coherent behavior across:
 
@@ -9286,14 +9429,14 @@ function send_and_stream(agent_url, user_text):
 
 Why this matches the spec:
 
-* It treats `messageId` as required and client-generated. ([A2A Protocol][13])
-* It uses `acceptedOutputModes`, `blocking`, and `historyLength` exactly as defined, including the shared semantics of history length. ([A2A Protocol][13])
-* It dispatches on the `StreamResponse` “exactly one of” invariant and handles status and artifact events accordingly. ([A2A Protocol][13])
-* It reconstructs artifacts using `append` and `lastChunk`. ([A2A Protocol][13])
+* It treats `messageId` as required and client-generated. ([A2A Protocol][details-13])
+* It uses `acceptedOutputModes`, `blocking`, and `historyLength` exactly as defined, including the shared semantics of history length. ([A2A Protocol][details-13])
+* It dispatches on the `StreamResponse` “exactly one of” invariant and handles status and artifact events accordingly. ([A2A Protocol][details-13])
+* It reconstructs artifacts using `append` and `lastChunk`. ([A2A Protocol][details-13])
 
 #### Client: idempotent retries using `messageId`
 
-Network retries are inevitable; the spec explicitly allows using `messageId` to detect duplicates for idempotency. ([A2A Protocol][13])
+Network retries are inevitable; the spec explicitly allows using `messageId` to detect duplicates for idempotency. ([A2A Protocol][details-13])
 
 ```python
 function send_with_retry(agent_url, msg, cfg):
@@ -9316,7 +9459,7 @@ function send_with_retry(agent_url, msg, cfg):
 
 #### Server: request validation that enforces the “oneof” invariants
 
-A2A’s “Part must contain exactly one of text/file/data” is a protocol requirement, so servers should validate it up-front (before dispatching to workers) and return a validation error if violated. ([A2A Protocol][13])
+A2A’s “Part must contain exactly one of text/file/data” is a protocol requirement, so servers should validate it up-front (before dispatching to workers) and return a validation error if violated. ([A2A Protocol][details-13])
 
 ```python
 function validate_message(message):
@@ -9336,7 +9479,7 @@ function validate_message(message):
 
 #### Server: `blocking` semantics implemented on top of a broker/worker pipeline
 
-In practice, servers implement A2A semantics by scheduling work and then either returning immediately (non-blocking) or awaiting terminal state (blocking). The scheduling abstraction (“broker”) exists precisely to decouple protocol ingress from task execution and allow multi-worker setups. ([Pydantic AI][40])
+In practice, servers implement A2A semantics by scheduling work and then either returning immediately (non-blocking) or awaiting terminal state (blocking). The scheduling abstraction (“broker”) exists precisely to decouple protocol ingress from task execution and allow multi-worker setups. ([Pydantic AI][details-17])
 
 ```python
 function handle_send_message(request, service_params):
@@ -9364,11 +9507,11 @@ function handle_send_message(request, service_params):
     return resp
 ```
 
-This aligns with the normative behavior: non-blocking returns after task creation; blocking waits for terminal state. ([A2A Protocol][13])
+This aligns with the normative behavior: non-blocking returns after task creation; blocking waits for terminal state. ([A2A Protocol][details-13])
 
 #### Server: emitting streaming updates with `StreamResponse`
 
-Streaming endpoints emit a stream of `StreamResponse` objects where exactly one field is set. ([A2A Protocol][13])
+Streaming endpoints emit a stream of `StreamResponse` objects where exactly one field is set. ([A2A Protocol][details-13])
 
 ```python
 function stream_task_updates(task_id):
@@ -9397,7 +9540,7 @@ function stream_task_updates(task_id):
 
 #### Push notification receiver: reusing the same dispatch loop as streaming
 
-Because push payloads reuse `StreamResponse`, your webhook handler can share logic with your SSE consumer. ([A2A Protocol][13])
+Because push payloads reuse `StreamResponse`, your webhook handler can share logic with your SSE consumer. ([A2A Protocol][details-13])
 
 ```python
 function webhook_handler(http_request):
@@ -9419,36 +9562,37 @@ function webhook_handler(http_request):
         return 204
 ```
 
-This matches the spec's client responsibilities (ACK with 2xx; process idempotently; validate task IDs). ([A2A Protocol][13])
+This matches the spec's client responsibilities (ACK with 2xx; process idempotently; validate task IDs). ([A2A Protocol][details-13])
 
-[13]: https://a2a-protocol.org/latest/specification/
-[14]: https://a2a-protocol.org/latest/topics/streaming-and-async/
-[40]: https://ai.pydantic.dev/a2a/
+[details-13]: https://a2a-protocol.org/latest/specification/
+[details-14]: https://a2a-protocol.org/latest/topics/streaming-and-async/
+[details-17]: https://ai.pydantic.dev/a2a/
 .
 
 The core library defines a `TaskStatus` enum (`core/a2a/client.py`) that maps protocol states to client-side outcomes:
 
 ```python
 class TaskStatus(str, Enum):
+    AUTH_REQUIRED = "auth-required"
+    CANCELLED = "cancelled"
     COMPLETED = "completed"
     FAILED = "failed"
     INPUT_REQUIRED = "input-required"
-    CANCELLED = "cancelled"
     TIMEOUT = "timeout"
 ```
 
-`TIMEOUT` is a client-side addition. The protocol itself does not define a timeout state, but real-world clients need a bounded wait.
+`AUTH_REQUIRED` maps directly to the protocol's `auth-required` state, signaling that the agent needs authentication before proceeding. `TIMEOUT` is a client-side addition -- the protocol itself does not define a timeout state, but real-world clients need a bounded wait.
 
 
-#### Observation Mechanisms
+### Observation Mechanisms
 
 Three complementary mechanisms make task state observable. **Streaming** provides real-time push-based updates as typed events (status transitions, artifact chunks, messages). **Polling** is a simple, robust baseline: any client can query a task's current state at any time using its task ID, guaranteeing eventual visibility even across network interruptions. **Push notifications** extend observability to external systems via webhooks, enabling event-driven architectures without persistent connections.
 
 These are protocol-level guarantees, not optional features. The ## A2A in Detail
 
-A2A is a protocol-level contract for agent interoperability: a small set of operations plus a strict data model that lets independently-built agents exchange messages, manage long-running tasks, and deliver incremental updates over multiple delivery mechanisms. ([A2A Protocol][13])
+A2A is a protocol-level contract for agent interoperability: a small set of operations plus a strict data model that lets independently-built agents exchange messages, manage long-running tasks, and deliver incremental updates over multiple delivery mechanisms. ([A2A Protocol][details-13])
 
-#### Key abstractions
+### Key abstractions
 
 A2A's main abstractions are designed to match how multi-agent work actually unfolds over time.
 
@@ -9460,7 +9604,7 @@ A **Task** is a stateful unit of work with its own identity and lifecycle. Tasks
 
 A useful mental model is: **Agent Card** answers "who are you and what can you do?", **Task** answers "what unit of work are we coordinating?", **Messages** carry the interaction, and **Artifacts** are the outputs worth persisting.
 
-#### Agent discovery
+### Agent discovery
 
 A2A discovery is built around retrieving the Agent Card. A common mechanism is a well-known URL under the agent's domain (aligned with established "well-known URI" conventions), allowing clients to probe domains deterministically. Discovery is intentionally explicit: clients can validate capabilities, authentication requirements, and declared skills before initiating a task, and systems can log discovery metadata for audit and governance.
 
@@ -9481,7 +9625,7 @@ card = discover_agent_card("billing.example.com")
 
 This "metadata-first" approach matters operationally: it enables capability matching, policy gating (e.g., only delegate to agents with certain auth), and safer orchestration decisions *before* sending sensitive task content.
 
-#### A2A and MCP in composition
+### A2A and MCP in composition
 
 A2A and MCP are complementary layers. MCP standardizes how agents interact with tools and resources (structured inputs/outputs, tool schemas, permission boundaries). A2A standardizes how agents interact with *other agents* as autonomous peers (discovery, task lifecycle, messaging, artifact delivery).
 
@@ -9507,64 +9651,64 @@ A minimal task invocation at the wire level (illustrative, independent of any sp
 
 The important point is not the method name per se, but the design: JSON-RPC provides the envelope; A2A defines the task/message/artifact semantics; and implementations can remain diverse behind the boundary.
 
-#### Ecosystem tooling
+### Ecosystem tooling
 
 The Pydantic ecosystem documents A2A as a practical interoperability layer and provides Python tooling to expose agents as A2A servers and to build clients that can discover agents, initiate tasks, and consume artifacts -- without requiring the agent's internal design to be rewritten around protocol internals. The emphasis is on preserving your existing agent architecture while making the boundary interoperable.
 
 FastMCP, meanwhile, is often used as a pragmatic deployment unit for MCP tool servers. In practice, this leads to a common layered architecture: A2A connects agents across boundaries; MCP connects agents to tools/resources; and FastMCP-style servers host the tool endpoints that agents call. Bridging components can translate between A2A and MCP where needed (for example, to let an A2A-facing agent expose or consume MCP-backed capabilities behind the scenes).
 
-#### What "the spec" really is: operations + data model + bindings
+### What "the spec" really is: operations + data model + bindings
 
-At the lowest level, A2A is defined by (1) a core set of operations (send, stream, get/list/cancel tasks, subscribe, push-config management, extended agent card) and (2) a constrained object model (Task, Message, Part, Artifact, plus streaming event envelopes). ([A2A Protocol][13])
+At the lowest level, A2A is defined by (1) a core set of operations (send, stream, get/list/cancel tasks, subscribe, push-config management, extended agent card) and (2) a constrained object model (Task, Message, Part, Artifact, plus streaming event envelopes). ([A2A Protocol][details-13])
 
-The specification then defines how those operations and objects map onto concrete transports (“protocol bindings”), notably JSON-RPC over HTTP(S), gRPC, and an HTTP+JSON/REST-style mapping. ([A2A Protocol][13])
+The specification then defines how those operations and objects map onto concrete transports (“protocol bindings”), notably JSON-RPC over HTTP(S), gRPC, and an HTTP+JSON/REST-style mapping. ([A2A Protocol][details-13])
 
-A key design point is that the same *logical* operations are intended to be functionally equivalent across bindings; the binding decides *how* parameters and service-wide headers/metadata are carried, but not what they mean. ([A2A Protocol][13])
+A key design point is that the same *logical* operations are intended to be functionally equivalent across bindings; the binding decides *how* parameters and service-wide headers/metadata are carried, but not what they mean. ([A2A Protocol][details-13])
 
 
-#### Operation surface and execution semantics
+### Operation surface and execution semantics
 
-The “A2AService” operation set is designed around a task-centric model. Even if you initiate interaction by sending a message, the server may respond by creating/continuing a task, and all subsequent status and artifacts hang off that task identity. The specification’s “SendMessageRequest” carries the client message plus an optional configuration block and optional metadata. ([A2A Protocol][13])
+The “A2AService” operation set is designed around a task-centric model. Even if you initiate interaction by sending a message, the server may respond by creating/continuing a task, and all subsequent status and artifacts hang off that task identity. The specification’s “SendMessageRequest” carries the client message plus an optional configuration block and optional metadata. ([A2A Protocol][details-13])
 
-##### `SendMessage` and the `SendMessageConfiguration` contract
+#### `SendMessage` and the `SendMessageConfiguration` contract
 
 `SendMessageConfiguration` is where most of the “knobs” live:
 
-* `acceptedOutputModes`: a list of media types the client is willing to receive in response *parts* (for both messages and artifacts). Servers **should** tailor outputs to these modes. ([A2A Protocol][13])
-* `historyLength`: an optional upper bound on how many recent messages of task history should be returned. The semantics are shared across operations: unset means server default; `0` means omit history; `>0` means cap to N most recent. ([A2A Protocol][13])
-* `blocking`: when `true`, the server must wait until the task is terminal and return the final task state; when `false`, return immediately after task creation with an in-progress state, and the caller must obtain progress via polling/subscription/push. ([A2A Protocol][13])
-* `pushNotificationConfig`: requests server-initiated updates via webhook delivery (covered below). ([A2A Protocol][13])
+* `acceptedOutputModes`: a list of media types the client is willing to receive in response *parts* (for both messages and artifacts). Servers **should** tailor outputs to these modes. ([A2A Protocol][details-13])
+* `historyLength`: an optional upper bound on how many recent messages of task history should be returned. The semantics are shared across operations: unset means server default; `0` means omit history; `>0` means cap to N most recent. ([A2A Protocol][details-13])
+* `blocking`: when `true`, the server must wait until the task is terminal and return the final task state; when `false`, return immediately after task creation with an in-progress state, and the caller must obtain progress via polling/subscription/push. ([A2A Protocol][details-13])
+* `pushNotificationConfig`: requests server-initiated updates via webhook delivery (covered below). ([A2A Protocol][details-13])
 
-This configuration block is what makes A2A “async-first” without making simple request/response impossible: a client can force synchronous completion with `blocking: true`, but the spec treats streaming and async delivery as first-class rather than bolt-ons. ([A2A Protocol][13])
+This configuration block is what makes A2A “async-first” without making simple request/response impossible: a client can force synchronous completion with `blocking: true`, but the spec treats streaming and async delivery as first-class rather than bolt-ons. ([A2A Protocol][details-13])
 
-##### Blocking vs non-blocking as a protocol-level contract (not an implementation detail)
+#### Blocking vs non-blocking as a protocol-level contract (not an implementation detail)
 
 The `blocking` flag is normative and affects correctness expectations:
 
-* In blocking mode, the server **MUST** wait for terminal states (`completed`, `failed`, `canceled`, `rejected`) and include the final task state with artifacts/status. ([A2A Protocol][13])
-* In non-blocking mode, the server **MUST** return right after task creation and expects the client to continue via `GetTask`, subscription, or push. ([A2A Protocol][13])
+* In blocking mode, the server **MUST** wait for terminal states (`completed`, `failed`, `canceled`, `rejected`) and include the final task state with artifacts/status. ([A2A Protocol][details-13])
+* In non-blocking mode, the server **MUST** return right after task creation and expects the client to continue via `GetTask`, subscription, or push. ([A2A Protocol][details-13])
 
 This matters because it pushes queueing/execution details out of band: even if the server’s internal worker system is distributed, the *observable* behavior must match these semantics.
 
 
-#### The protocol data model: the “shape” constraints that make interoperability work
+### The protocol data model: the “shape” constraints that make interoperability work
 
 A2A’s objects include both “business” fields (task IDs, status) and structural invariants (“exactly one of these fields must be present”) that keep message parsing unambiguous across languages.
 
-##### Message identity and correlation
+#### Message identity and correlation
 
-A `Message` is a unit of communication between client and server. The spec requires `messageId` and makes it creator-generated. This is not cosmetic: the spec explicitly allows Send Message operations to be idempotent and calls out using `messageId` to detect duplicates. ([A2A Protocol][13])
+A `Message` is a unit of communication between client and server. The spec requires `messageId` and makes it creator-generated. This is not cosmetic: the spec explicitly allows Send Message operations to be idempotent and calls out using `messageId` to detect duplicates. ([A2A Protocol][details-13])
 
 A message may include `contextId` and/or `taskId`:
 
 * For server messages: `contextId` must be present; `taskId` is present only if a task was created.
-* For client messages: both are optional, but if both are present they must match the task’s context; if only `taskId` is provided, the server infers `contextId`. ([A2A Protocol][13])
+* For client messages: both are optional, but if both are present they must match the task’s context; if only `taskId` is provided, the server infers `contextId`. ([A2A Protocol][details-13])
 
 This rule is critical for multi-turn clients: it allows clients to “anchor” continuation on a known task without re-sending full conversational context.
 
-##### Parts: a strict “oneof” content container
+#### Parts: a strict “oneof” content container
 
-A `Part` is the atom of content in both messages and artifacts, and it must contain exactly one of `text`, `file`, or `data`. ([A2A Protocol][13])
+A `Part` is the atom of content in both messages and artifacts, and it must contain exactly one of `text`, `file`, or `data`. ([A2A Protocol][details-13])
 
 That constraint enables predictable parsing and transformation pipelines:
 
@@ -9572,77 +9716,77 @@ That constraint enables predictable parsing and transformation pipelines:
 * file → fetch via URI or decode bytes, respecting `mediaType` and optional `name`
 * data → structured JSON object for machine-to-machine exchange
 
-File parts have their own “oneof”: exactly one of `fileWithUri` or `fileWithBytes`. The spec also frames the intended usage: prefer bytes for small payloads; prefer URI for large payloads. ([A2A Protocol][13])
+File parts have their own “oneof”: exactly one of `fileWithUri` or `fileWithBytes`. The spec also frames the intended usage: prefer bytes for small payloads; prefer URI for large payloads. ([A2A Protocol][details-13])
 
-##### Artifacts: outputs as first-class objects
+#### Artifacts: outputs as first-class objects
 
-Artifacts represent task outputs and include an `artifactId` that must be unique at least within a task, plus a list of parts (must contain at least one). ([A2A Protocol][13])
+Artifacts represent task outputs and include an `artifactId` that must be unique at least within a task, plus a list of parts (must contain at least one). ([A2A Protocol][details-13])
 
 Treating outputs as artifacts rather than “just text” is what allows A2A to cover large files, structured results, and incremental generation in a uniform way.
 
-##### Task states and task status updates
+#### Task states and task status updates
 
-Tasks have states; the spec enumerates states including working, input-required, canceled (terminal), rejected (terminal), and auth-required (special: not terminal and not “interrupted” in the same way as input-required). ([A2A Protocol][13])
+Tasks have states; the spec enumerates states including working, input-required, canceled (terminal), rejected (terminal), and auth-required (special: not terminal and not “interrupted” in the same way as input-required). ([A2A Protocol][details-13])
 
-A task’s status container includes the current state, optional associated message, and timestamp. ([A2A Protocol][13])
+A task’s status container includes the current state, optional associated message, and timestamp. ([A2A Protocol][details-13])
 
 
-#### Streaming updates: the `StreamResponse` envelope and event types
+### Streaming updates: the `StreamResponse` envelope and event types
 
-A2A streaming is not “stream arbitrary tokens” by default; it streams *typed updates* wrapped in a `StreamResponse` envelope. The spec is explicit: a `StreamResponse` must contain exactly one of `task`, `message`, `statusUpdate`, or `artifactUpdate`. ([A2A Protocol][13])
+A2A streaming is not “stream arbitrary tokens” by default; it streams *typed updates* wrapped in a `StreamResponse` envelope. The spec is explicit: a `StreamResponse` must contain exactly one of `task`, `message`, `statusUpdate`, or `artifactUpdate`. ([A2A Protocol][details-13])
 
 That invariant matters because it defines how clients must implement event loops: you do not parse “some JSON”; you dispatch on which field is present, and you get strongly-typed behavior.
 
-##### `TaskStatusUpdateEvent`
+#### `TaskStatusUpdateEvent`
 
-A status update event includes `taskId`, `contextId`, `status`, and a required boolean `final` that indicates whether this is the final event in the stream for the interaction. ([A2A Protocol][13])
+A status update event includes `taskId`, `contextId`, `status`, and a required boolean `final` that indicates whether this is the final event in the stream for the interaction. ([A2A Protocol][details-13])
 
-A practical implication is that clients should treat `final=true` as a state machine edge, not merely “stream ended”. The spec describes this as the signal for end-of-updates in the cycle and often subsequent stream close. ([A2A Protocol][14])
+A practical implication is that clients should treat `final=true` as a state machine edge, not merely “stream ended”. The spec describes this as the signal for end-of-updates in the cycle and often subsequent stream close. ([A2A Protocol][details-14])
 
-##### `TaskArtifactUpdateEvent` and chunked artifact reconstruction
+#### `TaskArtifactUpdateEvent` and chunked artifact reconstruction
 
 Artifact updates are deltas. Each update carries the artifact plus two key booleans:
 
 * `append`: if true, append content to a previously sent artifact with the same ID
-* `lastChunk`: if true, this is the final chunk of the artifact ([A2A Protocol][13])
+* `lastChunk`: if true, this is the final chunk of the artifact ([A2A Protocol][details-13])
 
 This is the protocol’s answer to “how do I stream a large file/structured output?”: the artifact is the stable identity, and the parts are chunked. A client must reconstruct by `(taskId, artifactId)` and apply append semantics to parts.
 
 
-#### Push notifications: webhook delivery that reuses the same envelope
+### Push notifications: webhook delivery that reuses the same envelope
 
-Push notifications are not a separate event schema: the spec states that webhook payloads use the same `StreamResponse` format as streaming operations, delivering exactly one of the same event types. ([A2A Protocol][13])
+Push notifications are not a separate event schema: the spec states that webhook payloads use the same `StreamResponse` format as streaming operations, delivering exactly one of the same event types. ([A2A Protocol][details-13])
 
 The push payload section is unusually explicit about responsibilities:
 
-* Clients must ACK with 2xx, process idempotently (duplicates may occur), validate task ID, and verify source. ([A2A Protocol][13])
-* Agents must attempt delivery at least once per configured webhook and may retry with exponential backoff; recommended timeouts are 10–30 seconds. ([A2A Protocol][13])
+* Clients must ACK with 2xx, process idempotently (duplicates may occur), validate task ID, and verify source. ([A2A Protocol][details-13])
+* Agents must attempt delivery at least once per configured webhook and may retry with exponential backoff; recommended timeouts are 10–30 seconds. ([A2A Protocol][details-13])
 
 This means production-grade push is *not* “fire and forget”: both sides are expected to implement retry/idempotency logic.
 
 
-#### Service parameters, versioning, and extensions: the “horizontal” control plane
+### Service parameters, versioning, and extensions: the “horizontal” control plane
 
-A2A separates per-request metadata (arbitrary JSON) from “service parameters” (case-insensitive string keys + string values) whose transmission depends on binding (HTTP headers for HTTP-based bindings, gRPC metadata for gRPC). ([A2A Protocol][13])
+A2A separates per-request metadata (arbitrary JSON) from “service parameters” (case-insensitive string keys + string values) whose transmission depends on binding (HTTP headers for HTTP-based bindings, gRPC metadata for gRPC). ([A2A Protocol][details-13])
 
 Two standard service parameters are called out:
 
-* `A2A-Version`: client’s protocol version; server returns a version-not-supported error if unsupported. ([A2A Protocol][13])
-* `A2A-Extensions`: comma-separated extension URIs the client wants to use. ([A2A Protocol][13])
+* `A2A-Version`: client’s protocol version; server returns a version-not-supported error if unsupported. ([A2A Protocol][details-13])
+* `A2A-Extensions`: comma-separated extension URIs the client wants to use. ([A2A Protocol][details-13])
 
-This is the practical mechanism for incremental evolution: extensions let you strongly-type metadata for specific use cases, while the core stays stable. ([A2A Protocol][13])
+This is the practical mechanism for incremental evolution: extensions let you strongly-type metadata for specific use cases, while the core stays stable. ([A2A Protocol][details-13])
 
 
-#### Protocol bindings and interface negotiation
+### Protocol bindings and interface negotiation
 
-Agents advertise one or more supported interfaces. Each `AgentInterface` couples a URL with a `protocolBinding` string; the spec calls out core bindings `JSONRPC`, `GRPC`, and `HTTP+JSON`, while keeping the field open for future bindings. ([A2A Protocol][13])
+Agents advertise one or more supported interfaces. Each `AgentInterface` couples a URL with a `protocolBinding` string; the spec calls out core bindings `JSONRPC`, `GRPC`, and `HTTP+JSON`, while keeping the field open for future bindings. ([A2A Protocol][details-13])
 
-The ordering of interfaces is meaningful: clients should prefer earlier entries when multiple options are supported. ([A2A Protocol][13])
+The ordering of interfaces is meaningful: clients should prefer earlier entries when multiple options are supported. ([A2A Protocol][details-13])
 
 This makes interoperability practical in heterogeneous environments: a client can pick JSON-RPC for browser-like integrations, gRPC for intra-datacenter low-latency, or HTTP+JSON for simple REST stacks—while preserving the same logical semantics.
 
 
-#### Implementation patterns extracted from real server stacks: broker, worker, storage
+### Implementation patterns extracted from real server stacks: broker, worker, storage
 
 A typical A2A server splits responsibilities into:
 
@@ -9651,7 +9795,7 @@ A typical A2A server splits responsibilities into:
 * one or more workers that execute tasks and emit task operations/updates;
 * a storage layer that persists task state and artifacts for `GetTask`, resubscription, and recovery.
 
-This architecture is explicitly reflected in common A2A server implementations where the HTTP server schedules work via a broker abstraction intended to support both in-process and remote worker setups, and where workers receive task operations from that broker. ([Pydantic AI][40])
+This architecture is explicitly reflected in common A2A server implementations where the HTTP server schedules work via a broker abstraction intended to support both in-process and remote worker setups, and where workers receive task operations from that broker. ([Pydantic AI][details-17])
 
 The key protocol-driven reason to build it this way is that A2A requires coherent behavior across:
 
@@ -9740,14 +9884,14 @@ function send_and_stream(agent_url, user_text):
 
 Why this matches the spec:
 
-* It treats `messageId` as required and client-generated. ([A2A Protocol][13])
-* It uses `acceptedOutputModes`, `blocking`, and `historyLength` exactly as defined, including the shared semantics of history length. ([A2A Protocol][13])
-* It dispatches on the `StreamResponse` “exactly one of” invariant and handles status and artifact events accordingly. ([A2A Protocol][13])
-* It reconstructs artifacts using `append` and `lastChunk`. ([A2A Protocol][13])
+* It treats `messageId` as required and client-generated. ([A2A Protocol][details-13])
+* It uses `acceptedOutputModes`, `blocking`, and `historyLength` exactly as defined, including the shared semantics of history length. ([A2A Protocol][details-13])
+* It dispatches on the `StreamResponse` “exactly one of” invariant and handles status and artifact events accordingly. ([A2A Protocol][details-13])
+* It reconstructs artifacts using `append` and `lastChunk`. ([A2A Protocol][details-13])
 
 #### Client: idempotent retries using `messageId`
 
-Network retries are inevitable; the spec explicitly allows using `messageId` to detect duplicates for idempotency. ([A2A Protocol][13])
+Network retries are inevitable; the spec explicitly allows using `messageId` to detect duplicates for idempotency. ([A2A Protocol][details-13])
 
 ```python
 function send_with_retry(agent_url, msg, cfg):
@@ -9770,7 +9914,7 @@ function send_with_retry(agent_url, msg, cfg):
 
 #### Server: request validation that enforces the “oneof” invariants
 
-A2A’s “Part must contain exactly one of text/file/data” is a protocol requirement, so servers should validate it up-front (before dispatching to workers) and return a validation error if violated. ([A2A Protocol][13])
+A2A’s “Part must contain exactly one of text/file/data” is a protocol requirement, so servers should validate it up-front (before dispatching to workers) and return a validation error if violated. ([A2A Protocol][details-13])
 
 ```python
 function validate_message(message):
@@ -9790,7 +9934,7 @@ function validate_message(message):
 
 #### Server: `blocking` semantics implemented on top of a broker/worker pipeline
 
-In practice, servers implement A2A semantics by scheduling work and then either returning immediately (non-blocking) or awaiting terminal state (blocking). The scheduling abstraction (“broker”) exists precisely to decouple protocol ingress from task execution and allow multi-worker setups. ([Pydantic AI][40])
+In practice, servers implement A2A semantics by scheduling work and then either returning immediately (non-blocking) or awaiting terminal state (blocking). The scheduling abstraction (“broker”) exists precisely to decouple protocol ingress from task execution and allow multi-worker setups. ([Pydantic AI][details-17])
 
 ```python
 function handle_send_message(request, service_params):
@@ -9818,11 +9962,11 @@ function handle_send_message(request, service_params):
     return resp
 ```
 
-This aligns with the normative behavior: non-blocking returns after task creation; blocking waits for terminal state. ([A2A Protocol][13])
+This aligns with the normative behavior: non-blocking returns after task creation; blocking waits for terminal state. ([A2A Protocol][details-13])
 
 #### Server: emitting streaming updates with `StreamResponse`
 
-Streaming endpoints emit a stream of `StreamResponse` objects where exactly one field is set. ([A2A Protocol][13])
+Streaming endpoints emit a stream of `StreamResponse` objects where exactly one field is set. ([A2A Protocol][details-13])
 
 ```python
 function stream_task_updates(task_id):
@@ -9851,7 +9995,7 @@ function stream_task_updates(task_id):
 
 #### Push notification receiver: reusing the same dispatch loop as streaming
 
-Because push payloads reuse `StreamResponse`, your webhook handler can share logic with your SSE consumer. ([A2A Protocol][13])
+Because push payloads reuse `StreamResponse`, your webhook handler can share logic with your SSE consumer. ([A2A Protocol][details-13])
 
 ```python
 function webhook_handler(http_request):
@@ -9873,28 +10017,30 @@ function webhook_handler(http_request):
         return 204
 ```
 
-This matches the spec's client responsibilities (ACK with 2xx; process idempotently; validate task IDs). ([A2A Protocol][13])
+This matches the spec's client responsibilities (ACK with 2xx; process idempotently; validate task IDs). ([A2A Protocol][details-13])
 
-[13]: https://a2a-protocol.org/latest/specification/
-[14]: https://a2a-protocol.org/latest/topics/streaming-and-async/
-[40]: https://ai.pydantic.dev/a2a/
+[details-13]: https://a2a-protocol.org/latest/specification/
+[details-14]: https://a2a-protocol.org/latest/topics/streaming-and-async/
+[details-17]: https://ai.pydantic.dev/a2a/
  covers their wire-level format, `StreamResponse` envelope structure, chunked artifact semantics, and idempotency requirements.
 
 
-#### Execution Architecture
+### Execution Architecture
 
-A2A servers typically decompose into three layers that separate protocol handling from task execution.
+A2A servers are built using PydanticAI's `agent.to_a2a()`, which creates a complete ASGI application that handles protocol ingress, task state management, agent execution, and result delivery. The server-side lifecycle -- receiving requests, running the agent, tracking state transitions, and emitting streaming updates -- is handled internally by the framework.
 
-**Storage** persists task state, artifacts, and history so that tasks survive process restarts and can be re-queried or re-streamed. The core library's `core/tasks/` module defines `TaskStore` as an abstract interface with two implementations: `TaskStoreJson` persists one JSON file per task in `DATA_DIR/tasks/` for single-node deployments, while `TaskStoreMemory` uses an in-memory dictionary for notebooks and tests.
+```python
+from agentic_patterns.agents.vocabulary import get_agent
+agent = get_agent()
+app = agent.to_a2a(name="vocabulary", description="Resolves vocabulary terms", ...)
+```
 
-**Workers** are stateless executors that pick up tasks, run the agent logic, and emit progress updates. The core library's `Worker` class executes tasks by running agents via `OrchestratorAgent`, emits `PROGRESS` and `LOG` events for background tracking, and handles `CancelledError` for cooperative cancellation. Because all durable state lives in the store, workers can scale horizontally and restart safely.
+On the client side, the `AgentRunner` in `core/agents/orchestrator/` provides a unified interface for launching both local sub-agents and remote A2A agents. When an `OrchestratorAgent` delegates to a remote agent, the runner uses `A2AClientExtended` to send the request, poll for results, and map A2A protocol states to `AgentStatus` values (`RUNNING`, `COMPLETED`, `FAILED`, `INPUT_REQUIRED`, `CANCELLED`, `TIMEOUT`). From the orchestrator's perspective, local and remote agents look identical -- the same `task_launch`, `task_output`, and `task_stop` tools work for both.
 
-**The broker** coordinates between task producers and workers. `TaskBroker` manages submission, observation (poll, stream, wait, cancel), and dispatch. It accepts an optional `asyncio.Event` for event-driven signaling when tasks reach terminal states, replacing polling-based coordination. An event-driven wait pattern using a clear-then-check sequence prevents race conditions between task completion and the coordinator checking for results.
-
-This architecture mirrors established distributed systems patterns. The PydanticAI ecosystem reflects this directly: `agent.to_a2a()` creates the HTTP ingress layer, while the broker and worker handle scheduling and execution internally.
+For local task coordination (planning, dependency tracking, work assignment), the `core/tasks/` module provides `TaskList` -- a lightweight, file-backed storage layer. `TaskList` is separate from A2A's protocol-level task management; it handles the "what needs to be done and in what order" coordination within a single agent hierarchy, while A2A handles the "how agents communicate across network boundaries" concern.
 
 
-#### Client-Side Resilience
+### Client-Side Resilience
 
 Reliable A2A communication requires handling network failures, timeouts, and cancellation on the client side. The core library's `A2AClientExtended` (`core/a2a/client.py`) wraps the base `fasta2a.A2AClient` with production-ready behavior:
 
@@ -9916,16 +10062,16 @@ status, task = await client.send_and_observe("Reconcile invoice #4812")
 Client configuration is loaded from YAML (`config.yaml` under `a2a.clients`) with `${VAR}` environment variable expansion, following the same pattern used by MCP and model configurations elsewhere in the platform.
 
 
-#### Putting It All Together
+### Putting It All Together
 
-Tasks, observation mechanisms, storage, workers, and brokers form a coherent execution model. Tasks are created once, stored durably, executed by interchangeable workers, coordinated by a broker, and observed through streaming, polling, or push notifications. On the client side, `A2AClientExtended` encapsulates the retry, timeout, and cancellation logic needed for reliable communication. This layered design supports long-running workflows and enterprise-grade reliability while keeping each component independently testable and replaceable.
+Tasks, observation mechanisms, and the `to_a2a()` execution layer form a coherent model. Tasks are created once, managed by the A2A server, and observed through streaming, polling, or push notifications. On the client side, `A2AClientExtended` encapsulates the retry, timeout, and cancellation logic needed for reliable communication. The `AgentRunner` unifies local and remote delegation behind the same tool interface. This layered design supports long-running workflows and enterprise-grade reliability while keeping each component independently testable and replaceable.
 
 
 ## A2A in Detail
 
-A2A is a protocol-level contract for agent interoperability: a small set of operations plus a strict data model that lets independently-built agents exchange messages, manage long-running tasks, and deliver incremental updates over multiple delivery mechanisms. ([A2A Protocol][13])
+A2A is a protocol-level contract for agent interoperability: a small set of operations plus a strict data model that lets independently-built agents exchange messages, manage long-running tasks, and deliver incremental updates over multiple delivery mechanisms. ([A2A Protocol][details-13])
 
-#### Key abstractions
+### Key abstractions
 
 A2A's main abstractions are designed to match how multi-agent work actually unfolds over time.
 
@@ -9937,7 +10083,7 @@ A **Task** is a stateful unit of work with its own identity and lifecycle. Tasks
 
 A useful mental model is: **Agent Card** answers "who are you and what can you do?", **Task** answers "what unit of work are we coordinating?", **Messages** carry the interaction, and **Artifacts** are the outputs worth persisting.
 
-#### Agent discovery
+### Agent discovery
 
 A2A discovery is built around retrieving the Agent Card. A common mechanism is a well-known URL under the agent's domain (aligned with established "well-known URI" conventions), allowing clients to probe domains deterministically. Discovery is intentionally explicit: clients can validate capabilities, authentication requirements, and declared skills before initiating a task, and systems can log discovery metadata for audit and governance.
 
@@ -9958,7 +10104,7 @@ card = discover_agent_card("billing.example.com")
 
 This "metadata-first" approach matters operationally: it enables capability matching, policy gating (e.g., only delegate to agents with certain auth), and safer orchestration decisions *before* sending sensitive task content.
 
-#### A2A and MCP in composition
+### A2A and MCP in composition
 
 A2A and MCP are complementary layers. MCP standardizes how agents interact with tools and resources (structured inputs/outputs, tool schemas, permission boundaries). A2A standardizes how agents interact with *other agents* as autonomous peers (discovery, task lifecycle, messaging, artifact delivery).
 
@@ -9984,64 +10130,64 @@ A minimal task invocation at the wire level (illustrative, independent of any sp
 
 The important point is not the method name per se, but the design: JSON-RPC provides the envelope; A2A defines the task/message/artifact semantics; and implementations can remain diverse behind the boundary.
 
-#### Ecosystem tooling
+### Ecosystem tooling
 
 The Pydantic ecosystem documents A2A as a practical interoperability layer and provides Python tooling to expose agents as A2A servers and to build clients that can discover agents, initiate tasks, and consume artifacts -- without requiring the agent's internal design to be rewritten around protocol internals. The emphasis is on preserving your existing agent architecture while making the boundary interoperable.
 
 FastMCP, meanwhile, is often used as a pragmatic deployment unit for MCP tool servers. In practice, this leads to a common layered architecture: A2A connects agents across boundaries; MCP connects agents to tools/resources; and FastMCP-style servers host the tool endpoints that agents call. Bridging components can translate between A2A and MCP where needed (for example, to let an A2A-facing agent expose or consume MCP-backed capabilities behind the scenes).
 
-#### What "the spec" really is: operations + data model + bindings
+### What "the spec" really is: operations + data model + bindings
 
-At the lowest level, A2A is defined by (1) a core set of operations (send, stream, get/list/cancel tasks, subscribe, push-config management, extended agent card) and (2) a constrained object model (Task, Message, Part, Artifact, plus streaming event envelopes). ([A2A Protocol][13])
+At the lowest level, A2A is defined by (1) a core set of operations (send, stream, get/list/cancel tasks, subscribe, push-config management, extended agent card) and (2) a constrained object model (Task, Message, Part, Artifact, plus streaming event envelopes). ([A2A Protocol][details-13])
 
-The specification then defines how those operations and objects map onto concrete transports (“protocol bindings”), notably JSON-RPC over HTTP(S), gRPC, and an HTTP+JSON/REST-style mapping. ([A2A Protocol][13])
+The specification then defines how those operations and objects map onto concrete transports (“protocol bindings”), notably JSON-RPC over HTTP(S), gRPC, and an HTTP+JSON/REST-style mapping. ([A2A Protocol][details-13])
 
-A key design point is that the same *logical* operations are intended to be functionally equivalent across bindings; the binding decides *how* parameters and service-wide headers/metadata are carried, but not what they mean. ([A2A Protocol][13])
+A key design point is that the same *logical* operations are intended to be functionally equivalent across bindings; the binding decides *how* parameters and service-wide headers/metadata are carried, but not what they mean. ([A2A Protocol][details-13])
 
 
-#### Operation surface and execution semantics
+### Operation surface and execution semantics
 
-The “A2AService” operation set is designed around a task-centric model. Even if you initiate interaction by sending a message, the server may respond by creating/continuing a task, and all subsequent status and artifacts hang off that task identity. The specification’s “SendMessageRequest” carries the client message plus an optional configuration block and optional metadata. ([A2A Protocol][13])
+The “A2AService” operation set is designed around a task-centric model. Even if you initiate interaction by sending a message, the server may respond by creating/continuing a task, and all subsequent status and artifacts hang off that task identity. The specification’s “SendMessageRequest” carries the client message plus an optional configuration block and optional metadata. ([A2A Protocol][details-13])
 
-##### `SendMessage` and the `SendMessageConfiguration` contract
+#### `SendMessage` and the `SendMessageConfiguration` contract
 
 `SendMessageConfiguration` is where most of the “knobs” live:
 
-* `acceptedOutputModes`: a list of media types the client is willing to receive in response *parts* (for both messages and artifacts). Servers **should** tailor outputs to these modes. ([A2A Protocol][13])
-* `historyLength`: an optional upper bound on how many recent messages of task history should be returned. The semantics are shared across operations: unset means server default; `0` means omit history; `>0` means cap to N most recent. ([A2A Protocol][13])
-* `blocking`: when `true`, the server must wait until the task is terminal and return the final task state; when `false`, return immediately after task creation with an in-progress state, and the caller must obtain progress via polling/subscription/push. ([A2A Protocol][13])
-* `pushNotificationConfig`: requests server-initiated updates via webhook delivery (covered below). ([A2A Protocol][13])
+* `acceptedOutputModes`: a list of media types the client is willing to receive in response *parts* (for both messages and artifacts). Servers **should** tailor outputs to these modes. ([A2A Protocol][details-13])
+* `historyLength`: an optional upper bound on how many recent messages of task history should be returned. The semantics are shared across operations: unset means server default; `0` means omit history; `>0` means cap to N most recent. ([A2A Protocol][details-13])
+* `blocking`: when `true`, the server must wait until the task is terminal and return the final task state; when `false`, return immediately after task creation with an in-progress state, and the caller must obtain progress via polling/subscription/push. ([A2A Protocol][details-13])
+* `pushNotificationConfig`: requests server-initiated updates via webhook delivery (covered below). ([A2A Protocol][details-13])
 
-This configuration block is what makes A2A “async-first” without making simple request/response impossible: a client can force synchronous completion with `blocking: true`, but the spec treats streaming and async delivery as first-class rather than bolt-ons. ([A2A Protocol][13])
+This configuration block is what makes A2A “async-first” without making simple request/response impossible: a client can force synchronous completion with `blocking: true`, but the spec treats streaming and async delivery as first-class rather than bolt-ons. ([A2A Protocol][details-13])
 
-##### Blocking vs non-blocking as a protocol-level contract (not an implementation detail)
+#### Blocking vs non-blocking as a protocol-level contract (not an implementation detail)
 
 The `blocking` flag is normative and affects correctness expectations:
 
-* In blocking mode, the server **MUST** wait for terminal states (`completed`, `failed`, `canceled`, `rejected`) and include the final task state with artifacts/status. ([A2A Protocol][13])
-* In non-blocking mode, the server **MUST** return right after task creation and expects the client to continue via `GetTask`, subscription, or push. ([A2A Protocol][13])
+* In blocking mode, the server **MUST** wait for terminal states (`completed`, `failed`, `canceled`, `rejected`) and include the final task state with artifacts/status. ([A2A Protocol][details-13])
+* In non-blocking mode, the server **MUST** return right after task creation and expects the client to continue via `GetTask`, subscription, or push. ([A2A Protocol][details-13])
 
 This matters because it pushes queueing/execution details out of band: even if the server’s internal worker system is distributed, the *observable* behavior must match these semantics.
 
 
-#### The protocol data model: the “shape” constraints that make interoperability work
+### The protocol data model: the “shape” constraints that make interoperability work
 
 A2A’s objects include both “business” fields (task IDs, status) and structural invariants (“exactly one of these fields must be present”) that keep message parsing unambiguous across languages.
 
-##### Message identity and correlation
+#### Message identity and correlation
 
-A `Message` is a unit of communication between client and server. The spec requires `messageId` and makes it creator-generated. This is not cosmetic: the spec explicitly allows Send Message operations to be idempotent and calls out using `messageId` to detect duplicates. ([A2A Protocol][13])
+A `Message` is a unit of communication between client and server. The spec requires `messageId` and makes it creator-generated. This is not cosmetic: the spec explicitly allows Send Message operations to be idempotent and calls out using `messageId` to detect duplicates. ([A2A Protocol][details-13])
 
 A message may include `contextId` and/or `taskId`:
 
 * For server messages: `contextId` must be present; `taskId` is present only if a task was created.
-* For client messages: both are optional, but if both are present they must match the task’s context; if only `taskId` is provided, the server infers `contextId`. ([A2A Protocol][13])
+* For client messages: both are optional, but if both are present they must match the task’s context; if only `taskId` is provided, the server infers `contextId`. ([A2A Protocol][details-13])
 
 This rule is critical for multi-turn clients: it allows clients to “anchor” continuation on a known task without re-sending full conversational context.
 
-##### Parts: a strict “oneof” content container
+#### Parts: a strict “oneof” content container
 
-A `Part` is the atom of content in both messages and artifacts, and it must contain exactly one of `text`, `file`, or `data`. ([A2A Protocol][13])
+A `Part` is the atom of content in both messages and artifacts, and it must contain exactly one of `text`, `file`, or `data`. ([A2A Protocol][details-13])
 
 That constraint enables predictable parsing and transformation pipelines:
 
@@ -10049,77 +10195,77 @@ That constraint enables predictable parsing and transformation pipelines:
 * file → fetch via URI or decode bytes, respecting `mediaType` and optional `name`
 * data → structured JSON object for machine-to-machine exchange
 
-File parts have their own “oneof”: exactly one of `fileWithUri` or `fileWithBytes`. The spec also frames the intended usage: prefer bytes for small payloads; prefer URI for large payloads. ([A2A Protocol][13])
+File parts have their own “oneof”: exactly one of `fileWithUri` or `fileWithBytes`. The spec also frames the intended usage: prefer bytes for small payloads; prefer URI for large payloads. ([A2A Protocol][details-13])
 
-##### Artifacts: outputs as first-class objects
+#### Artifacts: outputs as first-class objects
 
-Artifacts represent task outputs and include an `artifactId` that must be unique at least within a task, plus a list of parts (must contain at least one). ([A2A Protocol][13])
+Artifacts represent task outputs and include an `artifactId` that must be unique at least within a task, plus a list of parts (must contain at least one). ([A2A Protocol][details-13])
 
 Treating outputs as artifacts rather than “just text” is what allows A2A to cover large files, structured results, and incremental generation in a uniform way.
 
-##### Task states and task status updates
+#### Task states and task status updates
 
-Tasks have states; the spec enumerates states including working, input-required, canceled (terminal), rejected (terminal), and auth-required (special: not terminal and not “interrupted” in the same way as input-required). ([A2A Protocol][13])
+Tasks have states; the spec enumerates states including working, input-required, canceled (terminal), rejected (terminal), and auth-required (special: not terminal and not “interrupted” in the same way as input-required). ([A2A Protocol][details-13])
 
-A task’s status container includes the current state, optional associated message, and timestamp. ([A2A Protocol][13])
+A task’s status container includes the current state, optional associated message, and timestamp. ([A2A Protocol][details-13])
 
 
-#### Streaming updates: the `StreamResponse` envelope and event types
+### Streaming updates: the `StreamResponse` envelope and event types
 
-A2A streaming is not “stream arbitrary tokens” by default; it streams *typed updates* wrapped in a `StreamResponse` envelope. The spec is explicit: a `StreamResponse` must contain exactly one of `task`, `message`, `statusUpdate`, or `artifactUpdate`. ([A2A Protocol][13])
+A2A streaming is not “stream arbitrary tokens” by default; it streams *typed updates* wrapped in a `StreamResponse` envelope. The spec is explicit: a `StreamResponse` must contain exactly one of `task`, `message`, `statusUpdate`, or `artifactUpdate`. ([A2A Protocol][details-13])
 
 That invariant matters because it defines how clients must implement event loops: you do not parse “some JSON”; you dispatch on which field is present, and you get strongly-typed behavior.
 
-##### `TaskStatusUpdateEvent`
+#### `TaskStatusUpdateEvent`
 
-A status update event includes `taskId`, `contextId`, `status`, and a required boolean `final` that indicates whether this is the final event in the stream for the interaction. ([A2A Protocol][13])
+A status update event includes `taskId`, `contextId`, `status`, and a required boolean `final` that indicates whether this is the final event in the stream for the interaction. ([A2A Protocol][details-13])
 
-A practical implication is that clients should treat `final=true` as a state machine edge, not merely “stream ended”. The spec describes this as the signal for end-of-updates in the cycle and often subsequent stream close. ([A2A Protocol][14])
+A practical implication is that clients should treat `final=true` as a state machine edge, not merely “stream ended”. The spec describes this as the signal for end-of-updates in the cycle and often subsequent stream close. ([A2A Protocol][details-14])
 
-##### `TaskArtifactUpdateEvent` and chunked artifact reconstruction
+#### `TaskArtifactUpdateEvent` and chunked artifact reconstruction
 
 Artifact updates are deltas. Each update carries the artifact plus two key booleans:
 
 * `append`: if true, append content to a previously sent artifact with the same ID
-* `lastChunk`: if true, this is the final chunk of the artifact ([A2A Protocol][13])
+* `lastChunk`: if true, this is the final chunk of the artifact ([A2A Protocol][details-13])
 
 This is the protocol’s answer to “how do I stream a large file/structured output?”: the artifact is the stable identity, and the parts are chunked. A client must reconstruct by `(taskId, artifactId)` and apply append semantics to parts.
 
 
-#### Push notifications: webhook delivery that reuses the same envelope
+### Push notifications: webhook delivery that reuses the same envelope
 
-Push notifications are not a separate event schema: the spec states that webhook payloads use the same `StreamResponse` format as streaming operations, delivering exactly one of the same event types. ([A2A Protocol][13])
+Push notifications are not a separate event schema: the spec states that webhook payloads use the same `StreamResponse` format as streaming operations, delivering exactly one of the same event types. ([A2A Protocol][details-13])
 
 The push payload section is unusually explicit about responsibilities:
 
-* Clients must ACK with 2xx, process idempotently (duplicates may occur), validate task ID, and verify source. ([A2A Protocol][13])
-* Agents must attempt delivery at least once per configured webhook and may retry with exponential backoff; recommended timeouts are 10–30 seconds. ([A2A Protocol][13])
+* Clients must ACK with 2xx, process idempotently (duplicates may occur), validate task ID, and verify source. ([A2A Protocol][details-13])
+* Agents must attempt delivery at least once per configured webhook and may retry with exponential backoff; recommended timeouts are 10–30 seconds. ([A2A Protocol][details-13])
 
 This means production-grade push is *not* “fire and forget”: both sides are expected to implement retry/idempotency logic.
 
 
-#### Service parameters, versioning, and extensions: the “horizontal” control plane
+### Service parameters, versioning, and extensions: the “horizontal” control plane
 
-A2A separates per-request metadata (arbitrary JSON) from “service parameters” (case-insensitive string keys + string values) whose transmission depends on binding (HTTP headers for HTTP-based bindings, gRPC metadata for gRPC). ([A2A Protocol][13])
+A2A separates per-request metadata (arbitrary JSON) from “service parameters” (case-insensitive string keys + string values) whose transmission depends on binding (HTTP headers for HTTP-based bindings, gRPC metadata for gRPC). ([A2A Protocol][details-13])
 
 Two standard service parameters are called out:
 
-* `A2A-Version`: client’s protocol version; server returns a version-not-supported error if unsupported. ([A2A Protocol][13])
-* `A2A-Extensions`: comma-separated extension URIs the client wants to use. ([A2A Protocol][13])
+* `A2A-Version`: client’s protocol version; server returns a version-not-supported error if unsupported. ([A2A Protocol][details-13])
+* `A2A-Extensions`: comma-separated extension URIs the client wants to use. ([A2A Protocol][details-13])
 
-This is the practical mechanism for incremental evolution: extensions let you strongly-type metadata for specific use cases, while the core stays stable. ([A2A Protocol][13])
+This is the practical mechanism for incremental evolution: extensions let you strongly-type metadata for specific use cases, while the core stays stable. ([A2A Protocol][details-13])
 
 
-#### Protocol bindings and interface negotiation
+### Protocol bindings and interface negotiation
 
-Agents advertise one or more supported interfaces. Each `AgentInterface` couples a URL with a `protocolBinding` string; the spec calls out core bindings `JSONRPC`, `GRPC`, and `HTTP+JSON`, while keeping the field open for future bindings. ([A2A Protocol][13])
+Agents advertise one or more supported interfaces. Each `AgentInterface` couples a URL with a `protocolBinding` string; the spec calls out core bindings `JSONRPC`, `GRPC`, and `HTTP+JSON`, while keeping the field open for future bindings. ([A2A Protocol][details-13])
 
-The ordering of interfaces is meaningful: clients should prefer earlier entries when multiple options are supported. ([A2A Protocol][13])
+The ordering of interfaces is meaningful: clients should prefer earlier entries when multiple options are supported. ([A2A Protocol][details-13])
 
 This makes interoperability practical in heterogeneous environments: a client can pick JSON-RPC for browser-like integrations, gRPC for intra-datacenter low-latency, or HTTP+JSON for simple REST stacks—while preserving the same logical semantics.
 
 
-#### Implementation patterns extracted from real server stacks: broker, worker, storage
+### Implementation patterns extracted from real server stacks: broker, worker, storage
 
 A typical A2A server splits responsibilities into:
 
@@ -10128,7 +10274,7 @@ A typical A2A server splits responsibilities into:
 * one or more workers that execute tasks and emit task operations/updates;
 * a storage layer that persists task state and artifacts for `GetTask`, resubscription, and recovery.
 
-This architecture is explicitly reflected in common A2A server implementations where the HTTP server schedules work via a broker abstraction intended to support both in-process and remote worker setups, and where workers receive task operations from that broker. ([Pydantic AI][40])
+This architecture is explicitly reflected in common A2A server implementations where the HTTP server schedules work via a broker abstraction intended to support both in-process and remote worker setups, and where workers receive task operations from that broker. ([Pydantic AI][details-17])
 
 The key protocol-driven reason to build it this way is that A2A requires coherent behavior across:
 
@@ -10217,14 +10363,14 @@ function send_and_stream(agent_url, user_text):
 
 Why this matches the spec:
 
-* It treats `messageId` as required and client-generated. ([A2A Protocol][13])
-* It uses `acceptedOutputModes`, `blocking`, and `historyLength` exactly as defined, including the shared semantics of history length. ([A2A Protocol][13])
-* It dispatches on the `StreamResponse` “exactly one of” invariant and handles status and artifact events accordingly. ([A2A Protocol][13])
-* It reconstructs artifacts using `append` and `lastChunk`. ([A2A Protocol][13])
+* It treats `messageId` as required and client-generated. ([A2A Protocol][details-13])
+* It uses `acceptedOutputModes`, `blocking`, and `historyLength` exactly as defined, including the shared semantics of history length. ([A2A Protocol][details-13])
+* It dispatches on the `StreamResponse` “exactly one of” invariant and handles status and artifact events accordingly. ([A2A Protocol][details-13])
+* It reconstructs artifacts using `append` and `lastChunk`. ([A2A Protocol][details-13])
 
 #### Client: idempotent retries using `messageId`
 
-Network retries are inevitable; the spec explicitly allows using `messageId` to detect duplicates for idempotency. ([A2A Protocol][13])
+Network retries are inevitable; the spec explicitly allows using `messageId` to detect duplicates for idempotency. ([A2A Protocol][details-13])
 
 ```python
 function send_with_retry(agent_url, msg, cfg):
@@ -10247,7 +10393,7 @@ function send_with_retry(agent_url, msg, cfg):
 
 #### Server: request validation that enforces the “oneof” invariants
 
-A2A’s “Part must contain exactly one of text/file/data” is a protocol requirement, so servers should validate it up-front (before dispatching to workers) and return a validation error if violated. ([A2A Protocol][13])
+A2A’s “Part must contain exactly one of text/file/data” is a protocol requirement, so servers should validate it up-front (before dispatching to workers) and return a validation error if violated. ([A2A Protocol][details-13])
 
 ```python
 function validate_message(message):
@@ -10267,7 +10413,7 @@ function validate_message(message):
 
 #### Server: `blocking` semantics implemented on top of a broker/worker pipeline
 
-In practice, servers implement A2A semantics by scheduling work and then either returning immediately (non-blocking) or awaiting terminal state (blocking). The scheduling abstraction (“broker”) exists precisely to decouple protocol ingress from task execution and allow multi-worker setups. ([Pydantic AI][40])
+In practice, servers implement A2A semantics by scheduling work and then either returning immediately (non-blocking) or awaiting terminal state (blocking). The scheduling abstraction (“broker”) exists precisely to decouple protocol ingress from task execution and allow multi-worker setups. ([Pydantic AI][details-17])
 
 ```python
 function handle_send_message(request, service_params):
@@ -10295,11 +10441,11 @@ function handle_send_message(request, service_params):
     return resp
 ```
 
-This aligns with the normative behavior: non-blocking returns after task creation; blocking waits for terminal state. ([A2A Protocol][13])
+This aligns with the normative behavior: non-blocking returns after task creation; blocking waits for terminal state. ([A2A Protocol][details-13])
 
 #### Server: emitting streaming updates with `StreamResponse`
 
-Streaming endpoints emit a stream of `StreamResponse` objects where exactly one field is set. ([A2A Protocol][13])
+Streaming endpoints emit a stream of `StreamResponse` objects where exactly one field is set. ([A2A Protocol][details-13])
 
 ```python
 function stream_task_updates(task_id):
@@ -10328,7 +10474,7 @@ function stream_task_updates(task_id):
 
 #### Push notification receiver: reusing the same dispatch loop as streaming
 
-Because push payloads reuse `StreamResponse`, your webhook handler can share logic with your SSE consumer. ([A2A Protocol][13])
+Because push payloads reuse `StreamResponse`, your webhook handler can share logic with your SSE consumer. ([A2A Protocol][details-13])
 
 ```python
 function webhook_handler(http_request):
@@ -10350,18 +10496,18 @@ function webhook_handler(http_request):
         return 204
 ```
 
-This matches the spec's client responsibilities (ACK with 2xx; process idempotently; validate task IDs). ([A2A Protocol][13])
+This matches the spec's client responsibilities (ACK with 2xx; process idempotently; validate task IDs). ([A2A Protocol][details-13])
 
-[13]: https://a2a-protocol.org/latest/specification/
-[14]: https://a2a-protocol.org/latest/topics/streaming-and-async/
-[40]: https://ai.pydantic.dev/a2a/
+[details-13]: https://a2a-protocol.org/latest/specification/
+[details-14]: https://a2a-protocol.org/latest/topics/streaming-and-async/
+[details-17]: https://ai.pydantic.dev/a2a/
 
 
 ## Security
 
 A2A security defines how agents authenticate, authorize, isolate, and audit cross-agent interactions while preserving composability and asynchronous execution.
 
-#### Authentication and Agent Identity
+### Authentication and Agent Identity
 
 At the protocol level, A2A assumes strong, explicit agent identity rather than implicit trust between peers. Each agent is identified by a stable agent ID and presents verifiable credentials with every request. The protocol deliberately avoids mandating a single authentication mechanism, but its security model presumes cryptographically verifiable identity, typically implemented using OAuth2-style bearer tokens or mutual TLS.
 
@@ -10387,7 +10533,7 @@ In the core library, this pattern is implemented by `AuthSessionMiddleware` (`co
 
 An important design constraint is that task payloads are treated as untrusted data until authentication has completed. Identity verification is therefore orthogonal to task semantics.
 
-#### Authorization and Capability Scoping
+### Authorization and Capability Scoping
 
 Authorization in A2A is capability-oriented rather than role-oriented. Instead of assigning broad roles to agents, the protocol evaluates whether a specific agent is permitted to perform a specific protocol operation on a specific resource. This allows fine-grained control over actions such as task creation, inspection, streaming, or cancellation.
 
@@ -10407,7 +10553,7 @@ def authorize(auth_ctx, operation, task=None):
 
 A key property of the protocol is that authorization is never assumed to be static. Even for long-running tasks, permissions are re-evaluated on every request, including status polling and streaming updates.
 
-#### Task Isolation and Trust Boundaries
+### Task Isolation and Trust Boundaries
 
 In A2A, a task is not merely a unit of work; it is a security boundary. Task state, intermediate artifacts, and final outputs are all scoped to a task ID and an explicit access policy. This prevents unrelated agents from inferring information about concurrent or historical tasks.
 
@@ -10425,7 +10571,7 @@ def load_task(task_id, auth_ctx):
 
 This model discourages shared mutable global state across agents. Any shared context must be materialized as task-scoped artifacts with clearly defined read and write permissions.
 
-#### Streaming, Polling, and Push Security
+### Streaming, Polling, and Push Security
 
 Asynchronous interaction modes introduce additional attack surfaces, particularly around replay, hijacking, and information leakage. A2A addresses these risks by binding every asynchronous interaction to authenticated agent identity.
 
@@ -10441,7 +10587,7 @@ def stream_updates(task_id, cursor, auth_ctx):
 
 Push notifications require even stricter controls. Endpoints must be explicitly registered and verified, delivery credentials are scoped to a single task or subscription, and revocation immediately invalidates any pending deliveries. This ensures that long-lived subscriptions do not become permanent exfiltration channels.
 
-#### Secure Delegation and Agent-to-Agent Calls
+### Secure Delegation and Agent-to-Agent Calls
 
 Delegation is a core feature of A2A and one of its most sensitive security mechanisms. The protocol does not permit implicit privilege propagation. Instead, delegation is implemented using explicit, narrowly scoped credentials issued by the delegating agent.
 
@@ -10460,7 +10606,7 @@ This design prevents privilege amplification across agent networks and ensures t
 
 In the core library, bearer tokens are propagated through `A2AClientConfig.bearer_token`. When configured, `A2AClientExtended` injects the token as an `Authorization: Bearer` header on every request to the remote agent, keeping credential management in configuration rather than scattered across delegation logic.
 
-#### Auditability and Non-Repudiation
+### Auditability and Non-Repudiation
 
 A2A is designed for environments where accountability matters. Every security-relevant action is expected to generate an audit record, including authentication failures, authorization denials, task lifecycle events, and delegation operations.
 
@@ -10477,7 +10623,7 @@ audit_log.write({
 
 This auditability enables forensic analysis, compliance verification, and operational debugging in multi-agent deployments.
 
-#### Interaction with MCP Security
+### Interaction with MCP Security
 
 When A2A is composed with Model Context Protocol, the security boundary remains explicit. A2A governs agent identity, task lifecycle, and delegation, while MCP governs tool invocation and context access. Credentials are not implicitly shared across protocols, preventing cross-protocol privilege leakage while preserving composability.
 
@@ -10884,12 +11030,13 @@ A minimal example illustrates the shape of the interaction:
 
 ```python
 # Parent agent delegates to a specialized sub-agent
-result = research_agent.run(
-    query="Summarize recent approaches to retrieval-augmented generation"
+agent_run, _ = await run_agent(
+    research_agent,
+    "Summarize recent approaches to retrieval-augmented generation",
 )
 
 # Parent agent integrates the result into its own reasoning
-analysis = f"Based on research findings: {result.summary}"
+analysis = f"Based on research findings: {agent_run.result.output}"
 ```
 
 The important property is not the syntax, but the boundary: the sub-agent owns its internal reasoning and context, and only its output crosses back to the parent.
@@ -10908,7 +11055,7 @@ From a systems perspective, sub-agents act as an explicit form of context compre
 
 The Agent Skills specification defines a minimal, filesystem-based format for packaging agent capabilities. A skill is a directory with a required `SKILL.md` file and optional supporting directories. The format is deliberately simple: YAML frontmatter for machine-readable metadata, Markdown body for agent instructions, and conventional directories for scripts and references.
 
-#### Directory structure
+### Directory structure
 
 A skill is a directory containing at minimum a `SKILL.md` file:
 
@@ -10935,11 +11082,11 @@ skill-name/
 
 The `scripts/` directory contains executable code. The `references/` directory contains additional documentation loaded on demand. The `assets/` directory holds static resources like templates and schemas. This separation supports progressive disclosure: the agent loads each tier only when needed.
 
-#### SKILL.md format
+### SKILL.md format
 
 The `SKILL.md` file combines structured metadata with natural-language instructions. It must begin with YAML frontmatter delimited by `---` markers, followed by Markdown content.
 
-##### Required frontmatter fields
+#### Required frontmatter fields
 
 Two fields are mandatory:
 
@@ -10960,7 +11107,7 @@ description: Extracts text and tables from PDF files, fills PDF forms, and merge
 
 A poor description like "Helps with PDFs" provides insufficient signal for skill selection.
 
-##### Optional frontmatter fields
+#### Optional frontmatter fields
 
 Several optional fields support additional use cases:
 
@@ -10985,7 +11132,7 @@ The `metadata` field is an arbitrary key-value map for properties not defined by
 
 The `allowed-tools` field is a space-delimited list of pre-approved tools the skill may use. This field is experimental and support varies between agent implementations.
 
-##### Body content
+#### Body content
 
 The Markdown body after the frontmatter contains the skill instructions. There are no format restrictions. The content should help agents perform the task effectively.
 
@@ -11015,9 +11162,9 @@ Return extracted text with page numbers and any detected tables in a structured 
 If you encounter scanned PDFs or complex layouts, consult the reference file.
 ```
 
-#### Progressive disclosure tiers
+### Progressive disclosure tiers
 
-The specification formalizes the three disclosure tiers introduced earlier:
+The specification defines three progressive disclosure tiers:
 
 1. **Metadata** (~100 tokens): The `name` and `description` fields, loaded at startup for all skills.
 
@@ -11025,7 +11172,7 @@ The specification formalizes the three disclosure tiers introduced earlier:
 
 3. **Resources** (as needed): Files in `scripts/`, `references/`, and `assets/`, loaded only when explicitly required by the agent.
 
-#### File references
+### File references
 
 When referencing other files in a skill, use relative paths from the skill root:
 
@@ -11038,13 +11185,13 @@ scripts/extract.py
 
 Keep file references one level deep from `SKILL.md`. Deeply nested reference chains make skills harder to understand and maintain.
 
-#### Scripts directory
+### Scripts directory
 
 The `scripts/` directory contains executable code that agents can run. Scripts should be self-contained or clearly document dependencies, include helpful error messages, and handle edge cases gracefully.
 
 Supported languages depend on the agent implementation. Common options include Python, Bash, and JavaScript. The specification does not prescribe execution details; these are left to the runtime.
 
-#### References directory
+### References directory
 
 The `references/` directory contains additional documentation that agents can read when needed. Common patterns include:
 
@@ -11054,11 +11201,11 @@ The `references/` directory contains additional documentation that agents can re
 
 Keep individual reference files focused. Agents load these on demand, so smaller files mean more efficient use of context.
 
-#### Assets directory
+### Assets directory
 
 The `assets/` directory contains static resources: document templates, configuration templates, images, diagrams, lookup tables, and schemas. These files are read-only resources that support skill execution without being instructions themselves.
 
-#### Validation
+### Validation
 
 The specification includes naming and format constraints that can be validated programmatically. The `name` field must follow strict conventions: lowercase alphanumeric with hyphens, no leading or trailing hyphens, no consecutive hyphens, and matching the directory name. The `description` field must be non-empty and within length limits.
 
@@ -11069,7 +11216,7 @@ Agent implementations should validate skills at discovery time and reject malfor
 
 We discuss making skills discoverable, cheap to advertise to a model, and safe to activate and execute inside a broader agent system.
 
-#### What "engineering skills" actually means
+### What "engineering skills" actually means
 
 The Agent Skills integration guide is explicit about what a skills-compatible runtime must do: it discovers skill directories, loads only metadata at startup, matches tasks to skills, activates a selected skill by loading full instructions, and then executes scripts and accesses bundled resources as needed. The important architectural point is that integration is designed around progressive disclosure: startup and routing should rely on frontmatter only, while "activation" is the moment you pay to load instructions and any additional files.
 
@@ -11092,7 +11239,7 @@ def discover_skills(skill_roots: list[str]) -> list[dict]:
 
 This is not an implementation detail; it is the core performance/safety contract. The integration guide recommends parsing only the frontmatter at startup "to keep initial context usage low." The specification quantifies the intended disclosure tiers: metadata (name/description) is loaded for all skills, full instructions are loaded on activation, and resources are loaded only when required.
 
-#### Filesystem-based integration vs tool-based integration
+### Filesystem-based integration vs tool-based integration
 
 The Agent Skills guide describes two integration approaches.
 
@@ -11100,7 +11247,7 @@ In a filesystem-based agent, the model operates in a computer-like environment (
 
 In a tool-based agent, there is no dedicated computer environment, so the developer implements explicit tools that let the model list skills, fetch `SKILL.md`, and retrieve bundled assets. The guide deliberately does not prescribe the exact tool design ("the specific tool implementation is up to the developer"), which is a reminder not to conflate the skill format with a particular invocation API.
 
-#### Injecting skill metadata into the model context
+### Injecting skill metadata into the model context
 
 The guide says to include skill metadata in the system prompt so the model knows what skills exist, and to "follow your platform's guidance" for how system prompts are updated. It then provides a single example: for Claude models, it shows an XML wrapper format. That example is platform-specific and should not be treated as a general recommendation for other runtimes.
 
@@ -11120,7 +11267,7 @@ The general requirement is simpler: at runtime start (or on refresh), you provid
 
 The skill system works because selection can be done from the metadata alone; the body is only loaded when the orchestrator commits to activation.
 
-#### Security boundaries during activation
+### Security boundaries during activation
 
 Skill integration changes the risk profile the moment `scripts/` are involved. The specification defines `scripts/` as executable code that agents can run, and explicitly notes that supported languages and execution details depend on the agent implementation. The frontmatter's experimental `allowed-tools` field exists to help some runtimes enforce "pre-approved tools" a skill may use, but support may vary.
 
@@ -11131,7 +11278,7 @@ For integration, the key design is to treat activation and execution as a contro
 
 Four patterns help manage complexity in agentic systems. Each solves a different problem; understanding when to use which prevents over-engineering and misapplication.
 
-#### The four patterns at a glance
+### The four patterns at a glance
 
 **Sub-agents** are agent instances created by a parent agent to handle scoped tasks. They exist within the same process, share the same runtime, and communicate through function calls. Use sub-agents when you need context isolation without network overhead.
 
@@ -11141,7 +11288,7 @@ Four patterns help manage complexity in agentic systems. Each solves a different
 
 **A2A (Agent-to-Agent Protocol)** defines how agents communicate over a network, including discovery, task lifecycles, and streaming results. A2A agents are autonomous systems that reason, plan, and maintain state. Use A2A when you need stateful collaboration across organizational or trust boundaries.
 
-#### Decision criteria
+### Decision criteria
 
 | Question | Pattern |
 |----------|---------|
@@ -11150,7 +11297,7 @@ Four patterns help manage complexity in agentic systems. Each solves a different
 | Need to expose tools to other processes? | MCP |
 | Need collaboration with external agents? | A2A |
 
-#### How they combine
+### How they combine
 
 These patterns are not mutually exclusive. A typical production system uses several together.
 
@@ -11162,7 +11309,7 @@ These patterns are not mutually exclusive. A typical production system uses seve
 
 **Skill becomes an A2A agent.** A well-defined skill can be "lifted" into an A2A server. The skill's `SKILL.md` becomes the agent's internal playbook; A2A provides discovery, task lifecycle, and network transport. This is useful when a capability needs to cross organizational boundaries.
 
-#### The continuum
+### The continuum
 
 These patterns form a continuum from local to remote:
 
@@ -11178,7 +11325,7 @@ A2A (agents across organizations)
 
 Moving right adds network overhead, security considerations, and operational complexity. Moving left reduces flexibility and reusability. Choose the simplest pattern that meets your requirements.
 
-#### Common mistakes
+### Common mistakes
 
 **Using A2A for local decomposition.** If your agents run in the same process and you control both, sub-agents are simpler. A2A adds protocol overhead you do not need.
 
@@ -11191,19 +11338,19 @@ Moving right adds network overhead, security considerations, and operational com
 
 ## AGENTS.md
 
-#### Background and Purpose
+### Background and Purpose
 
 As autonomous coding agents became more common, teams needed a way to convey stable, project-specific expectations that go beyond what can be reliably handled through transient prompts. Runtime instructions are ephemeral, model-dependent, and often incomplete when agents explore large or unfamiliar repositories. This gap led to the emergence of a repository-level convention for guiding agent behavior.
 
 In practice, this convention is most widely known today as **CLAUDE.md**, following its adoption and popularization by Claude Code. The more general name **AGENTS.md** reflects an effort to make the pattern model- and vendor-agnostic. Both names refer to the same underlying idea: a durable, version-controlled document that communicates how AI agents are expected to behave when operating inside a codebase.
 
-#### What the File Represents
+### What the File Represents
 
 AGENTS.md (or CLAUDE.md) is a Markdown file placed at the root of a repository that encodes expectations for AI agents. Unlike a README, which explains the project to humans, this document explains the project to machines. It captures conventions, constraints, and guidance that should always be in scope when an agent reasons about the repository.
 
 Conceptually, it functions as a persistent system prompt tied to the workspace rather than to a specific execution. Because it lives in version control, it can be reviewed, evolved, and audited alongside code, making changes to agent behavior explicit rather than implicit.
 
-#### Passive Context versus Explicit Skills
+### Passive Context versus Explicit Skills
 
 A useful lens for understanding this pattern comes from recent evaluations comparing passive repository context to explicit, on-demand skills. In experiments reported by Vercel, embedding concise, project-specific guidance directly in AGENTS.md consistently outperformed skill-based approaches that required the agent to decide when to fetch or invoke additional instructions.
 
@@ -11211,13 +11358,13 @@ The key difference is availability. Content in AGENTS.md is always present, elim
 
 While this observation may not generalize to all domains, it highlights an important design principle: stable, high-value context often works best when it is passive and unavoidable, rather than conditional.
 
-#### Role in Skills and Sub-agent Architectures
+### Role in Skills and Sub-agent Architectures
 
 Within a system composed of multiple skills or sub-agents, AGENTS.md serves as a shared behavioral contract. Instead of duplicating project norms across prompts or skill definitions, the repository itself advertises the expectations that all agents must respect. Generalist agents can specialize automatically by reading the file, while narrowly scoped sub-agents inherit the same constraints without additional configuration.
 
 This separation keeps skills reusable and generic, while the workspace encodes project-specific policy. In that sense, AGENTS.md complements skills rather than replacing them: skills provide capabilities, while AGENTS.md defines the environment in which those capabilities are exercised.
 
-#### Limitations
+### Limitations
 
 AGENTS.md is intentionally lightweight. It provides guidance, not enforcement, and assumes agents are designed to respect repository conventions. It also raises practical questions around context size and maintenance discipline, especially if teams attempt to embed large amounts of documentation. Nevertheless, its simplicity is a major reason for its rapid adoption: adding a single Markdown file is far easier than designing and integrating a custom skill system.
 
@@ -11226,58 +11373,72 @@ As agentic tooling evolves, AGENTS.md represents a pragmatic pattern for externa
 
 ## Tasks
 
-Sub-agents are fire-and-forget: the coordinator calls, awaits, and moves on. This works for short tasks but breaks down when work is long-running, needs mid-flight observation, or should survive process restarts. The task lifecycle wraps sub-agent execution with durable state, observation channels, and explicit control.
+Sub-agents are fire-and-forget: the coordinator calls, awaits, and moves on. This works for short tasks but breaks down when work is long-running, involves multiple agents with dependencies, or needs structured tracking. The task system provides a lightweight coordination layer: durable state, dependency management, and structured progress tracking for multi-step agent work.
 
-#### State Machine
+### State Machine
 
-A task moves through a small set of states: pending, running, completed, failed, input_required, cancelled. Terminal states (completed, failed, cancelled) end the lifecycle. No transitions out of a terminal state are allowed. The `input_required` state is non-terminal -- it signals that the worker needs external input before it can continue, and the task resumes once that input is provided.
-
-```
-pending --> running --> completed
-                   \-> failed
-                   \-> input_required --> running
-         \-> cancelled
-```
-
-The state machine is the contract between submission and execution. The submitter does not need to know how work happens internally -- it only needs to observe which state the task is in. This decoupling is what makes the pattern useful: any consumer that understands the state machine can interact with the lifecycle, regardless of what the worker does internally.
-
-#### Submission and Execution
-
-The key design decision is decoupling who submits work from who executes it. A broker receives tasks and places them in a queue. A worker picks tasks from the queue and runs them. This separation means the submitter does not need a reference to the executor, and the executor does not need to know who submitted the work.
-
-The worker is a sub-agent executor: it reads task metadata (system prompt, model configuration), creates a sub-agent, runs it, and writes the result back to storage. The worker itself is stateless -- all durable state lives in external storage. If the worker crashes, a new one can pick up where the old one left off because the task's state is persisted.
+A task moves through a small set of states: `pending`, `in_progress`, `completed`, `deleted`. Tasks are created as `pending`. When an agent starts working on a task, it transitions to `in_progress`. When the work is done, the task moves to `completed`. The `deleted` status permanently removes a task that is no longer relevant.
 
 ```
-submitter -> broker -> store -> worker -> sub-agent
-                 ^                  |
-                 |------ result ----|
+pending --> in_progress --> completed
+                       \-> deleted
+        \-> deleted
 ```
 
-#### Observation
+The state machine enforces one key constraint: a task with unresolved dependencies (non-empty `blocked_by` where at least one blocker is incomplete) cannot transition to `in_progress`. This prevents agents from starting work whose prerequisites are not yet met.
 
-Once a task is submitted, the submitter needs to know what happens to it. Three complementary mechanisms serve different use cases.
+### Task Model
 
-**Polling** is the simplest: ask for the current state at any time. It requires no infrastructure beyond the storage layer. The consumer decides when to check and how often. Polling is robust and works across process boundaries, but introduces latency proportional to the polling interval.
+A `Task` carries the information agents need to coordinate work:
 
-**Streaming** subscribes to events as they happen. The consumer iterates over an event stream and receives state changes, progress updates, and log messages as the worker produces them. Streaming provides low latency but requires the consumer to maintain a connection for the duration of the task.
+```python
+class Task(BaseModel):
+    id: str                              # Auto-assigned ("1", "2", ...)
+    subject: str                         # Brief imperative title
+    description: str                     # Detailed requirements and context
+    status: TaskStatus = TaskStatus.PENDING
+    active_form: str | None = None       # Present-continuous label (e.g., "Running tests")
+    owner: str | None = None             # Agent assigned to this task
+    blocks: list[str] = []               # Task IDs that cannot start until this completes
+    blocked_by: list[str] = []           # Task IDs that must complete before this can start
+    metadata: dict = {}                  # Arbitrary key/value data
+```
 
-**Notification** registers callbacks for specific state changes. The consumer says "call me when this task completes or fails" and the broker fires the callback when the condition is met. Push-based observation is useful when the consumer has other work to do and does not want to poll or hold a stream open.
+Dependencies are bidirectional: adding task B to task A's `blocked_by` automatically adds A to task B's `blocks`. This keeps the dependency graph consistent without requiring agents to maintain both sides manually.
 
-These are not alternatives -- they serve different use cases and can coexist within the same system. A UI might stream events for real-time display, while a monitoring system polls periodically for health checks, and an alerting system uses notifications for failures.
+### TaskList
 
-#### Storage and Persistence
+`TaskList` is the storage and coordination layer. It persists each task as an individual JSON file, using file-level locking for concurrency safety. The interface is small:
 
-Task state must outlive the process that created it. If the broker restarts, it should find all pending and running tasks and resume dispatch. If a worker crashes mid-execution, the task should be recoverable.
+```python
+class TaskList:
+    async def create(subject, description, *, active_form=None, metadata=None) -> Task
+    async def get(task_id) -> Task | None
+    async def list_all() -> list[Task]          # Summary view, metadata stripped
+    async def update(task_id, *, status=None, subject=None, owner=None,
+                     add_blocks=None, add_blocked_by=None, ...) -> Task | None
+    async def next_available(*, owner=None) -> Task | None  # First pending, unblocked task
+```
 
-A storage abstraction decouples the lifecycle from any specific backend. The contract is small: create a task, read a task, update its state, list tasks by state, and append events. A JSON file implementation works for development and single-machine scenarios. A database-backed implementation works for production with multiple workers.
+`next_available()` is dependency-aware: it returns the first pending task (lowest ID) whose every `blocked_by` entry has reached `completed`. If an owner is specified, it filters for tasks assigned to that agent. This enables multiple agents to pull work from the same list without conflicts.
 
-Persistence enables three things beyond basic durability. Recovery after failure: a restarted broker can scan for tasks stuck in `running` state and re-dispatch them. Replay for auditing: the full event history of a task is preserved and can be inspected after the fact. Coordination across workers: multiple workers can compete for pending tasks through the storage layer without direct communication.
+### Agent-Facing Tools
 
-#### Connection to Sub-Agents and A2A
+Four tools expose the `TaskList` to agents:
 
-The worker IS a sub-agent executor with lifecycle management around it. It reads metadata, calls `get_agent()` and `run_agent()`, and writes results back -- exactly the dynamic sub-agent pattern from the previous section, wrapped in state tracking and persistence.
+`task_create(subject, description, *, active_form, metadata)` creates a new task and returns its ID. `task_get(task_id)` retrieves full details including dependencies. `task_list_all()` returns a summary of all tasks with status, owner, and blocked-by info. `task_update(task_id, *, status, subject, owner, add_blocks, add_blocked_by, metadata, ...)` modifies any aspect of a task -- status transitions, dependency additions, metadata merges. Setting a metadata key to `null` deletes it.
 
-The same concepts appear in A2A as protocol-level guarantees. A2A defines task states, streaming via Server-Sent Events, push notifications via webhooks, and task storage as protocol requirements. The `core/tasks/` module is the local implementation of those ideas -- the same architecture applied within a single process instead of across a network.
+### Dependencies and Parallel Execution
+
+Tasks declare dependencies via `blocked_by`, a list of task IDs that must reach `completed` before the task can start. Independent tasks (no blockers, or all blockers completed) can run in parallel. Tasks whose dependencies are not yet met remain `pending` -- the system prevents them from transitioning to `in_progress`.
+
+A research task must complete before the writing task that uses its findings. Two independent research tasks can run in parallel, but the summary that combines them must wait for both. These relationships form a directed acyclic graph (DAG) that the `TaskList` enforces through its blocking logic.
+
+### Connection to Sub-Agents and A2A
+
+Tasks and sub-agents are orthogonal systems that work together. Tasks track what needs to be done and in what order. Sub-agents (via `AgentRunner`) handle execution. `OrchestratorAgent` -- introduced fully in the chapter *The Complete Agent* -- wires both into the same agent: task tools for planning and tracking, agent runner tools (`task_launch`, `task_output`, `task_stop`) for delegation.
+
+The same coordination concepts appear in A2A as protocol-level guarantees. A2A defines task states, streaming via Server-Sent Events, push notifications via webhooks, and task storage as protocol requirements. The `core/tasks/` module is the local implementation of those ideas -- lightweight coordination within a single process rather than across a network.
 
 
 ## Hands-On: Fixed Sub-Agents
@@ -11414,142 +11575,84 @@ In practice, you might combine both patterns. Pre-define specialists for common,
 
 ## Hands-On: Tasks
 
-This hands-on explores `example_tasks.ipynb` and the `core/tasks/` module, which implements the task lifecycle concepts from the previous section. The module has five files: `state.py` (the state enum), `models.py` (data models), `store.py` (persistence), `worker.py` (sub-agent execution), and `broker.py` (coordination).
+This hands-on explores `example_tasks.ipynb`, which demonstrates how `OrchestratorAgent` (covered in detail in the chapter *The Complete Agent*) uses tasks to coordinate parallel sub-agent execution. The orchestrator creates tasks with dependencies forming a DAG, runs independent tasks concurrently, and enforces that dependent tasks wait for their prerequisites.
 
-#### State and Models
+### Agents and Roles
 
-The state machine is an enum with a set of terminal states:
-
-```python
-class TaskState(str, Enum):
-    PENDING = "pending"
-    RUNNING = "running"
-    COMPLETED = "completed"
-    FAILED = "failed"
-    INPUT_REQUIRED = "input_required"
-    CANCELLED = "cancelled"
-
-TERMINAL_STATES = {TaskState.COMPLETED, TaskState.FAILED, TaskState.CANCELLED}
-```
-
-A `Task` carries the input, result, error, events, and metadata. The metadata dictionary is the bridge to sub-agents -- it carries `system_prompt` and `config_name` so the worker knows how to configure the sub-agent:
+Three agents are defined using `AgentSpec`:
 
 ```python
-class Task(BaseModel):
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    state: TaskState = TaskState.PENDING
-    input: str
-    result: str | None = None
-    error: str | None = None
-    events: list[TaskEvent] = Field(default_factory=list)
-    metadata: dict = Field(default_factory=dict)
+researcher = AgentSpec(
+    name="researcher",
+    description="Researches a scientific topic and returns a concise summary of key findings.",
+    system_prompt="You are a scientist. Answer concisely with key facts only.",
+)
+
+writer = AgentSpec(
+    name="writer",
+    description="Writes a short scientific article synthesizing research findings.",
+    system_prompt="You are a science writer. Write concise, accurate prose.",
+)
+
+coordinator = AgentSpec(
+    name="coordinator",
+    system_prompt=(
+        "You are a research coordinator. When given a topic, plan the work as tasks "
+        "with dependencies, then execute by delegating to sub-agents."
+    ),
+    sub_agents=[researcher, writer],
+)
 ```
 
-`TaskEvent` records state transitions and progress for the observation layer:
+The coordinator lists `researcher` and `writer` as its sub-agents. `OrchestratorAgent` wires these into the coordinator alongside task management tools (`task_create`, `task_get`, `task_list_all`, `task_update`) and agent runner tools (`task_launch`, `task_output`, `task_stop`).
+
+### Running the Orchestrator
+
+`OrchestratorAgent` is used as an async context manager:
 
 ```python
-class TaskEvent(BaseModel):
-    task_id: str
-    event_type: EventType  # STATE_CHANGE, PROGRESS, LOG
-    payload: dict = Field(default_factory=dict)
-    timestamp: datetime
+async with OrchestratorAgent(coordinator, verbose=True) as agent:
+    result = await agent.run(
+        "Research recent discoveries in particle physics and in cosmology, "
+        "then write a short article connecting the two fields."
+    )
+    print(result.output)
 ```
 
-#### Storage
+Inside the context, the orchestrator builds the full system prompt and creates a `TaskList` backed by file storage. The coordinator agent receives both task tools and agent runner tools; it never touches the `TaskList` or `AgentRunner` directly — only through the exposed tool interface.
 
-`TaskStore` is the abstract interface. The contract is small -- six methods:
+### What the Coordinator Does
 
-```python
-class TaskStore(ABC):
-    async def create(self, task: Task) -> Task: ...
-    async def get(self, task_id: str) -> Task | None: ...
-    async def update_state(self, task_id: str, state: TaskState, ...) -> Task | None: ...
-    async def list_by_state(self, state: TaskState) -> list[Task]: ...
-    async def next_pending(self) -> Task | None: ...
-    async def add_event(self, task_id: str, event: TaskEvent) -> None: ...
+Given the task, the coordinator reasons that it needs two independent research tasks and one writing task that depends on both. It creates them with explicit blocking relationships:
+
+- Task 1: Research particle physics (no blockers)
+- Task 2: Research cosmology (no blockers)
+- Task 3: Write the article (blocked by tasks 1 and 2)
+
+Tasks 1 and 2 have no blockers, so the coordinator launches them in parallel via `task_launch`. Task 3 remains `pending` until both reach `completed`. Once both research tasks finish, task 3 becomes available and the coordinator delegates it to the writer.
+
+### Task Lifecycle in the Output
+
+With `verbose=True`, the task list is printed after every state change. You can follow each transition:
+
+```
+pending --> in_progress --> completed
 ```
 
-`TaskStoreJson` implements this with one JSON file per task, using `pathlib.Path` for file operations and `asyncio.Lock` for concurrency safety. The implementation is intentionally simple -- production use would swap in a database-backed store without changing any other code.
+`[BACKGROUND AGENT COMPLETED]` markers show when parallel sub-agents finish and their results are injected into the coordinator's next turn. The coordinator then picks up the next available task automatically.
 
-#### Worker
+### Task System and Sub-Agent System Are Separate
 
-The worker is where sub-agents meet the task lifecycle. `Worker.execute()` maps directly to the dynamic sub-agent pattern:
-
-```python
-async def execute(self, task_id: str) -> None:
-    task = await self._store.get(task_id)
-    await self._store.update_state(task_id, TaskState.RUNNING)
-
-    system_prompt = task.metadata.get("system_prompt", "You are a helpful assistant.")
-    config_name = task.metadata.get("config_name", "default")
-    agent = get_agent(model=self._model, config_name=config_name, system_prompt=system_prompt)
-    agent_run, _ = await run_agent(agent, task.input)
-
-    result = str(agent_run.result.output)
-    await self._store.update_state(task_id, TaskState.COMPLETED, result=result)
-```
-
-Read the metadata, create an agent, run it, write the result. If the agent raises an exception, the worker catches it and transitions the task to `FAILED` with the error message. The worker itself is stateless -- it holds a reference to the store but maintains no task-specific data. The actual implementation also supports `AgentSpec`-based execution for composition with `OrchestratorAgent`, and emits progress and log events via a node hook so that observers can track what the sub-agent is doing in real time.
-
-#### Broker
-
-`TaskBroker` ties everything together as an async context manager. On entry it starts a background dispatch loop; on exit it cancels it:
-
-```python
-async with TaskBroker() as broker:
-    task_id = await broker.submit("Explain quantum entanglement", system_prompt="You are a physicist.")
-    task = await broker.wait(task_id)
-    print(task.result)
-```
-
-The dispatch loop is a simple polling loop: check for pending tasks, hand them to the worker, fire callbacks when done. The broker exposes five observation methods: `poll()` returns current state, `wait()` blocks until terminal, `stream()` yields events, `cancel()` stops execution, and `notify()` registers callbacks for specific state changes.
-
-#### Sub-Agent to Task Mapping
-
-The following table shows how sub-agent concepts map to the task lifecycle:
-
-| Sub-agent concept | Task equivalent |
-|-------------------|-----------------|
-| `get_agent(system_prompt=...)` | `task.metadata["system_prompt"]` |
-| `run_agent(agent, input)` | `worker.execute(task_id)` |
-| `result.output` | `task.result` |
-| Exception handling | `task.state = FAILED`, `task.error` |
-| Fire-and-forget call | `broker.submit()` + `broker.wait()` |
-| No observation | `broker.poll()`, `broker.stream()`, `broker.notify()` |
-| No persistence | `TaskStore` with durable backend |
-| No cancellation | `broker.cancel()` |
+Tasks track what needs to be done and in what order. The `AgentRunner` handles execution. `OrchestratorAgent` wires both together: the coordinator uses task tools to plan and track work, and agent runner tools to launch and observe sub-agents. The underlying `core/tasks/` module — `TaskStatus`, `Task`, `TaskList`, `get_task_tools()` — is what the orchestrator builds on, but the coordinator interacts with it only through tool calls, not directly.
 
 
 ## Hands-On: Skills and Progressive Disclosure
 
-This hands-on explores skills through `example_skills.ipynb`, demonstrating how an agent discovers available skills, activates one based on the task, and uses its tools.
+This hands-on explores `example_skills.ipynb`, which demonstrates the three tiers of progressive disclosure using the core skills library. An agent discovers a `checksum` skill from a local directory, activates it to receive instructions, and then runs a bundled script to compute a SHA-256 hash — a result the model cannot produce reliably on its own.
 
-### Skill Structure
+### Setup: Discovering Skills
 
-A skill is a directory containing a `SKILL.md` file with YAML frontmatter and markdown body:
-
-```
-code-review/
-  SKILL.md
-  references/
-    REFERENCE.md
-```
-
-The frontmatter provides machine-readable metadata:
-
-```yaml
----
-name: code-review
-description: Review code for quality, bugs, and security issues.
-compatibility: Works with Python, JavaScript, and TypeScript files.
----
-```
-
-The body contains instructions the agent follows when the skill is activated. This separation is the foundation of progressive disclosure: frontmatter is cheap to load for all skills, while the body is loaded only on demand.
-
-### Discovery: The Cheap Operation
-
-The `SkillRegistry` scans skill directories and extracts only frontmatter:
+The `SkillRegistry` scans skill directories and loads only frontmatter at startup:
 
 ```python
 skills_root = Path("skills-demo")
@@ -11557,69 +11660,75 @@ registry = SkillRegistry()
 registry.discover([skills_root])
 ```
 
-After discovery, the registry holds metadata for all skills but has not loaded any instruction bodies. This is the first tier of progressive disclosure. The agent can see what capabilities exist without paying the token cost for instructions it may never use.
+After discovery, the registry holds metadata (name and description) for all skills but has not loaded any instruction bodies. This is Tier 1: cheap enough to advertise all skills in the system prompt without bloating context.
 
-The `list_available_skills` function formats this metadata for injection into a system prompt:
+### Tools from the Core Library
 
-```python
-skill_catalog = list_available_skills(registry)
-```
-
-This produces a compact one-liner per skill, suitable for the agent's initial context.
-
-### Activation: The Expensive Operation
-
-When the agent needs a skill, it calls `activate_skill`:
+`registry.get_all_tools(allow_local=True)` returns the three tools that implement progressive disclosure:
 
 ```python
-def activate_skill(skill_name: str) -> str:
-    instructions = get_skill_instructions(registry, skill_name)
-    if instructions is None:
-        return f"Skill '{skill_name}' not found."
-    activated_skills.add(skill_name)
-    print(f"[SKILL ACTIVATED: {skill_name}]")
-    return instructions
+skill_tools = registry.get_all_tools(allow_local=True)
 ```
 
-This loads the full `SKILL.md` body and returns it to the agent. The `[SKILL ACTIVATED]` marker makes this transition visible in the output. Activation is the second tier: the agent now has detailed instructions for this specific capability.
+- `activate_skill` loads the full `SKILL.md` body into the agent's context (Tier 2)
+- `run_skill_script` executes a script bundled with an activated skill (Tier 3)
+- `read_skill_resource` reads a reference or asset file from an activated skill (Tier 3)
 
-### Gated Tools
+No custom tool code is needed. The `allow_local=True` flag permits direct subprocess execution for notebooks and demos; in production, a `SandboxManager` is passed instead.
 
-Skills can provide tools that only work after activation. In the example, `analyze_code` checks whether the code-review skill is active:
+### Observability with SkillEvent
+
+The registry exposes an `on_event` hook for monitoring skill lifecycle events:
 
 ```python
-def analyze_code(code: str) -> str:
-    if "code-review" not in activated_skills:
-        return "Error: You must activate the 'code-review' skill first."
-    print(f"[SKILL TOOL CALLED: analyze_code]")
-    # ... analysis logic
+def on_skill_event(event: SkillEvent) -> None:
+    print(f"  [SKILL {event.event_type.value.upper()}] {event.skill_name}", end="")
+    if event.payload:
+        details = ", ".join(f"{k}={v}" for k, v in event.payload.items())
+        print(f" ({details})")
+    else:
+        print()
+
+registry.on_event = on_skill_event
 ```
 
-This gating enforces the progressive disclosure pattern at runtime. The agent cannot skip activation and jump directly to using tools. The `[SKILL TOOL CALLED]` marker shows when the skill's capability is actually exercised.
+This makes skill activation, script execution, and resource reads visible in the output, which is essential for debugging and for demonstrating the boundary between tiers.
 
-### The Agent Flow
+### The Agent
 
-The system prompt tells the agent about skills and how to use them:
+`registry.system_prompt()` returns the skill catalog formatted and ready to inject into a system prompt:
 
 ```python
 system_prompt = f"""You are an assistant with access to skills.
 
-Available skills:
-{skill_catalog}
+{registry.system_prompt()}"""
 
-To use a skill:
-1. Call activate_skill(skill_name) to load its instructions
-2. Read the instructions to understand what tools are available
-3. Use the skill's tools (e.g., analyze_code for code-review)
-
-You must activate a skill before using its tools."""
+agent = get_agent(system_prompt=system_prompt, tools=skill_tools)
 ```
 
-When the agent receives a code review task, it recognizes the match with the code-review skill, activates it to get instructions, then uses `analyze_code` to perform the actual analysis. The output shows this sequence clearly through the activation and tool call markers.
+The agent's initial context contains only Tier 1 metadata — names and descriptions — for all discovered skills. Full instructions are not loaded until the agent calls `activate_skill`.
 
-### Key Takeaways
+### Running the Agent
 
-Gating tools behind activation enforces the progressive disclosure pattern at runtime and makes skill usage visible in the execution trace. The `[SKILL ACTIVATED]` and `[SKILL TOOL CALLED]` markers demonstrate the clear boundary between discovery, activation, and execution.
+The agent is asked to compute a SHA-256 checksum and verify it against known test vectors:
+
+```python
+prompt = "Compute the SHA-256 checksum of 'hello world' and verify it against the known test vectors."
+
+agent_run, nodes = await run_agent(agent, prompt, verbose=True)
+```
+
+The agent cannot produce a SHA-256 hash from its parameters alone, so it must use the skill. Watch the output for `[SKILL ACTIVATE]`, `[SKILL EXEC]`, and `[SKILL READ]` events printed by the `on_event` hook.
+
+### Three Tiers in Action
+
+1. **Tier 1 — Discovery**: The catalog in the system prompt tells the agent that a `checksum` skill exists and what it does. No instruction body has been loaded.
+
+2. **Tier 2 — Activation**: The agent calls `activate_skill("checksum")`, which loads the full `SKILL.md` body. The agent now knows what scripts and references are available.
+
+3. **Tier 3 — Execution**: The agent calls `run_skill_script("checksum", "checksum.py", "hello world")` to compute the hash, then `read_skill_resource("checksum", "reference", "test_vectors.md")` to load the known test values. It compares the computed hash against the reference and reports the result.
+
+Context is loaded exactly when needed and not before — the progressive disclosure contract enforced at runtime by the core library rather than by custom application code.
 
 
 ## References
@@ -11746,12 +11855,12 @@ class Case(Generic[InputsT, OutputT]):
 
 # A result can be: assertion(bool), score(float), or label(str), optionally with a reason.
 @dataclass(frozen=True)
-class EvalResult:
+class EvaluationReason:
     value: bool | float | str
     reason: str = ""
 
 @dataclass(frozen=True)
-class EvalContext(Generic[InputsT, OutputT]):
+class EvaluatorContext(Generic[InputsT, OutputT]):
     case: Case[InputsT, OutputT]
     output: OutputT
     # Optional execution traces/telemetry identifiers for deeper debugging.
@@ -11760,7 +11869,7 @@ class EvalContext(Generic[InputsT, OutputT]):
 
 class Evaluator(Protocol[InputsT, OutputT]):
     name: str
-    def evaluate(self, ctx: EvalContext[InputsT, OutputT]) -> EvalResult | dict[str, EvalResult]:
+    def evaluate(self, ctx: EvaluatorContext[InputsT, OutputT]) -> EvaluationReason | dict[str, EvaluationReason]:
         ...
 
 @dataclass
@@ -11769,7 +11878,7 @@ class Dataset(Generic[InputsT, OutputT]):
     evaluators: list[Evaluator[InputsT, OutputT]]
 ```
 
-This structure captures the core idea: datasets describe intent, experiments execute the system, and reports summarize what happened, including per-case outputs and per-evaluation reasons, plus links back to execution traces when available. These abstractions are illustrative: they show the essential concepts that any eval system needs. The pydantic-evals library, used in the hands-on sections, provides its own concrete implementations of these same ideas (with classes like `EvaluatorContext` instead of `EvalContext`, and richer return types), but the underlying pattern is identical. ([Pydantic AI][ev-1])
+This structure captures the core idea: datasets describe intent, experiments execute the system, and reports summarize what happened, including per-case outputs and per-evaluation reasons, plus links back to execution traces when available. These abstractions are illustrative: they show the essential concepts that any eval system needs. The pydantic-evals library, used in the hands-on sections, provides concrete implementations of these same ideas with richer type signatures, but the underlying pattern is identical. ([Pydantic AI][ev-1])
 
 #### Structured-output evals vs free-form evals
 
@@ -11804,7 +11913,7 @@ class Judge(Evaluator[InputsT, OutputT]):
     rubric: str
     judge_model: Callable[[str], str]  # takes a prompt, returns model text
 
-    def evaluate(self, ctx: EvalContext[InputsT, OutputT]) -> EvalResult:
+    def evaluate(self, ctx: EvaluatorContext[InputsT, OutputT]) -> EvaluationReason:
         prompt = f"""
 You are grading an assistant output.
 
@@ -11824,7 +11933,7 @@ Return:
         raw = self.judge_model(prompt)
         score = parse_score_0_to_10(raw)       # keep parsing deterministic
         reason = parse_reason(raw)
-        return EvalResult(value=float(score), reason=reason)
+        return EvaluationReason(value=float(score), reason=reason)
 ```
 
 The critical engineering point is that judge outputs must be constrained enough to be machine-consumable. If the judge's response cannot be parsed deterministically, you have built a flaky evaluator.
@@ -11879,13 +11988,13 @@ class SpanMatcher(Evaluator[InputsT, OutputT]):
     required: list[dict]  # declarative patterns: {"op": "tool.call", "tool": "sql.query"}
     forbidden: list[dict] | None = None
 
-    def evaluate(self, ctx: EvalContext[InputsT, OutputT]) -> EvalResult:
+    def evaluate(self, ctx: EvaluatorContext[InputsT, OutputT]) -> EvaluationReason:
         spans = load_spans(trace_id=ctx.trace_id)  # your OTel backend / captured trace
         ok_required = all(match_any(spans, pattern) for pattern in self.required)
         ok_forbidden = all(not match_any(spans, pattern) for pattern in (self.forbidden or []))
         ok = ok_required and ok_forbidden
         reason = build_span_reason(spans, self.required, self.forbidden)
-        return EvalResult(value=bool(ok), reason=reason)
+        return EvaluationReason(value=bool(ok), reason=reason)
 ```
 
 This is the key bridge between evals and observability: the same telemetry you rely on in production becomes the substrate for behavioral tests, and failing cases can link directly to trace identifiers for fast diagnosis. ([Pydantic AI][ev-6])
@@ -11904,7 +12013,7 @@ The hands-on sections that follow demonstrate a layered approach to validating a
 
 Deterministic testing shows how to replace the inherently stochastic model with controlled mocks, enabling exact assertions on agent behavior without network calls or API costs. ModelMock provides predefined responses, while tool_mock controls tool outputs and tracks invocation patterns. This approach validates agent logic and tool integration with the precision of traditional unit tests, complementing rather than replacing model-level evaluation.
 
-The basic evals section introduces three fundamental evaluation techniques: string matching for factual queries with known answers, structured outputs that constrain the model to return typed values for easier assertion, and LLM-as-a-Judge for open-ended tasks where correctness is semantic rather than syntactic. The Pydantic Evals framework builds on these foundations by providing structured abstractions (Cases, Evaluators, Datasets) that transform ad-hoc tests into maintainable, scalable evaluation suites with metadata for slicing results and structured reports for comparison across system variants. The eval runner section then shows how to move evals from interactive notebooks to automated pipelines: convention-based discovery of eval files, custom evaluators for agent-specific concerns (JSON validation, schema matching, tool call verification), and CLI integration for CI gating.
+The basic evals section introduces fundamental evaluation techniques: string matching for factual queries with known answers, structured outputs that constrain the model to return typed values for easier assertion, and LLM-as-a-Judge for open-ended tasks where correctness is semantic rather than syntactic. The Pydantic Evals framework builds on these foundations by providing structured abstractions (Cases, Evaluators, Datasets) that transform ad-hoc tests into maintainable, scalable evaluation suites with metadata for slicing results and structured reports for comparison across system variants. The eval runner section then shows how to move evals from interactive notebooks to automated pipelines: convention-based discovery of eval files, custom evaluators for agent-specific concerns (JSON validation, schema matching, tool call verification), and CLI integration for CI gating.
 
 The final section introduces Doctors, AI-powered analyzers that evaluate the quality of prompts, tools, MCP server definitions, A2A agent cards, and Agent Skills. Where evals assess whether an agent produces correct outputs, doctors assess whether the components that define an agent are well-specified in the first place. Poorly defined tools force models to guess about expected inputs; vague prompts produce inconsistent behavior. Doctors catch these issues before they manifest as evaluation failures, completing the quality assurance loop from component definition through system behavior.
 
@@ -12020,7 +12129,7 @@ By separating these concerns, test failures become easier to diagnose. A failing
 
 ## Hands-On: Basic Evals
 
-Evals transform informal confidence ("this agent seems to work") into repeatable, versioned evidence about correctness. This hands-on explores three fundamental evaluation approaches through `example_evals.ipynb`, progressing from simple string matching to LLM-as-a-Judge.
+Evals transform informal confidence ("this agent seems to work") into repeatable, versioned evidence about correctness. This hands-on explores fundamental evaluation approaches through `example_evals.ipynb`, progressing from simple string matching to LLM-as-a-Judge.
 
 ### Why Evals Matter
 
@@ -12406,7 +12515,7 @@ Each discovered dataset can then be executed individually or in batch. The runne
 
 ### Custom Evaluators
 
-The core library provides four evaluators for common agent scenarios that go beyond basic string or type checks.
+The core library provides evaluators for common agent scenarios that go beyond basic string or type checks.
 
 `OutputContainsJson` checks whether the output is valid JSON. This is useful when agents are expected to return structured data but the output type is a raw string.
 
@@ -12436,6 +12545,27 @@ The first case passes both evaluators. The second case fails both: the output is
 
 `ToolWasCalled` and `NoToolErrors` inspect the execution span tree to verify tool invocation patterns. `ToolWasCalled` asserts that a specific tool was invoked during the agent run, while `NoToolErrors` asserts that no tool calls resulted in errors. These evaluators address the process-level guarantees discussed in the evals section: verifying not just what the agent returned, but how it executed.
 
+```python
+from agentic_patterns.core.evals import Case, Dataset, Contains, ToolWasCalled, NoToolErrors
+
+dataset_search = Dataset(
+    cases=[
+        Case(
+            name="search_query",
+            inputs="Find papers about attention mechanisms",
+            expected_output="attention",
+        ),
+    ],
+    evaluators=[
+        Contains(),
+        ToolWasCalled(tool_name="search"),
+        NoToolErrors(),
+    ],
+)
+```
+
+When this dataset runs against an agent, `Contains` checks the output as usual, but `ToolWasCalled` and `NoToolErrors` look at the span tree recorded during execution. If the agent answered without calling the `search` tool, or if a tool call raised an error, the corresponding evaluator fails. This makes it possible to enforce behavioral expectations beyond output content.
+
 ### CLI Integration
 
 The same discovery and execution logic is available as a command-line tool:
@@ -12448,12 +12578,12 @@ python -m agentic_patterns.core.evals --evals-dir agentic_patterns/examples/eval
 python -m agentic_patterns.core.evals --evals-dir agentic_patterns/examples/evals --filter capitals
 ```
 
-The CLI returns a non-zero exit code when any evaluation fails, making it suitable as a CI gate. Options control report detail (`--include-reasons`, `--include-output`) and pass thresholds (`--min-assertions`). This is how evals move from interactive notebooks to automated regression checks that run on every commit.
+The CLI returns a non-zero exit code when any evaluation fails, making it suitable as a CI gate. Options control report detail (`--include-output`, `--include-reasons`, `--include-evaluator-failures`) and pass thresholds (`--min-assertions`). This is how evals move from interactive notebooks to automated regression checks that run on every commit.
 
 
 ## Hands-On: Doctors
 
-Doctors are AI-powered quality analyzers that evaluate artifacts used in agentic systems: prompts, tools, MCP servers, A2A agent cards, and Agent Skills. Each doctor uses an LLM to assess quality, identify issues, and provide actionable recommendations. This hands-on explores the five doctor types through `example_doctors.ipynb`.
+Doctors are AI-powered quality analyzers that evaluate artifacts used in agentic systems: prompts, tools, MCP servers, A2A agent cards, and Agent Skills. Each doctor uses an LLM to assess quality, identify issues, and provide actionable recommendations. This hands-on explores each doctor type through `example_doctors.ipynb`.
 
 The doctor pattern addresses a common challenge: as agentic systems grow, the quality of their components becomes harder to verify manually. A prompt that seems clear to its author may confuse the model. A tool definition missing type hints forces the model to guess about expected inputs. Doctors automate this quality assessment, catching issues before they cause problems in production.
 
@@ -12722,13 +12852,13 @@ This chapter treats connectors as first-class architectural components. Rather t
 
 
 
-# Connector patterns
+## Connector patterns
 
 Agents are only as useful as the data they can reliably read and safely change, so "connectors" should expose a small set of predictable operations that cover most everyday data access needs.
 
 A connector, in the agent sense, is a tool surface that turns an external system into a few stable verbs the agent can call directly. The key design constraint is that the verbs must be generic enough to work across many backends, but opinionated enough to provide real leverage (validation, previews, schema discovery, safe writes, and bounded reads). A raw "HTTP request tool" is too generic to be dependable, while a "SQL connector" is generic in a useful way because SQL is itself a strong abstraction and most databases provide the same introspection and query semantics.
 
-#### Connectors are not tools
+### Connectors are not tools
 
 It is worth making a distinction that is easy to miss: connectors and tools are different things, even though they often end up wired together.
 
@@ -12742,7 +12872,7 @@ Throughout this chapter, the code examples show connector methods (the abstracti
 
 In practice, five connector archetypes cover the majority of day-to-day enterprise use cases for agents: file/object storage connectors, SQL connectors, OpenAPI/REST connectors, graph/relationship connectors, and controlled vocabulary/ontology connectors.
 
-#### File and object-storage connectors
+### File and object-storage connectors
 
 The simplest and most widely applicable connector is "file-like access." This includes local files, network shares, and object stores such as S3, GCS, and Azure Blob. Although their underlying semantics differ (paths vs keys, atomic rename vs versioned objects), the agent rarely needs those details. What the agent needs is the ability to locate content, preview it, read bounded slices, and apply small edits safely.
 
@@ -12775,7 +12905,7 @@ The bounded read methods (`head`/`tail`, present in all three format connectors)
 
 A common trap is over-generalizing editing. Agents frequently need to make small changes, but arbitrary in-place mutation is not uniformly supported across object stores. The connector should therefore define edits in terms of safe, portable behavior: read the smallest necessary slice, apply a patch deterministically, and write back with concurrency control (ETag / version preconditions) so the agent does not overwrite someone else's update.
 
-##### Format-aware "specializations" that remain generic
+#### Format-aware "specializations" that remain generic
 
 File-like connectors become substantially more useful when they add a few format-aware helpers for the formats that dominate private enterprise data: plain text/markdown/code, CSV/TSV, and JSON.
 
@@ -12825,7 +12955,7 @@ json.append("config/app.json", json_path="$.features.rollout.regions",
 
 The important pattern is that format-aware methods do not replace the generic file connector; they sit alongside it as "sharp tools" for the top few formats. This keeps the connector surface small while still being meaningfully usable.
 
-#### SQL database connectors
+### SQL database connectors
 
 SQL databases are a canonical "80% connector" because SQL provides a stable query abstraction across vendors, and databases expose standardized metadata and query planning interfaces. This makes it possible to offer a single agent-facing connector that works broadly, independent of schema or engine.
 
@@ -12856,7 +12986,7 @@ Second, query validation must be built into execution, not left as an afterthoug
 
 This is one of the rare places where "generic" remains very effective: the connector can be broadly applicable because SQL itself is the abstraction, and schema discovery works regardless of application domain.
 
-#### OpenAPI / REST API connectors
+### OpenAPI / REST API connectors
 
 HTTP APIs can be too generic to be reliable for agents unless the connector gives the agent meaningful structure: what endpoints exist, what parameters are required, what schemas are expected, and how authentication is handled.
 
@@ -12880,7 +13010,7 @@ api.call_endpoint(api_id="ticketing", method="POST", path="/tickets",
 
 The design goal is to avoid a "generic API connector" that is just `http_get(url)` and `http_post(url, body)`. Those primitives push complexity onto the agent, which then must infer required fields, encode authentication correctly, and interpret error responses. By contrast, an OpenAPI-driven connector can make the agent reliably productive by turning undocumented details into discoverable tool affordances. The agent discovers what is available, inspects the details, and then makes a validated call -- the same exploration-then-action workflow a developer would follow, but driven entirely by the model's reasoning. ([OpenAPI Initiative Publications][conn-1], [OpenAPI Initiative Blog][conn-2])
 
-#### Graph and relationship connectors
+### Graph and relationship connectors
 
 Graph and relationship stores appear whenever the primary question is not "what records match this filter," but "how things are connected." Ownership hierarchies, dependency graphs, identity and access models, data lineage, and knowledge graphs all fall into this category. In these systems, the value is not in individual rows or documents, but in traversals, neighborhoods, and paths.
 
@@ -12934,7 +13064,7 @@ This book does not include a graph connector implementation. The pattern is desc
 
 In practice, this makes the graph connector a specialized but high-leverage addition. It does not replace SQL or file access, but complements them in domains where relationships, not records, are the primary unit of meaning.
 
-#### Controlled vocabularies and ontology connectors
+### Controlled vocabularies and ontology connectors
 
 Controlled vocabularies and ontologies define the *allowed language* of a system: canonical terms, enumerations, synonyms, hierarchies, and semantic relationships. They are common in regulated, data-intensive, or long-lived domains such as healthcare, finance, life sciences, enterprise architecture, and data governance.
 
@@ -13504,7 +13634,7 @@ Both strategies implement the same interface, so the VocabularyConnector and the
 
 ### Registering Vocabularies
 
-The notebook registers both vocabularies programmatically using in-memory toy data. In production, vocabularies would be loaded from files (OBO, OWL, tabular formats) declared in `vocabularies.yaml`:
+The notebook registers both vocabularies programmatically using in-memory toy data. In production, vocabularies would be loaded from files ([OBO][vocab-1], [OWL][vocab-2], [RF2][vocab-3], tabular formats) declared in `vocabularies.yaml`:
 
 ```python
 reset()
@@ -13568,6 +13698,10 @@ This is the pattern that would precede a SQL query in a clinical database pipeli
 ### Key Takeaways
 
 Controlled vocabularies bridge natural language and structured databases. The Tree strategy handles medium vocabularies with exact and fuzzy matching over an in-memory adjacency list. The RAG strategy handles large vocabularies with semantic search via vector embeddings. Both strategies share the same interface, so the VocabularyConnector and agent tools are strategy-agnostic. The vocabulary agent autonomously decides which vocabulary to search, resolves terms, and navigates hierarchies, producing standardized codes that downstream agents can use directly in SQL queries.
+
+[vocab-1]: https://owlcollab.github.io/oboformat/doc/obo-syntax.html
+[vocab-2]: https://www.w3.org/TR/owl2-overview/
+[vocab-3]: https://confluence.ihtsdotools.org/display/DOCRELFMT
 
 
 ## Hands-On: Private Data Guardrails
@@ -14826,7 +14960,7 @@ async def add(ctx: RunContext[StateDeps[CalculatorState]], a: int, b: int) -> To
 
 The `ToolReturn` carries both the return value (what the LLM sees) and metadata events (what the frontend sees). `StateSnapshotEvent` tells the frontend to update its local state with the new snapshot. `CustomEvent` signals a domain-specific action the frontend can interpret however it wants.
 
-The `sub` and `mul` tools follow the same pattern. The actual code in `example_agui_app_v3.py` extracts the repeated state-update-and-event logic into an `update_state_with_result()` helper to avoid duplication across the three arithmetic tools. Two additional tools handle history:
+The `sub` and `mul` tools follow the same pattern. The shared calculator components -- state model, `update_state_with_result()` helper, arithmetic tools, and `show_history` -- live in `calculator.py` so v4 and v5 reuse them. v3 adds `clear_history` for resetting state:
 
 ```python
 async def show_history(ctx: RunContext[StateDeps[CalculatorState]]) -> str:
@@ -15521,14 +15655,14 @@ Neither layer depends on the other. Tool permissions cannot prevent code from ma
 
 **Pickle IPC** supports rich Python objects but introduces deserialization risks. The temp directory is short-lived and mounted read-write only for the duration of execution, limiting the attack surface.
 
-**Subprocess fallback** provides no isolation on non-Linux platforms. This is acceptable for development but must not be used in production with untrusted code.
+**No subprocess fallback**. Running agent-generated code in a plain subprocess is a security risk -- the child inherits full host access. If neither bwrap nor Docker is available, the system raises an error rather than silently degrading to an unsandboxed process.
 
 
 ## REPL
 
 The REPL pattern enables an agent to iteratively execute code in a shared, stateful environment, providing immediate feedback while preserving the illusion of a continuous execution context.
 
-#### The REPL pattern in agentic systems
+### The REPL pattern in agentic systems
 
 In an agent setting, a REPL is not merely a convenience for developers; it is a reasoning primitive. The agent alternates between generating code, executing it, observing outputs or errors, and deciding what to do next. This loop allows the agent to ground abstract reasoning in concrete runtime behavior.
 
@@ -15547,7 +15681,7 @@ First, **state continuity**. Each execution step must see the effects of previou
 
 Second, **isolation and safety**. Arbitrary code execution is dangerous in long-running systems. Modern REPL designs therefore decouple *logical continuity* from *physical isolation*: each execution runs in a constrained environment, yet the system reconstructs enough context to make the experience appear continuous.
 
-#### The notebook and cell model
+### The notebook and cell model
 
 A natural way to organize a REPL for agents is to borrow the notebook metaphor from Jupyter. A **notebook** represents a session: it owns a shared namespace, tracks execution history, and persists its state to disk. Each unit of code submitted for execution is a **cell**.
 
@@ -15555,7 +15689,7 @@ A cell progresses through a lifecycle: IDLE when created, RUNNING during executi
 
 This model gives the REPL a clear structure. The notebook manages the shared namespace, the accumulated import and function declarations, and the persistence lifecycle. Cells are self-contained execution units that can be inspected, re-run, or deleted independently.
 
-#### Process isolation with a persistent-state illusion
+### Process isolation with a persistent-state illusion
 
 A robust REPL for agents executes each cell in a fresh subprocess. This avoids crashes, memory leaks, and infinite loops from destabilizing the host system. To preserve continuity, the namespace is serialized before execution and restored afterward.
 
@@ -15587,7 +15721,7 @@ The important constraint is that only picklable objects can persist. Modules, op
 
 Some objects require special handling. For example, openpyxl workbooks are not directly picklable, but they can be saved to temporary files and restored via a lightweight reference object. The reference carries the path to the temp file; when the next cell executes, the workbook is reloaded from disk. This pattern generalizes to any complex object that supports save/load semantics but not pickle.
 
-#### Sandboxing
+### Sandboxing
 
 Process isolation alone does not provide meaningful security. The subprocess inherits the host's filesystem access, network, and process namespace. A production REPL needs a sandbox layer that restricts what the subprocess can do.
 
@@ -15605,7 +15739,7 @@ One consequence of using a standalone executor is that the IPC format changes. T
 
 One useful refinement is **data-driven network isolation**. If a session has been flagged as containing private data (for example, after loading sensitive files), the sandbox enables network isolation automatically. This prevents exfiltration of sensitive data through code execution, even if the agent or user does not explicitly request it.
 
-#### Import and function tracking
+### Import and function tracking
 
 One subtle challenge in isolated REPL execution is that imports and function definitions do not survive process boundaries. A common solution is to treat them as *replayable declarations*.
 
@@ -15628,7 +15762,7 @@ exec(current_code, namespace)
 
 This approach preserves developer- and agent-defined APIs across executions without requiring unsafe object sharing.
 
-#### Output capture as first-class data
+### Output capture as first-class data
 
 For agents, execution output is not only for human inspection; it is input to the next reasoning step. A REPL therefore treats outputs as structured data rather than raw text.
 
@@ -15638,7 +15772,7 @@ A particularly important output is the **last-expression value**. Following the 
 
 Separating *output storage* from *output references* is also important. Binary data such as images can be stored internally as raw bytes and exposed to the agent or client via lightweight references (a URI like `notebook://cell/0/image/0`). This prevents large binary payloads from bloating every response.
 
-#### Asynchronous execution and concurrency
+### Asynchronous execution and concurrency
 
 In agent platforms, REPL execution often happens inside servers that must remain responsive. Even though the sandbox itself uses `asyncio.create_subprocess_exec` (which is async), the agent's code running inside the subprocess can be CPU-intensive -- data transformations, model training, heavy computation -- and the subprocess communication can block for the duration. Running this directly on the event loop would stall all other concurrent requests.
 
@@ -15679,13 +15813,13 @@ class Cell(BaseModel):
 
 The `asyncio.to_thread` call is the key boundary: it moves the blocking work off the main event loop's thread, so the server remains responsive to other requests. Inside the worker thread, `asyncio.new_event_loop()` creates a private loop that drives the async subprocess communication. This pattern allows multiple agents or sessions to execute cells concurrently without blocking each other.
 
-#### Sessions, persistence, and multi-user concerns
+### Sessions, persistence, and multi-user concerns
 
 Unlike a local shell, an agent REPL usually operates in a multi-user environment. Each notebook is scoped to a `(user_id, session_id)` pair and persisted to a well-known path on disk (`DATA_DIR / repl / user_id / session_id / cells.json`), separate from the user-visible workspace. The notebook saves its state -- all cells with their code, outputs, and metadata -- after every operation (add, execute, delete, clear). This ensures that work is not lost and that sessions can be resumed after failures.
 
 Persistence also enables secondary capabilities. The notebook can be exported to Jupyter's `.ipynb` format, making it possible to continue work in a standard notebook interface or share results with collaborators who do not use the agent platform.
 
-#### Best practices distilled
+### Best practices distilled
 
 Several best practices consistently emerge when implementing REPLs for agents.
 
@@ -15703,7 +15837,7 @@ Together, these patterns allow agents to reason *through execution* without comp
 
 MCP servers deserve the same network isolation treatment as code-execution sandboxes. When your agent connects to an MCP server -- particularly one you did not write -- every tool call is an opportunity for arbitrary code to run on the server side. A tool that fetches data from an external API, sends an email, or posts to a webhook can exfiltrate private data just as easily as a line of Python in a REPL sandbox. Running MCP servers inside Docker containers and applying the network isolation pattern from the Sandbox section closes this gap.
 
-#### Two containers, one server
+### Two containers, one server
 
 The approach is straightforward: run two instances of the same MCP server image, each with a different network mode. The first instance runs on the bridge network with full connectivity. The second runs on an isolated network with no external access (or proxied access through Envoy, depending on the sensitivity level). Both containers mount the same workspace volume so they share state. The agent's MCP client switches which instance it connects to based on the session's `PrivateData` status.
 
@@ -15720,7 +15854,7 @@ The approach is straightforward: run two instances of the same MCP server image,
 
 The MCP server code does not change between instances. The only difference is the Docker network configuration. Tools that require external connectivity will fail with connection errors in the isolated instance, which is the desired behavior -- the agent should not be able to reach external services through MCP tools once private data enters the session.
 
-#### Configuration
+### Configuration
 
 The `config.yaml` already holds MCP client entries with a `url` field pointing at the server. To support the dual-container pattern, each MCP server entry gets a `url_isolated` field for the restricted instance:
 
@@ -15745,7 +15879,7 @@ class MCPClientConfig(BaseModel):
 
 When `url_isolated` is not set, the client always uses `url` regardless of private data status -- the server either does not need isolation or handles it internally.
 
-#### Client-side switching
+### Client-side switching
 
 Private data can appear at any point during a session -- a tool call might load sensitive records, or a compliance check might flag content that arrived in the conversation. The MCP client must be able to switch to the isolated instance mid-session, between any two tool calls, without tearing down and reopening connections.
 
@@ -15794,7 +15928,7 @@ def get_mcp_client(name, config_path=None, bearer_token=None):
     return MCPServerStrict(url=config.url, timeout=config.read_timeout, headers=headers)
 ```
 
-#### Deploying the containers
+### Deploying the containers
 
 A typical `docker-compose.yaml` runs both instances from the same image:
 
@@ -15813,7 +15947,7 @@ services:
 
 For CONFIDENTIAL data where proxied access is acceptable, the isolated instance can use the same Envoy sidecar pattern described in the Sandbox section, attaching it to an internal Docker network with the proxy as the only gateway.
 
-#### When to use this pattern
+### When to use this pattern
 
 This pattern is essential for third-party or untrusted MCP servers where you cannot audit or control the tool implementations. But it is also highly recommended for your own servers: even well-tested code can have bugs, missed edge cases, or regressions that accidentally leak private data over the network. The container-level network block acts as a safety net that enforces the invariant regardless of application-level correctness. Think of it as defense-in-depth -- `@tool_permission(CONNECT)` and compliance checks are the first line, but the network kill switch ensures that a code mistake cannot silently bypass them.
 
@@ -15822,7 +15956,7 @@ This pattern is essential for third-party or untrusted MCP servers where you can
 
 The sandbox infrastructure described earlier runs agent-generated code in isolated containers. Skills introduce a different trust model: the code is authored by developers, not by the agent. The agent chooses which skill to invoke and with what arguments, but the implementation itself is fixed. This distinction calls for a read-only execution layer where the container can run skill scripts but cannot modify them.
 
-#### Read-Only Mounts
+### Read-Only Mounts
 
 The `ContainerConfig` accepts a `read_only_mounts` dictionary that maps host paths to container paths. When the container is created, these are mounted alongside the writable `/workspace` volume, but with Docker's `ro` flag:
 
@@ -15834,7 +15968,7 @@ for host_path, container_path in config.read_only_mounts.items():
 
 The result is two distinct zones inside the container. `/workspace` is the agent's writable scratch space for data and generated code. `/skills` is an immutable library of developer-authored scripts. The agent can read and execute anything under `/skills`, but any attempt to write there fails at the filesystem level.
 
-#### Wiring Skills to the Sandbox
+### Wiring Skills to the Sandbox
 
 `SandboxManager` accepts an optional `read_only_mounts` dictionary at construction time. This dictionary is passed through to every `ContainerConfig` created by the manager, so every container -- across all sessions -- sees the same read-only mounts:
 
@@ -15867,7 +16001,7 @@ manager.execute_command(user_id, session_id, command)
 
 Because `execute_command` manages the full container lifecycle, skill execution benefits from the same network isolation and workspace persistence described in previous sections. If the session already has a container, the command runs there. If not, a new container is created with both the writable workspace and the read-only skill mounts. If `PrivateData` triggers a network ratchet mid-conversation, the recreated container preserves both mount types.
 
-#### Why Read-Only Matters
+### Why Read-Only Matters
 
 Without the read-only flag, a compromised or misbehaving agent could rewrite a skill script to inject malicious logic that executes on the next invocation -- either in the same session or, if mounts are shared, in other sessions. The `ro` flag is a filesystem-level guarantee enforced by Docker, not by application code. It does not depend on the agent cooperating or on any permission checks in the Python layer.
 
@@ -15887,7 +16021,7 @@ This hands-on walks through `example_mcp_isolation.ipynb`, where an agent connec
 
 The notebook also exercises several production MCP server requirements in a single flow: workspace path translation, `@context_result()` for large results, `@tool_permission` decorators, error classification with `ToolRetryError`, and server-to-client log forwarding via `ctx.info()`.
 
-#### Starting the Servers
+### Starting the Servers
 
 The template server lives in `agentic_patterns/mcp/template/`. Before running the notebook, start two instances of the same server on different ports:
 
@@ -15898,7 +16032,7 @@ fastmcp run agentic_patterns/mcp/template/server.py:mcp --transport http --port 
 
 In production, these would be two Docker containers from the same image -- one on the bridge network, one with `network_mode: "none"` (as shown in the MCP Server Isolation section). For the notebook, two local processes on different ports simulate the same topology without Docker.
 
-#### The Template Server
+### The Template Server
 
 The server itself is minimal. `server.py` calls `create_mcp_server()` from the core library, which returns a `FastMCP` instance with `AuthSessionMiddleware` pre-wired for JWT-based identity propagation. Tools are registered from a separate `tools.py` module:
 
@@ -15909,7 +16043,7 @@ register_tools(mcp)
 
 The four tools in `tools.py` each demonstrate a different requirement. `read_file` combines `@tool_permission(READ)`, `@context_result()`, and `read_from_workspace()` in a single tool. `write_file` shows workspace writes. `search_records` raises `ToolRetryError` when given an empty query, giving the LLM a chance to correct its arguments. `load_sensitive_dataset` flags the session as containing private data via `PrivateData.add_private_dataset()`, which triggers the client-side isolation switch.
 
-#### Connecting via get_mcp_client
+### Connecting via get_mcp_client
 
 The notebook creates the MCP client with a single call:
 
@@ -15930,7 +16064,7 @@ mcp_servers:
 
 The caller does not need to know which variant it got. `MCPServerPrivateData` is a drop-in replacement for `MCPServerStrict` -- it implements the same interface and can be passed directly as a toolset to `get_agent()`.
 
-#### Normal Tool Call
+### Normal Tool Call
 
 The first agent interaction writes a file to the workspace and reads it back. At this point, `session_has_private_data()` returns `False`, so `MCPServerPrivateData._target()` routes the tool call to the normal instance on port 8000.
 
@@ -15944,7 +16078,7 @@ The `async with agent` context manager opens both MCP connections (normal and is
 
 The log output shows `ctx.info("Reading file: ...")` messages from the server, delivered through the MCP protocol's `notifications/message` mechanism and forwarded to Python logging by the client's `log_handler`.
 
-#### Retryable Error
+### Retryable Error
 
 The second interaction deliberately triggers a `ToolRetryError`. The agent is asked to call `search_records` with an empty string:
 
@@ -15963,7 +16097,7 @@ This is the distinction between `ToolRetryError` and `ToolFatalError`. A retryab
 
 The notebook does not exercise the fatal error path. In the template server, `load_sensitive_dataset` raises `ToolFatalError` only when the compliance system itself is unavailable -- an infrastructure failure that cannot be triggered under normal conditions. To see the fatal path in action, you would need to simulate a broken `PrivateData` backend (for instance, by making `PRIVATE_DATA_DIR` unwritable).
 
-#### Private Data and Isolation Switch
+### Private Data and Isolation Switch
 
 The third interaction loads a sensitive dataset:
 
@@ -16018,11 +16152,20 @@ The progression is deliberate. A monolithic agent that works is more valuable th
 Once the monolithic agent is complete, the chapter shifts perspective. A server requirements section consolidates the authentication, workspace, context, permissions, and compliance checklist that MCP and A2A servers must satisfy. The final section decomposes the monolithic agent into distributed MCP servers and A2A services, showing that the same architecture works whether everything runs in one process or across a network.
 
 
+## First Steps
+
+The five agents in this chapter share a common construction pattern: load a system prompt, collect tools from existing modules, and pass both to PydanticAI. Each version adds tools or changes the prompt -- the agent infrastructure stays the same.
+
+The first two versions establish the foundation. The Coder (V1) combines file operations and a Docker sandbox into the simplest useful agent: one that can write code and execute it. The Planner (V2) adds todo tools and a plan-first workflow, turning a reactive write-execute loop into a structured sequence of tracked steps. Both are built from plain tool lists and a single `get_agent()` call -- no orchestrator, no configuration file, no skills.
+
+This is deliberate. The goal is to verify that the core reasoning loop works before introducing progressive disclosure (V3), delegation (V4), or concurrency (V5). Each of those layers solves a problem that only becomes visible once the simpler agent is running.
+
+
 ## Agent V1: The Coder
 
 The Coder is the simplest useful agent: it writes files and executes them. Its tools come from two modules -- file operations (`agentic_patterns/tools/file.py`) for workspace I/O and a sandbox (`agentic_patterns/tools/sandbox.py`) for Docker execution. Both follow the same pattern used by all tool modules in the library: a `get_all_tools()` function returns a list of plain functions passed directly to PydanticAI's `Agent(tools=[...])`.
 
-#### System Prompt
+### System Prompt
 
 The prompt (`prompts/the_complete_agent/agent_coder.md`) establishes three things: where files live, how execution works, and what workflow to follow.
 
@@ -16030,7 +16173,7 @@ The workspace section tells the agent that `/workspace/` is its persistent stora
 
 This prompt is intentionally short. The agent does not need detailed instructions about each tool because PydanticAI injects tool descriptions automatically from the function docstrings. The prompt's job is to explain the environment and the workflow -- the tools explain themselves.
 
-#### Tool Composition
+### Tool Composition
 
 Building the agent requires loading the prompt, collecting tools from both modules, and passing them to `get_agent()`:
 
@@ -16043,7 +16186,7 @@ agent = get_agent(system_prompt=system_prompt, tools=tools)
 
 `get_file_tools()` returns file operations (read, write, edit, find, list, etc.) and `get_sandbox_tools()` returns `sandbox_execute`. Plain list concatenation produces the full tool list. No registration, no configuration -- just functions.
 
-#### Execution
+### Execution
 
 Running the agent is a single call:
 
@@ -16055,7 +16198,7 @@ The `verbose=True` flag logs each step of the agent's execution: tool calls, too
 
 When given a task like "write a Fibonacci script, save it, and run it", the agent typically follows a predictable pattern. It calls `file_write` to create the script in `/workspace/`, then calls `sandbox_execute` to run it inside Docker, and finally reports the output. If the script fails (syntax error, runtime error), the agent sees the error in the sandbox output and can iterate -- reading the file, fixing the issue, and re-executing.
 
-#### What This Demonstrates
+### What This Demonstrates
 
 The Coder implements the CodeAct pattern from the core patterns chapter, but with real infrastructure instead of an in-memory sandbox. The workspace persists across tool calls, the sandbox provides Docker isolation, and the file tools give the agent fine-grained control over its files. The agent can write, read, edit, search, and delete files -- not just create them.
 
@@ -16066,13 +16209,13 @@ The full example is in `agentic_patterns/examples/the_complete_agent/example_age
 
 The Planner extends the Coder with task management. It receives the same file and sandbox tools, plus todo tools for creating and tracking a task list. The important change is in the system prompt: the agent is now instructed to plan before executing.
 
-#### System Prompt
+### System Prompt
 
 The prompt (`prompts/the_complete_agent/agent_planner.md`) adds two sections to the Coder's prompt. The task management section explains the todo tools and instructs the agent to break work into steps before starting. The workflow section is reordered: plan first, then for each step update its status, do the work, and mark it completed.
 
 This is a small change in prompt text but a significant change in agent behavior. The Coder dives straight into writing code. The Planner stops, decomposes the task, creates a visible plan, and then executes against it. The plan serves two purposes: it gives the agent a structure to follow (reducing the chance of forgetting steps in a complex task), and it gives the user visibility into what the agent intends to do.
 
-#### Tool Composition
+### Tool Composition
 
 The only code difference from the Coder is the addition of todo tools:
 
@@ -16083,9 +16226,9 @@ tools = get_file_tools() + get_sandbox_tools() + get_todo_tools()
 agent = get_agent(system_prompt=system_prompt, tools=tools)
 ```
 
-`get_todo_tools()` provides functions for creating lists, adding items, updating status, and displaying the plan. Items have hierarchical IDs (e.g., "1", "1.1", "1.2") and four possible states: pending, in_progress, completed, and failed.
+`get_todo_tools()` provides functions for creating lists, adding items, deleting items, updating status, and displaying the plan. Items have hierarchical IDs (e.g., "1", "1.1", "1.2") and four possible states: pending, in_progress, completed, and failed.
 
-#### Execution
+### Execution
 
 When given a multi-step task -- for example, "create a CSV file with sales data, write a processing script, execute it, and verify the results" -- the Planner's execution trace shows a different structure than the Coder's.
 
@@ -16093,7 +16236,7 @@ The agent first calls `todo_create_list` with descriptions for each step. It the
 
 This pattern scales better to complex tasks. The Coder might lose track of subtasks in a long execution, especially if errors require backtracking. The Planner maintains an explicit record of what has been done and what remains.
 
-#### From Coder to Planner
+### From Coder to Planner
 
 The two agents illustrate a pattern: the same reasoning loop, given more tools and a revised prompt, produces qualitatively different behavior. The Coder is reactive (write, execute, check). The Planner is proactive (plan, then execute against the plan). Neither required changes to the agent infrastructure, the model configuration, or the execution pipeline. The difference is entirely in the tools and the prompt.
 
@@ -16106,13 +16249,13 @@ The full example is in `agentic_patterns/examples/the_complete_agent/example_age
 
 The Planner works well for tasks within its toolset, but what happens when the user asks it to review code for security issues? The agent has no security expertise in its prompt, so it improvises -- producing generic advice that misses real vulnerabilities. The Skilled agent solves this with progressive disclosure: specialized instructions loaded on demand rather than embedded upfront.
 
-#### The Problem with Upfront Loading
+### The Problem with Upfront Loading
 
 One approach would be to paste every specialized instruction (code review, PDF processing, data formatting, etc.) into the system prompt. This fails for two reasons. First, a longer prompt means higher cost and slower responses on every turn, even when most instructions are irrelevant. Second, models perform worse when buried in irrelevant context -- the signal-to-noise ratio matters.
 
 Progressive disclosure resolves this tension. At startup the agent receives only a catalog of skill names and one-line descriptions (cheap metadata). When the agent decides it needs a skill, it calls `activate_skill` to load the full instructions into its context. The system prompt stays lean until the agent actually needs a capability.
 
-#### Skill Discovery
+### Skill Discovery
 
 Skills live in directories under `data/skills/`. Each directory contains a `SKILL.md` file with YAML frontmatter (name, description) and a markdown body with full instructions. Optional subdirectories hold scripts, references, and assets.
 
@@ -16126,7 +16269,7 @@ pdf-processing: Extract text and tables from PDF files.
 
 This is tier 1 of the disclosure hierarchy. The agent knows what skills exist but not how to use them.
 
-#### Tool Composition
+### Tool Composition
 
 The Skilled agent uses `OrchestratorAgent` instead of the bare `get_agent()` / `run_agent()` pair from V1 and V2. The orchestrator handles skill discovery, prompt injection, and tool wiring automatically.
 
@@ -16151,7 +16294,7 @@ agent = OrchestratorAgent(spec, verbose=True)
 
 `from_config()` resolves the prompt path relative to `PROMPTS_DIR`, imports each tool module, calls its `get_all_tools()`, and assembles the `AgentSpec`. The orchestrator then adds `activate_skill` behind the scenes. The agent code does not reference skills directly -- the prompt includes `{% include 'shared/skills.md' %}` and the orchestrator fills in the catalog and provides the tool.
 
-#### Execution
+### Execution
 
 The notebook demonstrates two turns. Turn 1 asks the agent to write a Python calculator script -- a normal coding task that requires no skills. The agent plans, writes, and executes as the Planner would.
 
@@ -16159,7 +16302,7 @@ Turn 2 asks: "review the script you just wrote for security issues." The agent s
 
 The `OrchestratorAgent` carries message history across turns automatically, so the agent remembers the script from turn 1 without the notebook managing any state.
 
-#### Three Tiers of Disclosure
+### Three Tiers of Disclosure
 
 The skill system has three tiers. Tier 1 (always in prompt) is the name and description -- enough for the agent to decide whether a skill is relevant. Tier 2 (loaded via `activate_skill`) is the full SKILL.md body with instructions and examples. Tier 3 (optional) is scripts, references, and assets that live in subdirectories and can be executed in the sandbox or read by the agent when the skill instructions reference them.
 
@@ -16172,13 +16315,13 @@ The full example is in `agentic_patterns/examples/the_complete_agent/example_age
 
 If we add data analysis operations, SQL queries, visualization tools, and vocabulary lookups directly to the Skilled agent, the tool list explodes. Worse, the agent must choose among all of them on every turn, even when a task clearly belongs to one domain. The Coordinator solves tool explosion by delegating to sub-agents instead of absorbing their tools.
 
-#### Delegation Over Accumulation
+### Delegation Over Accumulation
 
 Instead of giving the coordinator SQL tools, it gets a sub-agent that has SQL tools. Instead of giving it data analysis operations, it gets a sub-agent that has those operations. The coordinator decides *who* should handle a task; the sub-agent decides *how*.
 
-Each sub-agent is defined as an `AgentSpec` with its own name, description, system prompt, and tool list. The data analysis sub-agent has file, CSV, JSON, data analysis, data visualization, and REPL tools. The SQL sub-agent has file, CSV, and SQL tools. The vocabulary sub-agent has vocabulary resolution tools. Each runs in its own context with its own instructions, isolated from the coordinator's concerns.
+Each sub-agent is defined as an `AgentSpec` with its own name, description, system prompt, and tool list. The data analysis sub-agent has file, CSV, JSON, data analysis, data visualization, and REPL tools. The SQL sub-agent has file, CSV, and SQL tools. The vocabulary sub-agent has vocabulary resolution tools. The OpenAPI sub-agent has API discovery and invocation tools from an ingested spec. Each runs in its own context with its own instructions, isolated from the coordinator's concerns.
 
-#### Tool Composition
+### Tool Composition
 
 The coordinator's config adds format conversion tools and declares sub-agents:
 
@@ -16195,23 +16338,26 @@ agents:
       - agentic_patterns.agents.data_analysis:get_spec
       - agentic_patterns.agents.sql:get_spec
       - agentic_patterns.agents.vocabulary:get_spec
+      - agentic_patterns.agents.openapi:get_spec
 ```
 
 Each `sub_agents` entry points to a `get_spec()` factory that returns an `AgentSpec` with its own name, description, system prompt, and tool list. The notebook loads everything with `AgentSpec.from_config("coordinator")`.
 
-When `sub_agents` is non-empty, the `OrchestratorAgent` creates a `TaskBroker` internally and auto-generates a `delegate` tool. It also injects a sub-agent catalog into the system prompt via `{% include 'shared/sub_agents.md' %}`, listing each sub-agent's name and description so the agent knows who to call.
+When `sub_agents` is non-empty, the `OrchestratorAgent` creates an `AgentRunner` internally and auto-generates three delegation tools: `task_launch`, `task_output`, and `task_stop`. It also adds task management tools (`task_create`, `task_get`, `task_list_all`, `task_update`) for tracking work. These sit alongside the todo tools from V2 and V3: the todo tools (`todo_create_list`, `todo_add`, `todo_update_status`, etc.) manage a flat checklist of steps, while the task tools provide a dependency-aware system where tasks can declare `blocked_by` relationships, forming a DAG that the agent uses to order its work. The system prompt includes `{% include 'shared/tasks.md' %}` for task management instructions and `{% include 'shared/sub_agents.md' %}` for the sub-agent catalog with delegation tool usage.
 
 The coordinator's direct tools handle file I/O, sandbox execution, task management, skills, and format conversion (`convert_document` for transforming documents between PDF, DOCX, MD, CSV, and other formats). Domain-specific work routes through delegation. The coordinator has far more capabilities than the Skilled agent but fewer tools than it would need if every capability were a direct tool.
 
-#### Execution
+### Execution
 
-The notebook demonstrates two turns against a bookstore database. Turn 1 asks the coordinator to query genre statistics and save results to CSV. The coordinator calls `delegate("sql_analyst", ...)` with a specific prompt. The broker creates a sub-agent from the SQL spec, runs it with SQL tools and schema context, and returns the result as a string. The coordinator then uses its own file tools to save the CSV.
+The notebook demonstrates two turns against a bookstore database. Turn 1 asks the coordinator to query genre statistics and save results to CSV. The coordinator calls `task_launch(agent_name="sql_analyst", prompt=..., description=...)` in foreground mode (the default). The `AgentRunner` creates a fresh `OrchestratorAgent` from the SQL spec, runs it with SQL tools and schema context, and returns the result as a string. The coordinator then uses its own file tools to save the CSV.
 
-Turn 2 asks for a markdown report with a bar chart, converted to PDF. This mixes delegation and direct work: the coordinator delegates chart generation to the data analyst sub-agent (which has visualization tools), writes the report itself (file tools), and converts it to PDF (format conversion tool). The planning pattern from V2 still applies -- the agent creates a todo list, tracks each step, and reports the final state.
+Turn 2 asks for a markdown report with a bar chart, converted to PDF. This mixes delegation and direct work: the coordinator delegates chart generation to the data analyst sub-agent (which has visualization tools), writes the report itself (file tools), and converts it to PDF (format conversion tool). The planning pattern from V2 still applies -- the agent creates tasks with `task_create`, sets dependencies with `task_update`, tracks progress, and marks each step completed.
 
-#### How Delegation Works
+### How Delegation Works
 
-The `delegate` tool is synchronous from the agent's perspective: it submits a task to the broker, waits for the result, and returns it as a string. Under the hood, the broker dispatches the task to a `Worker`, which instantiates a fresh `OrchestratorAgent` from the sub-agent's `AgentSpec`, runs it, and collects the output. Each sub-agent gets its own context window, its own tool set, and its own reasoning trace. The coordinator never sees the sub-agent's intermediate steps -- only the final result.
+The `task_launch` tool is synchronous by default: it launches a sub-agent via the `AgentRunner`, waits for the result, and returns it as a string. Under the hood, the `AgentRunner` instantiates a fresh `OrchestratorAgent` from the sub-agent's `AgentSpec`, runs it, and collects the output. Each sub-agent gets its own context window, its own tool set, and its own reasoning trace. The coordinator never sees the sub-agent's intermediate steps -- only the final result.
+
+Tasks (via `task_create` and `task_update`) can express execution order through `blocked_by` dependencies, so the coordinator can ensure a data analysis task completes before a report-writing task that uses its output.
 
 This separation matters. The SQL sub-agent can reason about schemas, validate queries, and retry on syntax errors without those details leaking into the coordinator's context. The data analysis sub-agent can iterate on DataFrame operations without cluttering the coordinator's message history. Each agent stays focused on its domain.
 
@@ -16220,17 +16366,19 @@ The full example is in `agentic_patterns/examples/the_complete_agent/example_age
 
 ## Agent V5: The Full Agent
 
-The Coordinator delegates work but always waits for the result before continuing. When two sub-agent tasks are independent -- say, querying a database and generating a chart -- running them sequentially wastes time. The Full Agent adds asynchronous task submission, allowing the coordinator to fire off multiple tasks in parallel and collect results when they complete.
+The Coordinator can delegate work both synchronously and asynchronously, but its prompt treats background delegation as one workflow step among many. When two sub-agent tasks are independent -- say, querying a database and generating a chart -- running them sequentially wastes time. The Full Agent elevates asynchronous delegation to a first-class concept, with a dedicated prompt section explaining when to use each mode and how to manage concurrent agents.
 
-#### Two Modes of Delegation
+### Foreground and Background Delegation
 
-The Full Agent's prompt (`prompts/the_complete_agent/agent_full.md`) describes two delegation modes. Synchronous delegation via `delegate(agent_name, prompt)` works exactly as in V4: submit a task, block until the result arrives, return it as a string. This is the right choice when each step depends on the previous result.
+The Full Agent uses the same three delegation tools as V4 (`task_launch`, `task_output`, `task_stop`), but its prompt instructs the agent to use both foreground and background modes.
 
-Asynchronous delegation via `submit_task(agent_name, prompt)` returns immediately with a task ID. The agent can submit multiple tasks, continue with other work, and then call `wait(timeout)` to block until background tasks complete. The `wait` tool is event-driven -- it does not poll. It sleeps until the broker signals that a task has finished or the timeout fires, avoiding unnecessary round-trips.
+Foreground delegation via `task_launch(description, prompt, agent_name)` works exactly as in V4: launch the agent, wait for the result, return it as a string. This is the right choice when each step depends on the previous result.
 
-Between turns, the `OrchestratorAgent` automatically checks for completed background tasks and prepends their results to the next prompt. The agent sees these as `[BACKGROUND TASK COMPLETED: agent_name]` messages, allowing it to reason about results even if it did not explicitly call `wait`.
+Background delegation via `task_launch(description, prompt, agent_name, run_in_background=True)` returns immediately with an agent ID. The agent can launch multiple background agents, continue with other work, and then call `task_output(agent_id)` to retrieve results. By default `task_output` blocks until the agent completes, but it accepts `block=False` for non-blocking checks and a configurable `timeout`. The `task_stop(agent_id)` tool cancels a running background agent.
 
-#### Tool Composition
+Between turns, the `OrchestratorAgent` automatically checks for completed background agents and prepends their results to the next prompt. The agent sees these as `[BACKGROUND AGENT COMPLETED: agent_name (id=...)]` messages, allowing it to reason about results even if it did not explicitly call `task_output`.
+
+### Tool Composition
 
 The config is identical to V4 -- same tools, same sub-agents, different prompt:
 
@@ -16247,27 +16395,28 @@ agents:
       - agentic_patterns.agents.data_analysis:get_spec
       - agentic_patterns.agents.sql:get_spec
       - agentic_patterns.agents.vocabulary:get_spec
+      - agentic_patterns.agents.openapi:get_spec
 ```
 
-The `OrchestratorAgent` generates `delegate`, `submit_task`, and `wait` tools whenever sub-agents are present. The difference is that the Full Agent's prompt instructs the agent when to use each mode, while the Coordinator's prompt only mentions `delegate`. The capability was always there; the prompt unlocks it.
+The `OrchestratorAgent` generates `task_launch`, `task_output`, and `task_stop` tools whenever sub-agents are present -- the same tools as V4. Both prompts mention background delegation in their workflow, but the Full Agent adds a dedicated "Background tasks" section that explains when to use synchronous versus asynchronous delegation. The Coordinator's prompt mentions `run_in_background=True` as a workflow step; the Full Agent's prompt makes the distinction between the two modes a first-class concept with explicit guidance on when to choose each.
 
-#### Execution
+### Execution
 
-The notebook demonstrates both modes. Turn 1 uses synchronous delegation to query the bookstore database -- a single task where the agent needs the result immediately. This works identically to V4.
+The notebook demonstrates both modes. Turn 1 uses foreground delegation to query the bookstore database -- a single task where the agent needs the result immediately. This works identically to V4.
 
-Turn 2 asks for two independent tasks: query the top five most expensive books, and generate a bar chart of average prices by genre. The agent calls `submit_task("sql_analyst", ...)` and `submit_task("data_analyst", ...)` in sequence, receiving task IDs for each. Both tasks start running concurrently through the broker. The agent then calls `wait` to block until both complete. Once results arrive, it writes a markdown report combining the findings.
+Turn 2 asks for two independent tasks: query the top five most expensive books, and generate a bar chart of average prices by genre. The agent calls `task_launch` with `run_in_background=True` for both, receiving agent IDs for each. Both agents start running concurrently. The agent then calls `task_output` for each to collect the results. Once results arrive, it writes a markdown report combining the findings.
 
-#### The Task Broker
+### The AgentRunner
 
-All delegation -- both synchronous and asynchronous -- flows through a single `TaskBroker` backed by an in-memory `TaskStoreMemory`. The broker manages task state (pending, running, completed, failed, cancelled), dispatches tasks to workers as background coroutines, and signals completion via an `asyncio.Event`. The `delegate` tool is simply `submit_task` followed by `wait` for that single task -- there is no separate code path.
+All delegation -- both foreground and background -- flows through a single `AgentRunner`. The runner manages agent state, dispatches to local sub-agents as asyncio tasks or to remote A2A agents via HTTP, and provides a unified interface for launching, querying, and stopping agents. For local sub-agents, each execution instantiates a fresh `OrchestratorAgent` from the sub-agent's `AgentSpec`, runs it against the input, and stores the result. On `__aexit__`, the orchestrator calls `runner.cancel_all()` to clean up any still-running background agents.
 
-Each worker instantiates a fresh `OrchestratorAgent` from the sub-agent's `AgentSpec`, runs it against the task input, and stores the result. Workers emit progress events (tool calls) and log events (reasoning) that accumulate on the task object, providing a full execution trace for debugging. On `__aexit__`, the orchestrator calls `broker.cancel_all()` to clean up any still-running background tasks.
+The `AgentRunner` also handles the task coordination layer: it inherits the parent's `TaskList`, so child agents can see and manage the same set of tasks. This means a sub-agent can create tasks, update their status, and declare dependencies, all visible to the parent and to sibling agents.
 
-#### The Monolithic Limit
+### The Monolithic Limit
 
-The Full Agent is the most capable monolithic agent in this progression: direct tools for file I/O, sandbox execution, task management, and format conversion; delegation tools for sub-agents; skills loaded on demand; and concurrent task execution. It remains a single `OrchestratorAgent` running from a notebook -- no MCP servers, no A2A protocol, no network calls.
+The Full Agent is the most capable monolithic agent in this progression: direct tools for file I/O, sandbox execution, task management, and format conversion; delegation tools for sub-agents; skills loaded on demand; and concurrent agent execution. It remains a single `OrchestratorAgent` running from a notebook -- no MCP servers, no A2A protocol, no network calls.
 
-This is deliberate. Everything built so far -- planning, skills, delegation, async tasks -- works within a single process. The patterns are the same ones that will later drive the distributed system, but here they are validated without infrastructure complexity.
+This is deliberate. Everything built so far -- planning, skills, delegation, async agents -- works within a single process. The patterns are the same ones that will later drive the distributed system, but here they are validated without infrastructure complexity.
 
 The full example is in `agentic_patterns/examples/the_complete_agent/example_agent_full.ipynb`.
 
@@ -16276,7 +16425,7 @@ The full example is in `agentic_patterns/examples/the_complete_agent/example_age
 
 The Full Agent (V5) is the most capable monolithic agent in this progression, but it runs entirely within a single process. The next step decomposes it into independently deployable services: MCP servers for tool access and A2A servers for agent delegation. Before building those services, it is worth collecting the essential requirements that every production MCP and A2A server must satisfy. These requirements were introduced across earlier chapters -- in the MCP architecture and tools sections, the A2A protocol and security sections, and the execution infrastructure chapter. This section consolidates them as a practical checklist.
 
-#### MCP Server Requirements
+### MCP Server Requirements
 
 **Authentication.** Every MCP server must authenticate incoming requests. The pattern used throughout this book is JWT-based: an `AuthSessionMiddleware` extracts `sub` and `session_id` claims from the token and propagates them into contextvars via `set_user_session()`. Tools never receive identity as a parameter. Instead, they call `get_user_id()` or `get_session_id()` to retrieve it from context. This keeps tool signatures clean and prevents an agent from impersonating another user by passing a different identity.
 
@@ -16300,7 +16449,7 @@ The Full Agent (V5) is the most capable monolithic agent in this progression, bu
 
 **Testing.** Unit tests use FastMCP's in-memory client to test tools without starting a server process. Tests live in `tests/unit/` and `tests/integration/`, following the same structure as the rest of the codebase.
 
-#### A2A Server Requirements
+### A2A Server Requirements
 
 **Server creation.** An A2A server is a PydanticAI agent exposed via `agent.to_a2a(name, description, skills)`. The `skills` list must reflect the agent's actual capabilities. For simple agents whose capabilities come directly from tool functions, `tool_to_skill()` converts each function to a `Skill` by extracting the name and docstring. When capabilities come from sub-agents, MCP servers, or loaded skills, the skill declarations must be written explicitly -- otherwise the Agent Card will mislead coordinators that rely on it for routing decisions.
 
@@ -16319,15 +16468,15 @@ The Full Agent (V5) is the most capable monolithic agent in this progression, bu
 
 ## Infrastructure: The Distributed Agent
 
-The Full Agent runs everything in a single process. Tools are Python functions imported directly, sub-agents are instantiated from `AgentSpec` objects and executed by the `TaskBroker` in the same event loop. This is convenient for development, but it means every capability must live in the same Python environment and share the same process lifetime.
+The Full Agent runs everything in a single process. Tools are Python functions imported directly, sub-agents are instantiated from `AgentSpec` objects and executed by the `AgentRunner` in the same event loop. This is convenient for development, but it means every capability must live in the same Python environment and share the same process lifetime.
 
 The Infrastructure Agent keeps the same agent architecture -- `AgentSpec`, `OrchestratorAgent`, prompt templates, skills -- but replaces the tool source and delegation target. Direct Python tool imports become MCP server connections. In-process sub-agents become remote A2A servers. The agent itself does not change; the `AgentSpec` fields do.
 
-#### What Changes
+### What Changes
 
 The monolithic agent imports tools as Python functions and passes them via the `tools` field of `AgentSpec`. The infrastructure agent declares `mcp_servers` instead, each pointing to a running FastMCP server. When the `OrchestratorAgent` enters its async context, it creates `MCPServerStreamableHTTP` toolset objects and passes them to `get_agent(toolsets=[...])`. The PydanticAI `Agent` then discovers available tools by connecting to each MCP server at startup.
 
-Similarly, the monolithic agent declares `sub_agents` -- a list of `AgentSpec` objects that the `TaskBroker` instantiates on demand. The infrastructure agent declares `a2a_clients` instead, each pointing to a running A2A server. The `OrchestratorAgent` fetches each server's agent card, generates a delegation tool per card via `create_a2a_tool()`, and appends the agent descriptions to the system prompt.
+Similarly, the monolithic agent declares `sub_agents` -- a list of `AgentSpec` objects that the `AgentRunner` instantiates on demand. The infrastructure agent declares `a2a_clients` instead, each pointing to a running A2A server. The `OrchestratorAgent` fetches each server's agent card, builds an `AgentRunner` that handles both local and remote agents, and appends the agent descriptions to the system prompt.
 
 The resulting config has no `tools` and no `sub_agents`:
 
@@ -16336,18 +16485,18 @@ agents:
   infrastructure_agent:
     system_prompt: the_complete_agent/agent_infrastructure.md
     mcp_servers: [file_ops, sandbox, todo, format_conversion]
-    a2a_clients: [nl2sql, data_analysis, vocabulary]
+    a2a_clients: [nl2sql, data_analysis, vocabulary, openapi]
 ```
 
 The notebook loads it with `AgentSpec.from_config("infrastructure_agent")`, same as V3-V5.
 
-#### MCP Servers as Tool Providers
+### MCP Servers as Tool Providers
 
 The coordinator connects to four MCP servers for its direct tools: `file_ops` (file, CSV, and JSON operations), `sandbox` (Docker execution), `todo` (task management), and `format_conversion` (document conversion). Each runs as an independent HTTP service started via `fastmcp run ... --transport http --port N`.
 
-The A2A servers also connect to MCP servers internally. The `data_analysis` A2A server connects to four: `data_analysis` (DataFrame operations), `data_viz` (plotting), `file_ops` (file, CSV, and JSON I/O), and `repl` (Python notebook execution). The monolithic version imported file, CSV, and JSON tools from three separate modules; the distributed version consolidates them into a single `file_ops` MCP server. The `nl2sql` A2A server connects to `sql`. The `vocabulary` A2A server connects to `vocabulary`. All MCP connections are declared in `config.yaml` under `mcp_servers`.
+The A2A servers also connect to MCP servers internally. The `data_analysis` A2A server connects to four: `data_analysis` (DataFrame operations), `data_viz` (plotting), `file_ops` (file, CSV, and JSON I/O), and `repl` (Python notebook execution). The monolithic version imported file, CSV, and JSON tools from three separate modules; the distributed version consolidates them into a single `file_ops` MCP server. The `nl2sql` A2A server connects to `sql`. The `vocabulary` A2A server connects to `vocabulary`. The `openapi` A2A server connects to `openapi` for API discovery and invocation. All MCP connections are declared in `config.yaml` under `mcp_servers`.
 
-#### A2A Servers as Delegation Targets
+### A2A Servers as Delegation Targets
 
 Each A2A server wraps a PydanticAI agent with MCP toolsets and exposes it via the A2A protocol. The pattern is minimal:
 
@@ -16360,15 +16509,770 @@ app.add_middleware(AuthSessionMiddleware)
 
 The coordinator discovers each A2A server's capabilities by fetching its agent card from `/.well-known/agent-card.json`. The `OrchestratorAgent._connect_a2a()` method does this automatically, creating one delegation tool per server. The A2A agent descriptions are appended to the system prompt by `build_coordinator_prompt()`, so no explicit A2A section is needed in the prompt template.
 
-#### The Launch Script
+### The Launch Script
 
-Starting the distributed system requires launching nine MCP servers and three A2A servers. The launch script (`scripts/launch_infrastructure.sh`) starts all processes in the background with a trap to kill them on exit. MCP servers start first since A2A servers depend on them for tool discovery at import time.
+Starting the distributed system requires launching ten MCP servers and four A2A servers. The launch script (`scripts/launch_infrastructure.sh`) starts all processes in the background with a trap to kill them on exit. MCP servers start first since A2A servers depend on them for tool discovery at import time.
 
-#### The Example
+### The Example
 
 The notebook (`agentic_patterns/examples/the_complete_agent/example_agent_infrastructure.ipynb`) runs the same two prompts as the Full Agent to demonstrate equivalent capability. Turn 1 queries the bookstore database (routes to the `nl2sql` A2A server). Turn 2 asks for parallel work (routes to both `nl2sql` and `data_analysis` A2A servers). The agent uses its MCP-connected file tools to write the final report.
 
 The full example is in `agentic_patterns/examples/the_complete_agent/example_agent_infrastructure.ipynb`.
+
+
+\newpage
+\ 
+\newpage
+
+# Chapter: Advanced Agents
+
+## Introduction
+
+The previous chapters introduced the building blocks of agentic systems: tool use, memory, planning, orchestration, retrieval, and evaluation. This chapter composes those blocks into complete agent architectures that solve problems too complex or too sensitive for a single-pass prompt.
+
+Each section presents a self-contained agent pattern with its design rationale, core data model, and a working implementation. The accompanying notebooks let you run each agent end-to-end and inspect intermediate state at every step.
+
+The patterns covered are adversarial debate (structured opposition to pressure-test decisions), deep research (iterative evidence accumulation with gap detection), rubric-based evaluation (criteria-driven assessment with provenance), code indexing and search (structure-aware retrieval over repositories), and anonymization (layered de-identification with verification).
+
+
+## Adversarial & Debate Agents
+
+Adversarial and debate agents use structured opposition to surface hidden failure modes, pressure-test assumptions, and converge on more reliable decisions than a single-pass generator.
+
+### Why adversarial composition works
+
+Most agent failures in complex tasks are not “no answer” failures; they are “plausible but wrong” failures. The core idea is to split responsibilities across roles that are incentivized to disagree: one role proposes, another attacks, and a third adjudicates. This creates a controlled form of internal skepticism that is difficult to elicit from a single monolithic prompt, and it turns “uncertainty” into actionable follow-up questions.
+
+In practice, these agents compose patterns from earlier chapters, including critique-and-revise loops, tool-grounded claims, and explicit stopping criteria. Multi-agent debate has been shown to improve reasoning and factuality on several benchmark tasks when agents exchange arguments over multiple rounds.
+
+### Red-team agents
+
+A red-team agent is a specialized adversary whose output is not the final solution, but the strongest set of challenges that could make the solution fail. The useful mental model is gap-driven test generation: given an answer draft or plan, the red-team agent searches for missing evidence, unstated assumptions, ambiguity, and edge cases, and then produces targeted probes that force the main agent either to justify, to retrieve evidence, or to revise.
+
+A reliable red-team agent is constrained by a threat model. Without an explicit threat model, the red-team will either under-attack or over-attack. Modern red-teaming practice emphasizes matching tests to the system’s intended use, interfaces, and attacker capabilities. The red-team interaction is best structured as a two-stage contract: first generate attacks, then score whether each attack is answered with evidence. If evidence is missing, the system creates a concrete retrieval action or experiment rather than allowing debate to continue abstractly.
+
+```python
+red_team = RedTeamAgent(
+    threat_model="Data migration risks: data loss, downtime, performance regression."
+)
+result = await red_team.analyze(result=decision, context=reasoning)
+for ch in result.challenges:
+    print(f"[{ch.severity}] {ch.claim}")
+    print(f"  Attack: {ch.attack}")
+    print(f"  Required evidence: {ch.required_evidence}")
+```
+
+### Debate agents
+
+Debate agents extend red-teaming by running an explicit, turn-based argument protocol. The canonical form uses two opposing sub-agents and an arbiter. One agent defends a candidate answer or plan, the other attempts to falsify it, and the arbiter decides what survives based on evidence and internal consistency. This structure follows the intuition of debate-based oversight: when direct evaluation is hard, adversarial argumentation highlights the crux of disagreement.
+
+To make debate productive rather than verbose, three constraints matter. Arguments are anchored to explicit claims with supporting evidence and rebuttals. The arbiter follows an evidence-first decision rule, accepting claims only when supported and rejecting claims contradicted by evidence. The system enforces diversity across debating agents, for example by varying prompts or personas, to avoid convergence by collusion.
+
+```python
+debate = DebateOrchestrator(max_rounds=3)
+result = await debate.run(proposal)
+
+for i, rnd in enumerate(result.rounds):
+    print(f"Round {i + 1}:")
+    print(f"  Advocate: {rnd.advocate.position}")
+    print(f"  Critic:   {rnd.critic.position}")
+
+print(f"Decision: {result.verdict.decision}")
+print(f"Open questions: {result.verdict.open_questions}")
+```
+
+Each round, the arbiter checks whether the debate has converged. If `verdict.is_sufficient` is true, no further rounds are needed; otherwise the next round opens with the full prior transcript so each side can address what was contested.
+
+### Persona simulation as controlled adversarial diversity
+
+Persona simulation operationalizes diversity of critique by encoding viewpoints as role descriptions rather than ad hoc prompt styles. Each persona represents a stable role in the target domain, capturing the constraints an expert in that role would actually apply. The intent is not to imitate individuals but to encode the lens through which a given role evaluates evidence.
+
+In practice, a persona is a short text description passed as `advocate_prompt` or `critic_prompt`. A startup CTO and a database reliability engineer will weigh the same proposal very differently:
+
+```python
+debate = DebateOrchestrator(
+    advocate_prompt="You are a startup CTO who values developer velocity and schema flexibility above all else.",
+    critic_prompt="You are a database reliability engineer who has managed PostgreSQL clusters at scale for 10 years.",
+    max_rounds=2,
+)
+result = await debate.run(proposal)
+```
+
+For repeatability, persona descriptions can be stored as plain text files in a `personas/` directory and loaded at runtime. This makes them auditable and easy to evolve as the system’s scope changes.
+
+Personas should evolve based on observed system failures. By clustering historical errors by root cause, you can refine persona descriptions to cover blind spots that repeatedly escape critique. This connects persona simulation to rubric-based evaluation and error taxonomies introduced elsewhere in the book.
+
+### Hands-on
+
+See `example_debate.ipynb` for a working notebook that demonstrates a basic advocate-vs-critic debate and red-team analysis of the resulting verdict.
+
+
+## Deep Research Agent
+
+A deep research agent is an iterative retrieve–reason–verify loop that accumulates evidence, detects gaps and conflicts, and stops only when it can justify coverage and confidence within explicit budgets.
+
+### Why “deep research” is a distinct agent pattern
+
+Basic RAG answers a question with a single retrieval step and a single synthesis pass. In practice, “research” tasks are rarely single-hop: what you should search for depends on what you just learned, and what you just learned may be incomplete, contradictory, or too low-quality to cite. A deep research agent makes that dependency explicit by turning retrieval into a controlled, stateful process.
+
+Conceptually, it composes patterns introduced earlier in the book: planning (to decide what to look for next), tool use (to retrieve from heterogeneous sources), structured memory (to store evidence and unresolved questions), critique/verification (to test claims against sources), and budgeting/stopping (to prevent infinite loops). IRCoT and related work formalize the key insight: interleaving intermediate reasoning steps with retrieval improves both retrieval quality and final accuracy for multi-step questions, because each intermediate conclusion can become the next query. ([arXiv][deep_research_agent-1])
+
+### The core loop: plan, retrieve, gap, re-query, synthesize, verify, stop
+
+A practical implementation treats “research” as a state machine over a persistent research state. The agent alternates between two modes.
+
+In exploration mode, it expands coverage: it decomposes the goal into subquestions, drafts candidate queries, retrieves, and extracts candidate claims with supporting snippets. Self-Ask is a useful mental model here: the agent keeps asking follow-up questions until it has enough to answer the original. ([ofir.io][deep_research_agent-2])
+
+In consolidation mode, it reduces uncertainty: it looks for contradictions, missing citations, weak sources, and ambiguous statements; then it issues targeted retrieval to resolve them. Methods like query rewriting are often essential here: the best retrieval query is frequently not the user’s question but a rewritten, more “retriever-friendly” form derived from the agent’s current hypothesis and gaps. ([ACL Anthology][deep_research_agent-3])
+
+A minimal “Python-like” skeleton looks like this:
+
+```python
+def deep_research(question, tools, budgets):
+    state = ResearchState.new(question, budgets)
+
+    while not should_stop(state):
+        if state.mode == "explore":
+            plan = propose_subquestions_and_queries(state)
+            results = tools.search(plan.queries)
+            state = ingest_results(state, results)
+            state = extract_claims_and_evidence(state, results)
+            state = update_gaps(state)
+            state = maybe_switch_to_consolidate(state)
+
+        elif state.mode == "consolidate":
+            issues = detect_conflicts_and_weak_support(state)
+            rewrites = rewrite_queries_from_issues(state, issues)
+            results = tools.search(rewrites)
+            state = ingest_results(state, results)
+            state = resolve_conflicts(state, results)
+            state = run_verification(state)  # internal + external checks
+            state = maybe_switch_to_explore(state)
+
+    return synthesize_report(state)
+```
+
+This loop is a ReAct-style interleaving of “thinking steps” and “actions” (tool calls), except the unit of work is evidence accumulation rather than task execution. ([arXiv][deep_research_agent-4])
+
+### Research state: evidence as a first-class object
+
+The most important engineering choice is the state representation. Treat every downstream artifact as derived from two things: claims (what you intend to say) and evidence (why you believe it). Storing only raw retrieved text is insufficient; storing only a final summary loses traceability.
+
+A compact representation that scales is:
+
+```python
+class Evidence:
+    source_id: str          # URL, doc id, or internal reference
+    title: str
+    quoted_span: str        # short excerpt used for grounding
+    retrieved_at: datetime
+    reliability: float      # heuristic or model-assigned
+    notes: str              # why it's relevant
+
+class Claim:
+    text: str
+    support: list[Evidence]
+    status: str             # "supported", "uncertain", "disputed"
+    confidence: float
+    dependencies: list[str] # ids of other claims
+
+class ResearchState:
+    question: str
+    subquestions: list[str]
+    claims: dict[str, Claim]
+    open_gaps: list[str]        # missing facts, definitions, citations
+    conflicts: list[str]        # pointers to incompatible claims
+    query_history: list[str]
+    mode: str                   # "explore" | "consolidate"
+    budgets: Budgets            # tokens, tool calls, time, citations
+```
+
+Two practical notes. First, store “quoted spans” (short excerpts) rather than entire documents; this keeps later synthesis grounded and makes verification cheaper. Second, treat “open gaps” as actionable items that generate the next queries; gaps are the agent’s internal backlog.
+
+### Gap discovery and question generation
+
+Gap discovery is the mechanism that makes the loop self-improving. It can be implemented as a deterministic heuristic layer plus a model-based critic.
+
+Heuristically, gaps appear when a claim has no evidence, only low-quality evidence, outdated evidence, or evidence that supports only part of the statement. They also appear when the agent’s plan expects a subanswer that never materializes, or when multiple sources disagree about a key fact.
+
+Model-based gap discovery uses targeted prompts such as “What would a skeptical reviewer ask for each claim?” This is essentially turning critique into query generation, closely related to the “verification questions” step in Chain-of-Verification. ([arXiv][deep_research_agent-5])
+
+### Conflict resolution: triangulation instead of “majority vote”
+
+Conflicts are normal in open-world research. The agent needs an explicit policy for resolving them that does not collapse into “pick the most fluent answer.”
+
+A robust approach is triangulation with provenance-aware ranking. The agent clusters evidence by source, date, and methodology; then it prefers primary sources over summaries, more recent sources over outdated ones when recency matters, and sources with transparent methods over opaque claims. If it cannot resolve a conflict, it should preserve the disagreement explicitly in the output by presenting both claims with their best evidence.
+
+When conflicts are subtle, self-consistency can help at the reasoning layer: sample multiple reasoning paths, then check whether they converge on the same claim set and which claims remain unstable. This is not a substitute for evidence, but it is a useful detector for “fragile conclusions” that need more retrieval. ([arXiv][deep_research_agent-6])
+
+### Verification: separating drafting from checking
+
+Deep research benefits from a strict separation between drafting and verification. The failure mode you are avoiding is “the model persuades itself” by re-reading its own prose.
+
+Chain-of-Verification provides a practical template: draft a candidate answer, generate verification questions from that draft, answer those questions independently (ideally with fresh retrieval), then revise the draft. ([arXiv][deep_research_agent-5])
+
+In a research agent, verification runs at the claim level:
+
+```python
+def run_verification(state):
+    for claim in state.claims.values():
+        if claim.status == "supported":
+            continue
+        questions = make_verification_questions(claim)
+        answers = [answer_with_retrieval(q) for q in questions]
+        claim = update_claim_status_from_checks(claim, answers)
+    return state
+```
+
+This “claim-level CoVe” is also where you enforce citation discipline: a claim cannot become “supported” unless it has at least one acceptable evidence item, and high-impact claims may require multiple independent sources.
+
+### Stopping criteria: confidence, coverage, and diminishing returns
+
+Without explicit stopping, deep research agents either loop forever or stop arbitrarily. A practical stopping policy combines three signals.
+
+Coverage means every subquestion is addressed or explicitly marked “unknown.” Confidence means every high-impact claim is supported with adequate evidence and passes verification. Diminishing returns means recent iterations are not reducing the number of gaps/conflicts meaningfully relative to cost.
+
+A simple implementation is:
+
+```python
+def should_stop(state):
+    if state.budgets.exhausted():
+        return True
+    if not state.open_gaps and not state.conflicts and state.coverage_ok():
+        return True
+    if state.progress_rate(window=3) < state.budgets.min_progress:
+        return True
+    return False
+```
+
+The key is that “budget exhausted” produces a different kind of output: the agent should return the best supported partial synthesis, clearly labeling unresolved gaps and conflicts.
+
+### Hands-on
+
+See `example_deep_research.ipynb` for a working notebook that demonstrates the full deep research loop with gap-filling iterations and structured report generation.
+
+[deep_research_agent-1]: https://arxiv.org/abs/2212.10509 “Interleaving Retrieval with Chain-of-Thought Reasoning for Knowledge-Intensive Multi-Step Questions”
+[deep_research_agent-2]: https://ofir.io/self-ask.pdf “Measuring and Narrowing the Compositionality Gap in ...”
+[deep_research_agent-3]: https://aclanthology.org/2023.emnlp-main.322.pdf “Query Rewriting for Retrieval-Augmented Large Language ...”
+[deep_research_agent-4]: https://arxiv.org/abs/2210.03629 “ReAct: Synergizing Reasoning and Acting in Language Models”
+[deep_research_agent-5]: https://arxiv.org/abs/2309.11495 “Chain-of-Verification Reduces Hallucination in Large ...”
+[deep_research_agent-6]: https://arxiv.org/abs/2203.11171 “Self-Consistency Improves Chain of Thought Reasoning in Language Models”
+
+
+## Rubric Agent
+
+A Rubric Agent turns criteria-driven evaluation into a repeatable, auditable, evidence-backed pipeline by composing structured extraction, semantic clustering, multi-source retrieval, and adversarial probing.
+
+### Why rubrics are different from generic LLM evaluation
+
+Most LLM-based evaluation asks a model to "score this output" or "pick the better answer," relying on implicit criteria baked into the prompt. This works for quick comparisons but breaks down when reviewers challenge the results: which requirement failed? Where did that requirement come from? What evidence was considered? A rubric pipeline addresses these questions by making criteria first-class objects that can be versioned, diffed, and traced to source policy text. The shift from implicit judgment to explicit criteria changes both engineering and governance: you can explain not just why an item failed, but which requirement it maps to, where that requirement originated, and what evidence would flip the verdict. LLM-Rubric demonstrates that rubric-based evaluation with calibrated, multidimensional criteria significantly improves alignment with human judges compared to single-score approaches. ([ACL Anthology][rubric_agent-1])
+
+### Data model: stable IDs, evidence requirements, and cross-framework traceability
+
+Rubric items need to remain stable across revisions, even when wording shifts or requirements are reorganized. The data model centers on a versioned `Rubric` containing `RubricItem`s, each carrying a stable `item_id`, a requirement strength drawn from RFC 2119 language (MUST, SHOULD, MAY), and an explicit `evidence_required` contract that names the concrete artifact types needed to demonstrate compliance.
+
+```python
+class RequirementLevel(str, Enum):
+    MUST = "MUST"
+    SHOULD = "SHOULD"
+    MAY = "MAY"
+
+class RubricItem(BaseModel):
+    item_id: str                 # stable across versions (e.g., "r001")
+    title: str
+    requirement_level: RequirementLevel
+    requirement_text: str
+    evidence_required: list[str] # named artifacts, not free-form
+    sources: list[SourceRef] = []
+    framework_mappings: dict[str, list[str]] = {}  # e.g. {"SOC2": [...]}
+```
+
+Two design choices deserve emphasis. First, `evidence_required` lists specific artifact types ("quarterly access review report," "TLS certificate inventory") rather than vague descriptions. This constrains the assessment phase to look for concrete evidence instead of accepting fluent prose as proof. Second, `framework_mappings` supports cross-standard traceability: the same access control intent appears in SOC 2, HIPAA technical safeguards, and ISO 27001 Annex A, and a single rubric item can track all three without duplicating the requirement. When a rubric item maps to multiple frameworks, per-framework views can be rendered without re-evaluating the project, keeping assessment consistent while satisfying different stakeholder checklists. ([ecfr.gov][rubric_agent-2], [ISMS.online][rubric_agent-7])
+
+### Three-stage pipeline
+
+The pipeline separates offline construction from online assessment. Stages 1 and 2 build and refine the rubric -- they can be slow, expensive, and heavily reviewed by humans before deployment. Stage 3 runs the rubric against a submission and produces evidence-backed verdicts -- it needs bounded latency and predictable costs.
+
+### Stage 1: Structured extraction from policy text
+
+Rubric creation begins by ingesting policy documents, control frameworks, and process guides. Each document is split into chunks (the default chunker uses semantic boundaries, though paragraph-level chunking can be substituted), and each chunk is sent to an LLM for structured extraction. The extractor is prompted as a policy analyst and returns a list of candidate requirements, each with a title, requirement level, requirement text, and a list of evidence types that would demonstrate compliance. The output is a typed `PoolItem` -- the uniform currency flowing through the entire build pipeline.
+
+```python
+prompt = load_prompt("extract_requirements.md", chunk_text=text)
+agent = get_agent(output_type=ExtractedRequirements)
+result = await agent.run(prompt)
+# Returns: [{title, requirement_level, requirement_text, evidence_required}, ...]
+```
+
+Extraction runs in parallel across all chunks. Each chunk's results are checkpointed to disk immediately on completion, so a crash loses only the in-flight chunks while all completed chunks are preserved. Transient errors (timeouts, HTTP 5xx) are retried with exponential backoff; content-filter errors skip the chunk gracefully rather than halting the entire run. The extraction prompt constrains the model to pull only requirements that are explicitly stated or clearly implied -- no invention.
+
+A key design choice is to store provenance at the item level: each pool item retains a `SourceRef` pointing to the chunk that produced it, including the original text. That makes the rubric auditable when someone later asks "why is this a requirement?"
+
+### Stage 2: Refinement via semantic clustering
+
+Raw extraction from multiple documents produces many candidates with heavy overlap. "Quarterly access reviews must be completed on time" might appear in the access control policy, in three separate audit findings from different quarters, and in a process guide, each worded differently. Stage 2 reduces this redundancy through iterative merge passes driven by semantic clustering, then synthesizes the reduced pool into the final rubric.
+
+The merge phase operates as a convergent loop. While the pool is larger than a configurable batch size, the builder embeds all pool items, clusters them using agglomerative clustering over cosine similarity, and runs a merge agent on each cluster in parallel. The merge agent identifies the coherent core of each cluster -- requirements that address the same underlying compliance need -- and produces a single merged statement that preserves the strictest requirement level across the group. Items that do not belong (semantically unrelated outliers) are ejected back to the pool for the next pass. This approach draws on the insight behind SemDeDup: embedding-based similarity identifies semantic duplicates that exact string matching misses. ([arXiv][rubric_agent-3])
+
+```python
+def merge_pass(pool, batch_size, algorithm):
+    n_clusters = ceil(len(pool) / batch_size)
+    groups = cluster(pool, n_clusters=n_clusters, algorithm=algorithm)
+    new_pool = []
+    for group in groups:
+        result = merge_agent.run(group)  # {merged_text, ejected_indices}
+        coherent = [g for i, g in enumerate(group) if i not in result.ejected_indices]
+        new_pool.append(PoolItem(text=result.merged_text, sources=union(coherent)))
+        new_pool.extend(group[i] for i in result.ejected_indices)
+    return new_pool
+```
+
+The loop repeats until the pool fits in one batch or stops shrinking. The convergence check -- exit if the new pool is at least as large as the old one -- prevents infinite cycling when items cannot be merged further. Pool state is checkpointed after each completed pass, so a resume picks up from the last full pass rather than rerunning already-merged groups.
+
+Once the pool is small enough, the synthesis phase converts pool items into final `RubricItem`s. The synthesis agent has three tools: `find_similar_items` (semantic search over the current rubric via a persistent vector index), `add_item` (create a new rubric item and index it), and `add_source` (record an additional source reference on an existing item). Batches are processed sequentially, and because `add_item` writes to the vector index immediately, every subsequent batch sees items committed by previous ones. This prevents cross-batch duplicates without requiring the full rubric in the prompt context. For rubrics above fifty items, the agent must call `find_similar_items` before deciding to add; for smaller rubrics, the full list is included directly in the prompt.
+
+```python
+# Synthesis tools -- closures over the live rubric and its vector index
+async def rubric_find_similar_items(text, top_k=5) -> list[dict]:
+    """Semantic search over current rubric items."""
+
+async def rubric_add_item(title, requirement_level, requirement_text,
+                          evidence_required, sources) -> str:
+    """Create new rubric item and index it."""
+
+async def rubric_add_source(item_id, doc_id, collection_name) -> None:
+    """Map an additional source to an existing rubric item."""
+```
+
+`RubricSession` exposes two workflows on top of this machinery. In the incremental workflow, each `add_document()` call extracts, merges, and synthesizes against the current rubric, so the rubric grows document by document. In the batch workflow, `extract()` is called multiple times to checkpoint each document's pool items independently, and then `build()` pools everything together for a single merge-and-synthesize pass. Batch tends to produce a more compact rubric when documents overlap heavily; incremental lets you observe how each new document changes the criteria.
+
+```python
+# Incremental: rubric evolves with each document
+session = RubricSession("soc2_demo")
+rubric = await session.add_document(POLICY_TEXT, source="soc2_policy")
+rubric = await session.add_document(AUDIT_FINDINGS_TEXT, source="audit_findings")
+
+# Batch: extract all, build once
+session = RubricSession("soc2_batch")
+await session.extract(POLICY_TEXT, source="soc2_policy")
+await session.extract(AUDIT_FINDINGS_TEXT, source="audit_findings")
+rubric = await session.build()
+```
+
+When rubrics grow large across many sources, a `deduplicate()` pass re-clusters existing items by semantic similarity, merges duplicates through the same merge agent, and re-synthesizes into a cleaner set.
+
+### Stage 3: Multi-source evidence-backed assessment
+
+Assessment is where the rubric becomes an instrument. The evaluator processes rubric items sequentially; for each item, it retrieves evidence from multiple independent sources in parallel. A typical compliance setup uses three indexes: policy (what the requirement means), history (whether similar issues have occurred before), and project (the submission's own claims about its posture). The `MultiSourceRetriever` queries all registered vector indexes concurrently, deduplicates results by document ID (keeping the highest-scoring occurrence), and returns a merged, score-sorted evidence set.
+
+```python
+retriever = MultiSourceRetriever(
+    policy=policy_index,
+    history=history_index,
+    project=project_index,
+)
+evaluator = RubricEvaluator()
+verdicts = await evaluator.evaluate(rubric, retriever)
+```
+
+For each item, the evaluator formats the retrieved evidence with source attribution and relevance scores, then prompts an LLM acting as an evidence-based auditor. The model must produce a structured verdict: PASS (sufficient evidence demonstrates compliance), RISK (partial or ambiguous evidence), or FAIL (no credible evidence, or evidence contradicts the requirement). The verdict includes citations -- span references into the source documents -- and a list of missing evidence types. Citations are not decorative; they are the mechanism that makes the pipeline defensible and debuggable. When a reviewer questions a FAIL verdict, they can trace the judgment through the citation to the retrieved span, the source index, and the original document.
+
+```python
+class RubricVerdict(BaseModel):
+    item_id: str
+    status: VerdictStatus            # PASS, RISK, or FAIL
+    rationale: str                   # concise explanation (2-4 sentences)
+    citations: list[SpanRef] = []    # (index_name, doc_id, start, end)
+    missing_evidence: list[str] = [] # expected artifact types not found
+```
+
+The multi-source design creates natural triangulation. Policy evidence establishes what the requirement means, historical evidence reveals whether similar issues have occurred before, and project evidence claims compliance. When project evidence contradicts historical evidence -- the project claims encryption is handled, but past audits found gaps -- the tension surfaces explicitly in the rationale rather than being papered over.
+
+### The rubric as structured adversarial probe
+
+A rubric pipeline is, at its core, a structured form of adversarial testing. Each MUST requirement with an explicit evidence contract is a targeted challenge: "show me the artifact, or fail." This is more systematic than ad-hoc red-teaming because the challenges are derived from policy rather than improvised, the evidence requirements are concrete rather than vague, and the verdicts are traceable rather than subjective.
+
+The connection to the adversarial patterns discussed earlier in this chapter is direct. A red-team agent can operate on the rubric itself, probing for gaps in criteria coverage ("what failure modes does this rubric not test for?") or challenging the evidence behind PASS verdicts ("is a quarterly access review script sufficient evidence for RBAC enforcement, or should it also require role-definition documentation?"). Feeding RISK verdicts through a debate agent -- where one side argues the evidence is sufficient and the other argues it is not -- can surface ambiguities that a single-pass assessment would miss.
+
+The pipeline also stress-tests rubric coverage against historical data. When audit findings from multiple quarters are added as documents in Stage 2, findings that do not map to any existing policy requirement are promoted into new rubric items. These are the "unwritten rules" and institutional knowledge that no policy document captures, and surfacing them is one of the highest-value outputs of the refinement process.
+
+### Hands-on
+
+See `example_rubric.ipynb` for a working notebook that demonstrates both workflows (incremental and batch) using a simplified SOC 2 subset as policy, mock audit findings as history, and a project security description as the submission under evaluation.
+
+[rubric_agent-1]: https://aclanthology.org/2024.acl-long.745/ "LLM-Rubric: A Multidimensional, Calibrated Approach to Automated Evaluation"
+[rubric_agent-2]: https://www.ecfr.gov/current/title-45/subtitle-A/subchapter-C/part-164/subpart-C/section-164.312 "45 CFR 164.312 -- Technical safeguards"
+[rubric_agent-3]: https://arxiv.org/abs/2303.09540 "SemDeDup: Data-efficient learning at web-scale through semantic deduplication"
+[rubric_agent-7]: https://www.isms.online/iso-27001/annex-a-2013/annex-a-9-access-control-2013/ "ISO 27001 -- Annex A.9: Access Control"
+
+
+## Code Indexing and Search Agent
+
+A code indexing and search agent maintains an always-up-to-date, structure-aware representation of a repository, and answers natural-language (and symbol-level) questions by retrieving the smallest, most relevant code slices with traceable provenance.
+
+### Why "code indexing" is different from generic RAG
+
+Generic document RAG treats code as text, but most developer questions are about structure: "Where is this function called?", "Which implementation is used on Linux?", "What invariants does this type enforce?", or "Show me similar patterns in the repo." A code index that preserves syntax boundaries, symbol identity, and file/line provenance improves both precision (you retrieve coherent units like functions/classes) and usability (results can be navigated, cited, and patched reliably).
+
+A second difference is freshness. For interactive coding agents, stale context is often worse than missing context: the agent reasons correctly over an outdated snapshot. CocoIndex's examples frame the practical goal as near-real-time incremental updates, reprocessing only what changed, so the index behaves like a live substrate rather than a periodically rebuilt artifact. ([GitHub][code_indexing-1])
+
+### Three-index architecture
+
+Our implementation uses a `CodeIndex` class that maintains three parallel vector collections for every indexed repository, all sharing the same `doc_id` per symbol:
+
+The **code index** (`{name}_code`) stores raw source code. This serves pattern-level and syntax-level queries -- when a developer asks "show me the retry logic" or "find classes that inherit from Connector", the actual code is what gets matched and returned.
+
+The **descriptions index** (`{name}_descriptions`) stores LLM-generated one-sentence semantic descriptions of what each symbol does. This serves intent-level queries -- "how does the system handle connection failures?" matches against descriptions like "Establishes a connection to a remote server with retry logic, attempting up to MAX_RETRIES times."
+
+The **breadcrumbs index** (`{name}_breadcrumbs`) stores structural context for each symbol: its module path, parent class (for methods), signature, imports from the same file, and sibling symbols. This serves navigational queries -- "what uses ConnectionPool?" or "what else is in the chunker module?" matches against the structural relationships between symbols.
+
+At query time, all three collections are searched in parallel via `MultiSourceRetriever`, which merges results by score and deduplicates by `doc_id`. A hit from any index resolves back to code (since all three share the same `doc_id`), and from there the agent can navigate up to the parent class, across to callers, or down to method implementations.
+
+```python
+code_index = CodeIndex(repo_path, "my_project")
+stats = await code_index.index(include_patterns=["*.py"])
+```
+
+### Index construction: chunking, describing, and breadcrumbing
+
+Index construction proceeds file by file. For each source file:
+
+First, `ChunkerCode` parses the file with Tree-sitter and extracts syntax-coherent chunks -- one per function, class, or method, plus a preamble chunk for top-level imports and constants. Each chunk carries metadata: `symbol_name`, `symbol_type`, `start_line`, `end_line`, and the file's relative path. All chunks are stored in the code index. This syntax-aware chunking is the foundation -- chunks align with the units developers think about (functions, classes) rather than arbitrary line windows. ([DEV Community][code_indexing-4])
+
+Second, `build_breadcrumbs()` deterministically constructs a structural breadcrumb for each symbol from the chunk metadata and file content. No LLM call is needed; the breadcrumb is derived from the AST structure that Tree-sitter already extracted.
+
+Third, `describe_symbols()` generates semantic descriptions by sending all symbols from a file to an LLM in a single batched call. The LLM returns a structured list of `SymbolDescription` objects (one per symbol), each with the symbol name, type, and a one-sentence description focusing on purpose and behavior. This means one LLM call per file rather than one per symbol -- a file with 15 methods is one call, not 15.
+
+```python
+# Breadcrumb example (deterministic, from AST):
+# module: core/rag/chunker_code.py | parent: class ChunkerCode |
+#   signature: def chunk(self, text, provenance) | imports: pathlib, ...
+
+# Description example (LLM-generated):
+# "Parses source code with tree-sitter and splits it into syntax-coherent
+#  chunks aligned to function and class boundaries."
+```
+
+Two details from the CocoIndex literature remain operationally important here. First, chunking should be syntax-aware (Tree-sitter) so that chunks align with functions/classes rather than arbitrary line windows, which improves retrieval quality for code. ([DEV Community][code_indexing-4]) Second, embedding drift between indexing and query must be avoided; our implementation uses the same embedding model for both paths via the shared `VectorDB` configuration. ([CocoIndex][code_indexing-3])
+
+### Query-time retrieval and navigation
+
+At query time, the agent has two complementary operations: `search` and `expand`.
+
+`search(query, top_k)` queries all three indexes in parallel and returns `CodeSearchResult` objects. Each result carries the code, its description, its breadcrumb, symbol metadata, and the score. Because the multi-source retriever merges across indexes, a query like "how does retry work" might match via the description index while "def connect" matches via the code index -- both surface the same symbol with complementary evidence.
+
+```python
+results = await code_index.search("split text into paragraphs", top_k=5)
+for r in results:
+    print(f"[{r.score:.3f}] {r.symbol_type} {r.symbol_name} in {r.file_path}:{r.start_line}")
+    print(f"  {r.description}")
+```
+
+`expand(doc_id)` takes a specific symbol and retrieves its full navigable context: the code, description, and breadcrumb, plus the parent class (for methods) and sibling symbols. This is more precise than the old "expand top-k with cross-references" approach -- the agent picks which result to expand based on the search results, then navigates structurally from there.
+
+```python
+expanded = code_index.expand(results[0].doc_id)
+# Returns: code, description, breadcrumb, parent class info, sibling symbols
+```
+
+In practice, "code search" often needs this second stage beyond raw vector similarity. Recent research systems increasingly combine retrieval with structure-aware navigation over repositories; for example, CodeNav emphasizes iterative repository navigation and selective import of relevant blocks, while graph-based approaches like CodexGraph extract a code graph to support more precise structure-aware queries. ([arXiv][code_indexing-5])
+
+### Tight integration with an interactive coding agent
+
+In an "AI coding agent" loop, code search is rarely a one-shot. The agent alternates between proposing hypotheses ("the bug is in request parsing"), retrieving evidence (relevant functions, tests, config), and refining the hypothesis until it can implement and validate a change. The code indexing agent supplies three capabilities that keep this loop efficient:
+
+It provides low-latency, high-recall candidate retrieval through embeddings over syntax-coherent chunks, with the added dimension that intent-level queries hit descriptions while structural queries hit breadcrumbs. ([DEV Community][code_indexing-4]) It provides navigability through the `expand` operation, so the agent can follow the structure from a search hit to its parent class, siblings, and related symbols without additional keyword searches. And it provides provenance (filename/line numbers) so the coding agent can open the correct file regions and generate minimal diffs rather than rewriting large sections.
+
+Indexing is a user-initiated setup step -- you create a `CodeIndex` and call `index()`:
+
+```python
+code_index = CodeIndex(repo_path, "my_project")
+stats = await code_index.index(include_patterns=["*.py"])
+```
+
+At the end of indexing, `CodeIndex` automatically generates a description from the symbol summaries it already produced and stores it in a registry (a YAML file for visibility, backed by a vector DB for semantic search). When the agent later needs a `CodeIndex` object, it reconstructs it automatically from the registry metadata -- no manual registration step is needed. At enterprise scale, an organization might index hundreds of GitHub repos, each as a separate collection. When the user asks a question without specifying a collection, the agent calls `code_list_indexes(query)` to semantically search this registry and find which repos are relevant -- the user never needs to know collection names. For example, if a repo's auto-generated description includes terms like "Stripe integration, invoicing, webhooks", asking "how does retry logic work in the payment service" would match and route the search to the right collection automatically.
+
+The agent is created via `create_agent()` which loads the system prompt and wires up the tools (`code_list_indexes`, `code_search`, `code_expand`, `code_lexical_search`). The system prompt describes the three-index architecture so the agent knows to use intent-level queries for "how does X work" questions and structural queries for "what uses X" questions.
+
+### Hands-on
+
+See `example_code_indexing.ipynb` for a working notebook that demonstrates syntax-aware chunking, indexing a real directory, and using the agent for overview, intent-level search, structural navigation, and lexical cross-referencing.
+
+[code_indexing-1]: https://github.com/cocoindex-io/realtime-codebase-indexing "GitHub - cocoindex-io/realtime-codebase-indexing"
+[code_indexing-2]: https://github.com/cocoindex-io/cocoindex "GitHub - cocoindex-io/cocoindex"
+[code_indexing-3]: https://cocoindex.io/examples/code_index "Real-time Codebase Indexing | CocoIndex"
+[code_indexing-4]: https://dev.to/cocoindex/build-real-time-codebase-indexing-for-ai-coding-agents-5eb2 "Build Real-Time Codebase Indexing for AI Coding agents - DEV Community"
+[code_indexing-5]: https://arxiv.org/abs/2406.12276 "CodeNav: Beyond tool-use to using real-world codebases with LLM agents"
+[code_indexing-6]: https://arxiv.org/abs/2408.03910 "CodexGraph: Bridging Large Language Models and Code Repositories via Code Graph Databases"
+
+
+## Anonymization Agent
+
+An anonymization agent applies multiple de-identification techniques (structured rules and LLM-based detection) and then runs a verification pass to catch leaks while preserving downstream utility.
+
+### Why an “agent” instead of a fixed redaction script
+
+Real data rarely matches a single template. A pipeline that only uses regex misses names, nicknames, and domain-specific identifiers; a pipeline that only uses NER misses structured identifiers (account numbers, URLs, device IDs) and can over-redact common tokens. An agent wraps multiple detectors and transformation operators behind an explicit policy, then iterates: detect, transform, verify, and produce an auditable report of what was changed and why.
+
+In practice, anonymization is usually recall-first: it is better to remove one extra token than to leak a patient name. But utility still matters (analytics, search, model training), so the agent needs controllable operators such as “mask”, “replace with type tag”, “consistent pseudonym”, or “format-preserving pseudonym”.
+
+### Detection layer: combining deterministic and probabilistic signals
+
+A robust agent uses layered detection, where each layer is good at a different failure mode.
+
+Structured patterns (regex and validators) are the highest precision signal for well-defined identifiers: emails, phone numbers, SSNs, IP addresses, UUIDs, MAC addresses, credit cards (with Luhn checks), and internal IDs with known prefixes. This layer is fast, deterministic, and easy to reason about, but it does not generalize.
+
+LLM-based detection finds entities whose surface form is unconstrained: person names, organizations, locations, and free-form dates. A capable language model can detect PHI that no fixed pattern set anticipates, and its contextual understanding handles ambiguity (is “Paris” a city or a patient name?) far better than traditional NER.
+
+Purpose-built PII/PHI frameworks combine both: Microsoft Presidio, for example, separates “analysis” (recognizers) from “anonymization” (operators) so you can extend recognizers while reusing transformation logic. ([Microsoft][anonymization_agent-2])
+
+In regulated domains (clinical notes, insurance), de-identification has well-studied benchmarks and error modes; the i2b2/UTHealth de-identification shared task is a common reference point for PHI-like entity categories and evaluation approaches. ([PMC][anonymization_agent-3])
+
+### Transformation layer: masking, pseudonymization, and format preservation
+
+Once the agent has spans (start, end, label, confidence, provenance), it applies operators. The important point is that operators must be policy-driven, not hard-coded, because different consumers require different utility.
+
+Plain masking is irreversible and safest for high-risk fields (“John Smith” → “[PERSON]”). This is typically the default for anything that could identify a person directly.
+
+Pseudonymization preserves linkability across a dataset (“John Smith” -> “PATIENT_0001”) by replacing real identifiers with opaque sequential tokens (`LABEL_NNNN`) stored in a persistent vault. The same input always maps to the same pseudonym, enabling joins and longitudinal analysis, but the tokens are obviously synthetic -- they cannot be confused with real data by either humans or audit models. In GDPR terminology, pseudonymisation means the data cannot be attributed to a person without additional information kept separately. ([GDPR][anonymization_agent-4])
+
+For structured identifiers, format-preserving pseudonyms prevent breaking schemas and validators. A common approach is format-preserving encryption (FPE), standardized by NIST (FF1 / FF3-1), which can keep length and character sets intact. ([NIST Computer Security Resource Center][anonymization_agent-5])
+
+Finally, the agent should treat quasi-identifiers carefully (dates, ZIP codes, rare job titles) because combinations can re-identify even when obvious identifiers are removed; classic privacy models like k-anonymity motivate suppression/generalization for these fields when releasing tabular data. ([ACM Digital Library][anonymization_agent-6])
+
+### Context-aware masking: when the same token is safe in one place and sensitive in another
+
+Context matters. “Paris” might be a travel destination in a blog post, but a patient location in a clinical note; “Apple” might be a company or a cafeteria menu item; “Dr. Lee” might be staff (often permissible in some releases) or a private practitioner in a small town (riskier). A practical way to formalize this is to treat anonymization as enforcing “appropriate information flows” relative to the context, rather than blindly stripping certain strings; this aligns with contextual integrity as a privacy framework. ([UW Law Digital Commons][anonymization_agent-7])
+
+Operationally, context-aware masking can be implemented as a lightweight classifier over each candidate span and its window (surrounding tokens, section headers, metadata like document type). It can be rules-first (“if section == ‘Assessment’ then treat ages as PHI”) and then escalated to an LLM-based decision for ambiguous cases.
+
+### Verification layer: a second-pass “audit” model, run locally
+
+Even strong detector ensembles miss edge cases: rare names, misspellings, identifiers embedded in prose, or information implied indirectly (“the mayor of a town of 800”). A common production pattern is a second pass that asks a model to find remaining PII/PHI after redaction and to explain what it found. This pass should not be allowed to “rewrite” the document; it should only propose spans to review and remove, then the deterministic pipeline applies the changes.
+
+Because the verification pass sees raw(ish) content, many teams run it on a local model for privacy -- see "Running the audit model locally" below.
+
+### A policy-driven anonymization agent
+
+The core design is a three-step loop: (1) regex detection on original text, (2) tag detected spans and run an LLM to find additional PHI that regex missed, merge all spans, pseudonymize from the original text, (3) run the LLM again on the pseudonymized output to verify nothing leaked -- if it finds more PHI, loop back to step 2. The loop is bounded to `max_passes` (default 2) to prevent infinite loops. The `AnonymizationAgent` is the only public API; the toolkit classes (`Anonymizer`, `RegexDetector`, `PseudonymVault`) are internal machinery.
+
+PHI labels follow the i2b2/UTHealth 2014 de-identification taxonomy, encoded as a `PhiLabel` enum (NAME_PATIENT, NAME_DOCTOR, LOCATION_HOSPITAL, ID_SSN, ID_MEDICALRECORD, DATE, CONTACT_PHONE, AGE, etc.). The `Operator` enum defines four redaction strategies: MASK (block characters), TAG (label replacement), PSEUDONYM (opaque deterministic identifiers, `LABEL_NNNN`), and DATE_SHIFT (epoch remapping to 2000-01-01, preserving intervals).
+
+```python
+class EntitySpan(BaseModel):
+    start: int
+    end: int
+    label: PhiLabel
+    score: float = 1.0
+    source: str = “unknown”    # “regex”, “ner”, “audit”
+
+class OperatorSpec(BaseModel):
+    operator: Operator
+    params: dict = {}
+
+class AnonymizationPolicy(BaseModel):
+    operators: dict[PhiLabel, OperatorSpec]   # label -> how to redact
+    min_score: float = 0.5
+    allowlist: set[str] = set()              # tokens to never redact
+
+class Detector(Protocol):
+    def detect(self, text: str, meta: dict | None = None) -> list[EntitySpan]: ...
+```
+
+The default policy (`default_phi_policy()`) uses PSEUDONYM for all labels except DATE which uses DATE_SHIFT (epoch remapping to 2000-01-01). This produces de-identified text where “Margaret Thompson” becomes `PATIENT_0001` and “4478-2291” becomes `MRN_0001`, with tokens that are obviously synthetic rather than confusable with real data. Dates move to the year 2000, making them immediately recognizable as de-identified.
+
+Detectors are layered. `RegexDetector` ships with patterns for structured clinical PHI (MRN prefixes, SSN, phone, email, dates, ages >89). `NerDetector` is a generic wrapper that accepts any callable returning `(start, end, label, score)` tuples, so users can plug in Presidio, SciSpacy, or custom models. The LLM audit pass (steps 2 and 3) catches entity types that regex cannot handle -- person names, organizations, locations, and contextual identifiers.
+
+```python
+class RegexDetector:
+    “””Ships with patterns for MRN, SSN, phone, email, dates, ages >89.”””
+
+    def detect(self, text: str, meta: dict | None = None) -> list[EntitySpan]:
+        spans = []
+        for regex, label in self._compiled:
+            for m in regex.finditer(text):
+                spans.append(EntitySpan(start=m.start(), end=m.end(), label=label, score=0.9, source=”regex”))
+        return spans
+
+class NerDetector:
+    “””Generic wrapper for any NER callable via a label_map.”””
+
+    def __init__(self, ner_fn: Callable, label_map: dict[str, PhiLabel], source: str = “ner”): ...
+    def detect(self, text: str, meta: dict | None = None) -> list[EntitySpan]: ...
+```
+
+`PseudonymVault` is a JSON-backed persistent store that maps (label, normalized value) pairs to opaque `LABEL_NNNN` tokens. Each label type gets a sequential counter: the first patient name becomes `PATIENT_0001`, the second `PATIENT_0002`, and so on. Mappings are persisted to a JSON file, so pseudonyms are consistent across separate runs -- if “Margaret Thompson” was mapped to `PATIENT_0001` three months ago, she still is today.
+
+For names, the vault normalizes input before lookup: it removes punctuation, lowercases, and sorts tokens alphabetically. This means “Rajesh Patel” and “Patel, Rajesh” resolve to the same pseudonym. Title stripping (“Dr.”, honorifics) is not the vault's job -- the LLM audit prompt instructs the model to return names without honorifics, which keeps the vault language-agnostic.
+
+```python
+class PseudonymVault:
+    def __init__(self, path: Path): ...
+
+    def pseudonym(self, label: str, value: str) -> str:
+        “””Return pseudonym for (label, value), creating one if new.”””
+        key = f”{label}|{self._normalize(label, value)}”
+        if key in self._mappings:
+            return self._mappings[key]
+        prefix = self._prefix(label)
+        idx = self._counters.get(prefix, 0) + 1
+        self._counters[prefix] = idx
+        pseudo = f”{prefix}_{idx:04d}”
+        self._mappings[key] = pseudo
+        self._save()
+        return pseudo
+```
+
+The `Anonymizer` is the internal engine: detect (run all detectors, merge overlapping spans, filter by policy), then redact (apply operators right-to-left to preserve offsets). For dates, the anonymizer computes an epoch offset: it finds the earliest date in the document, calculates the delta to 2000-01-01, and applies that same delta to all dates. This moves dates to a clearly synthetic era while preserving temporal intervals (a 7-day hospital stay remains 7 days).
+
+```python
+class Anonymizer:
+    def __init__(self, detectors: list[Detector], policy: AnonymizationPolicy, vault: PseudonymVault):
+        ...
+
+    def detect(self, text: str, meta: dict | None = None) -> list[EntitySpan]:
+        “””Run all detectors, merge overlaps, filter by min_score and allowlist.”””
+        ...
+
+    def redact(self, text: str, spans: list[EntitySpan]) -> str:
+        “””Apply operators right-to-left. Dates are epoch-shifted (earliest -> 2000-01-01).”””
+        ...
+
+    def run(self, text: str, meta: dict | None = None) -> AnonymizationResult:
+        “””Full pipeline: detect + redact.”””
+        ...
+```
+
+### LLM audit pass
+
+The audit pass should output structured findings (“I see an email at ...”) rather than rewritten text. The agent then converts findings into spans, merges overlaps, applies the same operator logic, and repeats (bounded by `max_passes`) to avoid infinite loops. The audit model can be local (Ollama) or remote (compliant vendor with proper ZDR policy) -- that is a deployment configuration decision, configured via `config_name` pointing to a model in `config.yaml`.
+
+The `AnonymizationAgent` wraps all three steps behind a single `anonymize()` call. It uses PydanticAI's structured output to get typed `AuditResult` (list of findings with label, substring, reason) from the LLM, rather than parsing free-form text.
+
+```python
+class AuditFinding(BaseModel):
+    label: str       # PhiLabel value
+    substring: str   # exact text found
+    reason: str
+
+class AuditResult(BaseModel):
+    findings: list[AuditFinding] = []
+
+class AnonymizationAgent:
+    def __init__(self, detectors, policy, vault: PseudonymVault, *, config_name=”default”, max_passes=2):
+        self._anonymizer = Anonymizer(detectors, policy, vault)
+        self._audit_agent = get_agent(config_name=config_name, output_type=AuditResult)
+        self._max_passes = max_passes
+
+    async def anonymize(self, text: str, meta: dict | None = None) -> AnonymizationResult:
+        # Step 1: regex detection on original text
+        all_spans = self._anonymizer.detect(text, meta)
+
+        for _ in range(self._max_passes):
+            # Step 2: tag text, LLM detects additional PHI
+            tagged_text = self._anonymizer.redact_tagged(text, all_spans)
+            detect_output = (await self._audit_agent.run(audit_prompt(tagged_text))).output
+            if detect_output.findings:
+                all_spans = _merge_spans(all_spans + self._findings_to_spans(text, ...))
+
+            # Pseudonymize from original text
+            redacted_text = self._anonymizer.redact(text, all_spans)
+
+            # Step 3: LLM verifies pseudonymized output
+            verify_output = (await self._audit_agent.run(audit_prompt(redacted_text))).output
+            if not verify_output.findings:
+                break  # clean -- no leaks
+
+            # Leaks found: merge new spans, loop back to step 2
+            all_spans = _merge_spans(all_spans + self._findings_to_spans(text, ...))
+        return AnonymizationResult(...)
+```
+
+### Running the audit model locally
+
+The LLM audit pass sees text that still contains residual PHI -- that is the whole point of the audit. If you have access to a provider with Zero Data Retention (ZDR) policies and contractual guarantees that data will not be used for training (e.g. a BAA for healthcare), the `config_name` can point to that provider's model and no local infrastructure is needed. When such agreements are not available, the audit model must run locally instead.
+
+Ollama exposes an OpenAI-compatible HTTP API that PydanticAI can talk to without code changes -- only the configuration differs. ([Ollama Documentation][anonymization_agent-8]) A GPU machine (an NVIDIA DGX workstation, a cloud VM with attached GPUs, or a workstation with a single high-VRAM card) runs Ollama as a service:
+
+```yaml
+# config.yaml
+models:
+  ollama_local:
+    model_family: ollama
+    model_name: llama3
+    url: http://localhost:11434/v1
+    timeout: 60
+```
+
+The agent selects this model via `config_name`:
+
+```python
+agent = AnonymizationAgent(
+    detectors=[RegexDetector()],
+    policy=default_phi_policy(),
+    vault=PseudonymVault(Path("vault.json")),
+    config_name="ollama_local",
+)
+```
+
+The model must be capable of structured output (returning valid JSON matching `AuditResult`). Models in the Llama 3 8B+ and Qwen 2.5 7B+ families reliably produce structured PHI findings with PydanticAI's output parsing. Smaller models tend to hallucinate labels or miss context-dependent PHI; larger models (70B+) improve recall but require more hardware. An 8B model on a single GPU is enough for development, while a 70B model on a DGX node gives production-grade recall for batch anonymization.
+
+
+### Hands-on
+
+See `example_anonymization.ipynb` for a working notebook that demonstrates the full pipeline: regex detection, LLM audit, pseudonymized output with epoch-based date shifting, and pseudonym consistency across documents.
+
+[anonymization_agent-2]: https://microsoft.github.io/presidio/ "Presidio: Data Protection and De-identification SDK"
+[anonymization_agent-3]: https://pmc.ncbi.nlm.nih.gov/articles/PMC4989908/ "Overview of 2014 i2b2/UTHealth shared task Track 1 - PMC"
+[anonymization_agent-4]: https://gdpr-info.eu/art-4-gdpr/ "Art. 4 GDPR -- Definitions - General Data Protection ..."
+[anonymization_agent-5]: https://csrc.nist.gov/pubs/sp/800/38/g/r1/2pd "SP 800-38G Rev. 1, Recommendation for Block Cipher ..."
+[anonymization_agent-6]: https://dl.acm.org/doi/10.1142/S0218488502001648 "k-anonymity: a model for protecting privacy"
+[anonymization_agent-7]: https://digitalcommons.law.uw.edu/wlr/vol79/iss1/10/ "Privacy as Contextual Integrity by Helen Nissenbaum"
+[anonymization_agent-8]: https://docs.ollama.com/api/introduction "Introduction"
+[anonymization_agent-9]: https://microsoft.github.io/presidio/anonymizer/ "Presidio Anonymizer"
+[anonymization_agent-11]: https://github.com/ollama/ollama/blob/main/docs/api.md "ollama/docs/api.md at main"
+[anonymization_agent-13]: https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/data-sharing/anonymisation/pseudonymisation/ "Pseudonymisation | ICO"
+[anonymization_agent-14]: https://csrc.nist.gov/pubs/sp/800/38/g/r1/ipd "SP 800-38G Rev. 1, Recommendation for Block Cipher Modes ..."
+
+
+## References
+
+1. Geoffrey Irving, Paul Christiano, Dario Amodei. *AI Safety via Debate*. arXiv, 2018. [https://arxiv.org/abs/1805.00899](https://arxiv.org/abs/1805.00899)
+2. Yilun Du, Shuang Li, Antonio Torralba, Joshua B. Tenenbaum, Igor Mordatch. *Improving Factuality and Reasoning in Language Models through Multiagent Debate*. arXiv, 2023. [https://arxiv.org/abs/2305.14325](https://arxiv.org/abs/2305.14325)
+3. A. Madaan, et al. *Self-Refine: Iterative Refinement with Self-Feedback*. arXiv, 2023. [https://arxiv.org/abs/2303.17651](https://arxiv.org/abs/2303.17651)
+4. Noah Shinn, Federico Cassano, Ashwin Gopinath, Karthik R. Narasimhan, Shunyu Yao. *Reflexion: Language Agents with Verbal Reinforcement Learning*. NeurIPS, 2023. [https://arxiv.org/abs/2303.11366](https://arxiv.org/abs/2303.11366)
+5. Yuntao Bai, et al. *Constitutional AI: Harmlessness from AI Feedback*. arXiv, 2022 (rev. 2023). [https://arxiv.org/abs/2212.08073](https://arxiv.org/abs/2212.08073)
+6. Anthropic. *Challenges in Red Teaming AI Systems*. Anthropic News, 2024. [https://www.anthropic.com/news/challenges-in-red-teaming-ai-systems](https://www.anthropic.com/news/challenges-in-red-teaming-ai-systems)
+7. Center for Security and Emerging Technology (CSET). *AI Red-Teaming Design: Threat Models and Tools*. CSET, 2025. [https://cset.georgetown.edu/article/ai-red-teaming-design-threat-models-and-tools/](https://cset.georgetown.edu/article/ai-red-teaming-design-threat-models-and-tools/)
+8. Shunyu Yao, Jeffrey Zhao, Dian Yu, Nan Du, Izhak Shafran, Karthik Narasimhan, Yuan Cao. *ReAct: Synergizing Reasoning and Acting in Language Models*. ICLR, 2023. [https://arxiv.org/abs/2210.03629](https://arxiv.org/abs/2210.03629)
+9. Ofir Press, Noah A. Smith, Mike Lewis. *Measuring and Narrowing the Compositionality Gap in Language Models (Self-Ask)*. arXiv, 2022. [https://ofir.io/self-ask.pdf](https://ofir.io/self-ask.pdf)
+10. Harsh Trivedi, Niranjan Balasubramanian, Tushar Khot, Ashish Sabharwal. *Interleaving Retrieval with Chain-of-Thought Reasoning for Knowledge-Intensive Multi-Step Questions*. ACL, 2023. [https://arxiv.org/abs/2212.10509](https://arxiv.org/abs/2212.10509)
+11. Xuezhi Wang, Jason Wei, Dale Schuurmans, Quoc V. Le, Ed H. Chi, Sharan Narang, Aakanksha Chowdhery, Denny Zhou. *Self-Consistency Improves Chain of Thought Reasoning in Language Models*. arXiv, 2022. [https://arxiv.org/abs/2203.11171](https://arxiv.org/abs/2203.11171)
+12. Saurabh Dhuliawala, Monica Agrawal, Ari Holtzman, Jiacheng Xu, Luke Zettlemoyer, Yejin Choi. *Chain-of-Verification Reduces Hallucination in Large Language Models*. ICLR, 2024. [https://arxiv.org/abs/2309.11495](https://arxiv.org/abs/2309.11495)
+13. Xinyu Ma, Jiarui Zhang, Minwei Feng, Tianyu Zhang, Yuexian Zou, Dong Yu. *Query Rewriting for Retrieval-Augmented Large Language Models*. EMNLP, 2023. [https://arxiv.org/abs/2305.14283](https://arxiv.org/abs/2305.14283)
+14. Hashemi, Arian, et al. *LLM-Rubric: A Multidimensional, Calibrated Approach to Automated Evaluation of Natural Language Texts*. ACL, 2024. [https://aclanthology.org/2024.acl-long.745/](https://aclanthology.org/2024.acl-long.745/)
+15. Electronic Code of Federal Regulations. *45 CFR 164.312 Technical safeguards (HIPAA Security Rule)*. eCFR, current version. [https://www.ecfr.gov/current/title-45/subtitle-A/subchapter-C/part-164/subpart-C/section-164.312](https://www.ecfr.gov/current/title-45/subtitle-A/subchapter-C/part-164/subpart-C/section-164.312)
+16. Abbas, Amro, et al. *SemDeDup: Data-efficient learning at web-scale through semantic deduplication*. ICLR, 2023. [https://arxiv.org/abs/2303.09540](https://arxiv.org/abs/2303.09540)
+17. Joint Task Force. *Security and Privacy Controls for Information Systems and Organizations (NIST SP 800-53 Rev. 5)*. NIST, 2020. [https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final](https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final)
+18. Liu, Yang, et al. *G-Eval: NLG Evaluation using GPT-4 with Better Human Alignment*. EMNLP, 2023. [https://arxiv.org/abs/2303.16634](https://arxiv.org/abs/2303.16634)
+19. Zheng, Lianmin, et al. *Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena*. NeurIPS, 2023. [https://arxiv.org/abs/2306.05685](https://arxiv.org/abs/2306.05685)
+20. David Holloway. *ISO 27001 -- Annex A.9: Access Control*. ISMS.online, 2025. [https://www.isms.online/iso-27001/annex-a-2013/annex-a-9-access-control-2013/](https://www.isms.online/iso-27001/annex-a-2013/annex-a-9-access-control-2013/)
+21. OpenAI. *Evals: A framework for evaluating LLMs and LLM systems*. GitHub repository, 2024. [https://github.com/openai/evals](https://github.com/openai/evals)
+22. CocoIndex. *Real-time Codebase Indexing (Example)*. CocoIndex Documentation, 2026. [https://cocoindex.io/examples/code_index](https://cocoindex.io/examples/code_index)
+23. cocoindex-io. *realtime-codebase-indexing*. GitHub repository, 2026. [https://github.com/cocoindex-io/realtime-codebase-indexing](https://github.com/cocoindex-io/realtime-codebase-indexing)
+24. Jin, Linghua (CocoIndex). *Build Real-Time Codebase Indexing for AI Coding agents*. DEV Community, 2025. [https://dev.to/cocoindex/build-real-time-codebase-indexing-for-ai-coding-agents-5eb2](https://dev.to/cocoindex/build-real-time-codebase-indexing-for-ai-coding-agents-5eb2)
+25. cocoindex-io. *cocoindex: Data transformation framework for AI*. GitHub repository, 2026. [https://github.com/cocoindex-io/cocoindex](https://github.com/cocoindex-io/cocoindex)
+26. Gupta, T., Weihs, L., Kembhavi, A. *CodeNav: Beyond tool-use to using real-world codebases with LLM agents*. arXiv, 2024. [https://arxiv.org/abs/2406.12276](https://arxiv.org/abs/2406.12276)
+27. Liu, X. et al. *CodexGraph: Bridging Large Language Models and Code Repositories via Code Graph Databases*. arXiv, 2024. [https://arxiv.org/abs/2408.03910](https://arxiv.org/abs/2408.03910)
+28. Microsoft. *Presidio: Data Protection and De-identification SDK*. Documentation. [https://microsoft.github.io/presidio/](https://microsoft.github.io/presidio/)
+29. Microsoft. *Presidio Anonymizer*. Documentation. [https://microsoft.github.io/presidio/anonymizer/](https://microsoft.github.io/presidio/anonymizer/)
+30. Ollama. *API Introduction*. Documentation. [https://docs.ollama.com/api/introduction](https://docs.ollama.com/api/introduction)
+31. Helen Nissenbaum. *Privacy as Contextual Integrity*. Washington Law Review, 2004. [https://digitalcommons.law.uw.edu/wlr/vol79/iss1/10/](https://digitalcommons.law.uw.edu/wlr/vol79/iss1/10/)
+32. European Union. *General Data Protection Regulation, Article 4(5): Definition of 'pseudonymisation'*. [https://gdpr-info.eu/art-4-gdpr/](https://gdpr-info.eu/art-4-gdpr/)
+33. Information Commissioner's Office (UK). *Pseudonymisation*. Guidance. [https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/data-sharing/anonymisation/pseudonymisation/](https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/data-sharing/anonymisation/pseudonymisation/)
+34. Morris Dworkin (NIST). *Recommendation for Block Cipher Modes of Operation: Methods for Format-Preserving Encryption (SP 800-38G Rev. 1)*. NIST, 2019/2025. [https://csrc.nist.gov/pubs/sp/800/38/g/r1/ipd](https://csrc.nist.gov/pubs/sp/800/38/g/r1/ipd)
+35. Latanya Sweeney. *k-anonymity: A Model for Protecting Privacy*. International Journal on Uncertainty, Fuzziness and Knowledge-based Systems, 2002. [https://dl.acm.org/doi/10.1142/S0218488502001648](https://dl.acm.org/doi/10.1142/S0218488502001648)
+36. A. Stubbs, C. Kotfila, O. Uzuner. *Automated systems for the de-identification of longitudinal clinical narratives: Overview of the 2014 i2b2/UTHealth shared task Track 1*. Journal of Biomedical Informatics, 2015. [https://pmc.ncbi.nlm.nih.gov/articles/PMC4989908/](https://pmc.ncbi.nlm.nih.gov/articles/PMC4989908/)
 
 
 \newpage
