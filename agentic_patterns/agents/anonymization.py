@@ -7,12 +7,14 @@ from agentic_patterns.core.config.config import PROMPTS_DIR
 from agentic_patterns.core.listeners import AgentListener
 from agentic_patterns.core.prompt import load_prompt
 from agentic_patterns.toolkits.anonymization.anonymizer import Anonymizer, _merge_spans
+from agentic_patterns.toolkits.anonymization.detectors import RegexDetector
 from agentic_patterns.toolkits.anonymization.models import (
     AnonymizationPolicy,
     AnonymizationResult,
     Detector,
     EntitySpan,
     PhiLabel,
+    default_phi_policy,
 )
 from agentic_patterns.toolkits.anonymization.vault import PseudonymVault
 
@@ -64,16 +66,19 @@ class AnonymizationAgent:
 
     def __init__(
         self,
-        detectors: list[Detector],
-        policy: AnonymizationPolicy,
-        vault: PseudonymVault | None = None,
         *,
+        detectors: list[Detector] | None = None,
+        policy: AnonymizationPolicy | None = None,
+        vault: PseudonymVault | None = None,
         config_name: str = "default",
         listener: AnonymizationListener | None = None,
         max_passes: int = 2,
     ):
-        self._anonymizer = Anonymizer(detectors, policy, vault)
-        self._policy = policy
+        self._anonymizer = Anonymizer(
+            detectors or [RegexDetector()],
+            policy or default_phi_policy(),
+            vault or PseudonymVault(),
+        )
         self._listener = listener
         self._audit_agent = get_agent(config_name=config_name, output_type=AuditResult)
         self._max_passes = max_passes
@@ -103,7 +108,7 @@ class AnonymizationAgent:
                 all_spans = _merge_spans(all_spans + new_spans)
 
             # Pseudonymize from original text
-            redacted_text = self._anonymizer.redact(text, all_spans, meta)
+            redacted_text = self._anonymizer.redact(text, all_spans)
 
             # Step 3: LLM verifies pseudonymized output
             verify_prompt = load_prompt(
@@ -124,7 +129,7 @@ class AnonymizationAgent:
             all_spans = _merge_spans(all_spans + leak_spans)
         else:
             # Final pseudonymize after exhausting passes
-            redacted_text = self._anonymizer.redact(text, all_spans, meta)
+            redacted_text = self._anonymizer.redact(text, all_spans)
 
         detection_spans = [s for s in all_spans if s.source != "audit"]
         result = AnonymizationResult(

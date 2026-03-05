@@ -1,7 +1,9 @@
 """Unit tests for the anonymization toolkit."""
 
+import json
+import tempfile
 import unittest
-from datetime import date
+from pathlib import Path
 
 from agentic_patterns.toolkits.anonymization.anonymizer import Anonymizer
 from agentic_patterns.toolkits.anonymization.detectors import RegexDetector
@@ -25,10 +27,14 @@ Phone: (555) 867-5309
 """
 
 
+def _temp_vault() -> PseudonymVault:
+    return PseudonymVault(Path(tempfile.mktemp(suffix=".json")))
+
+
 class TestAnonymization(unittest.TestCase):
     def test_anonymizer_detect_merges_overlaps(self) -> None:
         regex = RegexDetector()
-        anonymizer = Anonymizer([regex], default_phi_policy())
+        anonymizer = Anonymizer([regex], default_phi_policy(), _temp_vault())
         spans = anonymizer.detect(CLINICAL_NOTE)
         sorted_spans = sorted(spans, key=lambda s: s.start)
         for i in range(len(sorted_spans) - 1):
@@ -43,7 +49,7 @@ class TestAnonymization(unittest.TestCase):
                 start=10, end=15, label=PhiLabel.ID_SSN, score=0.9, source="regex"
             ),
         ]
-        anonymizer = Anonymizer([], default_phi_policy())
+        anonymizer = Anonymizer([], default_phi_policy(), _temp_vault())
         result = anonymizer.redact_tagged("John Smith 321-54-9876 rest", spans)
         self.assertIn("[NAME_PATIENT]", result)
         self.assertIn("[ID_SSN]", result)
@@ -51,14 +57,22 @@ class TestAnonymization(unittest.TestCase):
 
     def test_anonymizer_run_pseudonymizes(self) -> None:
         regex = RegexDetector()
-        anonymizer = Anonymizer([regex], default_phi_policy())
+        anonymizer = Anonymizer([regex], default_phi_policy(), _temp_vault())
         result = anonymizer.run(CLINICAL_NOTE)
-        self.assertNotIn("Margaret Thompson", result.redacted_text)
         self.assertNotIn("321-54-9876", result.redacted_text)
-        self.assertNotIn("Rajesh Patel", result.redacted_text)
+        self.assertNotIn("4478-2291", result.redacted_text)
         self.assertNotIn("(555) 867-5309", result.redacted_text)
-        self.assertRegex(result.redacted_text, r"PATIENT_\d{4}")
         self.assertRegex(result.redacted_text, r"SSN_\d{4}")
+        self.assertRegex(result.redacted_text, r"MRN_\d{4}")
+
+    def test_date_shift_epoch_remapping(self) -> None:
+        """Earliest date maps to 2000-01-01, intervals are preserved."""
+        regex = RegexDetector()
+        anonymizer = Anonymizer([regex], default_phi_policy(), _temp_vault())
+        result = anonymizer.run(CLINICAL_NOTE)
+        self.assertIn("January 01, 2000", result.redacted_text)
+        self.assertIn("January 08, 2000", result.redacted_text)
+        self.assertNotIn("2025", result.redacted_text)
 
     def test_regex_detector_finds_phi(self) -> None:
         detector = RegexDetector()
@@ -69,21 +83,9 @@ class TestAnonymization(unittest.TestCase):
         self.assertIn(PhiLabel.CONTACT_PHONE, labels_found)
         self.assertIn(PhiLabel.DATE, labels_found)
         self.assertIn(PhiLabel.AGE, labels_found)
-        self.assertIn(PhiLabel.NAME_DOCTOR, labels_found)
-        self.assertIn(PhiLabel.NAME_PATIENT, labels_found)
-
-    def test_vault_date_shift_preserves_interval(self) -> None:
-        vault = PseudonymVault(secret="test-secret")
-        admission = date(2025, 1, 10)
-        discharge = date(2025, 1, 17)
-        shifted_adm = vault.shift_date(admission, "patient-1")
-        shifted_dis = vault.shift_date(discharge, "patient-1")
-        original_interval = (discharge - admission).days
-        shifted_interval = (shifted_dis - shifted_adm).days
-        self.assertEqual(original_interval, shifted_interval)
 
     def test_vault_pseudonym_consistency(self) -> None:
-        vault = PseudonymVault(secret="test-secret")
+        vault = _temp_vault()
         p1 = vault.pseudonym("NAME_PATIENT", "John Smith")
         p2 = vault.pseudonym("NAME_PATIENT", "John Smith")
         self.assertEqual(p1, p2)
@@ -91,7 +93,7 @@ class TestAnonymization(unittest.TestCase):
         self.assertNotEqual(p1, p3)
 
     def test_vault_pseudonym_format(self) -> None:
-        vault = PseudonymVault(secret="test-secret")
+        vault = _temp_vault()
         cases = [
             ("NAME_PATIENT", "John Smith", r"PATIENT_\d{4}"),
             ("NAME_DOCTOR", "Dr. Lee", r"DOCTOR_\d{4}"),
@@ -108,3 +110,24 @@ class TestAnonymization(unittest.TestCase):
             with self.subTest(label=label):
                 result = vault.pseudonym(label, value)
                 self.assertRegex(result, f"^{pattern}$", f"{label}: {result}")
+
+    def test_vault_name_normalization(self) -> None:
+        """Structural normalization: punctuation, case, token order."""
+        vault = _temp_vault()
+        p1 = vault.pseudonym("NAME_DOCTOR", "Rajesh Patel")
+        p2 = vault.pseudonym("NAME_DOCTOR", "Patel, Rajesh")
+        p3 = vault.pseudonym("NAME_DOCTOR", "rajesh patel")
+        self.assertEqual(p1, p2)
+        self.assertEqual(p2, p3)
+
+    def test_vault_persistence(self) -> None:
+        """Vault loaded from existing JSON returns the same pseudonyms."""
+        path = Path(tempfile.mktemp(suffix=".json"))
+        vault1 = PseudonymVault(path)
+        p1 = vault1.pseudonym("NAME_PATIENT", "Margaret Thompson")
+        vault2 = PseudonymVault(path)
+        p2 = vault2.pseudonym("NAME_PATIENT", "Margaret Thompson")
+        self.assertEqual(p1, p2)
+        self.assertTrue(path.exists())
+        data = json.loads(path.read_text())
+        self.assertEqual(len(data), 1)

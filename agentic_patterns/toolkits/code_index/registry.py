@@ -10,7 +10,7 @@ from agentic_patterns.core.vectordb.vectordb import get_vector_db
 
 logger = logging.getLogger(__name__)
 
-REGISTRY_COLLECTION = "_code_index_registry"
+REGISTRY_COLLECTION = "code-index-registry"
 REGISTRY_FILE = DATA_DIR / "code_indexes.yaml"
 
 
@@ -68,12 +68,12 @@ def unregister(collection_name: str) -> None:
     _write_yaml(entries)
 
     vdb = get_vector_db(REGISTRY_COLLECTION)
-    try:
-        vdb.delete(collection_name)
-    except Exception:
-        logger.debug("Registry entry '%s' not found in vector DB", collection_name)
+    if vdb.has(collection_name):
+        # Access the underlying Chroma collection to delete by ID
+        vdb._collection.delete(ids=[collection_name])  # noqa: SLF001
 
 
 def _write_yaml(entries: dict[str, dict]) -> None:
     REGISTRY_FILE.parent.mkdir(parents=True, exist_ok=True)
-    REGISTRY_FILE.write_text(yaml.dump({"indexes": entries}, default_flow_style=False, sort_keys=True))
+    content = yaml.dump({"indexes": entries}, default_flow_style=False, sort_keys=True)
+    REGISTRY_FILE.write_text(content)

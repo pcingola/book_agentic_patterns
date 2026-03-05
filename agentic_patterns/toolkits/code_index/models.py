@@ -15,6 +15,11 @@ class IndexListener:
     async def on_file_start(self, file_path: Path, current: int, total: int) -> None:
         pass
 
+    async def on_descriptions(
+        self, file_path: Path, descriptions: dict[str, str]
+    ) -> None:
+        pass
+
     async def on_file_done(
         self, file_path: Path, n_chunks: int, current: int, total: int
     ) -> None:
@@ -29,6 +34,16 @@ class PrintIndexListener(IndexListener):
 
     async def on_start(self, total_files: int) -> None:
         print(f"[index] {total_files} files to index")
+
+    async def on_descriptions(
+        self, file_path: Path, descriptions: dict[str, str]
+    ) -> None:
+        if not descriptions:
+            print(f"  (no descriptions returned)")
+            return
+        for doc_id, desc in descriptions.items():
+            symbol = doc_id.rsplit("-", 1)[-1] if "-" in doc_id else doc_id
+            print(f"  {symbol}: {desc or '(empty)'}")
 
     async def on_file_done(
         self, file_path: Path, n_chunks: int, current: int, total: int

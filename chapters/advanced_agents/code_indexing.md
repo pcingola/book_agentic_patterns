@@ -33,7 +33,7 @@ First, `ChunkerCode` parses the file with Tree-sitter and extracts syntax-cohere
 
 Second, `build_breadcrumbs()` deterministically constructs a structural breadcrumb for each symbol from the chunk metadata and file content. No LLM call is needed; the breadcrumb is derived from the AST structure that Tree-sitter already extracted.
 
-Third, `describe_symbols()` generates semantic descriptions by sending each symbol's code to an LLM with a focused prompt. Descriptions are generated concurrently with `asyncio.gather` for speed. The prompt asks for a single sentence focusing on purpose and behavior, not implementation details.
+Third, `describe_symbols()` generates semantic descriptions by sending all symbols from a file to an LLM in a single batched call. The LLM returns a structured list of `SymbolDescription` objects (one per symbol), each with the symbol name, type, and a one-sentence description focusing on purpose and behavior. This means one LLM call per file rather than one per symbol -- a file with 15 methods is one call, not 15.
 
 ```python
 # Breadcrumb example (deterministic, from AST):
@@ -75,15 +75,14 @@ In an "AI coding agent" loop, code search is rarely a one-shot. The agent altern
 
 It provides low-latency, high-recall candidate retrieval through embeddings over syntax-coherent chunks, with the added dimension that intent-level queries hit descriptions while structural queries hit breadcrumbs. ([DEV Community][4]) It provides navigability through the `expand` operation, so the agent can follow the structure from a search hit to its parent class, siblings, and related symbols without additional keyword searches. And it provides provenance (filename/line numbers) so the coding agent can open the correct file regions and generate minimal diffs rather than rewriting large sections.
 
-Indexing is a user-initiated setup step -- you create a `CodeIndex`, call `index()`, and register it with a description so the agent can discover it automatically:
+Indexing is a user-initiated setup step -- you create a `CodeIndex` and call `index()`:
 
 ```python
 code_index = CodeIndex(repo_path, "my_project")
 stats = await code_index.index(include_patterns=["*.py"])
-register_index(code_index, description="Payment processing microservice: Stripe integration, invoicing, and webhooks")
 ```
 
-The description is stored in a registry vector DB. At enterprise scale, an organization might index hundreds of GitHub repos, each as a separate collection. When the user asks a question without specifying a collection, the agent calls `code_list_indexes(query)` to semantically search this registry and find which repos are relevant -- the user never needs to know collection names. For example, asking "how does retry logic work in the payment service" would match the description above and route the search to the right collection automatically.
+At the end of indexing, `CodeIndex` automatically generates a description from the symbol summaries it already produced and stores it in a registry (a YAML file for visibility, backed by a vector DB for semantic search). When the agent later needs a `CodeIndex` object, it reconstructs it automatically from the registry metadata -- no manual registration step is needed. At enterprise scale, an organization might index hundreds of GitHub repos, each as a separate collection. When the user asks a question without specifying a collection, the agent calls `code_list_indexes(query)` to semantically search this registry and find which repos are relevant -- the user never needs to know collection names. For example, if a repo's auto-generated description includes terms like "Stripe integration, invoicing, webhooks", asking "how does retry logic work in the payment service" would match and route the search to the right collection automatically.
 
 The agent is created via `create_agent()` which loads the system prompt and wires up the tools (`code_list_indexes`, `code_search`, `code_expand`, `code_lexical_search`). The system prompt describes the three-index architecture so the agent knows to use intent-level queries for "how does X work" questions and structural queries for "what uses X" questions.
 

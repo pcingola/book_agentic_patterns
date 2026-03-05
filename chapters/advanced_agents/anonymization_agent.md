@@ -28,7 +28,7 @@ Once the agent has spans (start, end, label, confidence, provenance), it applies
 
 Plain masking is irreversible and safest for high-risk fields (“John Smith” → “[PERSON]”). This is typically the default for anything that could identify a person directly.
 
-Pseudonymization preserves linkability across a dataset (“John Smith” -> “PATIENT_0042”) by replacing real identifiers with opaque deterministic tokens (`LABEL_NNNN`) selected via HMAC. The same input always maps to the same pseudonym, enabling joins and longitudinal analysis, but the tokens are obviously synthetic -- they cannot be confused with real data by either humans or audit models. In GDPR terminology, pseudonymisation means the data cannot be attributed to a person without additional information kept separately. ([GDPR][4])
+Pseudonymization preserves linkability across a dataset (“John Smith” -> “PATIENT_0001”) by replacing real identifiers with opaque sequential tokens (`LABEL_NNNN`) stored in a persistent vault. The same input always maps to the same pseudonym, enabling joins and longitudinal analysis, but the tokens are obviously synthetic -- they cannot be confused with real data by either humans or audit models. In GDPR terminology, pseudonymisation means the data cannot be attributed to a person without additional information kept separately. ([GDPR][4])
 
 For structured identifiers, format-preserving pseudonyms prevent breaking schemas and validators. A common approach is format-preserving encryption (FPE), standardized by NIST (FF1 / FF3-1), which can keep length and character sets intact. ([NIST Computer Security Resource Center][5])
 
@@ -50,7 +50,7 @@ Because the verification pass sees raw(ish) content, many teams run it on a loca
 
 The core design is a three-step loop: (1) regex detection on original text, (2) tag detected spans and run an LLM to find additional PHI that regex missed, merge all spans, pseudonymize from the original text, (3) run the LLM again on the pseudonymized output to verify nothing leaked -- if it finds more PHI, loop back to step 2. The loop is bounded to `max_passes` (default 2) to prevent infinite loops. The `AnonymizationAgent` is the only public API; the toolkit classes (`Anonymizer`, `RegexDetector`, `PseudonymVault`) are internal machinery.
 
-PHI labels follow the i2b2/UTHealth 2014 de-identification taxonomy, encoded as a `PhiLabel` enum (NAME_PATIENT, NAME_DOCTOR, LOCATION_HOSPITAL, ID_SSN, ID_MEDICALRECORD, DATE, CONTACT_PHONE, AGE, etc.). The `Operator` enum defines four redaction strategies: MASK (block characters), TAG (label replacement), PSEUDONYM (opaque deterministic identifiers, `LABEL_NNNN`), and DATE_SHIFT (per-patient offset preserving intervals).
+PHI labels follow the i2b2/UTHealth 2014 de-identification taxonomy, encoded as a `PhiLabel` enum (NAME_PATIENT, NAME_DOCTOR, LOCATION_HOSPITAL, ID_SSN, ID_MEDICALRECORD, DATE, CONTACT_PHONE, AGE, etc.). The `Operator` enum defines four redaction strategies: MASK (block characters), TAG (label replacement), PSEUDONYM (opaque deterministic identifiers, `LABEL_NNNN`), and DATE_SHIFT (epoch remapping to 2000-01-01, preserving intervals).
 
 ```python
 class EntitySpan(BaseModel):
@@ -73,13 +73,13 @@ class Detector(Protocol):
     def detect(self, text: str, meta: dict | None = None) -> list[EntitySpan]: ...
 ```
 
-The default policy (`default_phi_policy()`) uses PSEUDONYM for all labels except DATE which uses DATE_SHIFT. This produces de-identified text where “Margaret Thompson” becomes `PATIENT_0042` and “4478-2291” becomes `MRN_0093`, with tokens that are obviously synthetic rather than confusable with real data.
+The default policy (`default_phi_policy()`) uses PSEUDONYM for all labels except DATE which uses DATE_SHIFT (epoch remapping to 2000-01-01). This produces de-identified text where “Margaret Thompson” becomes `PATIENT_0001` and “4478-2291” becomes `MRN_0001`, with tokens that are obviously synthetic rather than confusable with real data. Dates move to the year 2000, making them immediately recognizable as de-identified.
 
-Detectors are layered. `RegexDetector` ships with patterns for structured clinical PHI (MRN prefixes, SSN, phone, email, dates, ages >89, doctor/patient names after common prefixes). `NerDetector` is a generic wrapper that accepts any callable returning `(start, end, label, score)` tuples, so users can plug in Presidio, SciSpacy, or custom models. The LLM audit pass (steps 2 and 3) catches entity types that regex cannot handle -- person names, organizations, locations, and contextual identifiers.
+Detectors are layered. `RegexDetector` ships with patterns for structured clinical PHI (MRN prefixes, SSN, phone, email, dates, ages >89). `NerDetector` is a generic wrapper that accepts any callable returning `(start, end, label, score)` tuples, so users can plug in Presidio, SciSpacy, or custom models. The LLM audit pass (steps 2 and 3) catches entity types that regex cannot handle -- person names, organizations, locations, and contextual identifiers.
 
 ```python
 class RegexDetector:
-    “””Ships with patterns for MRN, SSN, phone, email, dates, ages >89, names.”””
+    “””Ships with patterns for MRN, SSN, phone, email, dates, ages >89.”””
 
     def detect(self, text: str, meta: dict | None = None) -> list[EntitySpan]:
         spans = []
@@ -95,36 +95,41 @@ class NerDetector:
     def detect(self, text: str, meta: dict | None = None) -> list[EntitySpan]: ...
 ```
 
-`PseudonymVault` generates opaque deterministic pseudonyms via HMAC-SHA256. The same (label, value) pair always maps to the same `LABEL_NNNN` token: `pseudonym(“NAME_PATIENT”, “John Smith”)` returns `”PATIENT_0042”`, `pseudonym(“ID_SSN”, “321-54-9876”)` returns `”SSN_0071”`. The label prefix is derived by stripping the category prefix (NAME_, ID_, CONTACT_, LOCATION_) and the numeric suffix is HMAC-derived mod 10000. Date shifting uses a per-patient HMAC-derived offset so all dates for the same patient shift by the same number of days, preserving temporal intervals (a 7-day hospital stay remains 7 days after shifting).
+`PseudonymVault` is a JSON-backed persistent store that maps (label, normalized value) pairs to opaque `LABEL_NNNN` tokens. Each label type gets a sequential counter: the first patient name becomes `PATIENT_0001`, the second `PATIENT_0002`, and so on. Mappings are persisted to a JSON file, so pseudonyms are consistent across separate runs -- if “Margaret Thompson” was mapped to `PATIENT_0001` three months ago, she still is today.
+
+For names, the vault normalizes input before lookup: it removes punctuation, lowercases, and sorts tokens alphabetically. This means “Rajesh Patel” and “Patel, Rajesh” resolve to the same pseudonym. Title stripping (“Dr.”, honorifics) is not the vault's job -- the LLM audit prompt instructs the model to return names without honorifics, which keeps the vault language-agnostic.
 
 ```python
 class PseudonymVault:
-    def __init__(self, secret: str = “default-vault-secret”): ...
+    def __init__(self, path: Path): ...
 
     def pseudonym(self, label: str, value: str) -> str:
-        “””Returns opaque LABEL_NNNN token.”””
-        h = self._hmac(“pseudo”, label, value)
-        index = int(h[:8], 16) % 10000
-        prefix = _LABEL_ALIASES.get(label, label.split(“_”, 1)[-1])
-        return f”{prefix}_{index:04d}”
-
-    def shift_date(self, d: date, patient_id: str, max_days: int = 30) -> date:
-        “””Same offset for all dates of a patient -> preserves intervals.”””
-        ...
+        “””Return pseudonym for (label, value), creating one if new.”””
+        key = f”{label}|{self._normalize(label, value)}”
+        if key in self._mappings:
+            return self._mappings[key]
+        prefix = self._prefix(label)
+        idx = self._counters.get(prefix, 0) + 1
+        self._counters[prefix] = idx
+        pseudo = f”{prefix}_{idx:04d}”
+        self._mappings[key] = pseudo
+        self._save()
+        return pseudo
 ```
 
-The `Anonymizer` is the internal engine: detect (run all detectors, merge overlapping spans, filter by policy), then redact (apply operators right-to-left to preserve offsets).
+The `Anonymizer` is the internal engine: detect (run all detectors, merge overlapping spans, filter by policy), then redact (apply operators right-to-left to preserve offsets). For dates, the anonymizer computes an epoch offset: it finds the earliest date in the document, calculates the delta to 2000-01-01, and applies that same delta to all dates. This moves dates to a clearly synthetic era while preserving temporal intervals (a 7-day hospital stay remains 7 days).
 
 ```python
 class Anonymizer:
-    def __init__(self, detectors: list[Detector], policy: AnonymizationPolicy, vault: PseudonymVault): ...
+    def __init__(self, detectors: list[Detector], policy: AnonymizationPolicy, vault: PseudonymVault):
+        ...
 
     def detect(self, text: str, meta: dict | None = None) -> list[EntitySpan]:
         “””Run all detectors, merge overlaps, filter by min_score and allowlist.”””
         ...
 
-    def redact(self, text: str, spans: list[EntitySpan], meta: dict | None = None) -> str:
-        “””Apply operators right-to-left. Auto-extracts patient_id from MRN spans.”””
+    def redact(self, text: str, spans: list[EntitySpan]) -> str:
+        “””Apply operators right-to-left. Dates are epoch-shifted (earliest -> 2000-01-01).”””
         ...
 
     def run(self, text: str, meta: dict | None = None) -> AnonymizationResult:
@@ -148,7 +153,7 @@ class AuditResult(BaseModel):
     findings: list[AuditFinding] = []
 
 class AnonymizationAgent:
-    def __init__(self, detectors, policy, vault, *, config_name=”default”, max_passes=2):
+    def __init__(self, detectors, policy, vault: PseudonymVault, *, config_name=”default”, max_passes=2):
         self._anonymizer = Anonymizer(detectors, policy, vault)
         self._audit_agent = get_agent(config_name=config_name, output_type=AuditResult)
         self._max_passes = max_passes
@@ -165,7 +170,7 @@ class AnonymizationAgent:
                 all_spans = _merge_spans(all_spans + self._findings_to_spans(text, ...))
 
             # Pseudonymize from original text
-            redacted_text = self._anonymizer.redact(text, all_spans, meta)
+            redacted_text = self._anonymizer.redact(text, all_spans)
 
             # Step 3: LLM verifies pseudonymized output
             verify_output = (await self._audit_agent.run(audit_prompt(redacted_text))).output
@@ -199,6 +204,7 @@ The agent selects this model via `config_name`:
 agent = AnonymizationAgent(
     detectors=[RegexDetector()],
     policy=default_phi_policy(),
+    vault=PseudonymVault(Path("vault.json")),
     config_name="ollama_local",
 )
 ```
@@ -208,7 +214,7 @@ The model must be capable of structured output (returning valid JSON matching `A
 
 ### Hands-on
 
-See `agentic_patterns/examples/advanced_agents/example_anonymization.ipynb` for a working notebook that demonstrates the full pipeline: regex detection, LLM audit, opaque pseudonymized output, pseudonym consistency across documents, and date shift interval preservation.
+See `agentic_patterns/examples/advanced_agents/example_anonymization.ipynb` for a working notebook that demonstrates the full pipeline: regex detection, LLM audit, pseudonymized output with epoch-based date shifting, and pseudonym consistency across documents.
 
 ## References (references.md)
 

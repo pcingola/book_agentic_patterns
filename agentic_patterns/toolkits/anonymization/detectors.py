@@ -43,16 +43,6 @@ _PATTERNS: list[tuple[str, PhiLabel]] = [
         r"\b(?:age[d]?\s*[:#]?\s*)?(?:9\d|[1-9]\d{2,})\s*(?:year|yr|y/?o)\b",
         PhiLabel.AGE,
     ),
-    # Doctor names (after "Dr." or "Doctor")
-    (
-        r"(?i)\b(?:Dr\.?|Doctor)[ \t]+([A-Z][a-z]+(?:[ \t]+[A-Z][a-z]+)?)",
-        PhiLabel.NAME_DOCTOR,
-    ),
-    # Patient names (after "Patient:" or "Pt:")
-    (
-        r"(?i)\b(?:Patient|Pt)[ \t:]+([A-Z][a-z]+(?:[ \t]+[A-Z][a-z]+)+)",
-        PhiLabel.NAME_PATIENT,
-    ),
 ]
 
 

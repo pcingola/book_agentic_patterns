@@ -16,15 +16,14 @@ Each chunk's `doc_id` encodes the symbol structure: `example-function-1-connect`
 
 ### Indexing (setup)
 
-Indexing is a user-initiated step, not something the agent decides to do. We create a `CodeIndex`, call `index()` to populate the three parallel collections, and register it with a description. The description is stored in a registry vector DB so the agent can discover relevant indexes via semantic search -- the user never needs to mention collection names in their prompts.
+Indexing is a user-initiated step, not something the agent decides to do. We create a `CodeIndex` and call `index()` to populate the three parallel collections. Indexing automatically generates a description from the symbol summaries and stores it in a registry (YAML file + vector DB) so the agent can discover relevant indexes via semantic search -- the user never needs to mention collection names in their prompts.
 
 ```python
 code_index = CodeIndex(target_dir, "code_demo")
 stats = await code_index.index(include_patterns=["*.py"])
-register_index(code_index, description="RAG pipeline: chunking, clustering, retrieval, and code-aware parsing")
 ```
 
-The stats report files indexed, chunks created, and any errors. Indexing generates descriptions concurrently, so it makes LLM calls proportional to the number of symbols.
+The stats report files indexed, chunks created, and any errors. Descriptions are generated one file at a time -- all symbols in a file are described in a single LLM call, so the number of LLM calls equals the number of files, not the number of symbols.
 
 ### The agent
 

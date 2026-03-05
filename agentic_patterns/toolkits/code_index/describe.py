@@ -1,69 +1,71 @@
 """LLM-generated semantic descriptions for code symbols."""
 
-import asyncio
 import logging
 
+from pydantic import BaseModel
+
 from agentic_patterns.core.agents import get_agent
+from agentic_patterns.core.rag.chunker_code import SymbolType
 from agentic_patterns.core.vectordb.models import Chunk
 
 logger = logging.getLogger(__name__)
 
 _SYSTEM_PROMPT = (
-    "You generate concise one-sentence descriptions of what a code symbol does. "
+    "You generate concise one-sentence descriptions of code symbols. "
     "Focus on purpose and behavior, not implementation details. "
-    "Do not start with 'This function' or 'This class'. "
-    "Example: 'Establishes a connection to a remote server with retry logic, "
-    "attempting up to MAX_RETRIES times.'"
+    "Do not start with 'This function' or 'This class'.\n\n"
+    "You receive multiple symbols from the same file. "
+    "Return a description for each one, preserving the exact symbol_name and symbol_type."
 )
 
-_MAX_CONCURRENT = 10
+
+class SymbolDescription(BaseModel):
+    symbol_name: str
+    symbol_type: SymbolType
+    description: str
 
 
-async def describe_symbol(
-    code: str,
-    symbol_name: str,
-    symbol_type: str,
-    file_context: str,
-    config_name: str = "default",
-    semaphore: asyncio.Semaphore | None = None,
-) -> str:
-    """Generate a one-sentence semantic description of a code symbol via LLM."""
-    agent = get_agent(
-        config_name=config_name, system_prompt=_SYSTEM_PROMPT, output_type=str
-    )
-    prompt = f"{symbol_type} `{symbol_name}` in {file_context}:\n\n```\n{code}\n```"
-    if semaphore:
-        async with semaphore:
-            result = await agent.run(prompt)
-    else:
-        result = await agent.run(prompt)
-    return result.output
+class SymbolDescriptions(BaseModel):
+    symbols: list[SymbolDescription]
 
 
 async def describe_symbols(
     chunks: list[Chunk], config_name: str = "default"
 ) -> dict[str, str]:
-    """Generate descriptions for multiple chunks concurrently (bounded). Returns doc_id -> description."""
-    semaphore = asyncio.Semaphore(_MAX_CONCURRENT)
-    tasks = []
-    doc_ids = []
-    for chunk in chunks:
-        name = chunk.metadata.get("symbol_name", "")
-        if name in ("<preamble>", "<anonymous>", "<export>", "<decorated>"):
-            continue
-        stype = chunk.metadata.get("symbol_type", "")
-        source = chunk.metadata.get("source", "")
-        tasks.append(
-            describe_symbol(chunk.text, name, stype, source, config_name, semaphore)
-        )
-        doc_ids.append(chunk.doc_id)
+    """Describe all symbols from a file in a single LLM call. Returns doc_id -> description."""
+    filtered: list[Chunk] = [
+        c
+        for c in chunks
+        if c.metadata.get("symbol_name", "")
+        not in ("<preamble>", "<anonymous>", "<export>", "<decorated>")
+    ]
+    if not filtered:
+        return {}
 
-    results = await asyncio.gather(*tasks, return_exceptions=True)
-    descriptions: dict[str, str] = {}
-    for doc_id, result in zip(doc_ids, results):
-        if isinstance(result, Exception):
-            logger.warning("Failed to describe %s: %s", doc_id, result)
-            descriptions[doc_id] = ""
-        else:
-            descriptions[doc_id] = result
-    return descriptions
+    # Build a single prompt with all symbols
+    source = filtered[0].metadata.get("source", "")
+    parts = [f"File: {source}\n"]
+    key_to_doc_id: dict[str, str] = {}
+    for chunk in filtered:
+        name = chunk.metadata.get("symbol_name", "")
+        stype = chunk.metadata.get("symbol_type", "")
+        parts.append(f"### {stype} `{name}`\n```\n{chunk.text}\n```\n")
+        key_to_doc_id[f"{stype}:{name}"] = chunk.doc_id
+
+    agent = get_agent(
+        config_name=config_name,
+        system_prompt=_SYSTEM_PROMPT,
+        output_type=SymbolDescriptions,
+    )
+    try:
+        result = await agent.run("\n".join(parts))
+        descriptions: dict[str, str] = {}
+        for sd in result.output.symbols:
+            key = f"{sd.symbol_type}:{sd.symbol_name}"
+            doc_id = key_to_doc_id.get(key)
+            if doc_id:
+                descriptions[doc_id] = sd.description
+        return descriptions
+    except Exception:
+        logger.warning("Failed to describe symbols in %s", source, exc_info=True)
+        return {chunk.doc_id: "" for chunk in filtered}

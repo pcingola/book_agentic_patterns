@@ -122,11 +122,11 @@ class Detector(Protocol):
 def default_phi_policy() -> AnonymizationPolicy:
     """HIPAA Safe Harbor default policy using i2b2 categories.
 
-    All labels use PSEUDONYM (realistic fake data) except dates which use DATE_SHIFT
-    to preserve temporal intervals.
+    All labels use PSEUDONYM except dates which use DATE_SHIFT (earliest date
+    maps to 2000-01-01, all others shift by the same offset preserving intervals).
     """
     pseudo = OperatorSpec(operator=Operator.PSEUDONYM)
-    date_shift = OperatorSpec(operator=Operator.DATE_SHIFT, params={"max_days": 30})
+    date_shift = OperatorSpec(operator=Operator.DATE_SHIFT)
 
     operators: dict[PhiLabel, OperatorSpec] = {label: pseudo for label in PhiLabel}
     operators[PhiLabel.DATE] = date_shift
