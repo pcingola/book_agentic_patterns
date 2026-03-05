@@ -121,7 +121,7 @@ class MCPProxyServer:
             raise ToolFatalError(f"Server '{server_name}' is temporarily unavailable (circuit open)")
 
         # Budget check
-        if not self._accounting.record(user, tenant, session, server_name, 0, False):
+        if not self._accounting.check_budget(tenant):
             raise ToolFatalError(f"Budget limit exceeded for tenant '{tenant}'")
 
         # Forward the call

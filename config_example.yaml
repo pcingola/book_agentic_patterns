@@ -75,7 +75,7 @@ models:
 
   gemini_image:
     model_family: ai-gateway
-    model_name: gemini-2.0-flash
+    model_name: gemini-3-pro-image-preview
     gateway_url: https://your-gateway.example.com
     gateway_key: your-gateway-key
     gateway_provider: vertex-openai

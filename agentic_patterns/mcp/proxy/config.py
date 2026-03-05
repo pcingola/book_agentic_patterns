@@ -26,12 +26,6 @@ class RateLimitConfig(BaseModel):
     requests_per_minute: int = 60
 
 
-class QuotaConfig(BaseModel):
-    """Quota settings for a scope."""
-
-    max_calls_per_session: int = 500
-
-
 class BudgetAlertConfig(BaseModel):
     """Budget alert threshold."""
 
@@ -62,7 +56,6 @@ class ProxyConfig(BaseModel):
     backends: list[ProxyBackendConfig] = Field(default_factory=list)
     policies: list[PolicyRule] = Field(default_factory=list)
     rate_limits: dict[str, RateLimitConfig] = Field(default_factory=dict)
-    quotas: dict[str, QuotaConfig] = Field(default_factory=dict)
     circuit_breaker: CircuitBreakerConfig = Field(default_factory=CircuitBreakerConfig)
     accounting: AccountingConfig = Field(default_factory=AccountingConfig)
 

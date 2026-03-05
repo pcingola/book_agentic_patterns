@@ -49,12 +49,15 @@ class AccountingService:
     def get_usage_by_user(self) -> dict[str, UsageRecord]:
         return dict(self._by_user)
 
-    def record(self, user: str, tenant: str, session: str, server: str, duration_ms: float, is_error: bool) -> bool:
-        """Record a tool call. Returns False if hard limit exceeded."""
+    def check_budget(self, tenant: str) -> bool:
+        """Check if tenant is within budget. Returns False if hard limit exceeded."""
+        return self._check_budget(tenant)
+
+    def record(self, user: str, tenant: str, session: str, server: str, duration_ms: float, is_error: bool) -> None:
+        """Record a tool call."""
         for store, key in [(self._by_user, user), (self._by_tenant, tenant), (self._by_session, session), (self._by_server, server)]:
             record = store.setdefault(key, UsageRecord())
             record.add(duration_ms, is_error)
-        return self._check_budget(tenant)
 
     def _check_budget(self, tenant: str) -> bool:
         """Check budget alerts for a tenant. Returns False if hard limit exceeded."""

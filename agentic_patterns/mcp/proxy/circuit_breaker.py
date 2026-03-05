@@ -37,6 +37,8 @@ class CircuitBreaker:
                 return False
             case CircuitState.HALF_OPEN:
                 return True
+            case _:
+                return True
 
     def record_failure(self) -> None:
         self.failure_count += 1
