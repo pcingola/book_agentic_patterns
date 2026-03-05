@@ -166,7 +166,20 @@ class CodeIndex:
         if listener:
             await listener.on_done(stats)
 
+        # Auto-register in the index registry using symbol descriptions
+        all_desc = self._vdb_descriptions.get_all_texts(max_items=30)
+        if all_desc:
+            description = " | ".join(all_desc)
+            register(self.collection_name, self.repo_path, description)
+
         return stats
+
+    def delete(self) -> None:
+        """Remove this index from the registry and delete its vector DB collections."""
+        unregister(self.collection_name)
+        self._vdb_code.delete_collection()
+        self._vdb_descriptions.delete_collection()
+        self._vdb_breadcrumbs.delete_collection()
 
     def lexical_search(self, pattern: str, max_results: int = 20) -> str:
         """Regex/literal search across source files in the repository."""
