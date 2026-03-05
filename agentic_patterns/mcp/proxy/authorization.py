@@ -14,6 +14,9 @@ class AuthorizationPolicy:
     def __init__(self, rules: list[PolicyRule]) -> None:
         self._rules = rules
 
+    def __str__(self) -> str:
+        return f"AuthorizationPolicy(rules={len(self._rules)})"
+
     def is_allowed(self, role: str, namespaced_tool: str) -> bool:
         """Check if a role is allowed to call a namespaced tool (server.tool).
 

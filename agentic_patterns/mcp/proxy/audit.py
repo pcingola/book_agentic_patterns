@@ -1,27 +1,8 @@
-"""Audit trail for the MCP proxy."""
+"""Audit trail for the MCP proxy. Append-only JSON Lines file."""
 
 import json
-import logging
-import sqlite3
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
-
-logger = logging.getLogger(__name__)
-
-CREATE_TABLE_SQL = """
-CREATE TABLE IF NOT EXISTS audit_log (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    timestamp REAL NOT NULL,
-    user_id TEXT NOT NULL,
-    tenant TEXT NOT NULL,
-    session_id TEXT NOT NULL,
-    server TEXT NOT NULL,
-    tool TEXT NOT NULL,
-    args TEXT NOT NULL,
-    status TEXT NOT NULL,
-    duration_ms REAL NOT NULL
-)
-"""
 
 
 @dataclass
@@ -43,38 +24,25 @@ class AuditEntry:
 
 
 class AuditLogger:
-    """Append-only audit log backed by SQLite."""
+    """Append-only audit log backed by a JSON Lines file."""
 
-    def __init__(self, db_path: Path) -> None:
-        self._db_path = db_path
-        db_path.parent.mkdir(parents=True, exist_ok=True)
-        self._conn = sqlite3.connect(str(db_path))
-        self._conn.execute(CREATE_TABLE_SQL)
-        self._conn.commit()
+    def __init__(self, path: Path) -> None:
+        self._path = path
+        path.parent.mkdir(parents=True, exist_ok=True)
 
-    def close(self) -> None:
-        self._conn.close()
+    def __str__(self) -> str:
+        return f"AuditLogger(path={self._path})"
 
     def log(self, entry: AuditEntry) -> None:
-        self._conn.execute(
-            "INSERT INTO audit_log (timestamp, user_id, tenant, session_id, server, tool, args, status, duration_ms) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (entry.timestamp, entry.user_id, entry.tenant, entry.session_id, entry.server, entry.tool, json.dumps(entry.args), entry.status, entry.duration_ms),
-        )
-        self._conn.commit()
+        with open(self._path, "a") as f:
+            f.write(json.dumps(asdict(entry)) + "\n")
 
-    def query(self, user_id: str | None = None, tenant: str | None = None, server: str | None = None, limit: int = 100) -> list[AuditEntry]:
-        """Query audit entries with optional filters."""
-        clauses = []
-        params: list = []
-        if user_id:
-            clauses.append("user_id = ?")
-            params.append(user_id)
-        if tenant:
-            clauses.append("tenant = ?")
-            params.append(tenant)
-        if server:
-            clauses.append("server = ?")
-            params.append(server)
-        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
-        rows = self._conn.execute(f"SELECT timestamp, user_id, tenant, session_id, server, tool, args, status, duration_ms FROM audit_log {where} ORDER BY id DESC LIMIT ?", [*params, limit]).fetchall()
-        return [AuditEntry(timestamp=r[0], user_id=r[1], tenant=r[2], session_id=r[3], server=r[4], tool=r[5], args=json.loads(r[6]), status=r[7], duration_ms=r[8]) for r in rows]
+    def read(self, limit: int = 100) -> list[AuditEntry]:
+        """Read the most recent entries."""
+        if not self._path.exists():
+            return []
+        with open(self._path) as f:
+            lines = f.readlines()
+        entries = [AuditEntry(**json.loads(line)) for line in lines[-limit:]]
+        entries.reverse()
+        return entries

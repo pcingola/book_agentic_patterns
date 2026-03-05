@@ -8,7 +8,7 @@ The issues compound. A new MCP server requires updating every agent's configurat
 
 ### Proxy Architecture
 
-The MCP proxy sits between agents and backend MCP servers as a single entry point. It is itself an MCP server -- agents connect to it using the same protocol they would use to connect to any MCP server. The proxy discovers tools from all registered backends, namespaces them (e.g., `sql.run_query`, `file_ops.read_file`), and exposes the aggregated tool list to clients.
+The MCP proxy sits between agents and backend MCP servers as a single entry point. It is itself a FastMCP server that uses `FastMCP.as_proxy()` and `mount()` to compose backends, preserving their full MCP surface -- tools with schemas, prompts, and resources. Agents connect to the proxy using the same protocol they would use to connect to any MCP server. Tools are namespaced automatically (e.g., `sql_run_query`, `file_ops_read_file`).
 
 ```
                     +------------------+
@@ -19,31 +19,33 @@ Agent C  ---------> |  circuit | acct  | --------> data_analysis server
                     +------------------+
 ```
 
-Because the proxy speaks MCP on both sides, it is transparent to agents. An agent does not know or care whether it is talking to the proxy or directly to a backend. This preserves all MCP semantics -- lifecycle, capability negotiation, error classification -- while adding enterprise cross-cutting concerns at a single point.
+Because the proxy speaks MCP on both sides, it is transparent to agents. An agent does not know or care whether it is talking to the proxy or directly to a backend. FastMCP's composition handles session management, feature forwarding (sampling, elicitation, logging, progress), and schema preservation automatically.
+
+Enterprise cross-cutting concerns are implemented as FastMCP middleware, not as manual checks inside tool handlers. This is important: middleware applies uniformly to all operations (tools, prompts, resources), is composable, and follows the standard pipeline pattern where each middleware can inspect, modify, or reject requests before passing them to the next layer.
 
 ### Cross-Cutting Concerns
 
-The proxy addresses ten concerns, each implemented as an independent component that can be enabled or configured separately.
+The proxy addresses ten concerns.
 
-**Authentication and identity propagation.** The proxy validates JWT tokens at entry. Once validated, the user identity (user ID, tenant, session, role) is extracted from claims and propagated to backend servers. Individual servers do not need to implement auth; they trust the proxy.
+**Authentication and identity propagation.** The `AuthSessionMiddleware` (reused from `core/mcp/`) validates JWT tokens at entry and sets the user session context. Backend servers trust the proxy's identity propagation.
 
-**Authorization.** A policy engine evaluates whether the caller's role is allowed to invoke the requested tool. Policies are defined in configuration using glob patterns (e.g., `sql.*` to allow all SQL tools, `sql.execute_write` to deny a specific one). Deny rules take precedence over allow rules.
+**Authorization.** The `AuthorizationMiddleware` evaluates whether the caller's role is allowed to invoke the requested tool. Policies are defined in configuration using glob patterns (e.g., `sql_*` to allow all SQL tools, `sql_execute_write` to deny a specific one). Deny rules take precedence over allow rules. If no policies are configured, all access is denied by default -- this is the secure posture.
 
-**Server registry and discovery.** Backend servers are registered in configuration. On startup, the proxy connects to each, discovers its tools via `list_tools`, and builds the aggregated tool list. Servers can be added or removed at runtime. Health checks track which backends are available.
+**Server composition.** Backend servers are mounted using `FastMCP.as_proxy()` + `mount()`. This is a live (dynamic) connection: changes to a backend's tools are reflected immediately without restarting the proxy. Each backend is mounted with a prefix for automatic namespacing. Unlike manual tool aggregation, this preserves the full MCP surface including input schemas, prompts, and resources.
 
-**Network isolation.** The proxy extends the dual-instance pattern from `MCPServerPrivateData` to the proxy layer. When a session contains private data, the proxy routes to isolated backend instances (configured via `url_isolated`). The one-way ratchet -- once private, always private for that session -- is enforced centrally.
+**Network isolation.** Network isolation for private data is handled at the backend level using `MCPServerPrivateData` (dual-instance routing with the one-way ratchet). The proxy does not duplicate this concern -- it delegates to backends that already enforce isolation. This keeps the proxy focused on cross-cutting concerns that span all backends.
 
-**Observability.** Every tool invocation is logged with structured fields: user, tenant, server, tool, duration, and status. Metrics (call count, error rate, latency) are collected per tool, per server, per user, and per tenant. OpenTelemetry integration enables distributed tracing across proxy and backends.
+**Observability.** FastMCP provides built-in `LoggingMiddleware` and `TimingMiddleware` that emit structured logs for every operation. The proxy's `AuditMiddleware` extends this with persistent, queryable records.
 
-**Rate limiting.** Token-bucket rate limiters enforce per-user and per-server call rates. When a limit is exceeded, the proxy returns a `ToolRetryError` with a retry hint, allowing the agent to back off gracefully rather than failing hard.
+**Rate limiting.** FastMCP's built-in `RateLimitingMiddleware` enforces call rates with configurable requests-per-second and burst capacity. When a limit is exceeded, the request is rejected with an error, allowing the agent to back off gracefully.
 
-**Circuit breaking.** Each backend has a circuit breaker that tracks consecutive failures. After a threshold, the circuit opens and the proxy immediately returns a `ToolFatalError` for that backend, preventing cascading failures. After a recovery timeout, the circuit enters a half-open state to probe whether the backend has recovered.
+**Circuit breaking.** The `CircuitBreakerMiddleware` tracks consecutive failures per backend. After a configurable threshold, the circuit opens and requests are rejected immediately, preventing cascading failures. After a recovery timeout, the circuit enters a half-open state to probe whether the backend has recovered.
 
-**Audit trail.** An append-only audit log records every tool invocation with full context: timestamp, user, tenant, session, server, tool, arguments (redacted as needed), status, and duration. The log is queryable for compliance review and forensic investigation.
+**Audit trail.** The `AuditMiddleware` records every tool invocation to an append-only JSON Lines file with full context: timestamp, user, tenant, session, tool, arguments, status, and duration. In production this would be replaced by a proper audit service or message queue; the JSON Lines format keeps the implementation simple while remaining easy to ingest into any log aggregation system.
 
-**Multi-tenancy.** Tenant identity is extracted from JWT claims (`org_id`). Each tenant gets isolated quotas, rate limits, audit entries, and optionally distinct sets of allowed backends. Tenants cannot observe or affect each other.
+**Multi-tenancy.** Tenant identity is extracted from JWT claims (`org_id`). Each tenant gets isolated audit entries and budget tracking. Tenants cannot observe or affect each other.
 
-**Accounting and cost attribution.** Usage is tracked per user, tenant, session, and server. Budget alerts fire when configurable thresholds are crossed (warning at N calls, hard limit at M). This enables chargeback models, capacity planning, and cost-aware agent design.
+**Accounting and cost attribution.** The `AccountingMiddleware` tracks usage per user, tenant, session, and tool. Budget alerts fire when configurable thresholds are crossed (warning at N calls, hard limit at M). This enables chargeback models, capacity planning, and cost-aware agent design.
 
 ### Configuration
 
@@ -52,12 +54,10 @@ The proxy is configured in `config.yaml` under the `mcp_proxy` key:
 ```yaml
 mcp_proxy:
   port: 8200
-  health_check_interval: 30
 
   backends:
     - name: sql
       url: http://localhost:8101/mcp
-      url_isolated: http://localhost:8102/mcp
     - name: file_ops
       url: http://localhost:8103/mcp
     - name: data_analysis
@@ -65,17 +65,14 @@ mcp_proxy:
 
   policies:
     - role: analyst
-      allow: ["sql.*", "data_analysis.*"]
-      deny: ["sql.execute_write"]
+      allow: ["sql_*", "data_analysis_*"]
+      deny: ["sql_execute_write"]
     - role: admin
       allow: ["*"]
 
-  rate_limits:
-    default:
-      requests_per_minute: 60
-    per_server:
-      sql:
-        requests_per_minute: 30
+  rate_limit:
+    requests_per_second: 1.0
+    burst_capacity: 20
 
   circuit_breaker:
     failure_threshold: 5
@@ -99,12 +96,10 @@ The proxy introduces operational complexity: another service to deploy, monitor,
 The proxy lives in `agentic_patterns/mcp/proxy/` with each concern in its own module:
 
 - `config.py` -- Pydantic models for proxy configuration
-- `registry.py` -- Server discovery and health tracking
-- `proxy_server.py` -- Main proxy server that wires all concerns together
-- `authorization.py` -- Policy-based access control
-- `rate_limiter.py` -- Token-bucket rate limiting
-- `circuit_breaker.py` -- Per-server circuit breakers
-- `observability.py` -- Structured logging and metrics collection
-- `audit.py` -- Append-only audit log (SQLite-backed)
+- `proxy_server.py` -- Builds the FastMCP server: mounts backends via `as_proxy()`, wires middleware stack, registers introspection tools (`proxy_audit_read`, `proxy_accounting_usage`)
+- `middleware.py` -- FastMCP middleware: `AuthorizationMiddleware`, `CircuitBreakerMiddleware`, `AuditMiddleware`, `AccountingMiddleware`
+- `authorization.py` -- Policy evaluation engine (glob-based allow/deny rules)
+- `circuit_breaker.py` -- Per-server circuit breaker state machine
+- `audit.py` -- Append-only audit log (JSON Lines file)
 - `accounting.py` -- Usage tracking and budget alerts
-- `server.py` -- Entry point for running the proxy
+- `server.py` -- Entry point for creating and running the proxy

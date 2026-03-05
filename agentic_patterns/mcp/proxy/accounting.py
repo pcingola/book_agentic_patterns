@@ -37,30 +37,11 @@ class AccountingService:
     _by_server: dict[str, UsageRecord] = field(default_factory=dict)
     _alerted: set[str] = field(default_factory=set)
 
-    def get_usage_by_server(self) -> dict[str, UsageRecord]:
-        return dict(self._by_server)
-
-    def get_usage_by_session(self) -> dict[str, UsageRecord]:
-        return dict(self._by_session)
-
-    def get_usage_by_tenant(self) -> dict[str, UsageRecord]:
-        return dict(self._by_tenant)
-
-    def get_usage_by_user(self) -> dict[str, UsageRecord]:
-        return dict(self._by_user)
+    def __str__(self) -> str:
+        return f"AccountingService(tenants={len(self._by_tenant)}, users={len(self._by_user)})"
 
     def check_budget(self, tenant: str) -> bool:
         """Check if tenant is within budget. Returns False if hard limit exceeded."""
-        return self._check_budget(tenant)
-
-    def record(self, user: str, tenant: str, session: str, server: str, duration_ms: float, is_error: bool) -> None:
-        """Record a tool call."""
-        for store, key in [(self._by_user, user), (self._by_tenant, tenant), (self._by_session, session), (self._by_server, server)]:
-            record = store.setdefault(key, UsageRecord())
-            record.add(duration_ms, is_error)
-
-    def _check_budget(self, tenant: str) -> bool:
-        """Check budget alerts for a tenant. Returns False if hard limit exceeded."""
         record = self._by_tenant.get(tenant)
         if not record:
             return True
@@ -75,3 +56,21 @@ class AccountingService:
                 logger.warning("Budget warning for tenant %s: %d calls (warn_at=%d)", tenant, record.call_count, alert.warn_at)
                 self._alerted.add(alert_key)
         return True
+
+    def get_usage_by_server(self) -> dict[str, UsageRecord]:
+        return dict(self._by_server)
+
+    def get_usage_by_session(self) -> dict[str, UsageRecord]:
+        return dict(self._by_session)
+
+    def get_usage_by_tenant(self) -> dict[str, UsageRecord]:
+        return dict(self._by_tenant)
+
+    def get_usage_by_user(self) -> dict[str, UsageRecord]:
+        return dict(self._by_user)
+
+    def record(self, user: str, tenant: str, session: str, server: str, duration_ms: float, is_error: bool) -> None:
+        """Record a tool call."""
+        for store, key in [(self._by_user, user), (self._by_tenant, tenant), (self._by_session, session), (self._by_server, server)]:
+            record = store.setdefault(key, UsageRecord())
+            record.add(duration_ms, is_error)

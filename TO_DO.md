@@ -1,6 +1,7 @@
 # To do
 
-- [ ] MCP & A2A proxy: security / auth / logging / visivility
+- [ ] MCP proxy: security / auth / logging / visivility
+- [ ] A2A proxy: security / auth / logging / visivility
 - [ ] Chapter UI: Add A2UI
 - [ ] Chapter: Long Running agents / Swarms / OpenClaw
 

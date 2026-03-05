@@ -8,8 +8,6 @@ class ProxyBackendConfig(BaseModel):
 
     name: str
     url: str
-    url_isolated: str | None = None
-    read_timeout: int = Field(default=60)
     enabled: bool = True
 
 
@@ -21,9 +19,10 @@ class CircuitBreakerConfig(BaseModel):
 
 
 class RateLimitConfig(BaseModel):
-    """Rate limit settings for a scope."""
+    """Rate limit settings."""
 
-    requests_per_minute: int = 60
+    requests_per_second: float = 1.0
+    burst_capacity: int = 20
 
 
 class BudgetAlertConfig(BaseModel):
@@ -52,10 +51,9 @@ class ProxyConfig(BaseModel):
     """Top-level proxy configuration."""
 
     port: int = 8200
-    health_check_interval: int = 30
     backends: list[ProxyBackendConfig] = Field(default_factory=list)
     policies: list[PolicyRule] = Field(default_factory=list)
-    rate_limits: dict[str, RateLimitConfig] = Field(default_factory=dict)
+    rate_limit: RateLimitConfig = Field(default_factory=RateLimitConfig)
     circuit_breaker: CircuitBreakerConfig = Field(default_factory=CircuitBreakerConfig)
     accounting: AccountingConfig = Field(default_factory=AccountingConfig)
 

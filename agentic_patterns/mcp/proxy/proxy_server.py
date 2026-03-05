@@ -1,164 +1,130 @@
 """MCP Proxy Server: central entry point that fronts all backend MCP servers.
 
-Agents connect to the proxy as a single MCP server. The proxy authenticates,
-authorizes, meters, and forwards tool calls to the appropriate backend.
+Uses FastMCP's as_proxy() and mount() for server composition, preserving
+tool schemas, prompts, and resources. Enterprise concerns (authorization,
+circuit breaking, audit, accounting) are implemented as FastMCP middleware.
 """
 
+import json
 import logging
-import time
+from dataclasses import asdict
 from pathlib import Path
-from typing import Any
 
 from fastmcp import FastMCP
-from fastmcp.server.dependencies import get_access_token
-from mcp import ClientSession
-from mcp.client.streamable_http import streamablehttp_client
+from fastmcp.server.middleware.logging import LoggingMiddleware
+from fastmcp.server.middleware.rate_limiting import RateLimitingMiddleware
 
-from agentic_patterns.core.config.config import DEFAULT_SESSION_ID
-from agentic_patterns.core.mcp.errors import ToolFatalError, ToolRetryError
+from agentic_patterns.core.mcp.middleware import AuthSessionMiddleware
 from agentic_patterns.mcp.proxy.accounting import AccountingService
-from agentic_patterns.mcp.proxy.audit import AuditEntry, AuditLogger
+from agentic_patterns.mcp.proxy.audit import AuditLogger
 from agentic_patterns.mcp.proxy.authorization import AuthorizationPolicy
 from agentic_patterns.mcp.proxy.circuit_breaker import CircuitBreakerManager
 from agentic_patterns.mcp.proxy.config import ProxyConfig
-from agentic_patterns.mcp.proxy.observability import MetricsCollector, log_tool_call
-from agentic_patterns.mcp.proxy.rate_limiter import RateLimiter
-from agentic_patterns.mcp.proxy.registry import ServerRegistry, ServerStatus
+from agentic_patterns.mcp.proxy.middleware import (
+    AccountingMiddleware,
+    AuditMiddleware,
+    AuthorizationMiddleware,
+    CircuitBreakerMiddleware,
+)
 
 logger = logging.getLogger(__name__)
 
 
 class MCPProxyServer:
-    """Enterprise MCP proxy that fronts multiple backend MCP servers."""
+    """Enterprise MCP proxy that fronts multiple backend MCP servers.
 
-    def __init__(self, config: ProxyConfig, audit_db_path: Path | None = None) -> None:
+    Uses FastMCP composition (as_proxy + mount) to aggregate backends
+    and FastMCP middleware for cross-cutting concerns.
+    """
+
+    def __init__(self, config: ProxyConfig, audit_path: Path | None = None) -> None:
         self._config = config
-        self._registry = ServerRegistry(config.backends)
-        self._auth_policy = AuthorizationPolicy(config.policies)
-        self._rate_limiter = RateLimiter(config.rate_limits)
-        self._circuit_breakers = CircuitBreakerManager(config.circuit_breaker)
-        self._metrics = MetricsCollector()
         self._accounting = AccountingService(budget_alerts=config.accounting.budget_alerts)
-        self._audit = AuditLogger(audit_db_path or Path("data/proxy_audit.db"))
-        self._mcp = FastMCP(name="mcp-proxy", instructions="Enterprise MCP Proxy")
+        self._audit = AuditLogger(audit_path or Path("data/proxy_audit.jsonl"))
+        self._mcp = self._build_server(config)
 
     def __str__(self) -> str:
-        healthy = len([s for s in self._registry.servers.values() if s.status == ServerStatus.HEALTHY])
-        return f"MCPProxyServer(port={self._config.port}, backends={healthy}/{len(self._registry.servers)})"
+        backends = ", ".join(b.name for b in self._config.backends if b.enabled)
+        return f"MCPProxyServer(port={self._config.port}, backends=[{backends}])"
 
     @property
     def accounting(self) -> AccountingService:
         return self._accounting
 
     @property
+    def audit(self) -> AuditLogger:
+        return self._audit
+
+    @property
     def mcp(self) -> FastMCP:
         return self._mcp
 
-    @property
-    def metrics(self) -> MetricsCollector:
-        return self._metrics
+    def _build_server(self, config: ProxyConfig) -> FastMCP:
+        """Build the FastMCP server with mounted backends and middleware."""
+        mcp = FastMCP(name="mcp-proxy", instructions="Enterprise MCP Proxy")
 
-    @property
-    def registry(self) -> ServerRegistry:
-        return self._registry
+        # Mount each backend using as_proxy (preserves schemas, prompts, resources)
+        backend_names = []
+        for backend in config.backends:
+            if not backend.enabled:
+                continue
+            proxy = FastMCP.as_proxy(backend.url)
+            mcp.mount(proxy, prefix=backend.name)
+            backend_names.append(backend.name)
+            logger.info("Mounted backend: %s -> %s", backend.name, backend.url)
 
-    async def start(self) -> None:
-        """Discover backends and register proxy tools."""
-        await self._registry.discover_all()
-        self._register_tools()
-        healthy = len([s for s in self._registry.servers.values() if s.status == ServerStatus.HEALTHY])
-        logger.info("MCP Proxy started with %d tools from %d backends", len(self._registry.get_all_tools()), healthy)
+        # Introspection tools (on the proxy itself, not on backends)
+        self._register_introspection_tools(mcp)
 
-    async def _call_backend(self, server_name: str, tool_name: str, args: dict) -> str:
-        """Open a connection to the backend and call the tool."""
-        server = self._registry.servers.get(server_name)
-        if not server:
-            raise ToolFatalError(f"Unknown server: {server_name}")
-        async with streamablehttp_client(server.config.url) as (r, w, _):
-            async with ClientSession(r, w) as session:
-                await session.initialize()
-                result = await session.call_tool(tool_name, args)
-                if result.isError:
-                    text = "\n".join(c.text for c in result.content if hasattr(c, "text"))
-                    raise ToolRetryError(text)
-                return "\n".join(c.text for c in result.content if hasattr(c, "text"))
-
-    def _extract_identity(self) -> tuple[str, str, str]:
-        """Extract user, tenant, and session from the access token."""
-        token = get_access_token()
-        if token:
-            user = token.claims.get("sub", "anonymous")
-            tenant = token.claims.get("org_id", "default")
-            session = token.claims.get("session_id", DEFAULT_SESSION_ID)
-            return user, tenant, session
-        return "anonymous", "default", DEFAULT_SESSION_ID
-
-    def _extract_role(self) -> str:
-        """Extract role from the access token claims."""
-        token = get_access_token()
-        if token:
-            return token.claims.get("role", "default")
-        return "default"
-
-    async def _forward_tool_call(self, server_name: str, tool_name: str, namespaced_name: str, args: dict) -> str:
-        """Forward a tool call through all proxy layers."""
-        user, tenant, session = self._extract_identity()
-
-        # Authorization
-        role = self._extract_role()
-        if not self._auth_policy.is_allowed(role, namespaced_name):
-            raise ToolFatalError(f"Access denied: role '{role}' cannot call '{namespaced_name}'")
-
-        # Rate limiting
-        if not self._rate_limiter.allow(user, scope="default"):
-            raise ToolRetryError("Rate limit exceeded. Try again shortly.")
-        if not self._rate_limiter.allow(server_name, scope=f"per_server.{server_name}"):
-            raise ToolRetryError(f"Rate limit exceeded for server '{server_name}'. Try again shortly.")
-
-        # Circuit breaker
-        breaker = self._circuit_breakers.get(server_name)
-        if not breaker.allow_request():
-            raise ToolFatalError(f"Server '{server_name}' is temporarily unavailable (circuit open)")
-
-        # Budget check
-        if not self._accounting.check_budget(tenant):
-            raise ToolFatalError(f"Budget limit exceeded for tenant '{tenant}'")
-
-        # Forward the call
-        start = time.monotonic()
-        status = "ok"
-        try:
-            result = await self._call_backend(server_name, tool_name, args)
-            breaker.record_success()
-            return result
-        except Exception:
-            status = "error"
-            breaker.record_failure()
-            raise
-        finally:
-            duration_ms = (time.monotonic() - start) * 1000
-            is_error = status != "ok"
-            self._metrics.record(server_name, tool_name, user, tenant, duration_ms, is_error)
-            self._accounting.record(user, tenant, session, server_name, duration_ms, is_error)
-            log_tool_call(user, tenant, server_name, tool_name, duration_ms, status)
-            self._audit.log(AuditEntry(
-                timestamp=time.time(), user_id=user, tenant=tenant, session_id=session,
-                server=server_name, tool=tool_name, args=args, status=status, duration_ms=duration_ms,
+        # Middleware stack (outermost first):
+        # 1. AuthSession: set identity from JWT for all requests
+        # 2. Logging: structured logs for every operation
+        # 3. Audit: log all attempts (including denied ones)
+        # 4. Authorization: reject unauthorized tool calls
+        # 5. RateLimit: enforce per-second call limits
+        # 6. Accounting: check budget + record usage (only for authorized calls)
+        # 7. CircuitBreaker: reject if backend is down
+        mcp.add_middleware(AuthSessionMiddleware())
+        mcp.add_middleware(LoggingMiddleware())
+        mcp.add_middleware(AuditMiddleware(self._audit))
+        if config.policies:
+            mcp.add_middleware(AuthorizationMiddleware(
+                AuthorizationPolicy(config.policies),
             ))
+        mcp.add_middleware(RateLimitingMiddleware(
+            max_requests_per_second=config.rate_limit.requests_per_second,
+            burst_capacity=config.rate_limit.burst_capacity,
+        ))
+        mcp.add_middleware(AccountingMiddleware(self._accounting))
+        mcp.add_middleware(CircuitBreakerMiddleware(
+            CircuitBreakerManager(config.circuit_breaker),
+            backend_names=backend_names,
+        ))
 
-    def _register_proxy_tool(self, namespaced_name: str, tool: Any) -> None:
-        """Register a single proxy tool that forwards to the backend."""
-        server_name, tool_name = namespaced_name.split(".", 1)
-        description = f"[{server_name}] {tool.description or tool_name}"
+        return mcp
 
-        def _make_handler(ns: str = namespaced_name, srv: str = server_name, tl: str = tool_name):
-            async def proxy_call(**kwargs: Any) -> str:
-                return await self._forward_tool_call(srv, tl, ns, kwargs)
-            return proxy_call
+    def _register_introspection_tools(self, mcp: FastMCP) -> None:
+        """Register proxy introspection tools for audit and accounting."""
+        audit = self._audit
+        accounting = self._accounting
 
-        self._mcp.tool(name=namespaced_name, description=description)(_make_handler())
+        @mcp.tool()
+        def proxy_audit_read(limit: int = 20) -> str:
+            """Read recent audit log entries."""
+            entries = audit.read(limit)
+            return json.dumps([asdict(e) for e in entries], indent=2)
 
-    def _register_tools(self) -> None:
-        """Register aggregated tools from all backends on the FastMCP server."""
-        for namespaced_name, tool in self._registry.get_all_tools():
-            self._register_proxy_tool(namespaced_name, tool)
+        @mcp.tool()
+        def proxy_accounting_usage() -> str:
+            """Get usage statistics by user, tenant, and server."""
+            result = {}
+            for label, getter in [
+                ("by_user", accounting.get_usage_by_user),
+                ("by_tenant", accounting.get_usage_by_tenant),
+                ("by_server", accounting.get_usage_by_server),
+            ]:
+                result[label] = {
+                    k: {"calls": v.call_count, "duration_ms": round(v.total_duration_ms), "errors": v.error_count}
+                    for k, v in getter().items()
+                }
+            return json.dumps(result, indent=2)

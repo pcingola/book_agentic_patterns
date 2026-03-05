@@ -21,11 +21,7 @@ def load_proxy_config(config_path: Path | None = None) -> ProxyConfig:
     return ProxyConfig(**proxy_data)
 
 
-async def run_proxy(config_path: Path | None = None) -> MCPProxyServer:
-    """Start the MCP proxy server."""
+def create_proxy_server(config_path: Path | None = None) -> MCPProxyServer:
+    """Create a configured MCP proxy server."""
     config = load_proxy_config(config_path)
-    proxy = MCPProxyServer(config)
-    await proxy.start()
-    logger.info("Proxy ready on port %d", config.port)
-    # The FastMCP server handles the actual HTTP serving
-    return proxy
+    return MCPProxyServer(config)
