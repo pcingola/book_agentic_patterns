@@ -272,15 +272,14 @@ NOTE: This chapter is entirely hands-on -- each section pairs theory with its no
 
 ### Chapter: [Advanced Agents](chapters/advanced_agents/chapter.md)
 
-Complex agents built by composing prior patterns: adversarial simulation, iterative research, and rubric-based compliance evaluation.
+Complex agents built by composing prior patterns: adversarial simulation, iterative research, rubric-based compliance evaluation, code indexing, and anonymization.
 
-- [ ] Introduction -- How the patterns from previous chapters compose into agents that reason, challenge, and synthesize at scale
-- [ ] Adversarial & Debate Agents -- Red-team agent generating challenges from gaps; debate pattern with two opposing sub-agents and an arbiter; persona simulation
-- [ ] Deep Research Agent -- Iterative plan-retrieve-gap-requery loop with evidence accumulation, conflict resolution, and stopping criteria
-- [ ] Rubric Agent -- Criteria-driven assessment: rubric creation from policy docs, refinement via semantic clustering of historical data, multi-source evidence retrieval, adversarial stress-test; compliance framing (GxP, HIPAA, SOC 2)
-- [ ] Code Indexing and Search Agent -- Semantic indexing of large codebases with natural-language search and cross-reference resolution
-- [ ] Hands-on: Introduction -- Overview of exercises building up from adversarial agents through the full rubric pipeline
-- [ ] Hands-on: Debate Agent -- Two sub-agents argue opposing positions on a proposal; arbiter produces a verdict with reasoning
-- [ ] Hands-on: Deep Research Agent -- Multi-step research loop over a heterogeneous corpus with gap detection and source conflict handling
-- [ ] Hands-on: Rubric Agent -- End-to-end compliance assessment: extract SOC 2 controls, refine with audit findings, assess a project, simulate the external auditor
-- [ ] References
+- [x] Introduction -- How the patterns from previous chapters compose into agents that reason, challenge, and synthesize at scale
+- [x] Adversarial & Debate Agents -- Red-team agent generating challenges from gaps; debate pattern with two opposing sub-agents and an arbiter; persona simulation
+- [x] Deep Research Agent -- Iterative plan-retrieve-gap-requery loop with evidence accumulation, conflict resolution, and stopping criteria
+- [x] Rubric Agent -- Criteria-driven assessment: rubric creation from policy docs, refinement via semantic clustering of historical data, multi-source evidence retrieval, adversarial stress-test
+- [x] Code Indexing and Search Agent -- Semantic indexing of large codebases with natural-language search and cross-reference resolution
+- [x] Anonymization Agent -- Layered de-identification (regex + LLM audit) with pseudonymization, epoch-based date shifting, and verification loop
+- [x] References
+
+NOTE: This chapter is entirely hands-on -- each section pairs theory with its notebook. No separate hands-on sections.

@@ -10,7 +10,7 @@ from agentic_patterns.core.vectordb.models import Chunk, ChunkLevel
 from agentic_patterns.core.vectordb.multi_source import MultiSourceRetriever
 from agentic_patterns.core.vectordb.vectordb import VectorDB, get_vector_db
 from agentic_patterns.toolkits.code_index.breadcrumbs import build_breadcrumbs
-from agentic_patterns.toolkits.code_index.describe import describe_symbols
+from agentic_patterns.toolkits.code_index.describe import describe_symbols, summarize_descriptions
 from agentic_patterns.toolkits.code_index.models import (
     CodeSearchResult,
     IndexListener,
@@ -141,6 +141,10 @@ class CodeIndex:
                         )
 
                 # Descriptions -- LLM-generated (one call per file)
+                logger.debug(
+                    "%s: %d chunks, %d symbols after filtering",
+                    rel_path, len(chunks), len(symbol_chunks),
+                )
                 descriptions = await describe_symbols(symbol_chunks, config_name)
                 if listener:
                     await listener.on_descriptions(file_path, descriptions)
@@ -168,10 +172,10 @@ class CodeIndex:
         if listener:
             await listener.on_done(stats)
 
-        # Auto-register in the index registry using symbol descriptions
+        # Auto-register in the index registry using a short summary
         _, all_desc = self._vdb_descriptions.get_all_documents()
         if all_desc:
-            description = " | ".join(all_desc[:30])
+            description = await summarize_descriptions(all_desc)
             register(self.collection_name, self.repo_path, description)
 
         return stats

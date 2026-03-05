@@ -1,5 +1,3 @@
-# Advanced Agents
-
 ## Anonymization Agent
 
 An anonymization agent applies multiple de-identification techniques (structured rules and LLM-based detection) and then runs a verification pass to catch leaks while preserving downstream utility.
@@ -214,32 +212,16 @@ The model must be capable of structured output (returning valid JSON matching `A
 
 ### Hands-on
 
-See `agentic_patterns/examples/advanced_agents/example_anonymization.ipynb` for a working notebook that demonstrates the full pipeline: regex detection, LLM audit, pseudonymized output with epoch-based date shifting, and pseudonym consistency across documents.
+See `example_anonymization.ipynb` for a working notebook that demonstrates the full pipeline: regex detection, LLM audit, pseudonymized output with epoch-based date shifting, and pseudonym consistency across documents.
 
-## References (references.md)
-
-1. Microsoft. *Presidio: Data Protection and De-identification SDK*. Documentation. [https://microsoft.github.io/presidio/](https://microsoft.github.io/presidio/) ([Microsoft][2])
-2. Microsoft. *Presidio Anonymizer*. Documentation. [https://microsoft.github.io/presidio/anonymizer/](https://microsoft.github.io/presidio/anonymizer/) ([Microsoft][9])
-3. Ollama. *API Introduction*. Documentation. [https://docs.ollama.com/api/introduction](https://docs.ollama.com/api/introduction) ([Ollama Documentation][8])
-4. Ollama. *API: Generate a chat completion (POST /api/chat)*. Source documentation. [https://github.com/ollama/ollama/blob/main/docs/api.md](https://github.com/ollama/ollama/blob/main/docs/api.md) ([GitHub][11])
-5. Helen Nissenbaum. *Privacy as Contextual Integrity*. Washington Law Review, 2004. [https://digitalcommons.law.uw.edu/wlr/vol79/iss1/10/](https://digitalcommons.law.uw.edu/wlr/vol79/iss1/10/) ([UW Law Digital Commons][7])
-6. Helen Nissenbaum. *Privacy as Contextual Integrity*. 2004 (PDF copy). [https://crypto.stanford.edu/portia/papers/RevnissenbaumDTP31.pdf](https://crypto.stanford.edu/portia/papers/RevnissenbaumDTP31.pdf) ([Applied Cryptography Group][12])
-7. European Union. *General Data Protection Regulation, Article 4(5): Definition of ‘pseudonymisation’*. [https://gdpr-info.eu/art-4-gdpr/](https://gdpr-info.eu/art-4-gdpr/) ([GDPR][4])
-8. Information Commissioner’s Office (UK). *Pseudonymisation*. Guidance. [https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/data-sharing/anonymisation/pseudonymisation/](https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/data-sharing/anonymisation/pseudonymisation/) ([ICO][13])
-9. Morris Dworkin (NIST). *Recommendation for Block Cipher Modes of Operation: Methods for Format-Preserving Encryption (SP 800-38G Rev. 1)*. NIST, 2019/2025. [https://csrc.nist.gov/pubs/sp/800/38/g/r1/ipd](https://csrc.nist.gov/pubs/sp/800/38/g/r1/ipd) ([NIST Computer Security Resource Center][14])
-10. Latanya Sweeney. *k-anonymity: A Model for Protecting Privacy*. International Journal on Uncertainty, Fuzziness and Knowledge-based Systems, 2002. [https://dl.acm.org/doi/10.1142/S0218488502001648](https://dl.acm.org/doi/10.1142/S0218488502001648) ([ACM Digital Library][6])
-11. A. Stubbs, C. Kotfila, Ö. Uzuner. *Automated systems for the de-identification of longitudinal clinical narratives: Overview of the 2014 i2b2/UTHealth shared task Track 1*. Journal of Biomedical Informatics, 2015. [https://pmc.ncbi.nlm.nih.gov/articles/PMC4989908/](https://pmc.ncbi.nlm.nih.gov/articles/PMC4989908/) ([PMC][3])
-12. i2b2. *2014 i2b2/UTHealth NLP Shared Task: De-identification Track*. [https://www.i2b2.org/NLP/HeartDisease/](https://www.i2b2.org/NLP/HeartDisease/)
-
-[2]: https://microsoft.github.io/presidio/?utm_source=chatgpt.com "Presidio: Data Protection and De-identification SDK"
-[3]: https://pmc.ncbi.nlm.nih.gov/articles/PMC4989908/?utm_source=chatgpt.com "Overview of 2014 i2b2/UTHealth shared task Track 1 - PMC"
-[4]: https://gdpr-info.eu/art-4-gdpr/?utm_source=chatgpt.com "Art. 4 GDPR – Definitions - General Data Protection ..."
-[5]: https://csrc.nist.gov/pubs/sp/800/38/g/r1/2pd?utm_source=chatgpt.com "SP 800-38G Rev. 1, Recommendation for Block Cipher ..."
-[6]: https://dl.acm.org/doi/10.1142/S0218488502001648?utm_source=chatgpt.com "k-anonymity: a model for protecting privacy"
-[7]: https://digitalcommons.law.uw.edu/wlr/vol79/iss1/10/?utm_source=chatgpt.com "\"Privacy as Contextual Integrity\" by Helen Nissenbaum"
-[8]: https://docs.ollama.com/api/introduction?utm_source=chatgpt.com "Introduction"
-[9]: https://microsoft.github.io/presidio/anonymizer/?utm_source=chatgpt.com "Presidio Anonymizer"
-[11]: https://github.com/ollama/ollama/blob/main/docs/api.md?utm_source=chatgpt.com "ollama/docs/api.md at main"
-[12]: https://crypto.stanford.edu/portia/papers/RevnissenbaumDTP31.pdf?utm_source=chatgpt.com "101 PRIVACY AS CONTEXTUAL INTEGRITY Helen ..."
-[13]: https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/data-sharing/anonymisation/pseudonymisation/?utm_source=chatgpt.com "Pseudonymisation | ICO"
-[14]: https://csrc.nist.gov/pubs/sp/800/38/g/r1/ipd?utm_source=chatgpt.com "SP 800-38G Rev. 1, Recommendation for Block Cipher Modes ..."
+[2]: https://microsoft.github.io/presidio/ "Presidio: Data Protection and De-identification SDK"
+[3]: https://pmc.ncbi.nlm.nih.gov/articles/PMC4989908/ "Overview of 2014 i2b2/UTHealth shared task Track 1 - PMC"
+[4]: https://gdpr-info.eu/art-4-gdpr/ "Art. 4 GDPR -- Definitions - General Data Protection ..."
+[5]: https://csrc.nist.gov/pubs/sp/800/38/g/r1/2pd "SP 800-38G Rev. 1, Recommendation for Block Cipher ..."
+[6]: https://dl.acm.org/doi/10.1142/S0218488502001648 "k-anonymity: a model for protecting privacy"
+[7]: https://digitalcommons.law.uw.edu/wlr/vol79/iss1/10/ "Privacy as Contextual Integrity by Helen Nissenbaum"
+[8]: https://docs.ollama.com/api/introduction "Introduction"
+[9]: https://microsoft.github.io/presidio/anonymizer/ "Presidio Anonymizer"
+[11]: https://github.com/ollama/ollama/blob/main/docs/api.md "ollama/docs/api.md at main"
+[13]: https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/data-sharing/anonymisation/pseudonymisation/ "Pseudonymisation | ICO"
+[14]: https://csrc.nist.gov/pubs/sp/800/38/g/r1/ipd "SP 800-38G Rev. 1, Recommendation for Block Cipher Modes ..."

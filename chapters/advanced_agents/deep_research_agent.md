@@ -138,18 +138,13 @@ def should_stop(state):
 
 The key is that “budget exhausted” produces a different kind of output: the agent should return the best supported partial synthesis, clearly labeling unresolved gaps and conflicts.
 
-### References to add to references.md
+### Hands-on
 
-1. Shunyu Yao, Jeffrey Zhao, Dian Yu, Nan Du, Izhak Shafran, Karthik Narasimhan, Yuan Cao. *ReAct: Synergizing Reasoning and Acting in Language Models*. ICLR, 2023. [https://arxiv.org/abs/2210.03629](https://arxiv.org/abs/2210.03629)
-2. Ofir Press, Noah A. Smith, Mike Lewis. *Measuring and Narrowing the Compositionality Gap in Language Models (Self-Ask)*. arXiv, 2022. [https://ofir.io/self-ask.pdf](https://ofir.io/self-ask.pdf)
-3. Harsh Trivedi, Niranjan Balasubramanian, Tushar Khot, Ashish Sabharwal. *Interleaving Retrieval with Chain-of-Thought Reasoning for Knowledge-Intensive Multi-Step Questions*. ACL, 2023. [https://arxiv.org/abs/2212.10509](https://arxiv.org/abs/2212.10509)
-4. Xuezhi Wang, Jason Wei, Dale Schuurmans, Quoc V. Le, Ed H. Chi, Sharan Narang, Aakanksha Chowdhery, Denny Zhou. *Self-Consistency Improves Chain of Thought Reasoning in Language Models*. arXiv, 2022. [https://arxiv.org/abs/2203.11171](https://arxiv.org/abs/2203.11171)
-5. Saurabh Dhuliawala, Monica Agrawal, Ari Holtzman, Jiacheng Xu, Luke Zettlemoyer, Yejin Choi. *Chain-of-Verification Reduces Hallucination in Large Language Models*. ICLR, 2024. [https://arxiv.org/abs/2309.11495](https://arxiv.org/abs/2309.11495)
-6. Xinyu Ma, Jiarui Zhang, Minwei Feng, Tianyu Zhang, Yuexian Zou, Dong Yu. *Query Rewriting for Retrieval-Augmented Large Language Models*. EMNLP, 2023. [https://arxiv.org/abs/2305.14283](https://arxiv.org/abs/2305.14283)
+See `example_deep_research.ipynb` for a working notebook that demonstrates the full deep research loop with gap-filling iterations and structured report generation.
 
-[1]: https://arxiv.org/abs/2212.10509?utm_source=chatgpt.com "Interleaving Retrieval with Chain-of-Thought Reasoning for Knowledge-Intensive Multi-Step Questions"
-[2]: https://ofir.io/self-ask.pdf?utm_source=chatgpt.com "Measuring and Narrowing the Compositionality Gap in ..."
-[3]: https://aclanthology.org/2023.emnlp-main.322.pdf?utm_source=chatgpt.com "Query Rewriting for Retrieval-Augmented Large Language ..."
-[4]: https://arxiv.org/abs/2210.03629?utm_source=chatgpt.com "ReAct: Synergizing Reasoning and Acting in Language Models"
-[5]: https://arxiv.org/abs/2309.11495?utm_source=chatgpt.com "Chain-of-Verification Reduces Hallucination in Large ..."
-[6]: https://arxiv.org/abs/2203.11171?utm_source=chatgpt.com "Self-Consistency Improves Chain of Thought Reasoning in Language Models"
+[1]: https://arxiv.org/abs/2212.10509 “Interleaving Retrieval with Chain-of-Thought Reasoning for Knowledge-Intensive Multi-Step Questions”
+[2]: https://ofir.io/self-ask.pdf “Measuring and Narrowing the Compositionality Gap in ...”
+[3]: https://aclanthology.org/2023.emnlp-main.322.pdf “Query Rewriting for Retrieval-Augmented Large Language ...”
+[4]: https://arxiv.org/abs/2210.03629 “ReAct: Synergizing Reasoning and Acting in Language Models”
+[5]: https://arxiv.org/abs/2309.11495 “Chain-of-Verification Reduces Hallucination in Large ...”
+[6]: https://arxiv.org/abs/2203.11171 “Self-Consistency Improves Chain of Thought Reasoning in Language Models”

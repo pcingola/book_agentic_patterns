@@ -135,20 +135,9 @@ The connection to the adversarial patterns discussed earlier in this chapter is 
 
 The pipeline also stress-tests rubric coverage against historical data. When audit findings from multiple quarters are added as documents in Stage 2, findings that do not map to any existing policy requirement are promoted into new rubric items. These are the "unwritten rules" and institutional knowledge that no policy document captures, and surfacing them is one of the highest-value outputs of the refinement process.
 
-### Hands-on: end-to-end compliance assessment
+### Hands-on
 
-The accompanying notebook (`example_rubric.ipynb`) demonstrates both workflows using a simplified SOC 2 subset (access control, encryption, logging, incident response) as policy, mock audit findings from three quarters as history, and a project security description as the submission under evaluation. The exercise produces extracted controls with stable IDs, a refined rubric with new items promoted from historical findings, and a Pass/Risk/Fail table with per-item rationale and citations.
-
-## References (references.md)
-
-1. Hashemi, Arian, et al. *LLM-Rubric: A Multidimensional, Calibrated Approach to Automated Evaluation of Natural Language Texts*. ACL, 2024. [https://aclanthology.org/2024.acl-long.745/](https://aclanthology.org/2024.acl-long.745/)
-2. Electronic Code of Federal Regulations. *45 CFR 164.312 Technical safeguards (HIPAA Security Rule)*. eCFR, current version. [https://www.ecfr.gov/current/title-45/subtitle-A/subchapter-C/part-164/subpart-C/section-164.312](https://www.ecfr.gov/current/title-45/subtitle-A/subchapter-C/part-164/subpart-C/section-164.312)
-3. Abbas, Amro, et al. *SemDeDup: Data-efficient learning at web-scale through semantic deduplication*. ICLR, 2023. [https://arxiv.org/abs/2303.09540](https://arxiv.org/abs/2303.09540)
-4. Joint Task Force. *Security and Privacy Controls for Information Systems and Organizations (NIST SP 800-53 Rev. 5)*. NIST, 2020. [https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final](https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final)
-5. Liu, Yang, et al. *G-Eval: NLG Evaluation using GPT-4 with Better Human Alignment*. EMNLP, 2023. [https://arxiv.org/abs/2303.16634](https://arxiv.org/abs/2303.16634)
-6. Zheng, Lianmin, et al. *Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena*. NeurIPS, 2023. [https://arxiv.org/abs/2306.05685](https://arxiv.org/abs/2306.05685)
-7. David Holloway. *ISO 27001 -- Annex A.9: Access Control*. ISMS.online, 2025. [https://www.isms.online/iso-27001/annex-a-2013/annex-a-9-access-control-2013/](https://www.isms.online/iso-27001/annex-a-2013/annex-a-9-access-control-2013/)
-8. OpenAI. *Evals: A framework for evaluating LLMs and LLM systems*. GitHub repository, 2024. [https://github.com/openai/evals](https://github.com/openai/evals)
+See `example_rubric.ipynb` for a working notebook that demonstrates both workflows (incremental and batch) using a simplified SOC 2 subset as policy, mock audit findings as history, and a project security description as the submission under evaluation.
 
 [1]: https://aclanthology.org/2024.acl-long.745/ "LLM-Rubric: A Multidimensional, Calibrated Approach to Automated Evaluation"
 [2]: https://www.ecfr.gov/current/title-45/subtitle-A/subchapter-C/part-164/subpart-C/section-164.312 "45 CFR 164.312 -- Technical safeguards"

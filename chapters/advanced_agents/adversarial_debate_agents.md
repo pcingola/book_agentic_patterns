@@ -65,12 +65,6 @@ For repeatability, persona descriptions can be stored as plain text files in a `
 
 Personas should evolve based on observed system failures. By clustering historical errors by root cause, you can refine persona descriptions to cover blind spots that repeatedly escape critique. This connects persona simulation to rubric-based evaluation and error taxonomies introduced elsewhere in the book.
 
-## References
+### Hands-on
 
-1. Geoffrey Irving, Paul Christiano, Dario Amodei. *AI Safety via Debate*. arXiv, 2018. [https://arxiv.org/abs/1805.00899](https://arxiv.org/abs/1805.00899)
-2. Yilun Du, Shuang Li, Antonio Torralba, Joshua B. Tenenbaum, Igor Mordatch. *Improving Factuality and Reasoning in Language Models through Multiagent Debate*. arXiv, 2023. [https://arxiv.org/abs/2305.14325](https://arxiv.org/abs/2305.14325)
-3. A. Madaan, et al. *Self-Refine: Iterative Refinement with Self-Feedback*. arXiv, 2023. [https://arxiv.org/abs/2303.17651](https://arxiv.org/abs/2303.17651)
-4. Noah Shinn, Federico Cassano, Ashwin Gopinath, Karthik R. Narasimhan, Shunyu Yao. *Reflexion: Language Agents with Verbal Reinforcement Learning*. NeurIPS, 2023. [https://arxiv.org/abs/2303.11366](https://arxiv.org/abs/2303.11366)
-5. Yuntao Bai, et al. *Constitutional AI: Harmlessness from AI Feedback*. arXiv, 2022 (rev. 2023). [https://arxiv.org/abs/2212.08073](https://arxiv.org/abs/2212.08073)
-6. Anthropic. *Challenges in Red Teaming AI Systems*. Anthropic News, 2024. [https://www.anthropic.com/news/challenges-in-red-teaming-ai-systems](https://www.anthropic.com/news/challenges-in-red-teaming-ai-systems)
-7. Center for Security and Emerging Technology (CSET). *AI Red-Teaming Design: Threat Models and Tools*. CSET, 2025. [https://cset.georgetown.edu/article/ai-red-teaming-design-threat-models-and-tools/](https://cset.georgetown.edu/article/ai-red-teaming-design-threat-models-and-tools/)
+See `example_debate.ipynb` for a working notebook that demonstrates a basic advocate-vs-critic debate and red-team analysis of the resulting verdict.

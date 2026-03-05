@@ -86,19 +86,13 @@ At the end of indexing, `CodeIndex` automatically generates a description from t
 
 The agent is created via `create_agent()` which loads the system prompt and wires up the tools (`code_list_indexes`, `code_search`, `code_expand`, `code_lexical_search`). The system prompt describes the three-index architecture so the agent knows to use intent-level queries for "how does X work" questions and structural queries for "what uses X" questions.
 
-### References (references.md)
+### Hands-on
 
-1. CocoIndex. *Real-time Codebase Indexing (Example)*. CocoIndex Documentation, 2026. ([CocoIndex][3])
-2. cocoindex-io. *realtime-codebase-indexing*. GitHub repository, 2026. ([GitHub][1])
-3. Jin, Linghua (CocoIndex). *Build Real-Time Codebase Indexing for AI Coding agents*. DEV Community, 2025. ([DEV Community][4])
-4. cocoindex-io. *cocoindex: Data transformation framework for AI*. GitHub repository, 2026. ([GitHub][2])
-5. Tree-sitter contributors. *Tree-sitter: an incremental parsing system*. Project documentation, ongoing. ([DEV Community][4])
-6. Gupta, T., Weihs, L., Kembhavi, A. *CodeNav: Beyond tool-use to using real-world codebases with LLM agents*. arXiv, 2024. ([arXiv][5])
-7. Liu, X. et al. *CodexGraph: Bridging Large Language Models and Code Repositories via Code Graph Databases*. arXiv, 2024. ([arXiv][6])
+See `example_code_indexing.ipynb` for a working notebook that demonstrates syntax-aware chunking, indexing a real directory, and using the agent for overview, intent-level search, structural navigation, and lexical cross-referencing.
 
-[1]: https://github.com/cocoindex-io/realtime-codebase-indexing "GitHub - cocoindex-io/realtime-codebase-indexing: build codebase index with tree-sitter. works with large codebases, and can be updated in near real-time with incremental processing - only reprocess what's changed."
-[2]: https://github.com/cocoindex-io/cocoindex "GitHub - cocoindex-io/cocoindex: Data transformation framework for AI. Ultra performant, with incremental processing.   Star if you like it!"
+[1]: https://github.com/cocoindex-io/realtime-codebase-indexing "GitHub - cocoindex-io/realtime-codebase-indexing"
+[2]: https://github.com/cocoindex-io/cocoindex "GitHub - cocoindex-io/cocoindex"
 [3]: https://cocoindex.io/examples/code_index "Real-time Codebase Indexing | CocoIndex"
 [4]: https://dev.to/cocoindex/build-real-time-codebase-indexing-for-ai-coding-agents-5eb2 "Build Real-Time Codebase Indexing for AI Coding agents - DEV Community"
-[5]: https://arxiv.org/abs/2406.12276?utm_source=chatgpt.com "CodeNav: Beyond tool-use to using real-world codebases with LLM agents"
-[6]: https://arxiv.org/abs/2408.03910?utm_source=chatgpt.com "CodexGraph: Bridging Large Language Models and Code Repositories via Code Graph Databases"
+[5]: https://arxiv.org/abs/2406.12276 "CodeNav: Beyond tool-use to using real-world codebases with LLM agents"
+[6]: https://arxiv.org/abs/2408.03910 "CodexGraph: Bridging Large Language Models and Code Repositories via Code Graph Databases"

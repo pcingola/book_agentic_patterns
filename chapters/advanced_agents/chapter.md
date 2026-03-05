@@ -1,6 +1,6 @@
 # Chapter: Advanced Agents
 
-[Introduction]()
+[Introduction](./introduction.md)
 
 [Adversarial & Debate Agents](./adversarial_debate_agents.md)
 
@@ -12,15 +12,4 @@
 
 [Anonymization Agent](./anonymization_agent.md)
 
-[Hands-on: Introduction](./hands_on_intro.md)
-
-[Hands-on: Debate Agent](./hands_on_debate.md)
-
-[Hands-on: Deep Research Agent](./hands_on_deep_research.md)
-
-[Hands-on: Code Indexing](./hands_on_code_indexing.md)
-
-[Hands-on: Rubric Agent]()
-
-[References]()
-
+[References](./references.md)
