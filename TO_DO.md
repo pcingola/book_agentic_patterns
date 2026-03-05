@@ -4,6 +4,12 @@
 - [ ] Chapter UI: Add A2UI
 - [ ] Chapter: Long Running agents / Swarms / OpenClaw
 
+
+google/gemini-3-pro-image-preview
+
+https://ai-gateway.astrazeneca.net/vertex-ai-openai
+
+
 ### References and Suggested topics
 
 - Claude Engineering blog: See resource from https://www.anthropic.com/engineering

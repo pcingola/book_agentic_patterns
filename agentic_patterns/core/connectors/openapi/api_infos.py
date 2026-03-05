@@ -47,6 +47,13 @@ class ApiInfos:
         return self._api_info[api_id]
 
     def get_client(self, api_id: str) -> ApiHttpClient:
+        """Return a cached HTTP client for *api_id*.
+
+        Clients use shared service credentials from config.yaml. Auth headers are
+        passed per-request, so the client itself does not hold user-specific state.
+        If per-user credentials are ever stored on the client (e.g. OAuth tokens
+        set at connection time), clients must be scoped by (api_id, user_id).
+        """
         if api_id not in self._api_info:
             raise ValueError(
                 f"API '{api_id}' not found. Available: {list(self._api_info.keys())}"

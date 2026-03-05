@@ -17,6 +17,8 @@ from agentic_patterns.core.connectors.vocabulary.strategy import Strategy
 
 logger = logging.getLogger(__name__)
 
+# Process-global caches of vocabulary backends and configs. These hold static
+# reference data (vocabulary terms, hierarchies) and must not store per-user state.
 _registry: dict[str, Strategy] = {}
 _configs: dict[str, VocabularyConfig] = {}
 

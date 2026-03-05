@@ -107,6 +107,8 @@ The `user_session.py` module also provides a convenience function `set_user_sess
 
 The reason this works with so little code is that we are not building an authentication system. MCP and A2A are HTTP-based protocols, and HTTP has had authorization headers since 1996. FastMCP provides JWT verification out of the box. PydanticAI provides the `process_tool_call` hook for injecting metadata into MCP calls. The `httpx` client that A2A uses supports custom headers natively. The only project-specific code is the glue: generating the token (`auth.py`), managing the `contextvars` (`user_session.py`), and the middleware that bridges tokens back to `contextvars` at each server boundary. Everything else is standard HTTP machinery that these libraries already support.
 
+Identity propagation is necessary but not sufficient for isolation. Once the identity reaches a downstream service, every cache between the identity boundary and the data source must also respect that identity. A connection cache keyed only by `db_id`, a vector database collection shared across users, or a module-level connector singleton all bypass the propagated identity by serving cached results or connections regardless of who is asking. The "Caching and cross-session leakage" section in the data sources chapter covers this problem and the scoping rules that prevent it.
+
 [sp-1]: https://ai.pydantic.dev/mcp/ "PydanticAI: MCP toolset"
 [sp-2]: https://gofastmcp.com/servers/auth "FastMCP: Authentication"
 [sp-3]: https://a2a-protocol.org/latest/specification/ "A2A Specification"

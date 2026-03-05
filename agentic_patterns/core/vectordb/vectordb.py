@@ -235,7 +235,14 @@ def get_vector_db(
     vectordb_config: str | None = None,
     config_path: Path | str | None = None,
 ) -> VectorDB:
-    """Get or create a VectorDB for the named collection. Uses singleton pattern."""
+    """Get or create a VectorDB for the named collection. Uses singleton pattern.
+
+    Collections are process-global and shared across all users. Do not mix
+    documents with different sensitivity levels in the same collection unless
+    retrieval-time access-control filtering is implemented. For user-scoped
+    data, include the user_id in the collection name or enforce filtering at
+    query time.
+    """
     if collection_name in _vector_dbs:
         return _vector_dbs[collection_name]
 

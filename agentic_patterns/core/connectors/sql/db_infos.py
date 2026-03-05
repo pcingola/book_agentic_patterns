@@ -52,6 +52,13 @@ class DbInfos:
         self._operations.clear()
 
     def get_connection(self, db_id: str) -> DbConnection:
+        """Return a cached connection for *db_id*.
+
+        Connections use shared service credentials from config.yaml, not per-user
+        identity. All users share the same connection per db_id. If per-user
+        credentials are needed (e.g. OAuth tokens, row-level security), connections
+        must be scoped by (db_id, user_id) to prevent cross-session credential leakage.
+        """
         if db_id not in self._db_info:
             raise ValueError(
                 f"Database '{db_id}' not found. Available: {list(self._db_info.keys())}"

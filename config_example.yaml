@@ -73,6 +73,14 @@ models:
     gateway_provider: azure
     timeout: 120
 
+  gemini_image:
+    model_family: ai-gateway
+    model_name: gemini-2.0-flash
+    gateway_url: https://your-gateway.example.com
+    gateway_key: your-gateway-key
+    gateway_provider: vertex-openai
+    timeout: 120
+
   gateway_vertex:
     model_family: ai-gateway
     model_name: gemini-2.0-flash

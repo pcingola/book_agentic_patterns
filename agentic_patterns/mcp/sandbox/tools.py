@@ -12,8 +12,6 @@ from agentic_patterns.core.sandbox.manager import SandboxManager
 from agentic_patterns.core.tools.permissions import ToolPermission, tool_permission
 from agentic_patterns.core.user_session import get_session_id, get_user_id
 
-_manager = SandboxManager()
-
 
 def register_tools(mcp: FastMCP) -> None:
     """Register all sandbox tools on the given MCP server instance."""
@@ -34,7 +32,7 @@ def register_tools(mcp: FastMCP) -> None:
         """
         try:
             exit_code, output = await asyncio.to_thread(
-                _manager.execute_command,
+                SandboxManager().execute_command,
                 get_user_id(),
                 get_session_id(),
                 command,

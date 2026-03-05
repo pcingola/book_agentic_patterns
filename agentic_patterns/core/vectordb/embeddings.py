@@ -14,6 +14,8 @@ from agentic_patterns.core.vectordb.config import (
     load_vectordb_settings,
 )
 
+# Process-global cache of embedder instances keyed by provider:model. These are
+# infrastructure objects (model clients) and must not hold per-user state.
 _embedders: dict[str, Embedder] = {}
 
 

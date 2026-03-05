@@ -117,3 +117,5 @@ Isolation is equally important. Sessions are isolated from one another, and cont
 
 Finally, defensive validation is pervasive. Messages are schema-validated, lifecycle transitions are enforced, and unexpected inputs are rejected early. These practices are critical when MCP clients may be driven by partially autonomous agents.
 
+In production deployments, these concerns -- authentication, authorization, isolation, observability -- are typically centralized in an **MCP proxy** that sits between agents and backend servers. The proxy is itself an MCP server, preserving protocol semantics while adding enterprise cross-cutting concerns at a single point. This architecture is discussed in detail in the [Enterprise MCP Proxy](./enterprise_proxy.md) section.
+

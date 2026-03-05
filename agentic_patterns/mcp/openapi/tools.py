@@ -11,8 +11,6 @@ from agentic_patterns.core.connectors.openapi.connector import OpenApiConnector
 from agentic_patterns.core.mcp import ToolFatalError, ToolRetryError
 from agentic_patterns.core.tools.permissions import ToolPermission, tool_permission
 
-_openapi = OpenApiConnector()
-
 _RETRYABLE = (ValueError, KeyError)
 
 
@@ -34,7 +32,7 @@ def register_tools(mcp: FastMCP) -> None:
     async def openapi_list_apis(ctx: Context) -> str:
         """List all available APIs with metadata and endpoint counts."""
         await ctx.info("openapi_list_apis")
-        return await _call(_openapi.list_apis())
+        return await _call(OpenApiConnector().list_apis())
 
     @mcp.tool()
     @tool_permission(ToolPermission.READ)
@@ -43,14 +41,14 @@ def register_tools(mcp: FastMCP) -> None:
     ) -> str:
         """List endpoints in an API, optionally filtered by category."""
         await ctx.info(f"openapi_list_endpoints: {api_id}")
-        return await _call(_openapi.list_endpoints(api_id, category))
+        return await _call(OpenApiConnector().list_endpoints(api_id, category))
 
     @mcp.tool()
     @tool_permission(ToolPermission.READ)
     async def openapi_show_api_summary(api_id: str, ctx: Context = None) -> str:
         """Show API summary with categorized endpoints."""
         await ctx.info(f"openapi_show_api_summary: {api_id}")
-        return await _call(_openapi.show_api_summary(api_id))
+        return await _call(OpenApiConnector().show_api_summary(api_id))
 
     @mcp.tool()
     @tool_permission(ToolPermission.READ)
@@ -59,7 +57,7 @@ def register_tools(mcp: FastMCP) -> None:
     ) -> str:
         """Show detailed information for a specific endpoint including parameters, request body, and responses."""
         await ctx.info(f"openapi_show_endpoint_details: {api_id} {method} {path}")
-        return await _call(_openapi.show_endpoint_details(api_id, method, path))
+        return await _call(OpenApiConnector().show_endpoint_details(api_id, method, path))
 
     @mcp.tool()
     @tool_permission(ToolPermission.CONNECT)
@@ -75,5 +73,5 @@ def register_tools(mcp: FastMCP) -> None:
         """Call an API endpoint with specified parameters and body. Results are saved to JSON automatically."""
         await ctx.info(f"openapi_call_endpoint: {api_id} {method} {path}")
         return await _call(
-            _openapi.call_endpoint(api_id, method, path, parameters, body, output_file)
+            OpenApiConnector().call_endpoint(api_id, method, path, parameters, body, output_file)
         )

@@ -10,6 +10,8 @@
 
 [Features](./features.md)
 
+[Enterprise MCP Proxy](./enterprise_proxy.md)
+
 [Hands-On: Introduction](./hands_on_intro.md)
 
 [Hands-On: MCP STDIO Transport](./hands_on_mcp_stdio.md)
