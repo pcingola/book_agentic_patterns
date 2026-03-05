@@ -2,134 +2,90 @@
 
 A code indexing and search agent maintains an always-up-to-date, structure-aware representation of a repository, and answers natural-language (and symbol-level) questions by retrieving the smallest, most relevant code slices with traceable provenance.
 
-### Why “code indexing” is different from generic RAG
+### Why "code indexing" is different from generic RAG
 
-Generic document RAG treats code as text, but most developer questions are about structure: “Where is this function called?”, “Which implementation is used on Linux?”, “What invariants does this type enforce?”, or “Show me similar patterns in the repo.” A code index that preserves syntax boundaries, symbol identity, and file/line provenance improves both precision (you retrieve coherent units like functions/classes) and usability (results can be navigated, cited, and patched reliably).
+Generic document RAG treats code as text, but most developer questions are about structure: "Where is this function called?", "Which implementation is used on Linux?", "What invariants does this type enforce?", or "Show me similar patterns in the repo." A code index that preserves syntax boundaries, symbol identity, and file/line provenance improves both precision (you retrieve coherent units like functions/classes) and usability (results can be navigated, cited, and patched reliably).
 
-A second difference is freshness. For interactive coding agents, stale context is often worse than missing context: the agent reasons correctly over an outdated snapshot. CocoIndex’s examples frame the practical goal as near-real-time incremental updates, reprocessing only what changed, so the index behaves like a live substrate rather than a periodically rebuilt artifact. ([GitHub][1])
+A second difference is freshness. For interactive coding agents, stale context is often worse than missing context: the agent reasons correctly over an outdated snapshot. CocoIndex's examples frame the practical goal as near-real-time incremental updates, reprocessing only what changed, so the index behaves like a live substrate rather than a periodically rebuilt artifact. ([GitHub][1])
 
-### Index construction as a dataflow with incremental recomputation
+### Three-index architecture
 
-A practical indexing pipeline is easiest to reason about when it is explicit: sources produce records, transforms derive new fields, collectors persist derived artifacts. CocoIndex follows a dataflow model in which each transformation derives outputs from inputs without hidden mutation, enabling lineage tracking and incremental recomputation. ([GitHub][2])
+Our implementation uses a `CodeIndex` class that maintains three parallel vector collections for every indexed repository, all sharing the same `doc_id` per symbol:
 
-In the CocoIndex code indexing example, the source is a filesystem scan (with include/exclude patterns), the transform computes language hints from file extensions, chunking is done with Tree-sitter-aware splitting, embeddings are computed for each chunk, and the resulting vectors plus metadata are exported to Postgres with pgvector. ([CocoIndex][3])
+The **code index** (`{name}_code`) stores raw source code. This serves pattern-level and syntax-level queries -- when a developer asks "show me the retry logic" or "find classes that inherit from Connector", the actual code is what gets matched and returned.
 
-```python
-@cocoindex.flow_def(name="CodeEmbedding")
-def code_embedding_flow(flow_builder, data_scope):
-    data_scope["files"] = flow_builder.add_source(
-        cocoindex.sources.LocalFile(
-            path=REPO_ROOT,
-            included_patterns=["*.py", "*.rs", "*.toml", "*.md", "*.mdx"],
-            excluded_patterns=[".*", "target", "**/node_modules"],
-        )
-    )
-    code_embeddings = data_scope.add_collector()
+The **descriptions index** (`{name}_descriptions`) stores LLM-generated one-sentence semantic descriptions of what each symbol does. This serves intent-level queries -- "how does the system handle connection failures?" matches against descriptions like "Establishes a connection to a remote server with retry logic, attempting up to MAX_RETRIES times."
 
-    @cocoindex.op.function()
-    def extract_extension(filename: str) -> str:
-        return os.path.splitext(filename)[1]
+The **breadcrumbs index** (`{name}_breadcrumbs`) stores structural context for each symbol: its module path, parent class (for methods), signature, imports from the same file, and sibling symbols. This serves navigational queries -- "what uses ConnectionPool?" or "what else is in the chunker module?" matches against the structural relationships between symbols.
 
-    @cocoindex.transform_flow()
-    def code_to_embedding(text):
-        return text.transform(
-            cocoindex.functions.SentenceTransformerEmbed(
-                model="sentence-transformers/all-MiniLM-L6-v2"
-            )
-        )
-
-    with data_scope["files"].row() as f:
-        f["extension"] = f["filename"].transform(extract_extension)
-        f["chunks"] = f["content"].transform(
-            cocoindex.functions.SplitRecursively(),
-            language=f["extension"],          # Tree-sitter-aware chunking
-            chunk_size=1000,
-            chunk_overlap=300,
-        )
-
-        with f["chunks"].row() as c:
-            c["embedding"] = c["text"].call(code_to_embedding)
-            code_embeddings.collect(
-                filename=f["filename"],
-                location=c["location"],
-                code=c["text"],
-                embedding=c["embedding"],
-            )
-
-    code_embeddings.export(
-        "code_embeddings",
-        cocoindex.storages.Postgres(),
-        primary_key_fields=["filename", "location"],
-        vector_indexes=[
-            cocoindex.VectorIndex(
-                "embedding",
-                cocoindex.VectorSimilarityMetric.COSINE_SIMILARITY,
-            )
-        ],
-    )
-```
-
-Two details are operationally important. First, chunking should be syntax-aware (Tree-sitter) so that chunks align with functions/classes rather than arbitrary line windows, which improves retrieval quality for code. ([DEV Community][4]) Second, the embedding transform should be shared between indexing and query; CocoIndex’s example uses `@cocoindex.transform_flow()` to ensure the exact same embedding logic is reused, preventing “index/query embedding drift.” ([CocoIndex][3])
-
-### Query-time retrieval, scoring, and cross-reference resolution
-
-At query time, the agent converts the user prompt into an embedding using the same transform, then executes a vector similarity search in Postgres/pgvector. The CocoIndex example shows using the `<=>` operator to compute distance and deriving a similarity score from it. ([CocoIndex][3])
+At query time, all three collections are searched in parallel via `MultiSourceRetriever`, which merges results by score and deduplicates by `doc_id`. A hit from any index resolves back to code (since all three share the same `doc_id`), and from there the agent can navigate up to the parent class, across to callers, or down to method implementations.
 
 ```python
-def search(pool, query: str, top_k: int = 8):
-    table_name = cocoindex.utils.get_target_storage_default_name(
-        code_embedding_flow, "code_embeddings"
-    )
-    q_vec = code_to_embedding.eval(query)
-
-    with pool.connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(f"""
-                SELECT filename, location, code,
-                       embedding <=> %s::vector AS distance
-                FROM {table_name}
-                ORDER BY distance
-                LIMIT %s
-            """, (q_vec, top_k))
-            rows = cur.fetchall()
-
-    return [
-        {
-            "filename": r[0],
-            "location": r[1],
-            "code": r[2],
-            "score": 1.0 - r[3],
-        }
-        for r in rows
-    ]
+code_index = CodeIndex(repo_path, "my_project")
+stats = await code_index.index(include_patterns=["*.py"])
 ```
 
-In practice, “code search” often needs a second stage beyond raw vector similarity. A code indexing agent can take the initial candidates and resolve cross-references by enriching context around each chunk: pull enclosing symbol names, signatures, docstrings/comments, import dependencies, and call sites. This turns a flat “top-k snippets” response into navigable context the coding agent can act on. Recent research systems increasingly combine retrieval with structure-aware navigation over repositories; for example, CodeNav emphasizes iterative repository navigation and selective import of relevant blocks, while graph-based approaches like CodexGraph extract a code graph to support more precise structure-aware queries. ([arXiv][5])
+### Index construction: chunking, describing, and breadcrumbing
 
-A simple, effective pattern is to treat cross-reference resolution as a follow-on retrieval step driven by the first retrieval:
+Index construction proceeds file by file. For each source file:
+
+First, `ChunkerCode` parses the file with Tree-sitter and extracts syntax-coherent chunks -- one per function, class, or method, plus a preamble chunk for top-level imports and constants. Each chunk carries metadata: `symbol_name`, `symbol_type`, `start_line`, `end_line`, and the file's relative path. All chunks are stored in the code index. This syntax-aware chunking is the foundation -- chunks align with the units developers think about (functions, classes) rather than arbitrary line windows. ([DEV Community][4])
+
+Second, `build_breadcrumbs()` deterministically constructs a structural breadcrumb for each symbol from the chunk metadata and file content. No LLM call is needed; the breadcrumb is derived from the AST structure that Tree-sitter already extracted.
+
+Third, `describe_symbols()` generates semantic descriptions by sending each symbol's code to an LLM with a focused prompt. Descriptions are generated concurrently with `asyncio.gather` for speed. The prompt asks for a single sentence focusing on purpose and behavior, not implementation details.
 
 ```python
-def expand_context(hit):
-    # lightweight “symbol neighborhood” expansion
-    symbol = infer_primary_symbol(hit["code"])
-    defs = lexical_lookup(f"def {symbol}")          # fast exact/regex search
-    refs = lexical_lookup(f"{symbol}(")             # call sites
-    near = fetch_file_window(hit["filename"], hit["location"], radius=40)
-    return merge(hit, defs=defs, refs=refs, near=near)
+# Breadcrumb example (deterministic, from AST):
+# module: core/rag/chunker_code.py | parent: class ChunkerCode |
+#   signature: def chunk(self, text, provenance) | imports: pathlib, ...
 
-def answer(question):
-    hits = search(pool, question, top_k=8)
-    expanded = [expand_context(h) for h in hits[:3]]
-    return synthesize_with_citations(question, expanded)
+# Description example (LLM-generated):
+# "Parses source code with tree-sitter and splits it into syntax-coherent
+#  chunks aligned to function and class boundaries."
 ```
 
-Even when you later add a richer symbol index (Tree-sitter AST to symbol table, or a graph store), the control flow stays stable: embed-and-retrieve for recall, then structure-aware expansion for faithfulness and editability.
+Two details from the CocoIndex literature remain operationally important here. First, chunking should be syntax-aware (Tree-sitter) so that chunks align with functions/classes rather than arbitrary line windows, which improves retrieval quality for code. ([DEV Community][4]) Second, embedding drift between indexing and query must be avoided; our implementation uses the same embedding model for both paths via the shared `VectorDB` configuration. ([CocoIndex][3])
+
+### Query-time retrieval and navigation
+
+At query time, the agent has two complementary operations: `search` and `expand`.
+
+`search(query, top_k)` queries all three indexes in parallel and returns `CodeSearchResult` objects. Each result carries the code, its description, its breadcrumb, symbol metadata, and the score. Because the multi-source retriever merges across indexes, a query like "how does retry work" might match via the description index while "def connect" matches via the code index -- both surface the same symbol with complementary evidence.
+
+```python
+results = await code_index.search("split text into paragraphs", top_k=5)
+for r in results:
+    print(f"[{r.score:.3f}] {r.symbol_type} {r.symbol_name} in {r.file_path}:{r.start_line}")
+    print(f"  {r.description}")
+```
+
+`expand(doc_id)` takes a specific symbol and retrieves its full navigable context: the code, description, and breadcrumb, plus the parent class (for methods) and sibling symbols. This is more precise than the old "expand top-k with cross-references" approach -- the agent picks which result to expand based on the search results, then navigates structurally from there.
+
+```python
+expanded = code_index.expand(results[0].doc_id)
+# Returns: code, description, breadcrumb, parent class info, sibling symbols
+```
+
+In practice, "code search" often needs this second stage beyond raw vector similarity. Recent research systems increasingly combine retrieval with structure-aware navigation over repositories; for example, CodeNav emphasizes iterative repository navigation and selective import of relevant blocks, while graph-based approaches like CodexGraph extract a code graph to support more precise structure-aware queries. ([arXiv][5])
 
 ### Tight integration with an interactive coding agent
 
-In an “AI coding agent” loop, code search is rarely a one-shot. The agent alternates between proposing hypotheses (“the bug is in request parsing”), retrieving evidence (relevant functions, tests, config), and refining the hypothesis until it can implement and validate a change. The code indexing agent supplies three capabilities that keep this loop efficient:
+In an "AI coding agent" loop, code search is rarely a one-shot. The agent alternates between proposing hypotheses ("the bug is in request parsing"), retrieving evidence (relevant functions, tests, config), and refining the hypothesis until it can implement and validate a change. The code indexing agent supplies three capabilities that keep this loop efficient:
 
-It provides low-latency, high-recall candidate retrieval through embeddings over syntax-coherent chunks. ([DEV Community][4]) It provides freshness through incremental updates, so edits made during the session are quickly reflected in subsequent searches without a full rebuild. ([GitHub][1]) And it provides provenance (filename/location) so the coding agent can open the correct file regions and generate minimal diffs rather than rewriting large sections.
+It provides low-latency, high-recall candidate retrieval through embeddings over syntax-coherent chunks, with the added dimension that intent-level queries hit descriptions while structural queries hit breadcrumbs. ([DEV Community][4]) It provides navigability through the `expand` operation, so the agent can follow the structure from a search hit to its parent class, siblings, and related symbols without additional keyword searches. And it provides provenance (filename/line numbers) so the coding agent can open the correct file regions and generate minimal diffs rather than rewriting large sections.
+
+Indexing is a user-initiated setup step -- you create a `CodeIndex`, call `index()`, and register it with a description so the agent can discover it automatically:
+
+```python
+code_index = CodeIndex(repo_path, "my_project")
+stats = await code_index.index(include_patterns=["*.py"])
+register_index(code_index, description="Payment processing microservice: Stripe integration, invoicing, and webhooks")
+```
+
+The description is stored in a registry vector DB. At enterprise scale, an organization might index hundreds of GitHub repos, each as a separate collection. When the user asks a question without specifying a collection, the agent calls `code_list_indexes(query)` to semantically search this registry and find which repos are relevant -- the user never needs to know collection names. For example, asking "how does retry logic work in the payment service" would match the description above and route the search to the right collection automatically.
+
+The agent is created via `create_agent()` which loads the system prompt and wires up the tools (`code_list_indexes`, `code_search`, `code_expand`, `code_lexical_search`). The system prompt describes the three-index architecture so the agent knows to use intent-level queries for "how does X work" questions and structural queries for "what uses X" questions.
 
 ### References (references.md)
 

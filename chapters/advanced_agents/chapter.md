@@ -18,6 +18,8 @@
 
 [Hands-on: Deep Research Agent](./hands_on_deep_research.md)
 
+[Hands-on: Code Indexing](./hands_on_code_indexing.md)
+
 [Hands-on: Rubric Agent]()
 
 [References]()
