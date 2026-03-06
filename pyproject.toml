@@ -69,6 +69,7 @@ package = true
 
 [tool.setuptools.package-data]
 "agentic_patterns.core.repl" = ["docker/*"]
+"agentic_patterns" = ["prompts/**/*.md"]
 
 [tool.setuptools.packages.find]
 include = ["agentic_patterns*"]
