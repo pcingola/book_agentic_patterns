@@ -67,7 +67,9 @@ def register_tools(mcp: FastMCP) -> None:
     ) -> str:
         """Execute a SELECT query. Large results are saved to CSV automatically."""
         await ctx.info(f"sql_execute: {db_id}")
-        return await _call(SqlConnector().execute_sql(db_id, query, output_file, nl_query))
+        return await _call(
+            SqlConnector().execute_sql(db_id, query, output_file, nl_query)
+        )
 
     @mcp.tool()
     @tool_permission(ToolPermission.READ)
@@ -80,4 +82,6 @@ def register_tools(mcp: FastMCP) -> None:
     ) -> str:
         """Fetch a row by primary key, optionally including related rows via foreign keys."""
         await ctx.info(f"sql_get_row_by_id: {db_id}/{table_name}/{row_id}")
-        return await _call(SqlConnector().get_row_by_id(db_id, table_name, row_id, fetch_related))
+        return await _call(
+            SqlConnector().get_row_by_id(db_id, table_name, row_id, fetch_related)
+        )

@@ -34,21 +34,35 @@ def _make_chunk(
 
 
 class TestDescribeSymbols(unittest.IsolatedAsyncioTestCase):
-
     async def test_descriptions_matched_to_doc_ids(self) -> None:
         """The LLM returns SymbolType enum values; they must match the string keys from metadata."""
         chunks = [
             _make_chunk("id-connect", "def connect(): pass", "connect", "function"),
             _make_chunk("id-pool", "class Pool: pass", "Pool", "class"),
         ]
-        mock_response = final_result_tool(SymbolDescriptions(symbols=[
-            SymbolDescription(symbol_name="connect", symbol_type=SymbolType.FUNCTION, description="Establishes a connection."),
-            SymbolDescription(symbol_name="Pool", symbol_type=SymbolType.CLASS, description="Manages pooled connections."),
-        ]))
+        mock_response = final_result_tool(
+            SymbolDescriptions(
+                symbols=[
+                    SymbolDescription(
+                        symbol_name="connect",
+                        symbol_type=SymbolType.FUNCTION,
+                        description="Establishes a connection.",
+                    ),
+                    SymbolDescription(
+                        symbol_name="Pool",
+                        symbol_type=SymbolType.CLASS,
+                        description="Manages pooled connections.",
+                    ),
+                ]
+            )
+        )
         model = ModelMock(responses=[mock_response])
 
-        with patch("agentic_patterns.toolkits.code_index.describe.get_agent") as mock_get_agent:
+        with patch(
+            "agentic_patterns.toolkits.code_index.describe.get_agent"
+        ) as mock_get_agent:
             from pydantic_ai import Agent
+
             agent = Agent(model=model, output_type=SymbolDescriptions)
             mock_get_agent.return_value = agent
             result = await describe_symbols(chunks)
@@ -73,14 +87,29 @@ class TestDescribeSymbols(unittest.IsolatedAsyncioTestCase):
         chunks = [
             _make_chunk("id-foo", "def foo(): pass", "foo", "function"),
         ]
-        mock_response = final_result_tool(SymbolDescriptions(symbols=[
-            SymbolDescription(symbol_name="foo", symbol_type=SymbolType.FUNCTION, description="Does foo."),
-            SymbolDescription(symbol_name="bar", symbol_type=SymbolType.FUNCTION, description="Does bar."),
-        ]))
+        mock_response = final_result_tool(
+            SymbolDescriptions(
+                symbols=[
+                    SymbolDescription(
+                        symbol_name="foo",
+                        symbol_type=SymbolType.FUNCTION,
+                        description="Does foo.",
+                    ),
+                    SymbolDescription(
+                        symbol_name="bar",
+                        symbol_type=SymbolType.FUNCTION,
+                        description="Does bar.",
+                    ),
+                ]
+            )
+        )
         model = ModelMock(responses=[mock_response])
 
-        with patch("agentic_patterns.toolkits.code_index.describe.get_agent") as mock_get_agent:
+        with patch(
+            "agentic_patterns.toolkits.code_index.describe.get_agent"
+        ) as mock_get_agent:
             from pydantic_ai import Agent
+
             agent = Agent(model=model, output_type=SymbolDescriptions)
             mock_get_agent.return_value = agent
             result = await describe_symbols(chunks)

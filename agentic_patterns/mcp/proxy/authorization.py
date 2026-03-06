@@ -27,7 +27,9 @@ class AuthorizationPolicy:
             if rule.role != "*" and rule.role != role:
                 continue
             if any(fnmatch.fnmatch(namespaced_tool, pattern) for pattern in rule.deny):
-                logger.info("Denied %s for role %s (matched deny rule)", namespaced_tool, role)
+                logger.info(
+                    "Denied %s for role %s (matched deny rule)", namespaced_tool, role
+                )
                 return False
             if any(fnmatch.fnmatch(namespaced_tool, pattern) for pattern in rule.allow):
                 return True

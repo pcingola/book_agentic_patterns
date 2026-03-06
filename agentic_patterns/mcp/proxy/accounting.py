@@ -49,11 +49,20 @@ class AccountingService:
             if alert.tenant != "*" and alert.tenant != tenant:
                 continue
             if record.call_count >= alert.hard_limit:
-                logger.warning("Hard limit reached for tenant %s (%d calls)", tenant, record.call_count)
+                logger.warning(
+                    "Hard limit reached for tenant %s (%d calls)",
+                    tenant,
+                    record.call_count,
+                )
                 return False
             alert_key = f"{tenant}:{alert.warn_at}"
             if record.call_count >= alert.warn_at and alert_key not in self._alerted:
-                logger.warning("Budget warning for tenant %s: %d calls (warn_at=%d)", tenant, record.call_count, alert.warn_at)
+                logger.warning(
+                    "Budget warning for tenant %s: %d calls (warn_at=%d)",
+                    tenant,
+                    record.call_count,
+                    alert.warn_at,
+                )
                 self._alerted.add(alert_key)
         return True
 
@@ -69,8 +78,21 @@ class AccountingService:
     def get_usage_by_user(self) -> dict[str, UsageRecord]:
         return dict(self._by_user)
 
-    def record(self, user: str, tenant: str, session: str, server: str, duration_ms: float, is_error: bool) -> None:
+    def record(
+        self,
+        user: str,
+        tenant: str,
+        session: str,
+        server: str,
+        duration_ms: float,
+        is_error: bool,
+    ) -> None:
         """Record a tool call."""
-        for store, key in [(self._by_user, user), (self._by_tenant, tenant), (self._by_session, session), (self._by_server, server)]:
+        for store, key in [
+            (self._by_user, user),
+            (self._by_tenant, tenant),
+            (self._by_session, session),
+            (self._by_server, server),
+        ]:
             record = store.setdefault(key, UsageRecord())
             record.add(duration_ms, is_error)

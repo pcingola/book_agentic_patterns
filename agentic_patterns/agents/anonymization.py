@@ -35,12 +35,42 @@ class AuditResult(BaseModel):
 class AnonymizationListener(AgentListener[AnonymizationResult]):
     """Hooks for anonymization progress. Override to customise."""
 
+    async def on_regex_done(self, spans: list[EntitySpan], text: str) -> None:
+        pass
+
+    async def on_audit_pass(self, pass_num: int, findings: list[AuditFinding]) -> None:
+        pass
+
+    async def on_verify_pass(self, pass_num: int, findings: list[AuditFinding]) -> None:
+        pass
+
 
 class PrintAnonymizationListener(AnonymizationListener):
     """Prints anonymization progress to stdout."""
 
     async def on_start(self) -> None:
         print("Anonymizing...")
+
+    async def on_regex_done(self, spans: list[EntitySpan], text: str) -> None:
+        print(f"  Regex detection: {len(spans)} spans found")
+        for s in spans:
+            snippet = text[s.start : s.end]
+            print(
+                f"    [{s.label.value}] '{snippet}' ({s.start}:{s.end}, score={s.score:.2f})"
+            )
+
+    async def on_audit_pass(self, pass_num: int, findings: list[AuditFinding]) -> None:
+        print(f"  Audit pass {pass_num}: {len(findings)} findings")
+        for f in findings:
+            print(f"    [{f.label}] '{f.substring}' -- {f.reason}")
+
+    async def on_verify_pass(self, pass_num: int, findings: list[AuditFinding]) -> None:
+        if findings:
+            print(f"  Verify pass {pass_num}: {len(findings)} leaks found")
+            for f in findings:
+                print(f"    [{f.label}] '{f.substring}' -- {f.reason}")
+        else:
+            print(f"  Verify pass {pass_num}: clean")
 
     async def on_done(self, result: AnonymizationResult) -> None:
         n_det = len(result.detection_spans)
@@ -72,6 +102,7 @@ class AnonymizationAgent:
         config_name: str = "default",
         listener: AnonymizationListener | None = None,
         max_passes: int = 2,
+        **agent_kwargs,
     ):
         self._anonymizer = Anonymizer(
             detectors or [RegexDetector()],
@@ -79,7 +110,15 @@ class AnonymizationAgent:
             vault or PseudonymVault(),
         )
         self._listener = listener
-        self._audit_agent = get_agent(config_name=config_name, output_type=AuditResult)
+        if (
+            listener
+            and listener.stream_events
+            and "event_stream_handler" not in agent_kwargs
+        ):
+            agent_kwargs["event_stream_handler"] = listener.as_event_stream_handler()
+        self._audit_agent = get_agent(
+            config_name=config_name, output_type=AuditResult, **agent_kwargs
+        )
         self._max_passes = max_passes
 
     async def anonymize(
@@ -92,14 +131,17 @@ class AnonymizationAgent:
         # Step 1: regex detection on original text
         all_spans = self._anonymizer.detect(text, meta)
         audit_spans: list[EntitySpan] = []
+        if self._listener:
+            await self._listener.on_regex_done(all_spans, text)
 
-        for _ in range(self._max_passes):
+        for pass_num in range(1, self._max_passes + 1):
             # Step 2: tag text, LLM detects additional PHI
             tagged_text = self._anonymizer.redact_tagged(text, all_spans)
-            prompt = load_prompt(
-                "anonymization/audit", text=tagged_text
-            )
+            prompt = load_prompt("anonymization/audit", text=tagged_text)
             detect_output: AuditResult = (await self._audit_agent.run(prompt)).output
+
+            if self._listener:
+                await self._listener.on_audit_pass(pass_num, detect_output.findings)
 
             if detect_output.findings:
                 new_spans = self._findings_to_spans(text, detect_output.findings)
@@ -110,12 +152,13 @@ class AnonymizationAgent:
             redacted_text = self._anonymizer.redact(text, all_spans)
 
             # Step 3: LLM verifies pseudonymized output
-            verify_prompt = load_prompt(
-                "anonymization/audit", text=redacted_text
-            )
+            verify_prompt = load_prompt("anonymization/audit", text=redacted_text)
             verify_output: AuditResult = (
                 await self._audit_agent.run(verify_prompt)
             ).output
+
+            if self._listener:
+                await self._listener.on_verify_pass(pass_num, verify_output.findings)
 
             if not verify_output.findings:
                 break  # clean -- no leaks found

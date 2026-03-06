@@ -55,7 +55,9 @@ class AccountingMiddleware(Middleware):
             raise
         finally:
             duration_ms = (time.monotonic() - start) * 1000
-            self._accounting.record(user, tenant, session, tool_name, duration_ms, is_error)
+            self._accounting.record(
+                user, tenant, session, tool_name, duration_ms, is_error
+            )
 
 
 class AuditMiddleware(Middleware):
@@ -80,10 +82,19 @@ class AuditMiddleware(Middleware):
             raise
         finally:
             duration_ms = (time.monotonic() - start) * 1000
-            self._audit.log(AuditEntry(
-                timestamp=time.time(), user_id=user, tenant=tenant, session_id=session,
-                server="proxy", tool=tool_name, args=args, status=status, duration_ms=duration_ms,
-            ))
+            self._audit.log(
+                AuditEntry(
+                    timestamp=time.time(),
+                    user_id=user,
+                    tenant=tenant,
+                    session_id=session,
+                    server="proxy",
+                    tool=tool_name,
+                    args=args,
+                    status=status,
+                    duration_ms=duration_ms,
+                )
+            )
 
 
 class AuthorizationMiddleware(Middleware):
@@ -103,7 +114,9 @@ class AuthorizationMiddleware(Middleware):
 class CircuitBreakerMiddleware(Middleware):
     """Per-server circuit breaker on tool calls."""
 
-    def __init__(self, manager: CircuitBreakerManager, backend_names: list[str] | None = None) -> None:
+    def __init__(
+        self, manager: CircuitBreakerManager, backend_names: list[str] | None = None
+    ) -> None:
         self._manager = manager
         # Sort longest-first so "demo_v2" matches before "demo"
         self._backend_names = sorted(backend_names or [], key=len, reverse=True)
@@ -113,7 +126,9 @@ class CircuitBreakerMiddleware(Middleware):
         server_name = self._extract_server(tool_name)
         breaker = self._manager.get(server_name)
         if not breaker.allow_request():
-            raise ToolError(f"Server '{server_name}' temporarily unavailable (circuit open)")
+            raise ToolError(
+                f"Server '{server_name}' temporarily unavailable (circuit open)"
+            )
         try:
             result = await call_next(context)
             breaker.record_success()

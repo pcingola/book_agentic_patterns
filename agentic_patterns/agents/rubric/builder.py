@@ -422,9 +422,7 @@ class RubricBuilder:
         self, doc_id: str, text: str, collection_name: str
     ) -> list[PoolItem]:
         """LLM call: extract MUST/SHOULD/MAY requirements from one policy chunk."""
-        prompt = load_prompt(
-            f"{_RUBRIC_PROMPTS}/extract_requirements", chunk_text=text
-        )
+        prompt = load_prompt(f"{_RUBRIC_PROMPTS}/extract_requirements", chunk_text=text)
         agent = get_agent(
             config_name=self._config_name, output_type=_ExtractedRequirements
         )
@@ -892,7 +890,9 @@ class RubricBuilder:
                     if use_tool_search
                     else "group_synthesize.md"
                 )
-                system_prompt = load_prompt(f"{_RUBRIC_PROMPTS}/{prompt_file.removesuffix('.md')}")
+                system_prompt = load_prompt(
+                    f"{_RUBRIC_PROMPTS}/{prompt_file.removesuffix('.md')}"
+                )
                 if use_tool_search:
                     user_msg = f"## Pool items to process\n\n{_format_pool_items(b)}"
                 else:

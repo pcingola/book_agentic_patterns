@@ -39,7 +39,9 @@ class MCPProxyServer:
 
     def __init__(self, config: ProxyConfig, audit_path: Path | None = None) -> None:
         self._config = config
-        self._accounting = AccountingService(budget_alerts=config.accounting.budget_alerts)
+        self._accounting = AccountingService(
+            budget_alerts=config.accounting.budget_alerts
+        )
         self._audit = AuditLogger(audit_path or Path("data/proxy_audit.jsonl"))
         self._mcp = self._build_server(config)
 
@@ -88,18 +90,24 @@ class MCPProxyServer:
         mcp.add_middleware(LoggingMiddleware())
         mcp.add_middleware(AuditMiddleware(self._audit))
         if config.policies:
-            mcp.add_middleware(AuthorizationMiddleware(
-                AuthorizationPolicy(config.policies),
-            ))
-        mcp.add_middleware(RateLimitingMiddleware(
-            max_requests_per_second=config.rate_limit.requests_per_second,
-            burst_capacity=config.rate_limit.burst_capacity,
-        ))
+            mcp.add_middleware(
+                AuthorizationMiddleware(
+                    AuthorizationPolicy(config.policies),
+                )
+            )
+        mcp.add_middleware(
+            RateLimitingMiddleware(
+                max_requests_per_second=config.rate_limit.requests_per_second,
+                burst_capacity=config.rate_limit.burst_capacity,
+            )
+        )
         mcp.add_middleware(AccountingMiddleware(self._accounting))
-        mcp.add_middleware(CircuitBreakerMiddleware(
-            CircuitBreakerManager(config.circuit_breaker),
-            backend_names=backend_names,
-        ))
+        mcp.add_middleware(
+            CircuitBreakerMiddleware(
+                CircuitBreakerManager(config.circuit_breaker),
+                backend_names=backend_names,
+            )
+        )
 
         return mcp
 
@@ -124,7 +132,11 @@ class MCPProxyServer:
                 ("by_server", accounting.get_usage_by_server),
             ]:
                 result[label] = {
-                    k: {"calls": v.call_count, "duration_ms": round(v.total_duration_ms), "errors": v.error_count}
+                    k: {
+                        "calls": v.call_count,
+                        "duration_ms": round(v.total_duration_ms),
+                        "errors": v.error_count,
+                    }
                     for k, v in getter().items()
                 }
             return json.dumps(result, indent=2)

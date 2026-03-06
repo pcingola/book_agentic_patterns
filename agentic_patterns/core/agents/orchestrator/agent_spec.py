@@ -59,7 +59,11 @@ class AgentSpec(BaseModel):
         model_name = model_name or cfg.get("model", "default")
         model = get_model(model_name, config_path)
 
-        if system_prompt is None and system_prompt_path is None and "system_prompt" in cfg:
+        if (
+            system_prompt is None
+            and system_prompt_path is None
+            and "system_prompt" in cfg
+        ):
             system_prompt = _load_prompt(cfg["system_prompt"])
 
         tool_names = tool_names or cfg.get("tools")

@@ -57,7 +57,9 @@ def register_tools(mcp: FastMCP) -> None:
     ) -> str:
         """Show detailed information for a specific endpoint including parameters, request body, and responses."""
         await ctx.info(f"openapi_show_endpoint_details: {api_id} {method} {path}")
-        return await _call(OpenApiConnector().show_endpoint_details(api_id, method, path))
+        return await _call(
+            OpenApiConnector().show_endpoint_details(api_id, method, path)
+        )
 
     @mcp.tool()
     @tool_permission(ToolPermission.CONNECT)
@@ -73,5 +75,7 @@ def register_tools(mcp: FastMCP) -> None:
         """Call an API endpoint with specified parameters and body. Results are saved to JSON automatically."""
         await ctx.info(f"openapi_call_endpoint: {api_id} {method} {path}")
         return await _call(
-            OpenApiConnector().call_endpoint(api_id, method, path, parameters, body, output_file)
+            OpenApiConnector().call_endpoint(
+                api_id, method, path, parameters, body, output_file
+            )
         )

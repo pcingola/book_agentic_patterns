@@ -75,7 +75,9 @@ async def summarize_descriptions(
     prompt = get_prompt("code_index/summarize_index")
     agent = get_agent(config_name=config_name, system_prompt=prompt, output_type=str)
     try:
-        result = await agent.run("Symbol descriptions:\n" + "\n".join(f"- {d}" for d in sample))
+        result = await agent.run(
+            "Symbol descriptions:\n" + "\n".join(f"- {d}" for d in sample)
+        )
         return result.output.strip()
     except Exception:
         logger.warning("Failed to summarize index descriptions", exc_info=True)

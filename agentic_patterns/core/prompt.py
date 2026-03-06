@@ -20,7 +20,9 @@ def _resolve_prompt_path(name: str) -> Path:
     package_path = PACKAGE_PROMPTS_DIR / name
     if package_path.exists():
         return package_path
-    raise FileNotFoundError(f"Prompt not found: {name} (searched {PROJECT_PROMPTS_DIR}, {PACKAGE_PROMPTS_DIR})")
+    raise FileNotFoundError(
+        f"Prompt not found: {name} (searched {PROJECT_PROMPTS_DIR}, {PACKAGE_PROMPTS_DIR})"
+    )
 
 
 def _resolve_includes(text: str) -> str:
@@ -55,11 +57,15 @@ def load_prompt(prompt: str | Path, **kwargs) -> str:
 
     missing_vars = template_vars - provided_vars
     if missing_vars:
-        raise ValueError(f"Template '{prompt_path.name}' requires variables that were not provided: {sorted(missing_vars)}")
+        raise ValueError(
+            f"Template '{prompt_path.name}' requires variables that were not provided: {sorted(missing_vars)}"
+        )
 
     unused_vars = provided_vars - template_vars
     if unused_vars:
-        raise ValueError(f"Template '{prompt_path.name}' received unused variables: {sorted(unused_vars)}")
+        raise ValueError(
+            f"Template '{prompt_path.name}' received unused variables: {sorted(unused_vars)}"
+        )
 
     if kwargs:
         return template.format(**kwargs)

@@ -23,7 +23,9 @@ class CircuitBreaker:
     last_failure_time: float = 0.0
 
     def __str__(self) -> str:
-        return f"CircuitBreaker(state={self.state.value}, failures={self.failure_count})"
+        return (
+            f"CircuitBreaker(state={self.state.value}, failures={self.failure_count})"
+        )
 
     def allow_request(self) -> bool:
         match self.state:

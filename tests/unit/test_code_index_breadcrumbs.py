@@ -33,23 +33,32 @@ def _make_chunk(
 
 
 class TestBuildBreadcrumbs(unittest.TestCase):
-
     def setUp(self) -> None:
         self.preamble = _make_chunk(
-            "f-preamble", "import os\nfrom pathlib import Path",
-            "<preamble>", "preamble", level=ChunkLevel.PARAGRAPH,
+            "f-preamble",
+            "import os\nfrom pathlib import Path",
+            "<preamble>",
+            "preamble",
+            level=ChunkLevel.PARAGRAPH,
         )
         self.func = _make_chunk(
-            "f-connect", "def connect(host: str) -> bool:\n    pass",
-            "connect", "function",
+            "f-connect",
+            "def connect(host: str) -> bool:\n    pass",
+            "connect",
+            "function",
         )
         self.cls = _make_chunk(
-            "f-pool", "class ConnectionPool:\n    pass",
-            "ConnectionPool", "class",
+            "f-pool",
+            "class ConnectionPool:\n    pass",
+            "ConnectionPool",
+            "class",
         )
         self.method = _make_chunk(
-            "f-acquire", "def acquire(self) -> object:\n    pass",
-            "acquire", "method", parent_id="f-pool",
+            "f-acquire",
+            "def acquire(self) -> object:\n    pass",
+            "acquire",
+            "method",
+            parent_id="f-pool",
         )
         self.all_chunks = [self.preamble, self.func, self.cls, self.method]
 

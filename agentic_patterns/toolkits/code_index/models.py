@@ -39,7 +39,7 @@ class PrintIndexListener(IndexListener):
         self, file_path: Path, descriptions: dict[str, str]
     ) -> None:
         if not descriptions:
-            print(f"  (no descriptions returned)")
+            print("  (no descriptions returned)")
             return
         for doc_id, desc in descriptions.items():
             symbol = doc_id.rsplit("-", 1)[-1] if "-" in doc_id else doc_id

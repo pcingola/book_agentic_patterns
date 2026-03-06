@@ -284,6 +284,7 @@ class OrchestratorAgent:
     ) -> str:
         """Append shared prompt blocks for capabilities the agent actually has."""
         from agentic_patterns.core.prompt import load_prompt
+
         # (condition, filename, variables needed by that file)
         blocks: list[tuple[bool, str, dict[str, str]]] = [
             (True, "workspace.md", {}),

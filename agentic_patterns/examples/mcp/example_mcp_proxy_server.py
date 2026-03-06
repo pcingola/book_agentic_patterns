@@ -1,7 +1,11 @@
 """Example MCP proxy server. Run with: fastmcp run example_mcp_proxy_server.py --port 8200"""
 
 from agentic_patterns.mcp.proxy import MCPProxyServer, ProxyConfig
-from agentic_patterns.mcp.proxy.config import PolicyRule, ProxyBackendConfig, RateLimitConfig
+from agentic_patterns.mcp.proxy.config import (
+    PolicyRule,
+    ProxyBackendConfig,
+    RateLimitConfig,
+)
 
 config = ProxyConfig(
     backends=[
