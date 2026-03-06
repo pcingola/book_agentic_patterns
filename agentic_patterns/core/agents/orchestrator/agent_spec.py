@@ -9,7 +9,8 @@ from pydantic_ai.models import Model
 
 from agentic_patterns.core.a2a.client import A2AClientExtended, get_a2a_client
 from agentic_patterns.core.agents.models import get_model
-from agentic_patterns.core.config.config import MAIN_PROJECT_DIR, PROMPTS_DIR
+from agentic_patterns.core.config.config import MAIN_PROJECT_DIR
+from agentic_patterns.core.prompt import load_prompt as _load_prompt
 from agentic_patterns.core.mcp import MCPClientConfig, load_mcp_settings
 from agentic_patterns.core.skills.models import Skill
 from agentic_patterns.core.skills.registry import SkillRegistry
@@ -58,8 +59,8 @@ class AgentSpec(BaseModel):
         model_name = model_name or cfg.get("model", "default")
         model = get_model(model_name, config_path)
 
-        if system_prompt_path is None and "system_prompt" in cfg:
-            system_prompt_path = PROMPTS_DIR / cfg["system_prompt"]
+        if system_prompt is None and system_prompt_path is None and "system_prompt" in cfg:
+            system_prompt = _load_prompt(cfg["system_prompt"])
 
         tool_names = tool_names or cfg.get("tools")
         tools: list[Any] = _resolve_tools(tool_names) if tool_names else []

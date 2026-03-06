@@ -8,11 +8,10 @@ Run with: uvicorn agentic_patterns.a2a.openapi.server:app --port 8203
 
 from agentic_patterns.core.a2a import AuthSessionMiddleware, mcp_to_skills_sync
 from agentic_patterns.core.agents import get_agent
-from agentic_patterns.core.config.config import PROMPTS_DIR
 from agentic_patterns.core.mcp import get_mcp_client
 from agentic_patterns.core.prompt import load_prompt
 
-system_prompt = load_prompt(PROMPTS_DIR / "a2a" / "openapi" / "system_prompt.md")
+system_prompt = load_prompt("a2a/openapi/system_prompt")
 
 mcp_client = get_mcp_client("openapi")
 skills = mcp_to_skills_sync("openapi")

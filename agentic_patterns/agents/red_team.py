@@ -3,7 +3,6 @@
 from pydantic import BaseModel
 
 from agentic_patterns.core.agents.agents import get_agent
-from agentic_patterns.core.config.config import PROMPTS_DIR
 from agentic_patterns.core.listeners import AgentListener
 from agentic_patterns.core.prompt import load_prompt
 
@@ -58,7 +57,7 @@ class RedTeamAgent:
         if self._listener:
             await self._listener.on_start()
         prompt = load_prompt(
-            PROMPTS_DIR / "adversarial" / "red_team.md",
+            "adversarial/red_team",
             threat_model=self._threat_model,
             result=result,
             context=context,

@@ -4,7 +4,6 @@ import re
 from pathlib import Path
 
 from agentic_patterns.core.agents import get_agent, run_agent
-from agentic_patterns.core.config.config import PROMPTS_DIR
 from agentic_patterns.core.doctors.base import DoctorBase
 from agentic_patterns.core.doctors.models import PromptRecommendation
 from agentic_patterns.core.prompt import load_prompt
@@ -47,7 +46,7 @@ class PromptDoctor(DoctorBase):
             prompts_content.append(_format_prompt_for_analysis(name, content))
 
         analysis_prompt = load_prompt(
-            PROMPTS_DIR / "doctors" / "prompt_doctor.md",
+            "doctors/prompt_doctor",
             prompts_content="\n\n---\n\n".join(prompts_content),
         )
 

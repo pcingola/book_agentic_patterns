@@ -283,10 +283,7 @@ class OrchestratorAgent:
         agents_catalog: dict[str, str],
     ) -> str:
         """Append shared prompt blocks for capabilities the agent actually has."""
-        from agentic_patterns.core.config.config import PROMPTS_DIR
         from agentic_patterns.core.prompt import load_prompt
-
-        shared = PROMPTS_DIR / "shared"
         # (condition, filename, variables needed by that file)
         blocks: list[tuple[bool, str, dict[str, str]]] = [
             (True, "workspace.md", {}),
@@ -305,9 +302,12 @@ class OrchestratorAgent:
             ),
         ]
         for condition, filename, file_vars in blocks:
-            path = shared / filename
-            if condition and path.exists():
-                prompt += "\n\n" + load_prompt(path, **file_vars)
+            name = f"shared/{filename.removesuffix('.md')}"
+            if condition:
+                try:
+                    prompt += "\n\n" + load_prompt(name, **file_vars)
+                except FileNotFoundError:
+                    pass
 
         return prompt
 

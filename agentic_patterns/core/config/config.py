@@ -16,7 +16,6 @@ DATA_DB_DIR = Path(get_variable_env("DATA_DB_DIR") or DATA_DIR / "db")
 LOGS_DIR = MAIN_PROJECT_DIR / "logs"
 PACKAGE_PROMPTS_DIR = Path(__file__).resolve().parent.parent.parent / "prompts"
 PROJECT_PROMPTS_DIR = MAIN_PROJECT_DIR / "prompts"
-PROMPTS_DIR = Path(get_variable_env("PROMPTS_DIR") or (PROJECT_PROMPTS_DIR if PROJECT_PROMPTS_DIR.is_dir() else PACKAGE_PROMPTS_DIR))
 WORKSPACE_DIR = Path(get_variable_env("WORKSPACE_DIR") or DATA_DIR / "workspaces")
 PRIVATE_DATA_DIR = Path(
     get_variable_env("PRIVATE_DATA_DIR") or DATA_DIR / "private_data"

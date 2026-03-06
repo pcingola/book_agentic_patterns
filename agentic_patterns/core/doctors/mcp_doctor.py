@@ -3,7 +3,6 @@
 from pydantic_ai.mcp import MCPServerStdio, MCPServerStreamableHTTP
 
 from agentic_patterns.core.agents import get_agent, run_agent
-from agentic_patterns.core.config.config import PROMPTS_DIR
 from agentic_patterns.core.doctors.base import DoctorBase
 from agentic_patterns.core.doctors.models import ToolRecommendation
 from agentic_patterns.core.prompt import load_prompt
@@ -20,7 +19,7 @@ class MCPDoctor(DoctorBase):
     ) -> list[ToolRecommendation]:
         """Analyze tools from the MCP server. Batch parameter is ignored as we analyze all tools."""
         prompt = load_prompt(
-            PROMPTS_DIR / "doctors" / "tool_doctor.md",
+            "doctors/tool_doctor",
             tools_description="(tools provided via MCP)",
         )
 

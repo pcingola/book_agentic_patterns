@@ -3,7 +3,6 @@
 from pydantic import BaseModel, Field
 
 from agentic_patterns.core.agents.agents import get_agent
-from agentic_patterns.core.config.config import PROMPTS_DIR
 from agentic_patterns.core.listeners import AgentListener
 from agentic_patterns.core.prompt import load_prompt
 from agentic_patterns.toolkits.anonymization.anonymizer import Anonymizer, _merge_spans
@@ -98,7 +97,7 @@ class AnonymizationAgent:
             # Step 2: tag text, LLM detects additional PHI
             tagged_text = self._anonymizer.redact_tagged(text, all_spans)
             prompt = load_prompt(
-                PROMPTS_DIR / "anonymization" / "audit.md", text=tagged_text
+                "anonymization/audit", text=tagged_text
             )
             detect_output: AuditResult = (await self._audit_agent.run(prompt)).output
 
@@ -112,7 +111,7 @@ class AnonymizationAgent:
 
             # Step 3: LLM verifies pseudonymized output
             verify_prompt = load_prompt(
-                PROMPTS_DIR / "anonymization" / "audit.md", text=redacted_text
+                "anonymization/audit", text=redacted_text
             )
             verify_output: AuditResult = (
                 await self._audit_agent.run(verify_prompt)

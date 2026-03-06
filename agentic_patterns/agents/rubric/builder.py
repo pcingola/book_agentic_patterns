@@ -52,7 +52,7 @@ from agentic_patterns.agents.rubric.models import (
 )
 from agentic_patterns.core.agents.agents import get_agent
 from agentic_patterns.core.agents.utils import run_parallel
-from agentic_patterns.core.config.config import PROMPTS_DIR, SANDBOX_PREFIX
+from agentic_patterns.core.config.config import SANDBOX_PREFIX
 from agentic_patterns.core.prompt import load_prompt
 from agentic_patterns.core.vectordb.clustering import cluster
 from agentic_patterns.core.vectordb.embeddings import (
@@ -62,7 +62,7 @@ from agentic_patterns.core.vectordb.embeddings import (
 )
 from agentic_patterns.core.vectordb.models import Chunk, ChunkLevel, ClusterAlgorithm
 
-_RUBRIC_PROMPTS = PROMPTS_DIR / "rubric"
+_RUBRIC_PROMPTS = "rubric"
 
 # When the rubric already has more than this many items, the synthesis agent
 # uses rubric_find_similar_items to search instead of receiving the full list.
@@ -423,7 +423,7 @@ class RubricBuilder:
     ) -> list[PoolItem]:
         """LLM call: extract MUST/SHOULD/MAY requirements from one policy chunk."""
         prompt = load_prompt(
-            _RUBRIC_PROMPTS / "extract_requirements.md", chunk_text=text
+            f"{_RUBRIC_PROMPTS}/extract_requirements", chunk_text=text
         )
         agent = get_agent(
             config_name=self._config_name, output_type=_ExtractedRequirements
@@ -696,7 +696,7 @@ class RubricBuilder:
             return group
 
         prompt = load_prompt(
-            _RUBRIC_PROMPTS / "group_merge.md", items=_format_pool_items(group)
+            f"{_RUBRIC_PROMPTS}/group_merge", items=_format_pool_items(group)
         )
         result = await self._with_retry(
             lambda: self._merge_agent.run(prompt),
@@ -892,7 +892,7 @@ class RubricBuilder:
                     if use_tool_search
                     else "group_synthesize.md"
                 )
-                system_prompt = load_prompt(_RUBRIC_PROMPTS / prompt_file)
+                system_prompt = load_prompt(f"{_RUBRIC_PROMPTS}/{prompt_file.removesuffix('.md')}")
                 if use_tool_search:
                     user_msg = f"## Pool items to process\n\n{_format_pool_items(b)}"
                 else:

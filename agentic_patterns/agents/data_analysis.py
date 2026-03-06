@@ -3,7 +3,6 @@
 from pydantic_ai import Agent
 
 from agentic_patterns.core.agents import AgentSpec, get_agent
-from agentic_patterns.core.config.config import PROMPTS_DIR
 from agentic_patterns.core.prompt import load_prompt
 from agentic_patterns.tools import csv, data_analysis, data_viz, file, json, repl
 
@@ -18,7 +17,7 @@ def create_agent() -> Agent:
 
 def get_spec() -> AgentSpec:
     """Return an AgentSpec for the data analysis agent."""
-    prompt = load_prompt(PROMPTS_DIR / "a2a" / "data_analysis" / "system_prompt.md")
+    prompt = load_prompt("a2a/data_analysis/system_prompt")
     tools = (
         file.get_all_tools()
         + csv.get_all_tools()

@@ -11,12 +11,11 @@ Run with: uvicorn agentic_patterns.a2a.template.server:app --port 8001
 
 from agentic_patterns.core.a2a import AuthSessionMiddleware, tool_to_skill
 from agentic_patterns.core.agents import get_agent
-from agentic_patterns.core.config.config import PROMPTS_DIR
 from agentic_patterns.core.prompt import load_prompt
 
 from agentic_patterns.a2a.template.tools import ALL_TOOLS
 
-system_prompt = load_prompt(PROMPTS_DIR / "a2a" / "template" / "system_prompt.md")
+system_prompt = load_prompt("a2a/template/system_prompt")
 
 
 # -- Skills from local tools (always present) ---------------------------------

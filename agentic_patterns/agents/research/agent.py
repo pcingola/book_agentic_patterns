@@ -17,12 +17,11 @@ from agentic_patterns.agents.research.source import (
     SearchSource,
     SearchSourcePerplexity,
 )
-from agentic_patterns.core.config.config import PROMPTS_DIR
 from agentic_patterns.core.prompt import load_prompt
 
 logger = logging.getLogger(__name__)
 
-RESEARCH_PROMPTS = PROMPTS_DIR / "research"
+RESEARCH_PROMPTS = "research"
 
 
 def _build_evidence_summary(evidence: dict[str, list[SearchResult]]) -> str:
@@ -89,7 +88,7 @@ class DeepResearchAgent:
         """Break the question into sub-questions."""
         agent = get_agent(config_name=self._config_name, output_type=_SubQuestions)
         prompt = load_prompt(
-            RESEARCH_PROMPTS / "decompose.md",
+            f"{RESEARCH_PROMPTS}/decompose",
             question=question,
             max_questions=self._max_questions,
         )
@@ -107,7 +106,7 @@ class DeepResearchAgent:
             await self._listener.on_gap_start(iteration)
         agent = get_agent(config_name=self._config_name, output_type=_GapAssessment)
         prompt = load_prompt(
-            RESEARCH_PROMPTS / "assess_gaps.md",
+            f"{RESEARCH_PROMPTS}/assess_gaps",
             question=question,
             evidence_summary=_build_evidence_summary(evidence),
         )
@@ -126,7 +125,7 @@ class DeepResearchAgent:
             await self._listener.on_conflict_start()
         agent = get_agent(config_name=self._config_name, output_type=_ConflictReport)
         prompt = load_prompt(
-            RESEARCH_PROMPTS / "detect_conflicts.md",
+            f"{RESEARCH_PROMPTS}/detect_conflicts",
             question=question,
             evidence_summary=_build_evidence_summary(evidence),
         )
@@ -151,7 +150,7 @@ class DeepResearchAgent:
         )
         agent = get_agent(config_name=self._config_name, output_type=_SynthesisOutput)
         prompt = load_prompt(
-            RESEARCH_PROMPTS / "synthesize.md",
+            f"{RESEARCH_PROMPTS}/synthesize",
             question=question,
             evidence_summary=_build_evidence_summary(evidence),
             conflicts=conflicts_text,

@@ -3,7 +3,6 @@
 from pydantic_ai import Agent
 
 from agentic_patterns.core.agents import AgentSpec, get_agent
-from agentic_patterns.core.config.config import PROMPTS_DIR
 from agentic_patterns.core.prompt import load_prompt
 from agentic_patterns.tools import code_index
 
@@ -18,7 +17,7 @@ def create_agent() -> Agent:
 
 def get_spec() -> AgentSpec:
     """Return an AgentSpec for the code index agent."""
-    prompt = load_prompt(PROMPTS_DIR / "code_index" / "system_prompt.md")
+    prompt = load_prompt("code_index/system_prompt")
     tools = code_index.get_all_tools()
     return AgentSpec(
         name="code_index", description=DESCRIPTION, system_prompt=prompt, tools=tools

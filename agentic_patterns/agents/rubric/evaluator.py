@@ -3,12 +3,11 @@
 from agentic_patterns.agents.rubric.listener import RubricEvaluatorListener
 from agentic_patterns.agents.rubric.models import Rubric, RubricVerdict
 from agentic_patterns.core.agents.agents import get_agent
-from agentic_patterns.core.config.config import PROMPTS_DIR
 from agentic_patterns.core.prompt import load_prompt
 from agentic_patterns.core.vectordb.models import RetrievedDocument
 from agentic_patterns.core.vectordb.multi_source import MultiSourceRetriever
 
-_RUBRIC_PROMPTS = PROMPTS_DIR / "rubric"
+_RUBRIC_PROMPTS = "rubric"
 
 
 def _format_evidence(docs: list[RetrievedDocument]) -> str:
@@ -56,7 +55,7 @@ class RubricEvaluator:
         evidence = _format_evidence(docs)
         evidence_required_str = "\n".join(f"- {e}" for e in item.evidence_required)
         prompt = load_prompt(
-            _RUBRIC_PROMPTS / "assess_item.md",
+            f"{_RUBRIC_PROMPTS}/assess_item",
             item_id=item.item_id,
             title=item.title,
             requirement_level=item.requirement_level.value,

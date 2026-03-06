@@ -4,7 +4,6 @@ from pydantic import BaseModel
 from pydantic_ai import Agent
 
 from agentic_patterns.core.agents import get_agent
-from agentic_patterns.core.config.config import PROMPTS_DIR
 from agentic_patterns.core.connectors.sql.db_infos import DbInfos
 from agentic_patterns.core.prompt import load_prompt
 
@@ -16,12 +15,10 @@ class DatabaseSelection(BaseModel):
 
 def create_agent() -> Agent:
     """Create a database catalog agent that selects the appropriate database."""
-    system_prompt = (
-        PROMPTS_DIR / "sql" / "db_catalog" / "db_catalog_system_prompt.md"
-    ).read_text(encoding="utf-8")
+    system_prompt = load_prompt("sql/db_catalog/db_catalog_system_prompt")
     databases_info = _build_databases_info()
     instructions = load_prompt(
-        PROMPTS_DIR / "sql" / "db_catalog" / "db_catalog_instructions.md",
+        "sql/db_catalog/db_catalog_instructions",
         databases_info=databases_info,
     )
     return get_agent(

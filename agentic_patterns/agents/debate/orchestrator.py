@@ -6,7 +6,6 @@ from agentic_patterns.agents.debate.models import (
     DebateTurn,
     Verdict,
 )
-from agentic_patterns.core.config.config import PROMPTS_DIR
 from agentic_patterns.core.prompt import load_prompt
 
 
@@ -54,7 +53,7 @@ class DebateOrchestrator:
         if self._listener:
             await self._listener.on_advocate_start(round_num, self._max_rounds)
         prompt = load_prompt(
-            PROMPTS_DIR / "adversarial" / "advocate_turn.md",
+            "adversarial/advocate_turn",
             proposal=proposal,
             transcript=transcript,
             additional_instructions=self._advocate_prompt,
@@ -70,7 +69,7 @@ class DebateOrchestrator:
         if self._listener:
             await self._listener.on_critic_start(round_num, self._max_rounds)
         prompt = load_prompt(
-            PROMPTS_DIR / "adversarial" / "critic_turn.md",
+            "adversarial/critic_turn",
             proposal=proposal,
             transcript=transcript,
             pro_arguments=_format_turn("Advocate", adv_turn),
@@ -87,7 +86,7 @@ class DebateOrchestrator:
         if self._listener:
             await self._listener.on_verdict_start(round_num, self._max_rounds)
         prompt = load_prompt(
-            PROMPTS_DIR / "adversarial" / "arbiter_verdict.md",
+            "adversarial/arbiter_verdict",
             proposal=proposal,
             transcript=transcript,
         )

@@ -6,7 +6,6 @@ from pathlib import Path
 import yaml
 
 from agentic_patterns.core.agents import get_agent, run_agent
-from agentic_patterns.core.config.config import PROMPTS_DIR
 from agentic_patterns.core.doctors.base import DoctorBase
 from agentic_patterns.core.doctors.models import (
     AgentSkillRecommendation,
@@ -337,7 +336,7 @@ class SkillDoctor(DoctorBase):
 
         skill_content = _format_skill_for_analysis(skill_dir)
         analysis_prompt = load_prompt(
-            PROMPTS_DIR / "doctors" / "skill_doctor.md", skill_content=skill_content
+            "doctors/skill_doctor", skill_content=skill_content
         )
 
         agent = get_agent(output_type=AgentSkillRecommendation)
@@ -403,7 +402,7 @@ class SkillDoctor(DoctorBase):
             return []
 
         prompt = load_prompt(
-            PROMPTS_DIR / "doctors" / "skill_consistency_doctor.md",
+            "doctors/skill_consistency_doctor",
             skill_md_content=skill_md_content,
             scripts_present="\n".join(f"- {name}" for name in scripts_present),
         )
@@ -462,7 +461,7 @@ class SkillDoctor(DoctorBase):
                 print(f"  Analyzing script: {script_name}")
 
             prompt = load_prompt(
-                PROMPTS_DIR / "doctors" / "skill_script_doctor.md",
+                "doctors/skill_script_doctor",
                 skill_md_content=skill_md_content,
                 script_name=script_name,
                 script_content=script_content[:5000],

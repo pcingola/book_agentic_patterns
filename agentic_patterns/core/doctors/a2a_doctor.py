@@ -6,7 +6,6 @@ import httpx
 from fasta2a.schema import AgentCard
 
 from agentic_patterns.core.agents import get_agent, run_agent
-from agentic_patterns.core.config.config import PROMPTS_DIR
 from agentic_patterns.core.doctors.base import DoctorBase
 from agentic_patterns.core.doctors.models import A2ARecommendation
 from agentic_patterns.core.prompt import load_prompt
@@ -70,7 +69,7 @@ class A2ADoctor(DoctorBase):
             json.dumps(card, indent=2) for card in cards
         )
         analysis_prompt = load_prompt(
-            PROMPTS_DIR / "doctors" / "a2a_doctor.md",
+            "doctors/a2a_doctor",
             agent_cards=agent_cards_content,
         )
 

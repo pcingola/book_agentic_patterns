@@ -3,7 +3,6 @@
 from typing import Callable
 
 from agentic_patterns.core.agents import get_agent, run_agent
-from agentic_patterns.core.config.config import PROMPTS_DIR
 from agentic_patterns.core.doctors.base import DoctorBase
 from agentic_patterns.core.doctors.models import ToolRecommendation
 from agentic_patterns.core.prompt import load_prompt
@@ -26,7 +25,7 @@ class ToolDoctor(DoctorBase):
         """Analyze a batch of tool functions."""
         tools_description = "\n\n".join(func_to_description(tool) for tool in batch)
         prompt = load_prompt(
-            PROMPTS_DIR / "doctors" / "tool_doctor.md",
+            "doctors/tool_doctor",
             tools_description=tools_description,
         )
 

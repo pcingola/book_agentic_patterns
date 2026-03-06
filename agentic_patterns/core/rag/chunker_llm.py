@@ -6,7 +6,6 @@ from pydantic import BaseModel
 from pydantic_ai import Agent
 
 from agentic_patterns.core.agents import get_agent
-from agentic_patterns.core.config.config import PROMPTS_DIR
 from agentic_patterns.core.doc_ingestion.models import DocumentProvenance
 from agentic_patterns.core.prompt import load_prompt
 from agentic_patterns.core.rag.chunker import Chunker
@@ -56,7 +55,7 @@ class ChunkerLLM(Chunker):
     async def achunk(self, text: str, provenance: DocumentProvenance) -> list[Chunk]:
         agent = self._agent or get_agent(output_type=_ChunkList)
 
-        prompt_path = PROMPTS_DIR / "rag" / "chunk_boundaries.md"
+        prompt_name = "rag/chunk_boundaries"
         stem = get_stem(provenance)
         meta = provenance_to_meta(provenance)
 
@@ -66,7 +65,7 @@ class ChunkerLLM(Chunker):
 
         for batch in batches:
             batch_text = (leftover + "\n\n" + batch).strip() if leftover else batch
-            prompt = load_prompt(prompt_path, text=batch_text)
+            prompt = load_prompt(prompt_name, text=batch_text)
             result = await agent.run(prompt)
             chunk_texts: list[str] = result.output.chunks
 

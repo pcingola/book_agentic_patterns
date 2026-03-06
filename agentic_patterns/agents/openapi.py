@@ -3,7 +3,6 @@
 from pydantic_ai import Agent
 
 from agentic_patterns.core.agents import AgentSpec, get_agent
-from agentic_patterns.core.config.config import PROMPTS_DIR
 from agentic_patterns.core.prompt import load_prompt
 from agentic_patterns.tools import openapi
 
@@ -20,7 +19,7 @@ def create_agent() -> Agent:
 
 def get_spec() -> AgentSpec:
     """Return an AgentSpec for the OpenAPI agent."""
-    prompt = load_prompt(PROMPTS_DIR / "a2a" / "openapi" / "system_prompt.md")
+    prompt = load_prompt("a2a/openapi/system_prompt")
     return AgentSpec(
         name="api_specialist",
         description=DESCRIPTION,
