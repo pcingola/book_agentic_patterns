@@ -45,7 +45,7 @@ spec = AgentSpec.from_config("skilled")
 agent = OrchestratorAgent(spec, verbose=True)
 ```
 
-`from_config()` resolves the prompt path relative to `PROMPTS_DIR`, imports each tool module, calls its `get_all_tools()`, and assembles the `AgentSpec`. The orchestrator then adds `activate_skill` behind the scenes. The agent code does not reference skills directly -- the prompt includes `{% include 'shared/skills.md' %}` and the orchestrator fills in the catalog and provides the tool.
+`from_config()` resolves the prompt via `load_prompt()` (which checks the project-level `prompts/` directory first, then falls back to the package-bundled prompts), imports each tool module, calls its `get_all_tools()`, and assembles the `AgentSpec`. The orchestrator then adds `activate_skill` behind the scenes. The agent code does not reference skills directly -- the prompt includes `{% include 'shared/skills.md' %}` and the orchestrator fills in the catalog and provides the tool.
 
 ### Execution
 

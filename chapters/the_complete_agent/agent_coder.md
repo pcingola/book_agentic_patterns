@@ -15,7 +15,7 @@ This prompt is intentionally short. The agent does not need detailed instruction
 Building the agent requires loading the prompt, collecting tools from both modules, and passing them to `get_agent()`:
 
 ```python
-system_prompt = load_prompt(PROMPTS_DIR / "the_complete_agent" / "agent_coder.md")
+system_prompt = load_prompt("the_complete_agent/agent_coder")
 
 tools = get_file_tools() + get_sandbox_tools()
 agent = get_agent(system_prompt=system_prompt, tools=tools)

@@ -20,7 +20,7 @@ prompt = load_prompt(
 
 ### Include directives
 
-Templates can include other templates using `{% include 'path.md' %}`. Paths are resolved relative to the `PROMPTS_DIR` directory (configured in `core/config/config.py`).
+Templates can include other templates using `{% include 'path.md' %}`. Paths are resolved by `load_prompt()`, which checks the project-level `prompts/` directory first, then falls back to the package-bundled `agentic_patterns/prompts/`.
 
 ```markdown
 # Analysis Agent

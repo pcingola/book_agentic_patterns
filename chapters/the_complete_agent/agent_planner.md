@@ -13,7 +13,7 @@ This is a small change in prompt text but a significant change in agent behavior
 The only code difference from the Coder is the addition of todo tools:
 
 ```python
-system_prompt = load_prompt(PROMPTS_DIR / "the_complete_agent" / "agent_planner.md")
+system_prompt = load_prompt("the_complete_agent/agent_planner")
 
 tools = get_file_tools() + get_sandbox_tools() + get_todo_tools()
 agent = get_agent(system_prompt=system_prompt, tools=tools)

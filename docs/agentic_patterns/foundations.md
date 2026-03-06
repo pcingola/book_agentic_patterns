@@ -203,7 +203,8 @@ All paths are `Path` objects. Most can be overridden via environment variables; 
 | `SCRIPTS_DIR` | -- | `MAIN_PROJECT_DIR / "scripts"` |
 | `DATA_DIR` | `DATA_DIR` | `MAIN_PROJECT_DIR / "data"` |
 | `DATA_DB_DIR` | `DATA_DB_DIR` | `DATA_DIR / "db"` |
-| `PROMPTS_DIR` | `PROMPTS_DIR` | `MAIN_PROJECT_DIR / "prompts"` |
+| `PACKAGE_PROMPTS_DIR` | -- | Inside the installed package (`agentic_patterns/prompts/`) |
+| `PROJECT_PROMPTS_DIR` | -- | `MAIN_PROJECT_DIR / "prompts"` |
 | `WORKSPACE_DIR` | `WORKSPACE_DIR` | `DATA_DIR / "workspaces"` |
 | `PRIVATE_DATA_DIR` | `PRIVATE_DATA_DIR` | `DATA_DIR / "private_data"` |
 | `FEEDBACK_DIR` | `FEEDBACK_DIR` | `DATA_DIR / "feedback"` |
