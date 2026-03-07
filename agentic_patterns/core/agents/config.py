@@ -27,6 +27,7 @@ class AzureConfig(BaseModel):
     api_version: str
     timeout: int = Field(default=120)
     parallel_tool_calls: bool | None = Field(default=None)
+    model_options: dict | None = Field(default=None)
 
 
 class BedrockConfig(BaseModel):
@@ -42,6 +43,7 @@ class BedrockConfig(BaseModel):
     claude_sonnet_1m_tokens: bool = Field(default=False)
     timeout: int = Field(default=120)
     parallel_tool_calls: bool | None = Field(default=None)
+    model_options: dict | None = Field(default=None)
 
 
 class OllamaConfig(BaseModel):
@@ -52,6 +54,7 @@ class OllamaConfig(BaseModel):
     url: str
     timeout: int = Field(default=120)
     parallel_tool_calls: bool | None = Field(default=None)
+    model_options: dict | None = Field(default=None)
 
 
 class OpenAIConfig(BaseModel):
@@ -62,6 +65,7 @@ class OpenAIConfig(BaseModel):
     api_key: str
     timeout: int = Field(default=120)
     parallel_tool_calls: bool | None = Field(default=None)
+    model_options: dict | None = Field(default=None)
 
 
 class OpenRouterConfig(BaseModel):
@@ -73,6 +77,7 @@ class OpenRouterConfig(BaseModel):
     api_url: str = Field(default="https://openrouter.ai/api/v1")
     timeout: int = Field(default=120)
     parallel_tool_calls: bool | None = Field(default=None)
+    model_options: dict | None = Field(default=None)
 
 
 class AIGatewayConfig(BaseModel):
@@ -85,6 +90,7 @@ class AIGatewayConfig(BaseModel):
     gateway_provider: GatewayProvider | None = Field(default=None)
     timeout: int = Field(default=120)
     parallel_tool_calls: bool | None = Field(default=None)
+    model_options: dict | None = Field(default=None)
 
 
 AgentConfig = (

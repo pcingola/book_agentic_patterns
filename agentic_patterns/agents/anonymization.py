@@ -2,7 +2,7 @@
 
 from pydantic import BaseModel, Field
 
-from agentic_patterns.core.agents.agents import get_agent
+from agentic_patterns.core.agents.agents import get_agent, run_agent
 from agentic_patterns.core.listeners import AgentListener
 from agentic_patterns.core.prompt import load_prompt
 from agentic_patterns.toolkits.anonymization.anonymizer import Anonymizer, _merge_spans
@@ -117,60 +117,43 @@ class AnonymizationAgent:
         ):
             agent_kwargs["event_stream_handler"] = listener.as_event_stream_handler()
         self._audit_agent = get_agent(
-            config_name=config_name, output_type=AuditResult, **agent_kwargs
+            config_name=config_name,
+            output_type=AuditResult,
+            **agent_kwargs,
+        )
+        self._verify_agent = get_agent(
+            config_name=config_name,
+            output_type=AuditResult,
+            **agent_kwargs,
         )
         self._max_passes = max_passes
 
-    async def anonymize(
-        self, text: str, meta: dict | None = None
-    ) -> AnonymizationResult:
-        """Regex -> LLM detect -> pseudonymize -> LLM verify (loop)."""
+    async def anonymize(self, text: str, meta: dict | None = None) -> AnonymizationResult:
+        """Regex -> LLM audit -> pseudonymize -> LLM verify (loop)."""
         if self._listener:
             await self._listener.on_start()
 
         # Step 1: regex detection on original text
-        all_spans = self._anonymizer.detect(text, meta)
+        all_spans = await self._detect_regex(text, meta)
         audit_spans: list[EntitySpan] = []
-        if self._listener:
-            await self._listener.on_regex_done(all_spans, text)
 
         for pass_num in range(1, self._max_passes + 1):
-            # Step 2: tag text, LLM detects additional PHI
-            tagged_text = self._anonymizer.redact_tagged(text, all_spans)
-            prompt = load_prompt("anonymization/audit", text=tagged_text)
-            detect_output: AuditResult = (await self._audit_agent.run(prompt)).output
+            # Step 2: LLM detects additional PHI missed by regex
+            new_spans = await self._audit_pass(text, all_spans, pass_num)
+            audit_spans.extend(new_spans)
+            all_spans = _merge_spans(all_spans + new_spans)
 
-            if self._listener:
-                await self._listener.on_audit_pass(pass_num, detect_output.findings)
-
-            if detect_output.findings:
-                new_spans = self._findings_to_spans(text, detect_output.findings)
-                audit_spans.extend(new_spans)
-                all_spans = _merge_spans(all_spans + new_spans)
-
-            # Pseudonymize from original text
+            # Pseudonymize from original text using all spans found so far
             redacted_text = self._anonymizer.redact(text, all_spans)
 
-            # Step 3: LLM verifies pseudonymized output
-            verify_prompt = load_prompt("anonymization/audit", text=redacted_text)
-            verify_output: AuditResult = (
-                await self._audit_agent.run(verify_prompt)
-            ).output
-
-            if self._listener:
-                await self._listener.on_verify_pass(pass_num, verify_output.findings)
-
-            if not verify_output.findings:
-                break  # clean -- no leaks found
-
-            # Leaks found: convert findings to spans in original text, loop back
-            leak_spans = self._findings_to_spans(text, verify_output.findings)
+            # Step 3: LLM verifies no real PHI remains in pseudonymized output
+            leak_spans = await self._verify_pass(text, redacted_text, pass_num)
             if not leak_spans:
-                break  # findings didn't map to original text
+                break  # clean -- no leaks found
             audit_spans.extend(leak_spans)
             all_spans = _merge_spans(all_spans + leak_spans)
         else:
-            # Final pseudonymize after exhausting passes
+            # Final pseudonymize after exhausting all passes
             redacted_text = self._anonymizer.redact(text, all_spans)
 
         detection_spans = [s for s in all_spans if s.source != "audit"]
@@ -180,10 +163,43 @@ class AnonymizationAgent:
             detection_spans=detection_spans,
             audit_spans=audit_spans,
         )
-
         if self._listener:
             await self._listener.on_done(result)
         return result
+
+    async def _detect_regex(self, text: str, meta: dict | None) -> list[EntitySpan]:
+        """Step 1: regex detection on original text."""
+        spans = self._anonymizer.detect(text, meta)
+        if self._listener:
+            await self._listener.on_regex_done(spans, text)
+        return spans
+
+    async def _audit_pass(self, text: str, all_spans: list[EntitySpan], pass_num: int) -> list[EntitySpan]:
+        """Step 2: LLM detects additional PHI in tagged text."""
+        tagged_text = self._anonymizer.redact_tagged(text, all_spans)
+        prompt = load_prompt("anonymization/audit", text=tagged_text)
+        agent_run, _ = await run_agent(self._audit_agent, prompt)
+        output: AuditResult = agent_run.result.output
+
+        if self._listener:
+            await self._listener.on_audit_pass(pass_num, output.findings)
+
+        if not output.findings:
+            return []
+        return self._findings_to_spans(text, output.findings)
+
+    async def _verify_pass(self, text: str, redacted_text: str, pass_num: int) -> list[EntitySpan]:
+        """Step 3: LLM verifies pseudonymized text for residual leaks."""
+        prompt = load_prompt("anonymization/verify", text=redacted_text)
+        agent_run, _ = await run_agent(self._verify_agent, prompt)
+        output: AuditResult = agent_run.result.output
+
+        if self._listener:
+            await self._listener.on_verify_pass(pass_num, output.findings)
+
+        if not output.findings:
+            return []
+        return self._findings_to_spans(text, output.findings)
 
     def _findings_to_spans(
         self, text: str, findings: list[AuditFinding]

@@ -19,12 +19,37 @@ from pydantic_ai.agent import Agent
 from pydantic_ai.settings import ModelSettings
 from pydantic_ai.usage import UsageLimits
 
+from agentic_patterns.core.agents.config import AgentConfig
 from agentic_patterns.core.agents.models import _get_model_from_config, _get_config
 
 AgentNode = UserPromptNode | ModelRequestNode | CallToolsNode
 
+# ModelSettings keys that map directly (not passed via extra_body)
+_MODEL_SETTINGS_KEYS = {
+    "max_tokens", "temperature", "top_p", "seed",
+    "presence_penalty", "frequency_penalty", "logit_bias",
+    "stop_sequences", "extra_headers", "openai_reasoning_effort",
+}
+
 
 logger = logging.getLogger(__name__)
+
+
+def _build_model_settings(config: AgentConfig) -> ModelSettings:
+    """Build ModelSettings from agent config, including model_options."""
+    settings_kwargs: dict = {"timeout": config.timeout}
+    if config.parallel_tool_calls is not None:
+        settings_kwargs["parallel_tool_calls"] = config.parallel_tool_calls
+    if config.model_options:
+        extra_body = {}
+        for key, value in config.model_options.items():
+            if key in _MODEL_SETTINGS_KEYS:
+                settings_kwargs[key] = value
+            else:
+                extra_body[key] = value
+        if extra_body:
+            settings_kwargs["extra_body"] = extra_body
+    return ModelSettings(**settings_kwargs)
 
 
 def get_agent(
@@ -57,10 +82,7 @@ def get_agent(
         config = _get_config(config_name, config_path)
         model = _get_model_from_config(config, http_client=http_client)
         if model_settings is None:
-            settings_kwargs = {"timeout": config.timeout}
-            if config.parallel_tool_calls is not None:
-                settings_kwargs["parallel_tool_calls"] = config.parallel_tool_calls
-            model_settings = ModelSettings(**settings_kwargs)
+            model_settings = _build_model_settings(config)
     elif model_settings is None:
         model_settings = ModelSettings()
 

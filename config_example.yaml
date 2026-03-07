@@ -42,6 +42,20 @@ models:
     model_name: llama3
     url: http://localhost:11434/v1
     timeout: 60
+    # model_options: provider-specific options passed to the model.
+    # Known keys (temperature, max_tokens, top_p, seed, etc.) map to ModelSettings;
+    # everything else is sent as extra_body in the API request.
+    # model_options:
+    #   temperature: 0.7
+    #   reasoning: false
+
+  ollama_qwen3:
+    model_family: ollama
+    model_name: qwen3:latest
+    url: http://localhost:11434/v1
+    timeout: 60
+    model_options:
+      openai_reasoning_effort: none
 
   openrouter_claude:
     model_family: openrouter
