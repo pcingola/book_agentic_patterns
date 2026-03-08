@@ -207,6 +207,8 @@ class AnonymizationAgent:
         """Locate all occurrences of audit findings in original text."""
         spans: list[EntitySpan] = []
         for finding in findings:
+            if not finding.substring:
+                continue
             label = _AUDIT_LABEL_MAP.get(finding.label.upper())
             if not label:
                 continue

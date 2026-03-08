@@ -62,6 +62,8 @@ class RegexDetector:
                     start, end = m.start(m.lastindex), m.end(m.lastindex)
                 else:
                     start, end = m.start(), m.end()
+                if start == end:
+                    continue
                 spans.append(
                     EntitySpan(
                         start=start, end=end, label=label, score=0.9, source="regex"
@@ -90,6 +92,8 @@ class NerDetector:
         raw = self._ner_fn(text, meta)
         spans: list[EntitySpan] = []
         for start, end, raw_label, score in raw:
+            if start == end:
+                continue
             label = self._label_map.get(raw_label)
             if label:
                 spans.append(
